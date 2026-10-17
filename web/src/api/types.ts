@@ -208,6 +208,12 @@ export interface DialogueLine {
   delivery: string;
 }
 
+export interface DialogueTimingWarning {
+  segment_id: string;
+  estimated_seconds: number;
+  duration_seconds: number;
+}
+
 export interface SegmentBoundary {
   reason: SegmentBoundaryReason;
   continuity_instruction: string;
@@ -692,6 +698,7 @@ export interface StructuredDirectorSnapshot {
   workspace_layers: WorkspaceLayers;
   allowed_actions: StructuredDirectorAction[];
   workflow: WorkflowState;
+  dialogue_timing_warnings: DialogueTimingWarning[];
   provider_availability: ProviderAvailability;
   assets: ProjectAsset[];
   generations: ReferenceGeneration[];

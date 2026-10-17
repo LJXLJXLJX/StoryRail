@@ -39,6 +39,7 @@ import type {
   CharacterCard,
   CharacterLook,
   DialogueLine,
+  DialogueTimingWarning,
   DirectorRunKind,
   DirectorScript,
   FinalApproval,
@@ -1261,6 +1262,27 @@ const schemas: Record<string, JsonSchema> = {
       "speaker_label",
       "text",
       "delivery"
+    ],
+    "additionalProperties": false
+  },
+  "DialogueTimingWarning": {
+    "type": "object",
+    "properties": {
+      "segment_id": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{32}$"
+      },
+      "estimated_seconds": {
+        "type": "number"
+      },
+      "duration_seconds": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "segment_id",
+      "estimated_seconds",
+      "duration_seconds"
     ],
     "additionalProperties": false
   },
@@ -3954,6 +3976,12 @@ const schemas: Record<string, JsonSchema> = {
       "workflow": {
         "$ref": "WorkflowState"
       },
+      "dialogue_timing_warnings": {
+        "type": "array",
+        "items": {
+          "$ref": "DialogueTimingWarning"
+        }
+      },
       "provider_availability": {
         "$ref": "ProviderAvailability"
       },
@@ -4051,6 +4079,7 @@ const schemas: Record<string, JsonSchema> = {
       "workspace_layers",
       "allowed_actions",
       "workflow",
+      "dialogue_timing_warnings",
       "provider_availability",
       "assets",
       "generations",

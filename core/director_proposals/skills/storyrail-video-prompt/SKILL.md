@@ -33,3 +33,6 @@ true 时（`context.duration_seconds` 超过插件声明的 `soft_duration_limit
 
 这只是提醒，不是 Core 约束。用户同意后再用 `script.apply_operations` 的 `split_segment` 拆分，然后分别为各段
 写提示词；用户选择不拆时照常保存或生成，不擅自拆分，也不拒绝提交。
+
+工作集 `dialogue_timing.exceeds_duration` 为 true 时，台词按字数估算（`estimated_seconds`）念不完：同样先提醒
+用户，建议加长 Segment 时长或在听者反应处拆分；不要为了塞进时长而删减、改写或加速台词。

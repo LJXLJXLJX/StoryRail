@@ -3,6 +3,7 @@
 from core.model_providers.manifest import Capability, Role, recipe_from_json
 from core.model_providers.recipe import SlotBinding, binding_labels, explicit_slots
 
+from .dialogue_timing import dialogue_timing
 from .image_prompt_style import image_prompt_style
 from .keyframe_requests import (
     _find_segment_context,
@@ -129,6 +130,8 @@ def video_prompt_workset(
         "soft_duration_limit_seconds": soft,
         "exceeds_soft_duration_limit": isinstance(soft, int | float)
         and segment.duration_estimate_seconds > soft,
+        # 对白按字数估算的最短秒数；超出 duration_seconds 时提示用户加长或拆分，不压缩台词。
+        "dialogue_timing": dialogue_timing(segment),
     }
 
     return (

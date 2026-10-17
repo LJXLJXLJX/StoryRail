@@ -13,6 +13,7 @@ export type StoryNode = {
     character_id: string | null; speaker_label: string | null; text: string; delivery: string;
   }[];
   boundary_from_previous?: { reason: string; continuity_instruction: string } | null;
+  dialogue_timing?: { estimated_seconds: number; exceeds_duration: boolean } | null;
 };
 export type StoryNarrationTrack = {
   text: string; selected_audio_asset_id: string | null;
@@ -51,6 +52,9 @@ const narration = shape({
 const dialogue = shape({
   character_id: nullable(text), speaker_label: nullable(text), text, delivery: text,
 });
+const dialogueTiming = nullable(shape({
+  estimated_seconds: positive, exceeds_duration: value => typeof value === "boolean",
+}));
 const boundary = nullable(shape({
   reason: oneOf("model_constraint", "continuity_anchor", "control_boundary", "failure_cost"),
   continuity_instruction: text,
@@ -69,7 +73,7 @@ const detailFields: Record<string, Record<string, Check>> = {
   },
   segment: {
     action: text, duration_estimate_seconds: positive, dialogue_lines: array(dialogue),
-    boundary_from_previous: boundary,
+    boundary_from_previous: boundary, dialogue_timing: dialogueTiming,
   },
 };
 

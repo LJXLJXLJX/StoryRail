@@ -2,6 +2,7 @@ import { LocationBinding } from "./location";
 import { DraftProtection } from "./draft_protection";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+  DialogueTimingWarning,
   Scene,
   Shot,
   ShotSegment,
@@ -343,7 +344,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
                     >
                       镜头 {i + 1}
                     </button>
-                    <ShotText shot={s} character={character} />
+                    <ShotText shot={s} character={character} timingWarnings={snapshot.dialogue_timing_warnings} />
                   </section>
                 ))}
                 {!scene.shots.length ? (
@@ -381,7 +382,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
             ) : target.level === "shot" && shot ? (
               <>
                 <LocationBinding key={`view-${shot.id}`} {...props} scene={scene} shot={shot} />
-                <ShotText shot={shot} character={character} />
+                <ShotText shot={shot} character={character} timingWarnings={snapshot.dialogue_timing_warnings} />
                 {shot.segments.map((s, i) => {
                   const plan = snapshot.video_plan?.segments.find(
                     (v) => v.segment_id === s.id,
@@ -418,7 +419,11 @@ export function StoryReader(props: WorkspaceFlatProps) {
               </>
             ) : segment && shot ? (
               <>
-                <SegmentText segment={segment} character={character} />
+                <SegmentText
+                  segment={segment}
+                  character={character}
+                  timingWarnings={snapshot.dialogue_timing_warnings}
+                />
                 {!snapshot.production_availability.keyframes.unlocked ? <section aria-label="关键帧尚未解锁"><h3>首尾关键帧</h3><p>{snapshot.production_availability.keyframes.reason}</p><button onClick={() => choose(null)}>前往项目概览完成前置步骤</button></section> : null}
                 {!snapshot.production_availability.videos.unlocked ? <section aria-label="视频尚未解锁"><h3>片段视频</h3><p>{snapshot.production_availability.videos.reason}</p><button onClick={() => choose(null)}>前往项目概览完成前置步骤</button></section> : null}
                 <SegmentVideoDraftProvider
@@ -617,10 +622,13 @@ export function StoryReader(props: WorkspaceFlatProps) {
 function SegmentText({
   segment,
   character,
+  timingWarnings,
 }: {
   segment: ShotSegment;
   character: (id: string) => string;
+  timingWarnings: DialogueTimingWarning[];
 }) {
+  const timing = timingWarnings.find((item) => item.segment_id === segment.id);
   return (
     <section className="story-segment-text">
       <p>{segment.action}</p>
@@ -633,6 +641,11 @@ function SegmentText({
         </blockquote>
       ))}
       <small>预计 {segment.duration_estimate_seconds} 秒</small>
+      {timing ? (
+        <em role="note">
+          对白约需 {timing.estimated_seconds} 秒，超过预估时长；建议加长 Segment 或拆分，不压缩台词
+        </em>
+      ) : null}
       {segment.boundary_from_previous ? (
         <p>
           延续上一片段 · {segment.boundary_from_previous.reason}：
@@ -645,9 +658,11 @@ function SegmentText({
 function ShotText({
   shot,
   character,
+  timingWarnings,
 }: {
   shot: Shot;
   character: (id: string) => string;
+  timingWarnings: DialogueTimingWarning[];
 }) {
   return (
     <>
@@ -662,7 +677,7 @@ function ShotText({
       {shot.segments.map((s, i) => (
         <section key={s.id}>
           <h3>片段 {i + 1}</h3>
-          <SegmentText segment={s} character={character} />
+          <SegmentText segment={s} character={character} timingWarnings={timingWarnings} />
         </section>
       ))}
     </>

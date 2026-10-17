@@ -243,6 +243,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `video_contracts.py`：抽帧请求（帧号）与视频输入快照值对象。
 - `video_inputs.py`：Segment 视频实际输入、候选适用性与首帧“从上一 seg 抽取”来源。
 - `assembly_timeline.py`：Animatic、Scene 成片与全片装配时间线纯计算。
+- `dialogue_timing.py`：对白时长软提示，按字数估算台词念完所需秒数，超出 Segment 预估时长时进入快照、`read_story` 与视频工作集，不阻止写入。
 - `narration_timing.py`：旁白 Scene 的尾部画面缓冲、视觉时长、所选语言时间基准（单语真实时长、双语较长一条）与生产基线校准（每次脚本写入自动执行）。
 - `asset_metadata.py`：Generation 产物的可读文件名与位置（字节校验见 core/media_assets）。
 - `generation_lifecycle.py`：Generation seed、retry 链接、请求签名与恢复判断。

@@ -97,6 +97,10 @@ export function NodeEditor({
   const setScene = (s: Scene) => update({ ...value, scene: s });
   const setShot = (s: Shot) => update({ ...value, shot: s });
   const setSegment = (s: ShotSegment) => update({ ...value, segment: s });
+  const savedTiming =
+    target.level === "segment"
+      ? snapshot.dialogue_timing_warnings.find((item) => item.segment_id === target.id)
+      : undefined;
   return (
     <form
       className="story-node-editor"
@@ -240,7 +244,6 @@ export function NodeEditor({
               <input
                 type="number"
                 min="0.2"
-                max="10"
                 step="0.1"
                 value={value.segment.duration_estimate_seconds}
                 onChange={(e) =>
@@ -251,6 +254,11 @@ export function NodeEditor({
                 }
               />
             </label>
+            {savedTiming ? (
+              <em role="note">
+                已保存版本的对白约需 {savedTiming.estimated_seconds} 秒，超过预估时长
+              </em>
+            ) : null}
             <TextArea
               label="本段动作"
               value={value.segment.action}

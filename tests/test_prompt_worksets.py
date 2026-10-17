@@ -976,3 +976,59 @@ def test_video_workset_carries_external_speakers_and_scene_driver(tmp_path):
         }
 
     asyncio.run(run())
+
+
+def test_dialogue_timing_soft_hint_reaches_snapshot_story_and_video_workset(tmp_path):
+    """对白按字数估算装不进 Segment 时长时，Web 快照、read_story 与视频工作集都给出同一软提示。"""
+    from core.structured_director.dialogue_timing import (
+        dialogue_seconds_estimate,
+        dialogue_timing,
+    )
+
+    async def run():
+        store, service, document, _ = await fixture(tmp_path)
+        scene = document.director_script.scenes[0]
+        shot = scene.shots[0]
+        segment = shot.segments[0]
+        long_line = replace(segment.dialogue_lines[0], text="字" * 90)
+        overloaded = replace(segment, duration_estimate_seconds=4.0, dialogue_lines=(long_line,))
+        document = await service.save_script(
+            (
+                replace(
+                    scene,
+                    shots=(
+                        replace(shot, segments=(overloaded, *shot.segments[1:])),
+                        *scene.shots[1:],
+                    ),
+                ),
+                *document.director_script.scenes[1:],
+            ),
+            expected_revision=document.revision,
+        )
+        # 90 字 ÷ 4.5 + 句间停顿 0.5 + 起止余量 0.5。
+        assert dialogue_seconds_estimate((long_line,)) == 21.0
+        expected = {"estimated_seconds": 21.0, "exceeds_duration": True}
+        assert dialogue_timing(overloaded) == expected
+
+        warnings = serialize_snapshot(store.read(), service, "/project")["dialogue_timing_warnings"]
+        assert {"segment_id": segment.id, "estimated_seconds": 21.0, "duration_seconds": 4.0} in (
+            warnings
+        )
+        story = build_semantic_projection(
+            document,
+            {"level": "segment", "scope": {"scene_ids": [scene.id]}, "ids": [segment.id]},
+        )
+        assert story["items"][0]["dialogue_timing"] == expected
+        assert video_prompt_workset(document, segment.id)["dialogue_timing"] == expected
+
+    asyncio.run(run())
+
+
+def test_dialogue_seconds_estimate_counts_cjk_and_latin_words():
+    from core.structured_director import DialogueLine
+    from core.structured_director.dialogue_timing import dialogue_seconds_estimate
+
+    assert dialogue_seconds_estimate(()) is None
+    mixed = DialogueLine("a" * 32, "Hello there, 你好", "")
+    # 2 词 ÷ 2.5 + 2 字 ÷ 4.5 + 0.5 + 0.5。
+    assert dialogue_seconds_estimate((mixed,)) == 2.2

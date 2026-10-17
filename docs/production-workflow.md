@@ -142,6 +142,9 @@ flowchart LR
   - 脚本必须先确定镜头功能、视觉重心、空间调度、揭示路径、起止状态与连续性锚点，Keyframe 与 H3 只具体化这些既定意图；
   - 先调度、后切镜，默认不切：动作阶段、说话人、连续运镜中的景别变化或模型时长都不单独构成新 Shot；导演方案用文字
     明确写出的剪辑决定照做，分镜表的镜号与时间码只是内容顺序和节奏意图，连续的相邻镜号默认合并；
+  - 合并只合并摄影、不删内容：方案的节拍、台词（含引用库外说话者）、可见文字、伏笔与回收、声音与配乐入点逐项落到
+    Segment 或 Shot；方案给出时间码时每个 Scene 合计时长与方案同一量级，偏差超过约 30% 或有意删减时在
+    `reply_markdown` 逐条说明（Skill 约束，Core 不校验）；
   - 用户要求拆分时，分段边界落在可从上一段实际视频截帧续拍的稳定状态，后一段从同一时刻、同一运镜继续；
   - 初稿与多 Scene 回改先成稿、再逐 Scene 复查后提交，复查过程不进入 proposal。
 - **修改**：人工表单与 `script.apply_operations` 都走同一组原子操作（见 [命令目录](commands.md#脚本)）。
@@ -354,6 +357,11 @@ seed 可指定；留空时按该目标历史实际 seed 递增。
 **时长**：Core 与 Provider 不设时长上限，只要求不短于 0.2 秒的有限值。当前默认本地 H3 部署以 15 秒为单 Segment 软约束：
 超过可能（但不一定）OOM。视频工作集读取 H3 hints，返回 `soft_duration_limit_seconds = 15` 与 `exceeds_soft_duration_limit`，视频卡在超过时显示提示；
 Agent 在生成前对超过的 Segment 主动提醒风险并建议拆分点，用户同意后用 `split_segment` 拆分，坚持不拆则照常提交。
+
+**对白时长**：Core 按字数估算台词念完至少需要的秒数（中文每秒 4.5 字、英文每秒 2.5 词，每句加 0.5 秒停顿，整段再加
+0.5 秒），超过 Segment `duration_estimate_seconds` 时给出软提示：快照 `dialogue_timing_warnings`（Web 在脚本阅读与编辑处显示）、
+`read_story` Segment 层与视频工作集的 `dialogue_timing`（`estimated_seconds`、`exceeds_duration`）。Agent 据此建议加长或拆分，
+不删减、改写或加速台词；提示不阻止任何写入或生成。
 
 **候选与超分**：
 

@@ -1099,6 +1099,7 @@ function snapshot(status: string, allowedActions: string[]) {
       active_task: null,
     },
     provider_recipes: [],
+    dialogue_timing_warnings: [],
     provider_availability: {
       image_generation: false,
       voice_design: false,

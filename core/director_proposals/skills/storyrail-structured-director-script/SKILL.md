@@ -31,13 +31,19 @@ read、bash、shell、jq 或其它发现工具，也不得读取项目目录。`
 生成初稿或回改一个以上 Scene 时按以下顺序，前四步只在内部完成：
 
 1. 读完整导演方案，记下每段的目的、观众认知变化、必须揭示、必须保留和情绪功能；方案写明的以方案为准。
+   同时按 `quality-gate.md`「方案覆盖」列出方案清单：每个节拍、每句台词及说话者、画面中的可见文字与插入镜头、
+   伏笔与回收、声音与配乐入点、片名或字幕卡，以及方案给出的时间码或时长。
 2. drama Scene 先做整场设计：按 `drama-scene-craft.md` 第 1 节回答这场戏是谁的、双方各想要什么、转折在哪、
    关系从什么状态进入到什么状态离开，并定下全场最重的镜头。
 3. 再调度：按 `cinematic-director-intent.md` 第 3 节为每个 Scene 建立空间、角色路径、注意力和揭示顺序。
-4. 沿调度和强度曲线决定切镜，每个新 Shot 只写一个 Segment，写出完整草稿。
+4. 沿调度和强度曲线决定切镜，每个新 Shot 只写一个 Segment，写出完整草稿；方案清单的每一项都落到具体
+   Segment 的 `action`、`dialogue_lines` 或 Shot 的 `audio_direction`。合并镜号只合并摄影，不删内容。
 5. 复查后再提交：逐 Scene 按 `quality-gate.md` 复查草稿，drama Scene 同时过 `drama-scene-craft.md` 第 9 节，重点看每个切镜能否说出理由、同空间只换角度的
    相邻 Shot、揭示是否早于导演方案、新 Shot 是否只有一个 Segment、跨 Shot 轴线与道具。发现问题先改草稿，
    再复查该 Scene。所用 Agent 支持独立上下文的子任务时，可只把导演方案、引用卡和草稿交给它复查。
    复查过程不写入 proposal。
+6. `reply_markdown` 按 Scene 写出方案时长与脚本合计时长；有意删减或合并的方案内容逐条列出并说明原因，
+   没有删减时明确写“无删减”。提交后用 `read_story` 读 Segment 层，`dialogue_timing.exceeds_duration` 为 true
+   的 Segment 加长 `duration_estimate_seconds` 或按用户要求拆分，不压缩台词。
 
 只改单个 Segment 或少量文字时，只复查受影响的 Shot 及其相邻边界。

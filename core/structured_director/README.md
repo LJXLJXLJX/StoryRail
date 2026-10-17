@@ -14,7 +14,7 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 | --- | --- | --- |
 | L0 | `models/` | 不可变值对象与不变量 |
 | L1 | `codec/`、`schema.py`、`errors.py`、`video_contracts.py`、`video_inputs.py`、`candidate_eligibility.py` | 严格 JSON 编解码、schema 版本、共享错误、视频输入与候选可选性判定 |
-| L2 | `mutations/`、`*_mutations.py`、`generation_lifecycle.py`、`assembly_timeline.py`、`narration_timing.py`、`production_context.py`、`run_state.py`、`asset_metadata.py`、`planning_inputs.py` | 纯函数领域变换、失效传播、时序与装配时间线 |
+| L2 | `mutations/`、`*_mutations.py`、`generation_lifecycle.py`、`assembly_timeline.py`、`narration_timing.py`、`dialogue_timing.py`、`production_context.py`、`run_state.py`、`asset_metadata.py`、`planning_inputs.py` | 纯函数领域变换、失效传播、时序与装配时间线 |
 | L3 | `store/` | 唯一持久化入口：CAS、完整校验、fsync、原子替换 |
 | L4 | `reads/`、`prompt_worksets.py`、`keyframe_requests.py`、`location_requests.py`、`director_steps.py`、`manual_commands.py` | 只读投影与输入编译 |
 | L5 | `proposal_requests.py`、`proposal_request_guard.py`、`planning_proposals.py`、`reference_proposals.py`、`script_proposals.py`、`location_proposals.py`、`workflow_commands.py`、`application_requests.py` | 命令、proposal 生命周期与授权回执 |
