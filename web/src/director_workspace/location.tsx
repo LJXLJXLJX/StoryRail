@@ -136,6 +136,19 @@ function useLocationChange(props: Props) {
                 ) : (
                   <p>无下游内容失效。</p>
                 )}
+                {pending.impact.soft_reference_clears.length ? (
+                  <>
+                    <h3>将清空的空间参考建议</h3>
+                    <ul>
+                      {pending.impact.soft_reference_clears.map((item) => (
+                        <li key={item.shot_id}>{item.label}</li>
+                      ))}
+                    </ul>
+                    <p className="muted-copy">
+                      这些 Shot 的 view_id 会被清空；已规划 Keyframe 不会被改写。
+                    </p>
+                  </>
+                ) : null}
                 <p className="muted-copy">
                   保留：
                   {pending.impact.preserved
@@ -365,7 +378,8 @@ export function LocationLibrary(props: Props) {
       <header className="location-library-toolbar">
         <p>
           跨 Scene
-          共享的固定空间：先定主图，再从主图得到各机位视图。候选生成后由你选择。
+          共享的固定空间：先定主图，再从主图得到各机位视图。候选生成后由你选择；Shot
+          绑定视图只是给 Keyframe Planner 的空间参考建议。
         </p>
         <button
           className="primary-button"
@@ -749,6 +763,9 @@ function ViewCard({
         <StatusBadge production={view.production} />
       </header>
       {view.purpose ? <p className="location-view-purpose">{view.purpose}</p> : null}
+      <p className="muted-copy">
+        Shot 绑定只是空间参考建议，Keyframe 可按本帧朝向改选或不用。
+      </p>
       <ul className="location-view-facts">
         {facts.map((fact) => (
           <li key={fact}>{fact}</li>
@@ -1306,19 +1323,25 @@ export function LocationBinding({
   return (
     <section
       className="location-binding"
-      aria-label={shot ? "镜头机位视图" : "场景地点与状态"}
+      aria-label={shot ? "镜头空间参考建议" : "场景地点与状态"}
     >
-      <h3>{shot ? "机位视图" : "地点与状态"}</h3>
+      <h3>{shot ? "空间参考建议" : "地点与状态"}</h3>
       <p>
         {shot
           ? (view?.name ?? "未绑定视图")
           : `${location?.name ?? "未绑定地点"} · ${location?.states.find((s) => s.id === scene.state_id)?.name ?? "基础状态"}`}
       </p>
+      {shot ? (
+        <p className="muted-copy">
+          只是给 Keyframe Planner 的空间参考建议；Keyframe 可自由改选或不用，
+          删除该视图会清空此建议。
+        </p>
+      ) : null}
       {shot && view ? (
         <LocationImage
           snapshot={props.snapshot}
           id={view.selected_asset_id}
-          label="镜头已绑视图"
+          label="Shot 参考视图"
         />
       ) : null}
       <button
@@ -1335,7 +1358,7 @@ export function LocationBinding({
           setEditing(true);
         }}
       >
-        改绑{shot ? "视图" : "地点与状态"}
+        改绑{shot ? "参考视图" : "地点与状态"}
       </button>
       {editing ? (
         <form
@@ -1374,7 +1397,7 @@ export function LocationBinding({
         >
           {shot ? (
             <label>
-              视图
+              参考视图
               <select
                 aria-label="镜头视图"
                 value={viewId}

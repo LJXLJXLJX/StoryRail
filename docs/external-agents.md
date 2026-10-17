@@ -159,7 +159,7 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
 | `reference_library` | `storyrail-reference-library` | 项目 | 角色卡与旁白身份 proposal |
 | `script` | `storyrail-structured-director-script` | 项目 | 结构化脚本 proposal；含模型无关的 cinematic director intent 契约 |
 | `narration` | `storyrail-narration-review` | `scene_ids`，可指定 Cue | 中英旁白正文、seed 与 recipe_params（经 `edit_narration` 保存） |
-| `location` | `storyrail-location-planner`（参考 `location-bible.md`、`view-coverage.md`） | 项目（要求已有脚本） | 地点、陈设、主光、状态、视图与 Scene/Shot 绑定的增补 proposal |
+| `location` | `storyrail-location-planner`（参考 `location-bible.md`、`view-coverage.md`） | 项目（要求已有脚本） | 地点、陈设、主光、状态、视图，以及 Scene 绑定与 Shot 空间参考建议的增补 proposal |
 | `keyframe` | `storyrail-keyframe-planner` | `scene_ids` + 可写 Shot `target_ids` | Keyframe 计划 proposal（含地点视图使用方式） |
 | `video_prompt` | `storyrail-video-prompt` + 当前插件的专业 Skill | 恰好一个 Segment | 视频正文，以及用户要求时的 recipe 参考素材与机制参数（经 `save_video_prompt` 保存） |
 

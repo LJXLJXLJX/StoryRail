@@ -796,6 +796,7 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
                     "invalidated": [],
                     "preserved": ["location_selection"],
                     "high_impact": False,
+                    "soft_reference_clears": [],
                 },
             )
 
@@ -820,6 +821,7 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
                     "invalidated": [],
                     "preserved": ["asset_history", "generation_history"],
                     "high_impact": False,
+                    "soft_reference_clears": [],
                 },
             )
 
@@ -845,6 +847,7 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
                     ],
                     "preserved": ["asset_history", "generation_history"],
                     "high_impact": True,
+                    "soft_reference_clears": [],
                 },
             )
 
@@ -855,6 +858,42 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
                 "char-location-select-same",
             )
             self.assertFalse(select["will_write"])
+
+    async def test_delete_view_preview_lists_cleared_shot_soft_references(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store, _service, document, _route = await _visual_project(directory)
+            assert document.director_script is not None
+            scene = document.director_script.scenes[0]
+            image = add_image_asset(store)
+            document = install_location(store, view_asset_id=image, scene_ids=(scene.id,))
+            location = document.location_library.locations[0]
+            view = location.views[0]
+            preview = self._preview(
+                document,
+                "location.apply_operations",
+                {
+                    "scope": {
+                        "location_ids": [location.id],
+                        "scene_ids": [],
+                        "shot_ids": [],
+                    },
+                    "operations": [{"op": "delete_view", "view_id": view.id}],
+                },
+                "char-location-delete-view",
+            )
+            self.assertEqual(
+                preview["soft_reference_clears"],
+                [
+                    {
+                        "shot_id": shot.id,
+                        "scene_id": scene.id,
+                        "label": f"Scene「{scene.title}」第 {index} 个 Shot",
+                    }
+                    for index, shot in enumerate(scene.shots, start=1)
+                ],
+            )
+            self.assertEqual(preview["invalidated"], [f"location_view_selection:{view.id}"])
+            self.assertTrue(preview["high_impact"])
 
     async def test_read_only_and_unsupported_commands_raise(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

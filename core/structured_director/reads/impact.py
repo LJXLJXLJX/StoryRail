@@ -29,6 +29,7 @@ from core.director_commands import (
 from ..keyframe_mutations import _apply_keyframe_operations
 from ..location_mutations import (
     apply_location_operations,
+    cleared_shot_views,
     select_location_master,
     select_location_view,
 )
@@ -58,6 +59,7 @@ def preview_command_impact(
     changed_ids: set[str] = set()
     invalidated: set[str] = set()
     preserved: set[str] = set()
+    soft_reference_clears: list[dict[str, str]] = []
     name = command.name
 
     if name == "script.apply_operations":
@@ -136,6 +138,7 @@ def preview_command_impact(
         if result.document == document:
             preserved.add("location_selection")
         else:
+            soft_reference_clears = cleared_shot_views(document, result.document)
             changed_ids.update(result.changed_ids)
             invalidated.update(_repair_invalidated_items(document, result.document))
             preserved.update(("asset_history", "generation_history"))
@@ -266,6 +269,8 @@ def preview_command_impact(
     }
     if name == "visual_production.unlock":
         result["location_advisory"] = location_unlock_advisory(document)
+    if name.startswith("location."):
+        result["soft_reference_clears"] = soft_reference_clears
     return result
 
 

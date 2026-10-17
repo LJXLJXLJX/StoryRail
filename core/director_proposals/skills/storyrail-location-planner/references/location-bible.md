@@ -63,17 +63,17 @@
 |---|---|
 | `create_location` | `key`、`name`、`kind`（`interior`/`exterior`）、`description` |
 | `update_location` | `location_id`、`fields`：`name`、`kind`、`description`、`key_light`（`{description, azimuth_deg}` 或 null）、`master_prompt_text`、`master_reference_asset_ids` 中出现的项 |
-| `delete_location` | `location_id`（仍被引用时拒绝并列出引用者） |
+| `delete_location` | `location_id`；Scene 仍绑定该地点时拒绝，其全部视图按 `delete_view` 规则处理 |
 | `upsert_fixture` | `location_id`、`fixture`（已有 ID 整体替换，或新 key）、`name`、`description`、`azimuth_deg` |
 | `delete_fixture` | `location_id`、`fixture_id` |
 | `upsert_state` | `location_id`、`state`（ID 或 key）、`name`、`description` |
 | `delete_state` | `location_id`、`state_id` |
 | `create_view` | `location_id`、`key`、`fields`（必含 `name`、`purpose` 与一种朝向） |
 | `update_view` | `view_id`、`fields`：`name`、`purpose`、`azimuth_deg`、`look_at_fixture_id`、`yaw_offset_deg`、`pitch_deg`、`hfov_deg`、`state_id`、`refine_prompt_text`、`reference_view_ids` 中出现的项 |
-| `delete_view` | `view_id` |
+| `delete_view` | `view_id`；只被 Shot 软引用时允许删除并清空这些 Shot 的参考建议，被 Keyframe 或其它视图引用时拒绝 |
 | `calibrate` | `location_id`、`fixture_azimuths`（`{fixture_id: azimuth_deg}`）、`key_light_azimuth_deg`（null 表示不改） |
 | `bind_scene` | `scene_id`、`location_id`（null 解除）、`state_id` |
-| `bind_shot` | `shot_id`、`view_id`（null 解除） |
+| `bind_shot` | `shot_id`、`view_id`（null 解除）；只是给 Keyframe Planner 的空间参考建议 |
 | `clear_master_selection` / `clear_view_selection` | `location_id` / `view_id` |
 
 主图与视图的候选选择只有人类入口，Agent 只能清除选择。

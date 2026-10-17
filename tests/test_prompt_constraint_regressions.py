@@ -90,6 +90,21 @@ def test_script_contract_keeps_external_speakers_and_planned_music():
     assert "对白写 `character_id: null` 加 `speaker_label`" in script
 
 
+def test_location_contract_treats_shot_bindings_as_suggestions():
+    """Location Planner 按空间需求规划视图；Shot 绑定只是给 Keyframe Planner 的建议。"""
+    resources = read_contract("location")["resources"]
+    text = {item["name"]: item["text"] for item in resources}
+    skill = text["SKILL.md"]
+    for required in ("空间参考建议", "不必为每个 Shot 建视图", "改选或不用"):
+        assert required in skill
+    coverage = text["references/view-coverage.md"]
+    for required in ("空间参考", "绑定只是建议", "不必强求有 Shot 绑定"):
+        assert required in coverage
+    # 删除视图区分软引用与硬引用，且规划本身不能删除。
+    bible = text["references/location-bible.md"]
+    assert "只被 Shot 软引用时允许删除" in bible and "被 Keyframe 或其它视图引用时拒绝" in bible
+
+
 def test_script_contract_requires_plan_coverage_and_duration_reconciliation():
     """最少切镜不能变成删内容：方案清单逐项落地、合计时长对账、删减必须在 reply_markdown 说明。"""
     resources = read_contract("script")["resources"]

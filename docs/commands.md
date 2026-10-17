@@ -59,7 +59,7 @@
 | --- | --- | --- |
 | `reference.confirm_review` | H | 回执记录完整引用库 SHA-256；不生成脚本 |
 | `script.confirm` | H | `narration_unlocked = true`，并尝试建立生产基线；已解锁时为 noop |
-| `visual_production.unlock` | A | 生产基线就绪后解锁视觉生产（建立 Keyframe 与视频空卡，Keyframe 环境字段继承 Shot 视图）；回执附 `location_advisory`，列出未绑定地点的 Scene 与未绑定视图的 Shot；解锁本身就是跳过地点规划 |
+| `visual_production.unlock` | A | 生产基线就绪后解锁视觉生产（建立 Keyframe 与视频空卡，Keyframe 环境字段默认采用 Shot 的空间参考建议）；回执附 `location_advisory`，列出未绑定地点的 Scene 与未绑定视图的 Shot；解锁本身就是跳过地点规划 |
 
 生产基线没有单独的确认命令：旁白层解锁后，每个改动脚本或旁白的命令都由 Core 在同一次写入里按真实音频校准并写入基线，
 无法校准时基线保持失效，主流程返回 `reason = narration_timing_conflict` 的 `script.apply_operations`。
@@ -116,14 +116,14 @@ Core 分配。操作完成后 Core 校验层级、非空 Shot、角色引用、�
 | --- | --- |
 | `create_location` | `key`、`name`、`kind`（interior / exterior）、`description` |
 | `update_location` | `fields` 是 `name`、`kind`、`description`、`master_prompt_text`、`master_reference_asset_ids`、`key_light`（`{description, azimuth_deg}` 或 null）的非空子集 |
-| `delete_location` | 仍被 Scene、Shot 或 Keyframe 引用时拒绝并列出引用者 |
+| `delete_location` | Scene 仍绑定该地点时拒绝；其全部视图按 `delete_view` 规则处理，同时清空这些视图对 Shot 的软引用 |
 | `upsert_fixture` / `delete_fixture` | `fixture` 为已有 ID（整体替换）或 key（新建）；`name`、`description`、`azimuth_deg` |
 | `upsert_state` / `delete_state` | `state` 为已有 ID 或 key；`name`、`description` |
 | `create_view` / `update_view` | `fields`：`name`、`purpose`、`azimuth_deg` 或 `look_at_fixture_id` + `yaw_offset_deg`、`pitch_deg`、`hfov_deg`、`state_id`、`refine_prompt_text`、`reference_view_ids`；create 必含 name、purpose 与一种朝向 |
-| `delete_view` | 仍被 Shot、Keyframe 或其它视图引用时拒绝 |
+| `delete_view` | 只被 Shot 软引用时允许删除，同一操作清空这些 Shot 的 `view_id`；被 Keyframe 或其它视图引用时拒绝并列出引用者 |
 | `calibrate` | `fixture_azimuths`（陈设 ID → 方位）与 `key_light_azimuth_deg`；记录基于当前已选主图，不触发裁切 |
 | `bind_scene` | `scene_id`、`location_id`、`state_id`（可空）；换地点时清空该 Scene 所有 Shot 的 `view_id` |
-| `bind_shot` | `shot_id`、`view_id`（可空）；视图必须属于 Shot 所在 Scene 的地点 |
+| `bind_shot` | `shot_id`、`view_id`（可空）；只记录给 Keyframe Planner 的空间参考建议，视图必须属于 Shot 所在 Scene 的地点，不改写已规划 Keyframe |
 | `clear_master_selection` / `clear_view_selection` | 清除主图 / 视图的已选图，按失效规则级联 |
 
 | 命令 | 调用方 | 要点 |

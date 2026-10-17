@@ -23,7 +23,7 @@ Registry 只负责确定性项目写入；proposal 与工作流确认（`referen
 `visual_production.unlock`）也经同一查表入口委托给对应模块。Provider 提交、媒体导入与异步观察由 `StructuredDirectorService` 的类型化
 handler 协调，回到同一 Store 与 Generation 规则。Web 按钮与 Agent 命令共享这些 handler，不存在 UI 直接写状态的路径。
 
-`location.apply_operations` 是人类与 Agent 共用的地点编辑入口：15 种操作（地点、陈设、状态、视图的增改删，`calibrate`，`bind_scene`、`bind_shot`，`clear_master_selection`、`clear_view_selection`）；scope 同时声明 `location_ids`、`scene_ids`、`shot_ids`，同一 patch 新建的地点、陈设、状态和视图用局部 `key` 互相引用，回执 data 返回 `created_ids`（key → 正式 ID）。候选选择 `location.select_master` / `location.select_view` 只开放给人类，不在 Agent 操作白名单。
+`location.apply_operations` 是人类与 Agent 共用的地点编辑入口：15 种操作（地点、陈设、状态、视图的增改删，`calibrate`，`bind_scene`、`bind_shot`，`clear_master_selection`、`clear_view_selection`）；scope 同时声明 `location_ids`、`scene_ids`、`shot_ids`，同一 patch 新建的地点、陈设、状态和视图用局部 `key` 互相引用，回执 data 返回 `created_ids`（key → 正式 ID）。`bind_shot` 只记录给 Keyframe Planner 的空间参考建议，删除视图时会清空该建议，不改写已规划 Keyframe。候选选择 `location.select_master` / `location.select_view` 只开放给人类，不在 Agent 操作白名单。
 
 `video.update_recipe_inputs` 原子保存 Segment 视频正文、当前 recipe 的 `bindings` 与机制 `params`，人类与 Agent 共用同一 parser 与校验；`video.clear_selection` 仍只开放给人类。
 

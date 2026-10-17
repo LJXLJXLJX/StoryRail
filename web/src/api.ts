@@ -157,6 +157,14 @@ export const structuredDirectorApi = {
           ![data.changed_ids, data.invalidated, data.preserved].every(
             (items) =>
               Array.isArray(items) && items.every((x) => typeof x === "string"),
+          ) ||
+          !Array.isArray(data.soft_reference_clears) ||
+          !data.soft_reference_clears.every(
+            (item) =>
+              isRecord(item) &&
+              typeof item.shot_id === "string" &&
+              typeof item.scene_id === "string" &&
+              typeof item.label === "string",
           )
         )
           throw new Error("地点影响预览格式不正确。");

@@ -103,6 +103,7 @@ function props() {
       changed_ids: [viewId],
       invalidated: [`keyframe:${viewId}`],
       preserved: ["asset_history", "generation_history"],
+      soft_reference_clears: [],
     }),
     onApplyLocationChange: vi.fn().mockResolvedValue(true),
     onGenerateLocationMaster: vi.fn(),
@@ -154,6 +155,30 @@ it("submits one explicit crop or refine action using the Core label", () => {
   fireEvent.click(screen.getByRole("button", { name: "第一步：生成裁切底图" }));
   expect(p.onGenerateLocationView).toHaveBeenCalledTimes(2);
 });
+it("shows Shot soft-reference clears in the location impact dialog", async () => {
+  const p = props();
+  p.onPreviewLocationChange.mockResolvedValue({
+    revision: base.revision,
+    command_name: "location.apply_operations",
+    will_write: true,
+    high_impact: false,
+    changed_ids: [viewId],
+    invalidated: [],
+    preserved: ["asset_history", "generation_history"],
+    soft_reference_clears: [
+      {
+        shot_id: "c".repeat(32),
+        scene_id: "d".repeat(32),
+        label: "Scene「客厅」第 2 个 Shot",
+      },
+    ],
+  });
+  render(<LocationLibrary {...p} />);
+  fireEvent.click(screen.getByRole("button", { name: "删除视图" }));
+  await screen.findByRole("dialog", { name: "地点修改影响预览" });
+  expect(screen.getByText("将清空的空间参考建议")).toBeInTheDocument();
+  expect(screen.getByText("Scene「客厅」第 2 个 Shot")).toBeInTheDocument();
+});
 it("previews scene and shot bindings with the correct scope", async () => {
   const p = props();
   const scene = {
@@ -187,7 +212,8 @@ it("previews scene and shot bindings with the correct scope", async () => {
   );
   unmount();
   render(<LocationBinding {...p} scene={scene} shot={scene.shots[0]} />);
-  fireEvent.click(screen.getByRole("button", { name: "改绑视图" }));
+  expect(screen.getByText("空间参考建议")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "改绑参考视图" }));
   fireEvent.change(screen.getByRole("combobox", { name: "镜头视图" }), {
     target: { value: viewId },
   });
@@ -313,6 +339,7 @@ it("previews the exact scoped operation before the human HTTP mutation", async (
     changed_ids: [roomId],
     invalidated: [],
     preserved: ["asset_history"],
+    soft_reference_clears: [],
   };
   const fetcher = vi
     .spyOn(globalThis, "fetch")

@@ -495,14 +495,77 @@ def test_shot_and_scene_rebinding_never_rewrites_keyframes(rig):
     assert relocated.video_plan == rig.document.video_plan
 
 
-def test_delete_referenced_view_and_location_is_rejected_with_referrers(rig):
+def test_delete_view_rejects_hard_references_and_clears_soft_shot(rig):
+    # 被 Keyframe 与参考视图硬引用：拒绝；只被 Shot 软引用不再进入引用者列表。
     with pytest.raises(ValueError, match="不能删除视图「正打」") as caught:
         _ops(rig, {"op": "delete_view", "view_id": VA})
     message = str(caught.value)
-    assert rig.shot_ids[0] in message and rig.frame_ids[0] in message and VC in message
+    assert rig.frame_ids[0] in message and VC in message
+    assert rig.shot_ids[0] not in message
+    # 反打只被 Shot 软引用：允许删除，并清空当前脚本与生产基线的绑定。
+    after = _ops(rig, {"op": "delete_view", "view_id": VD})
+    assert _location(after, LOCATION).view(VD) is None
+    scene = after.director_script.scenes[0]
+    assert scene.shots[0].view_id == VA and scene.shots[1].view_id is None
+    baseline = after.director_script.production_baseline_scenes[0]
+    assert baseline.shots[0].view_id == VA and baseline.shots[1].view_id is None
+    assert after.keyframe_plan == rig.document.keyframe_plan
+    # 只删除视图本身并清空 Shot 建议，不产生 Keyframe / 视频 / 装配级联。
+    assert all(
+        not item.startswith(("keyframe", "video", "final"))
+        for item in _repair_invalidated_items(rig.document, after)
+    )
+
+
+def test_delete_location_rejects_scene_binding(rig):
     with pytest.raises(ValueError, match="不能删除地点「客厅」") as caught:
         _ops(rig, {"op": "delete_location", "location_id": LOCATION})
     assert rig.scene_id in str(caught.value)
+
+
+def test_delete_location_clears_soft_shot_references_in_script_and_baseline(rig):
+    # Scene 不再绑定该地点时地点才可删除；基线中同 ID 的 Shot 软引用也必须清空。
+    script = rig.document.director_script
+    scene = script.scenes[0]
+    unbound = replace(
+        scene,
+        location_id=None,
+        state_id=None,
+        shots=tuple(replace(shot, view_id=None) for shot in scene.shots),
+    )
+    plan = replace(
+        rig.document.keyframe_plan,
+        keyframes=tuple(
+            replace(
+                frame,
+                environment_mode=KeyframeEnvironmentMode.NONE,
+                environment_view_id=None,
+                environment_none_reason=None,
+            )
+            if frame.environment_view_id in {VA, VB}
+            else frame
+            for frame in rig.document.keyframe_plan.keyframes
+        ),
+    )
+    document = replace(
+        rig.document,
+        director_script=replace(script, scenes=(unbound,)),
+        keyframe_plan=plan,
+    )
+    after = apply_location_operations(
+        document,
+        parse_location_operations_patch(
+            {
+                "scope": {"location_ids": [LOCATION], "scene_ids": [], "shot_ids": []},
+                "operations": [{"op": "delete_location", "location_id": LOCATION}],
+            }
+        ),
+    ).document
+    assert _location(after, LOCATION) is None
+    baseline = after.director_script.production_baseline_scenes[0]
+    assert baseline.location_id is None
+    assert all(shot.view_id is None for shot in baseline.shots)
+    assert all(shot.view_id is None for shot in after.director_script.scenes[0].shots)
 
 
 def _running(target_id: str) -> ReferenceGeneration:

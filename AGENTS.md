@@ -84,10 +84,13 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
 - 地点库（`location_library`）保存跨 Scene 共享的固定空间：Core 分配稳定 ID 的地点、固定陈设与主光、状态变体和机位视图。
   室内地点主图是 2:1 等距柱状全景，视图 = Core 确定性全景裁切（`PANO_VIEW`，结果直接写入 `crop_asset_id`，不是候选）后
   再显式细化；室外地点主图用项目画幅，视图由主图转向编辑。主图与视图只新增候选，只有人类可以选择。地点库从项目创建起即可编辑。
-- 同一空间的昼夜、天气、布置或破坏变化建为状态，不建新地点。Scene 绑定 `location_id` 与可选 `state_id`，Shot 绑定所属
-  Scene 地点的 `view_id`；Scene 换地点时清空其 Shot 视图。改名与描述类修改不失效；主图改选、`kind`、标定、视图几何、
-  细化计划、参考视图或状态变化只失效受影响视图、依赖它们的视图、`environment_view_id` 指向它们的 Keyframe 及其下游视频/超分与装配。
-  仍被引用的地点、视图、状态或陈设拒绝删除并列出引用者；历史 Asset/Generation 保留，相关进行中或不确定任务阻止冲突修改。
+- 同一空间的昼夜、天气、布置或破坏变化建为状态，不建新地点。Scene 绑定 `location_id` 与可选 `state_id`，Shot 的
+  `view_id` 是给 Keyframe Planner 的空间参考建议（不强制、不生成）；Scene 换地点时清空其 Shot 视图。改名与描述类修改不失效；
+  主图改选、`kind`、标定、视图几何、细化计划、参考视图或状态变化只失效受影响视图、依赖它们的视图、
+  `environment_view_id` 指向它们的 Keyframe 及其下游视频/超分与装配。
+  删除视图时，只被 Shot 软引用的允许删除，同一操作清空引用该视图的全部 Shot `view_id`（当前脚本与生产基线），影响预览列出这些 Shot；
+  被 Keyframe `environment_view_id` 或其它视图 `reference_view_ids` 引用的仍拒绝并列出引用者。删除地点时其全部视图按同一规则处理，
+  Scene 仍绑定该地点时拒绝；被 Scene 引用的地点、状态与陈设仍拒绝删除。历史 Asset/Generation 保留，相关进行中或不确定任务阻止冲突修改。
 - 地点规划只能由用户明确要求后经 `location` 专业能力提交 proposal（要求已有脚本，增补不删除）；成套生成用
   `location.generate_set` 固定范围、每轮只提交依赖已满足的项，选择或回调都不自动推进，继续须再次显式调用。
 - 生产基线建立后，`read_workflow` 的 `recommended_next_actions` 给出规划地点、成套生成或继续地点批次等可选建议；

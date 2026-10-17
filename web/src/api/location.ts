@@ -72,6 +72,11 @@ export type LocationChange =
       name: "location.select_view";
       arguments: { view_id: string; asset_id: string };
     };
+export interface SoftReferenceClear {
+  shot_id: string;
+  scene_id: string;
+  label: string;
+}
 export interface LocationImpact {
   revision: number;
   command_name: string;
@@ -80,4 +85,5 @@ export interface LocationImpact {
   changed_ids: string[];
   invalidated: string[];
   preserved: string[];
+  soft_reference_clears: SoftReferenceClear[];
 }

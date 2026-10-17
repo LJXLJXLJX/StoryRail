@@ -102,7 +102,8 @@ def test_permissions_delete_reference_and_project_locks(tmp_path):
     )
     row = library(rig)["locations"][0]
     assert "delete" not in row["allowed_actions"]
-    assert "delete" not in row["views"][0]["production"]["allowed_actions"]
+    # 只被 Shot 软引用的视图允许删除；状态仍被 Scene 引用，仍不开放。
+    assert "delete" in row["views"][0]["production"]["allowed_actions"]
     assert "delete" not in row["states"][0]["allowed_actions"]
     rig.store.begin_location_plan(expected_revision=rig.document.revision, user_message="规划地点")
     locked = library(rig)

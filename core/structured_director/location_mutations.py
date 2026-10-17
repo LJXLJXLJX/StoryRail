@@ -7,7 +7,9 @@
 - 视图几何变化清空裁切与选择，细化计划、参考视图或所属状态（含状态描述）变化清空选择；
 - 视图失效沿 `reference_view_ids` 传给依赖它的视图，再传给使用这些视图的 Keyframe，
   沿用 Keyframe → Segment 视频/超分 → 最终装配的级联；
-- Scene/Shot 改绑不改写已规划 Keyframe；历史 Asset/Generation 永远保留。
+- Scene/Shot 改绑不改写已规划 Keyframe；历史 Asset/Generation 永远保留；
+- Shot 的 `view_id` 是软参考：删除视图或地点时允许删除并清空这些 Shot 的绑定，
+  Keyframe 与其它视图的引用仍是拒绝删除的硬引用。
 """
 
 from __future__ import annotations
@@ -97,7 +99,7 @@ class LocationActionIndex:
                 and asset.media_type.startswith("image/")
             ):
                 self.candidates.add((generation.kind, generation.target_id, asset.id))
-        self.scene_locations, self.scene_states, self.shot_views = {}, {}, {}
+        self.scene_locations, self.scene_states = {}, {}
         self.view_frames, self.view_dependents, self.fixture_views, self.state_views = (
             {},
             {},
@@ -110,9 +112,6 @@ class LocationActionIndex:
             self.scene_locations.setdefault(scene.location_id, []).append(label)
             self.scene_states.setdefault(scene.state_id, []).append(label)
             for shot in scene.shots:
-                self.shot_views.setdefault(shot.view_id, []).append(
-                    f"Shot {shot.id}（Scene「{scene.title}」）"
-                )
                 for segment in shot_segments(scene, shot.id):
                     self.segment_scenes[segment.id] = scene.id
         for location in locations:
@@ -205,13 +204,30 @@ def require_location_candidate(index, kind, target_id, asset_id, message):
 
 
 def require_location_deletion(index, location, kind, item_id=None, *, check_tasks=True):
-    """删除引用者判定；事务可先解引用再删除，进行中任务在最终提交时检查。"""
+    """删除引用者判定；事务可先解引用再删除，进行中任务在最终提交时检查。
+
+    Shot 的 `view_id` 是空间参考建议（软引用）：删除视图或地点时不阻止删除，由同一
+    事务清空这些 Shot 的绑定；Keyframe `environment_view_id`、其它视图的
+    `reference_view_ids`、Scene 的地点绑定是硬引用，仍拒绝并列出引用者。
+    """
     if kind == "location":
         view_ids = {view.id for view in location.views}
         label = f"地点「{location.name}」"
         refs = list(index.scene_locations.get(location.id, ()))
         # 与写入原顺序一致：Keyframe 按计划顺序，而不是视图顺序。
         refs += [f"Keyframe {frame}" for frame in index.keyframe_referrers(view_ids)]
+        # 同一事务删除整个地点时内部参考随视图一起消失，只有地点外的引用视图阻止删除。
+        refs += [
+            index.view_labels[dependent]
+            for dependent in sorted(
+                {
+                    dependent
+                    for view_id in view_ids
+                    for dependent in index.view_dependents.get(view_id, ())
+                }
+                - view_ids
+            )
+        ]
         targets = {
             location.id,
             *view_ids,
@@ -223,8 +239,7 @@ def require_location_deletion(index, location, kind, item_id=None, *, check_task
         if view is None:
             raise ValueError(f"地点视图不存在：{item_id}。")
         label = f"视图「{view.name}」"
-        refs = list(index.shot_views.get(item_id, ()))
-        refs += [f"Keyframe {frame}" for frame in index.keyframe_referrers({item_id})]
+        refs = [f"Keyframe {frame}" for frame in index.keyframe_referrers({item_id})]
         refs += [index.view_labels[v] for v in index.view_dependents.get(item_id, ())]
         targets = {item_id}
     elif kind == "fixture":
@@ -467,6 +482,7 @@ class _Workspace:
     def _delete_location(self, location: Location) -> None:
         view_ids = {view.id for view in location.views}
         require_location_deletion(self.action_index(), location, "location", check_tasks=False)
+        self._clear_shot_views(view_ids)
         del self.locations[location.id]
         self.deleted_ids.update(
             (
@@ -521,10 +537,24 @@ class _Workspace:
 
     def _delete_view(self, location: Location, view: LocationView) -> None:
         require_location_deletion(self.action_index(), location, "view", view.id, check_tasks=False)
+        self._clear_shot_views({view.id})
         self.locations[location.id] = replace(
             location, views=tuple(x for x in location.views if x.id != view.id)
         )
         self.deleted_ids.add(view.id)
+
+    def _clear_shot_views(self, view_ids: set[str]) -> None:
+        """Shot 的 `view_id` 只是空间参考建议：删除视图时同步清空，不留悬空引用。"""
+        for scene in tuple(self.scenes.values()):
+            if not any(shot.view_id in view_ids for shot in scene.shots):
+                continue
+            self.scenes[scene.id] = replace(
+                scene,
+                shots=tuple(
+                    replace(shot, view_id=None) if shot.view_id in view_ids else shot
+                    for shot in scene.shots
+                ),
+            )
 
     def _calibrate(self, location: Location, operation: CalibrateLocation) -> None:
         master_asset_id = location.master.selected_asset_id
@@ -636,14 +666,10 @@ def _commit(document: StructuredDirectorDocument, work: _Workspace) -> LocationM
     script = document.director_script
     if script is not None:
         scenes = tuple(work.scenes[scene.id] for scene in script.scenes)
-        if scenes != script.scenes:
-            script = replace(
-                script,
-                scenes=scenes,
-                production_baseline_scenes=_sync_baseline(
-                    script.production_baseline_scenes, scenes
-                ),
-            )
+        # 删除视图会清空 Shot 的软引用；即使当前脚本没有变化，也要让基线丢掉悬空绑定。
+        baseline = _sync_baseline(script.production_baseline_scenes, scenes)
+        if scenes != script.scenes or baseline != script.production_baseline_scenes:
+            script = replace(script, scenes=scenes, production_baseline_scenes=baseline)
     updated = _cascade(document, library, script, frozenset(work.deleted_ids))
     created = {key: item_id for key, (_kind, item_id) in work.keys.items()}
     if updated == document:
@@ -817,6 +843,32 @@ def _cascade(
     if candidate != document:
         require_idle_location_targets(index, affected_targets)
     return candidate
+
+
+def cleared_shot_views(
+    previous: StructuredDirectorDocument, current: StructuredDirectorDocument
+) -> list[dict[str, str]]:
+    """前后脚本对比：列出被清空 `view_id` 的 Shot（场景标题 + 序号 + ID）。"""
+    if previous.director_script is None or current.director_script is None:
+        return []
+    after_scenes = {scene.id: scene for scene in current.director_script.scenes}
+    cleared: list[dict[str, str]] = []
+    for scene in previous.director_script.scenes:
+        after = after_scenes.get(scene.id)
+        if after is None:
+            continue
+        before_shots = {shot.id: shot for shot in scene.shots}
+        for ordinal, shot in enumerate(after.shots, start=1):
+            before = before_shots.get(shot.id)
+            if before is not None and before.view_id is not None and shot.view_id is None:
+                cleared.append(
+                    {
+                        "shot_id": shot.id,
+                        "scene_id": scene.id,
+                        "label": f"Scene「{scene.title}」第 {ordinal} 个 Shot",
+                    }
+                )
+    return cleared
 
 
 def _changed_ids(

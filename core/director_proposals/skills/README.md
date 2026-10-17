@@ -5,7 +5,8 @@
 
 地点规划入口 `storyrail-location-planner` 只在用户明确要求规划地点（或 Director 采纳推荐的规划地点动作）时使用，
 “推进/下一步”不等于规划地点；`references/location-bible.md` 讲地点合并、状态、陈设与主光，并附 `edit_locations` 各操作的字段形状，
-`references/view-coverage.md` 讲逐 Shot 的视图覆盖。主图与视图正文只写静态环境，图号、画幅与全景写法由 Core 按图片插件编译。
+`references/view-coverage.md` 讲按 Shot 空间需求规划视图覆盖；Shot 绑定只是给 Keyframe Planner 的空间参考建议，
+多个 Shot 可共用视图。主图与视图正文只写静态环境，图号、画幅与全景写法由 Core 按图片插件编译。
 
 六个专业能力共同提供 `shared/storyrail-consistency-review/SKILL.md`（正文及 SHA-256），通过 `read_professional_contract` 读取。它是内容修改的共享工作原则，不是第七个生产阶段：Agent 修改前预检授权范围内联动，提交后重读核对；只读校对不修改，超范围先说明。人工保存提醒只复制有边界的任务，不发送消息或增加生产门禁。
 

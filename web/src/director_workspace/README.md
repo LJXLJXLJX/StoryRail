@@ -20,7 +20,8 @@ recipe 的 `additional_images`，不进入 KeyframePlan，也不获得时间位�
 媒体选择和权限始终来自当前快照的 workspace_layers / allowed_actions。
 `location.tsx` 内的 `LocationLibrary` 在常驻工具栏“地点库”浮层中以左侧地点索引 + 右侧详情展示：
 详情按主图（含主光）→ 固定陈设 / 地点状态 → 机位视图卡分区，状态徽标只按 Core 的 `status` 着色；
-`LocationBinding` 嵌入当前 Scene/Shot，展示地点/状态或已选视图缩略图并提供改绑。
+`LocationBinding` 嵌入当前 Scene/Shot，展示地点/状态或 Shot 的空间参考建议并提供改绑；
+删除视图的影响预览把“将清除的软引用 Shot”与失效内容分开列出。
 `LocationEditor` 暂存编辑起点 revision；共用 `useLocationChange` 读取服务端影响预览，
 确认后调用人类 HTTP 入口，预览过期时禁止保存，失败保留输入。
 主图与视图的权限、状态、生成文案、有效裁切及候选 ID 全部消费 Core snapshot。

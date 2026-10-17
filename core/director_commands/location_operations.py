@@ -119,6 +119,8 @@ class BindScene:
 
 @dataclass(frozen=True, slots=True)
 class BindShot:
+    """Shot 的地点视图建议（软参考）；删除该视图时清空绑定，已规划 Keyframe 不因此改写。"""
+
     shot_id: str
     view_id: str | None
 

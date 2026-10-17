@@ -204,7 +204,8 @@ classDiagram
 
 ## 地点库
 
-地点（Location）是跨 Scene 共享的固定空间。主图给出完整空间，视图（LocationView）是 Shot 可绑定的机位；
+地点（Location）是跨 Scene 共享的固定空间。主图给出完整空间，视图（LocationView）是 Keyframe 可参考的机位；
+Shot 的 `view_id` 只是给 Keyframe Planner 的空间参考建议，不强制、也不是底图；
 同一空间的昼夜、天气、布置或破坏变化是状态（LocationState），不是新地点。代码位置：`models/location.py`。
 
 ```mermaid
@@ -263,7 +264,7 @@ erDiagram
 | 位置 | 字段 | 约束 |
 | --- | --- | --- |
 | Scene | `location_id?`、`state_id?` | state 必须属于该 Location；没有 Location 时 state 必须为空 |
-| Shot | `view_id?` | 必须属于所在 Scene 的 Location；Scene 没有 Location 时必须为空 |
+| Shot | `view_id?` | 空间参考建议：必须属于所在 Scene 的 Location；Scene 没有 Location 时必须为空；删除该视图或地点时清空为 null，已规划 Keyframe 不因此改写 |
 | Keyframe | `environment_view_id?`、`environment_mode`、`environment_none_reason?` | `none` ⇔ 视图为 null；`none` 时理由可选（null 或 1–500 字，空白归一为 null），`edit`/`reference` 时理由必须为空；视图必须存在于地点库 |
 
 Keyframe 的环境字段只在建帧时按所属 Shot 的视图写成显式值：Shot 有视图 → `reference`，无视图 → `none`（无理由）
@@ -282,7 +283,12 @@ Keyframe 的环境字段只在建帧时按所属 Shot 的视图写成显式值�
 | 视图细化计划、参考视图、所属状态，或该状态描述 | 该视图的选择（裁切保留）、依赖它的视图、下游 Keyframe |
 | 视图改选或清除 | 依赖它的视图、下游 Keyframe |
 | Scene/Shot 改绑 | 不改写已建立的 Keyframe；Scene 换地点时清空其 Shot 的 `view_id`；同步生产基线中同 ID 的 Scene/Shot |
-| 删除 Location / View / State / Fixture | 仍被 Scene、Shot、Keyframe 或其它视图引用时拒绝，错误列出引用者 |
+| 删除 View | 只被 Shot 软引用时允许删除，同一操作清空引用它的全部 Shot `view_id`（当前脚本与生产基线）；被 Keyframe `environment_view_id` 或其它视图 `reference_view_ids` 引用时拒绝，错误列出引用者 |
+| 删除 Location | 其全部视图按 View 的规则处理，同时清空这些视图对 Shot 的软引用；Scene 仍绑定该地点时拒绝 |
+| 删除 State / Fixture | 仍被 Scene 或视图引用时拒绝，错误列出引用者 |
+
+软引用清空不是失效级联：只删除视图并清空 Shot 的 `view_id`，不改变已规划 Keyframe 的 `environment_view_id` 与已选图；
+影响预览用 `soft_reference_clears` 列出被清空的 Shot，与 `invalidated` 分开。
 
 “下游 Keyframe”指 `environment_view_id` 指向受影响视图的帧：清除其已选图，并沿用 Keyframe 级联继续清除启用的后继帧、
 相关 Segment 的视频与超分选择和最终装配。任一失效目标（地点、视图、帧、Segment、Scene、项目）有非终态 Generation
