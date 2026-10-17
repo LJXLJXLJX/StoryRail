@@ -5,7 +5,7 @@
     # 生成报告（同时打印门禁结论）
     .venv/bin/python scripts/harness/benchmark/report.py --write
 
-    # 只跑门禁（默认 pytest 用例走这里）
+    # 只跑门禁（oracle 测试直接调用 measure/check；也可手动执行本命令）
     .venv/bin/python scripts/harness/benchmark/report.py --check
 
 报告字段含义（`schema` 自描述）：

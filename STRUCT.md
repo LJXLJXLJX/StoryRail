@@ -497,7 +497,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `harness/benchmark/meter.py`：MCP 线上字节计量。
 - `harness/benchmark/report.py`：benchmark 报告与防回归门禁。
 - `harness/benchmark/scenarios/*.json`：reference / script / location / keyframe / h3 / ref2va 六个场景脚本。
-- `harness/benchmark/baselines/token-bench.json`：token 防回归冻结值（`report.py --check` 与 oracle 测试读取）。
+- `harness/benchmark/baselines/token-bench.json`：token 防回归冻结值（oracle 测试与手动 `report.py --check` 读取）。
 - `harness/benchmark/baselines/agent-tokens-2026-09-11.json`：历史 Agent 单轮 token 基线（`metrics.py` 读取）。
 - `harness/fixtures/media.py`：确定性合成 PNG/WAV。
 - `harness/fixtures/synthetic_media.py`：合成媒体 Provider 与 registry 装配。
@@ -517,7 +517,6 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `harness/real_agent/external_client.py`、`mcp_client.py`：验收用 MCP 客户端。
 - `harness/real_agent/prompt_fixture.py`：原创合成项目。
 - `harness/real_agent/workspace_browser_fixture.py`：仓库外临时项目的正式导演台浏览器验收夹具，合成图片/全景裁切 Provider。
-- `harness/real_agent/clean_install_probe.py`：干净安装探针。
 - `harness/real_agent/meter_gateway.mjs`：宿主计量网关。
 - `harness/real_agent/docker/Dockerfile`、`clean_install.Dockerfile` 及对应 `.dockerignore`：验收镜像。
 

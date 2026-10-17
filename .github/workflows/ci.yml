@@ -25,7 +25,7 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - name: Install web dependencies（O6 dist smoke 需要在测内构建 web）
+      - name: Install web dependencies
         working-directory: web
         run: npm ci
       - name: Ruff format
@@ -33,15 +33,13 @@ jobs:
       - name: Ruff lint
         run: ruff check .
       - name: Pytest
-        run: python -m pytest
+        run: python -m pytest -n auto
       - name: Fixture freshness（生成器重跑后不得漂移）
         run: python scripts/check_fixture_freshness.py
       - name: Web contract freshness（schema 生成物不得漂移）
         run: python scripts/gen_web_contracts.py --check
       - name: Doc link check（内部 Markdown 链接可达）
         run: python scripts/check_doc_links.py
-      - name: Token benchmark（标准场景线上字节防回归）
-        run: python scripts/harness/benchmark/report.py --check
       - name: Diff whitespace check
         run: git diff --check
 

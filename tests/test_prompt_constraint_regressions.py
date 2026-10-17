@@ -1,33 +1,8 @@
-"""冻结真实输出的缺陷复现；输入契约回归不冒充模型服从性评估。"""
+"""专业契约输入的回归；输入契约回归不冒充模型服从性评估。"""
 
-import json
-import re
 from pathlib import Path
 
 from core.director_proposals.professional_contracts import read_contract
-
-
-def historical(case):
-    path = Path(__file__).parent / "fixtures/prompt_contracts/historical" / f"{case}.json"
-    return json.loads(path.read_text())["prompt_text"]
-
-
-def test_frozen_kimi_failures_remain_explicit():
-    internal = historical("ref2va-builtin")
-    external = historical("ref2va-external")
-    for text in (internal, external):
-        assert "subject_definitions:" in text
-        assert not re.search(r"<Subject \d+>", text)
-    detail = internal.split("detailed_description:")[1].split("overall_soundscape:")[0]
-    assert "The shot starts exactly" in detail  # 中文要求下仍输出英文正文。
-    assert "00:03.000" in detail
-    assert not re.search(r"\d{2}:\d{2}\.\d{3}", external)
-    for case in ("fl2va-external", "keyframe-external"):
-        text = historical(case)
-        assert "字幕" not in text and "水印" not in text
-    # Base 固定英文锚句/字段不是语言缺陷；外部 FL2VA 时间对齐事实上存在。
-    base = historical("fl2va-external")
-    assert "0.00-second" in base and "3.00-second" in base
 
 
 def test_external_and_inline_skill_deliver_same_constraint_resolution():

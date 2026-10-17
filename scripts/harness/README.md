@@ -47,5 +47,4 @@ MCP 结果的 text content 始终是完整 JSON，`structured_content` 携带同
 
 真实模型列只有在仓库所有者明确授权并实际运行 `real_agent/` 后才能改为已验证。
 
-回归所需的专业输入与历史缺陷样本保存在 `tests/fixtures/prompt_contracts/`，
-不依赖任何开发任务账本。
+回归所需的专业输入保存在 `tests/fixtures/prompt_contracts/`，不依赖任何开发任务账本。

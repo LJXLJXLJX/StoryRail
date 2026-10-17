@@ -252,10 +252,10 @@ sequenceDiagram
 ```bash
 .venv/bin/ruff format --check .
 .venv/bin/ruff check .
-.venv/bin/python -m pytest
+.venv/bin/python -m pytest -n auto
 cd web && npm run typecheck && npm test && npm run build
 git diff --check
 ```
 
-等价的一键脚本是 `./scripts/ci_local.sh`；GitHub Actions（`.github/workflows/ci.yml`）在推送 `main` 与 `refactor/**` 时运行同一套门禁，
-另含 Web 合同与 fixture 新鲜度检查、Markdown 链接检查（`scripts/check_doc_links.py`）、token 基准防回归（`scripts/harness/benchmark/report.py --check`）。
+等价的一键脚本是 `./scripts/ci_local.sh`（默认跳过 `slow`，`--full` 全跑）；GitHub Actions（`.github/workflows/ci.yml`）在推送 `main` 与 `refactor/**` 时运行同一套默认门禁，
+另含 Web 合同与 fixture 新鲜度检查、Markdown 链接检查（`scripts/check_doc_links.py`）、token 基准防回归（pytest 内 `oracle/test_oracle_token_benchmark.py` 调用 `scripts/harness/benchmark/report.py` 的计量与冻结值比较）。

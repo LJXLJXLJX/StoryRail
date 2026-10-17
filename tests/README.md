@@ -1,14 +1,27 @@
 # Tests
 
-从仓库根目录运行 `.venv/bin/python -m pytest`。全部测试只在临时目录构造项目，使用合成媒体字节与 fake
-Provider；不读写真实作品、不调用真实模型或媒体服务。合成媒体只证明协议与状态正确，不证明视觉或音质。
+从仓库根目录运行 `.venv/bin/python -m pytest -n auto`。默认跳过 `slow` 标记的重测试；
+合并分支或改动对应模块前运行 `./scripts/ci_local.sh --full`（等价于 `-m "not slow or slow"`）全跑。
+全部测试只在临时目录构造项目，使用合成媒体字节与 fake Provider；不读写真实作品、不调用真实模型或媒体服务。
+合成媒体只证明协议与状态正确，不证明视觉或音质。
+
+## 并行
+
+测试按 `pytest-xdist` 的 `-n auto` 并行执行。每个测试必须自己隔离状态：
+
+- 项目和 Playground 目录用 `tmp_path`，不共用仓库内文件；
+- 真实 HTTP/媒体服务绑定端口 `0`，不使用固定端口；
+- 环境变量、cwd、模块级可变状态用 `monkeypatch` 修改；
+- 输出写到 `tmp_path`，不写 `web/dist`、`build/` 或其它共享产物。
+
+需要真实子进程验证传输协议时，每个测试自己启动并回收进程；不共享进程或固定 socket 路径。
 
 ## 共享 fixture
 
 - `structured_director_fixtures.py`：受控 Provider fake 与媒体样本，不包含测试类。
 - `proposal_fixture_service.py`：用确定性 canned proposal 预置领域资料；只用于测试，不是产品执行器或 fallback。
 - `keyframe_wave_fixtures.py`、`playground_fixtures.py`、`provider_factory.py`：Keyframe 波次、Playground 与 Provider 构造。
-- `fixtures/prompt_contracts/`：专业输入与历史缺陷样本（原样保存并带 SHA-256），见其 README。
+- `fixtures/prompt_contracts/`：专业输入样本（原样保存并带 SHA-256），见其 README。
 - `fixtures/mcp_project_tools.json`：项目 scope 下 `tools/list` 的逐字节基线。
 - `golden_provider_requests.py` + `golden/provider_requests/`：真实插件经录制 transport 发出的外部服务请求黄金文件
   （媒体字节规范化为标签 + SHA-256）。`STORYRAIL_UPDATE_GOLDEN=1` 重录，只用于有意改变线上请求并经审查的提交。
@@ -38,8 +51,8 @@ Provider；不读写真实作品、不调用真实模型或媒体服务。合成
 
 ## 端到端 oracle（`oracle/`）
 
-`oracle/` 下每个测试固定一条跨模块不变量：完整旅程、精确失效、重启恢复、提交不确定、权限边界、MCP 线上形状、
-Web dist、纯净安装和 token 基准（读取 `scripts/harness/benchmark/baselines/token-bench.json`）。
+`oracle/` 下每个测试固定一条跨模块不变量：完整旅程、精确失效、重启恢复、提交不确定、权限边界、MCP 线上形状
+和 token 基准（读取 `scripts/harness/benchmark/baselines/token-bench.json`）。
 
 `test_architecture_acceptance.py` 在临时目录走完混合 TTS → 时序 → Keyframe → 视频 → 装配 → 选择 → Approval，
 在 Provider 提交后重建 Service/Store，断言无重复提交、无自动选择/续批。Web 的 `mixed_approval_fixture.json`
@@ -53,6 +66,8 @@ PYTHONPATH=.:tests .venv/bin/python tests/test_architecture_acceptance.py
 
 ## 默认跳过的测试
 
+- `slow` 标记：`test_ffmpeg_pano_view.py::test_output_long_edge_is_2048_and_deterministic` 的
+  `9:16`、`2:1` 画幅渲染。默认只跑 `16:9`，`ci_local.sh --full` 跑全部三种画幅。
 - `test_agent_onboarding_docker.py`：设置 `STORYRAIL_DOCKER_TESTS=1` 后运行，需要 Docker。
 - `test_native_codex_mcp.py`：设置 `STORYRAIL_NATIVE_CODEX_TESTS=1` 后运行，需要已安装 Codex CLI，会产生真实 schema discovery 调用。
 

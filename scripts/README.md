@@ -21,7 +21,7 @@
   生成物新鲜度门禁。
 - `metrics.py` 输出工程指标 JSON（模块规模、依赖、门禁耗时、Agent 驻留字节等，口径见各 `m*` 函数文档字符串）。
 - `ref2va_acceptance.py`、`seedvr2_upscale_acceptance.py` 等脚本验证明确配置的媒体服务，不被普通离线测试自动调用。
-- `ci_local.sh` 本地跑与 `.github/workflows/ci.yml` 等价的工程门禁。
+- `ci_local.sh` 本地跑与 `.github/workflows/ci.yml` 等价的工程门禁；默认跳过 `slow`，`--full` 全跑。
 
 真实模型或媒体请求须有相应授权；只回收本次创建的临时资源，不使用全局 prune。
-回归所需的专业输入与历史材料位于 `tests/fixtures/prompt_contracts/`，不依赖开发任务目录。
+回归所需的专业输入位于 `tests/fixtures/prompt_contracts/`，不依赖开发任务目录。

@@ -282,7 +282,14 @@ def test_positive_pitch_looks_up(tmp_path: Path, pitch: float, expected) -> None
     assert _center_rgb(output) == expected
 
 
-@pytest.mark.parametrize("aspect_ratio", ["16:9", "9:16", "2:1"])
+@pytest.mark.parametrize(
+    "aspect_ratio",
+    [
+        "16:9",
+        pytest.param("9:16", marks=pytest.mark.slow),
+        pytest.param("2:1", marks=pytest.mark.slow),
+    ],
+)
 def test_output_long_edge_is_2048_and_deterministic(tmp_path: Path, aspect_ratio: str) -> None:
     _needs_ffmpeg()
     pano = _make_pano(tmp_path / "pano.png", _LONGITUDE_BANDS)

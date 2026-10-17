@@ -61,7 +61,7 @@ scripts/harness/benchmark/
 # 全量实测并重写冻结基线（baselines/token-bench.json）
 .venv/bin/python scripts/harness/benchmark/report.py --write
 
-# 只跑防回归门禁（CI 与 scripts/ci_local.sh 的入口）
+# 只跑防回归门禁（pytest oracle 测试调用同一计量与比较；也可手动执行）
 .venv/bin/python scripts/harness/benchmark/report.py --check
 
 # 单场景，打印逐请求明细

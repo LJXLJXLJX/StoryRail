@@ -117,13 +117,14 @@ Docker Desktop 或 OrbStack。之后可以直接问 Agent“现在该做什么�
 ```bash
 .venv/bin/ruff format --check .
 .venv/bin/ruff check .
-.venv/bin/python -m pytest
+.venv/bin/python -m pytest -n auto
 cd web && npm run typecheck && npm test && npm run build
 git diff --check
 ```
 
-等价的一键本地脚本：`./scripts/ci_local.sh`。push/PR 到 main 与 `refactor/**` 分支时 GitHub Actions
-（`.github/workflows/ci.yml`）跑同一套门禁。
+`-m "not slow"` 是默认选择，跳过 `slow` 标记的重测试；合并分支或改动对应模块前运行
+`./scripts/ci_local.sh --full` 全跑。等价的一键本地脚本：`./scripts/ci_local.sh`。push/PR 到 main 与
+`refactor/**` 分支时 GitHub Actions（`.github/workflows/ci.yml`）跑同一套默认门禁。
 
 ## 文档
 

@@ -183,7 +183,8 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
 - 每条领域规则需要自动化测试，不能测试时在路线图说明原因；
 - 重要目录、入口或职责变化必须同步 `STRUCT.md`；
 - `core/` 下每个有职责的源码目录必须有简洁 README；Skill 包用 `SKILL.md` 自述；
-- 每个里程碑运行静态检查、全量测试、Web build 和 `git diff --check`；
+- 每个里程碑运行静态检查、全量测试（`./scripts/ci_local.sh --full`）、Web build 和 `git diff --check`；
+  日常门禁默认跳过 `slow` 标记，合并分支或改动对应模块前必须跑全量；
 - Web 删除项目只移入 `.stories/.trash/`。
 
 ## Windows 开发节点

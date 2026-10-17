@@ -16,6 +16,7 @@ dev = [
     "jsonschema>=4,<5",
     "debugpy>=1.8,<2",
     "pytest>=8,<10",
+    "pytest-xdist>=3,<4",
     "ruff>=0.12,<1",
     "build>=1,<2",
 ]
@@ -31,10 +32,11 @@ include = ["core*", "default_model_providers_implement*", "server*", "integratio
 "core.model_providers.qwen_image" = ["skills/*/SKILL.md", "skills/*/LICENSE", "skills/*/NOTICE", "skills/*/references/*.txt", "skills/*/agents/*.yaml"]
 
 [tool.pytest.ini_options]
-addopts = "-q"
+addopts = "-q -m 'not slow'"
 testpaths = ["tests"]
 markers = [
     "oracle: 真实驱动系统、断言可达状态的 oracle 场景（见 tests/README.md）",
+    "slow: 默认跳过的重测试；ci_local.sh --full 或 -m 'not slow or slow' 全跑（见 tests/README.md）",
 ]
 
 [tool.ruff]

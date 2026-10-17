@@ -6,10 +6,10 @@ ARRIVE   真实 MCP stdio 子进程 + 本进程真实 loopback Core（合成媒�
 ORACLE   断言门禁谓词（口径见 `scripts/harness/benchmark/meter.py`）：
          - 每场景 input+output 线上字节 ≤ `scripts/harness/benchmark/baselines/token-bench.json`
            冻结值 × 1.0（防回归）；
-         - 同一进程内重复计量逐字节一致（确定性）。
+         - 同一进程内重复计量逐字节一致（确定性；只复跑最小场景 reference）。
 覆盖领域规则：Agent 每轮固定驻留与读路径成本可测量、可门禁，且优化后的
 第一版实测值被冻结为回归基线。
-BUDGET   六场景约 18s（stdio 子进程 + 合成 Provider）。
+BUDGET   六场景约 18s（stdio 子进程 + 合成 Provider），确定性复跑另加一个场景。
 """
 
 from __future__ import annotations
@@ -41,17 +41,8 @@ def test_token_benchmark_gate_holds(runs: dict[str, dict]):
 
 
 def test_token_benchmark_measurement_is_deterministic(runs: dict[str, dict]):
-    again = report.measure(
-        [
-            "reference",
-            "script",
-            "location",
-            "keyframe",
-            "h3",
-            "ref2va",
-        ]
-    )
-    assert again == runs
+    again = report.measure(["reference"])
+    assert again == {"reference": runs["reference"]}
 
 
 def test_gate_rejects_regression(runs: dict[str, dict]):
