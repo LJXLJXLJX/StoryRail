@@ -76,3 +76,19 @@
 .workflow-recommendations { margin-bottom: 16px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
 .workflow-recommendations p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
 .workflow-recommendations p + p { margin-top: 6px; }
+
+.story-reader-nav .story-reader-warning { color: var(--red-dark); font-size: 11px; line-height: 1.4; margin-top: 3px; }
+.story-reader-tree button.has-warnings { min-height: 108px; padding-bottom: 40px; }
+.story-shot-coverage { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
+.story-segment-shots { list-style: none; margin: 8px 0 18px; padding: 0; border-top: 1px solid var(--line); }
+.story-segment-shots li { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.story-segment-shots p { margin: 4px 0; }
+.script-structure-tools { justify-content: flex-start; gap: 8px; margin: 10px 0; }
+.script-structure-form { margin: 16px 0; padding: 16px; border: 1px solid var(--line); background: var(--paper); }
+.script-structure-form legend, .script-structure-dialog legend { font-weight: 600; }
+.segment-coverage { margin: 10px 0; padding: 8px 14px; border: 1px solid var(--line); }
+.script-ownership label { display: inline-flex; align-items: center; gap: 6px; margin-right: 18px; }
+.scene-asset-picker-dialog.script-structure-dialog { width: min(900px, calc(100vw - 40px)); overflow-y: auto; }
+.script-structure-dialog h3 { margin: 18px 0 8px; }
+.script-structure-dialog h4 { margin: 12px 0 6px; }
+.script-structure-dialog ul { margin: 0 0 10px; padding-left: 20px; }

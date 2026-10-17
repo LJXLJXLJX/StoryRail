@@ -33,6 +33,14 @@ export interface StructuredDirectorWorkspaceProps {
 export interface WorkspaceActions {
   onPreviewLocationChange?: (change: LocationChange, revision: number) => Promise<LocationImpact>;
   onApplyLocationChange?: (change: LocationChange, revision: number) => Promise<boolean>;
+  onPreviewScriptChange?: (
+    change: import("../api").ScriptChange,
+    revision: number,
+  ) => Promise<import("../api").ScriptImpact>;
+  onApplyScriptChange?: (
+    change: import("../api").ScriptChange,
+    revision: number,
+  ) => Promise<boolean>;
   onGenerateLocationMaster?: (locationId: string) => void;
   onGenerateLocationView?: (viewId: string) => void;
   onCloseGlobalReferences?: () => void;

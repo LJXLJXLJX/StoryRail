@@ -57,3 +57,36 @@ it("片段标签显示段内切镜与长镜头续段",()=>{
   expect(within(list).getByRole('button',{name:/片段 2 · 镜头 3 .*长镜头前段|片段 2 · 镜头 3长镜头前段/})).toBeVisible();
   expect(within(list).getByRole('button',{name:/片段 3 · 镜头 3（续）.*长镜头后段/})).toBeVisible();
 });
+
+it("片段行显示服务端提供的 15 秒软约束与对白时长提示", () => {
+  const base = scenes[1];
+  const scene: Scene = structuredClone(base);
+  scene.segments[0].duration_estimate_seconds = 16;
+  const warning = {
+    segment_id: scene.segments[1].id,
+    estimated_seconds: 9.5,
+    duration_seconds: scene.segments[1].duration_estimate_seconds,
+  };
+  render(
+    <StoryNavigation
+      title="潮汐"
+      scenes={[scene]}
+      target={null}
+      timingConfirmed
+      timingWarnings={[warning]}
+      softDurationLimits={{ [scene.segments[0].id]: 15 }}
+      onChoose={vi.fn()}
+    >
+      <p>正文</p>
+    </StoryNavigation>,
+  );
+  const rows = within(
+    screen.getByRole("list", { name: "场景 1 的生成片段" }),
+  ).getAllByRole("button");
+  expect(rows[0]).toHaveTextContent("超过 15 秒软约束");
+  expect(rows[0]).toHaveTextContent("16 秒");
+  expect(rows[1]).toHaveTextContent("对白约需 9.5 秒，超过预估时长");
+  expect(rows[2]).not.toHaveTextContent(/软约束|对白约需/);
+  // 共享边界 Shot 的“（续）”标签保持不变。
+  expect(rows[2]).toHaveTextContent("镜头 2（续）");
+});

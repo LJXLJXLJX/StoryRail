@@ -394,6 +394,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `src/vite-env.d.ts`：Vite 类型声明。
 - `src/api/README.md`：契约生成说明。
 - `src/api/location.ts`：地点操作、选择与影响预览的类型化人类请求。
+- `src/api/script.ts`：Segment 拆分/合并操作、脚本整卡影响预览的类型化人类请求与解析。
 - `src/api/types.ts`、`src/api/validation.ts`：由 `scripts/gen_web_contracts.py` 生成，勿手改。
 - `src/api/schema_check.ts`：JSON Schema 子集运行时。
 - `src/api/refine.ts`：手写跨字段不变量校验。
@@ -424,10 +425,11 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `src/ImagePreview.tsx`：图片放大查看（缩略图触发器 + 深色全图浮层），导演台与 Playground 共用。
 - `src/director_workspace/README.md`：工作台说明。
 - `src/director_workspace/contracts.tsx`：工作台 props 与动作契约。
-- `src/director_workspace/StoryReader.tsx`：Scene/Shot/Segment 阅读与各内容层组合。
-- `src/director_workspace/StoryNavigation.tsx`：故事层级导航。
-- `src/director_workspace/NodeEditor.tsx`：脚本节点编辑器。
-- `src/director_workspace/script_draft.ts`：新 Scene 草稿。
+- `src/director_workspace/StoryReader.tsx`：Scene/Shot/Segment 阅读与各内容层组合；镜头设计列出覆盖片段，Segment 页列出覆盖镜头与结构修改入口。
+- `src/director_workspace/StoryNavigation.tsx`：Scene → Segment 导航、覆盖标签与服务端时长/对白提示。
+- `src/director_workspace/NodeEditor.tsx`：脚本节点编辑器；Shot 创作字段与空间参考建议、Segment 覆盖区间与延续说明。
+- `src/director_workspace/script_draft.ts`：新 Scene 草稿（一个 Shot + 一个覆盖它的 Segment）。
+- `src/director_workspace/script_structure.tsx`：新增镜头（并入/新建 Segment）、拆分/合并 Segment 与服务端影响预览。
 - `src/director_workspace/references.tsx`：角色卡、造型与造型图弹窗（生成设定图 / 从资产库选）、旁白卡与参考音色。
 - `src/director_workspace/location.tsx`、`location.css`：同页地点库、地点/视图编辑、Scene/Shot 改绑与服务端影响预览；室内视图编辑器把已选 2:1 主图交给 Pannellum 实时预览，并把拖拽/缩放结果映射回现有机位字段。
 - `src/director_workspace/PanoramaCameraEditor.tsx`：Pannellum 生命周期、全景相机交互，以及 `yaw` / `pitch` / `hfov` 与表单草稿的双向同步。

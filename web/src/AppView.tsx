@@ -979,6 +979,15 @@ export function App() {
               );
               return result !== false;
             }}
+            onPreviewScriptChange={(change, revision) =>
+              structuredDirectorApi.previewScriptChange(selectedProject.id, revision, change)}
+            onApplyScriptChange={async (change, revision) => {
+              const result = await mutateStructuredDirector(
+                () => structuredDirectorApi.applyScriptChange(selectedProject.id, revision, change),
+                "edit_script",
+              );
+              return result !== false;
+            }}
             onGenerateLocationMaster={(id) => void mutateStructuredDirector(
               () => structuredDirectorApi.generateLocationMaster(selectedProject.id, structuredSnapshot.revision, id),
               "generate_location_master",

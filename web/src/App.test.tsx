@@ -1336,3 +1336,82 @@ describe("Playground 路由", () => {
     ).toBeNull();
   });
 });
+
+it("拆分片段先用 preview_impact 预览，再提交 script.apply_operations", async () => {
+  const current = productionSnapshot() as StructuredDirectorSnapshot;
+  const segment = current.director_script!.scenes[0].segments[0];
+  const impact = {
+    revision: current.revision,
+    command_name: "script.apply_operations",
+    will_write: true,
+    high_impact: false,
+    changed_ids: [segment.id],
+    invalidated: [],
+    preserved: ["asset_history", "generation_history"],
+  };
+  const refreshed = structuredClone(current);
+  refreshed.revision += 1;
+  const fetchMock = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url === "/api/projects") return response({ projects: [project] });
+      if (url.endsWith("/structured-director/commands")) {
+        const body = JSON.parse(String((init as RequestInit).body));
+        return response(
+          body.name === "project.preview_impact"
+            ? { data: impact }
+            : { snapshot: refreshed },
+        );
+      }
+      return response(current);
+    });
+  render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: "打开" }));
+  const nav = await screen.findByRole("navigation", { name: "故事层级" });
+  fireEvent.click(within(nav).getByRole("button", { name: /场景 1 ·/ }));
+  const list = within(nav).getByRole("list", { name: "场景 1 的生成片段" });
+  fireEvent.click(within(list).getAllByRole("button")[0]);
+  fireEvent.click(screen.getByRole("button", { name: "拆分片段" }));
+  fireEvent.change(screen.getByLabelText("边界连续性说明 *"), {
+    target: { value: "延续同一姿态。" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "预览影响" }));
+  await waitFor(() =>
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).endsWith("/structured-director/commands"),
+      ),
+    ).toHaveLength(1),
+  );
+  const previewCall = fetchMock.mock.calls.find(([url]) =>
+    String(url).endsWith("/structured-director/commands"),
+  )!;
+  const previewBody = JSON.parse(String((previewCall[1] as RequestInit).body));
+  expect(previewCall[0]).toBe(
+    `/api/projects/${projectId}/structured-director/commands`,
+  );
+  expect(previewBody.name).toBe("project.preview_impact");
+  expect(previewBody.arguments.command.name).toBe("script.apply_operations");
+  expect(previewBody.arguments.command.arguments.operations[0].op).toBe(
+    "split_segment",
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "确认保存" }));
+  await waitFor(() =>
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).endsWith("/structured-director/commands"),
+      ),
+    ).toHaveLength(2),
+  );
+  const applyCall = fetchMock.mock.calls.filter(([url]) =>
+    String(url).endsWith("/structured-director/commands"),
+  )[1];
+  const applyBody = JSON.parse(String((applyCall[1] as RequestInit).body));
+  expect(applyBody).toEqual({
+    name: "script.apply_operations",
+    expected_revision: current.revision,
+    idempotency_key: `script-edit-${current.revision}`,
+    arguments: previewBody.arguments.command.arguments,
+  });
+});

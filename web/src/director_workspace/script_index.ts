@@ -12,15 +12,28 @@ export function segmentShots(scene: Scene, segment: ShotSegment): Shot[] {
 
 /** 导航与标题用的覆盖标签：“镜头 1–2”，与上一段共享边界 Shot 时附“（续）”。 */
 export function segmentShotLabel(scene: Scene, segment: ShotSegment): string {
-  const numbers = segment.shot_ids.map(
-    (id) => scene.shots.findIndex((shot) => shot.id === id) + 1,
-  );
+  const numbers = segment.shot_ids.map((id) => shotNumber(scene, id));
   const range =
     numbers.length > 1 ? `${numbers[0]}–${numbers[numbers.length - 1]}` : `${numbers[0]}`;
+  return `镜头 ${range}${segmentContinuesFromPrevious(scene, segment) ? "（续）" : ""}`;
+}
+
+export function shotNumber(scene: Scene, shotId: string): number {
+  return scene.shots.findIndex((shot) => shot.id === shotId) + 1;
+}
+
+export function shotLabel(scene: Scene, shotId: string): string {
+  return `镜头 ${shotNumber(scene, shotId)}`;
+}
+
+/** D5：相邻 Segment 共享边界 Shot（前一段最后一个 = 后一段第一个）即延续同一镜头。 */
+export function segmentContinuesFromPrevious(
+  scene: Scene,
+  segment: ShotSegment,
+): boolean {
   const index = scene.segments.indexOf(segment);
   const previous = index > 0 ? scene.segments[index - 1] : undefined;
-  const continues = previous?.shot_ids.at(-1) === segment.shot_ids[0];
-  return `镜头 ${range}${continues ? "（续）" : ""}`;
+  return previous?.shot_ids.at(-1) === segment.shot_ids[0];
 }
 
 export function findSegmentScene(

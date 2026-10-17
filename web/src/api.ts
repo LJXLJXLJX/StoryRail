@@ -1,4 +1,5 @@
 import type { LocationChange, LocationImpact } from "./api/location";
+import { parseScriptImpact, type ScriptChange, type ScriptImpact } from "./api/script";
 import { isVideoRecipeState } from "./api/validation";
 import { parseStoryProjection, type ProjectionRequest } from "./api/projection";
 import type {
@@ -33,6 +34,13 @@ import {
   isRecord,
 } from "./api/validation";
 export type * from "./api/types";
+export type {
+  ScriptChange,
+  ScriptImpact,
+  ScriptOperation,
+  ScriptOperationsPatch,
+  ScriptSegmentDraft,
+} from "./api/script";
 
 /** 人类整卡回传：只含造型文字，新造型的 id 为 null 由 Core 分配；造型图只经选择入口改变。 */
 export type CharacterLookDraft = Omit<CharacterLook, "id" | "selected_asset_id"> & {
@@ -217,6 +225,57 @@ export const structuredDirectorApi = {
     structuredMutation(projectId, `locations/${locationId}/master/generate`, {
       expected_revision: revision,
     }),
+  previewScriptChange: (
+    projectId: string,
+    revision: number,
+    change: ScriptChange,
+  ) =>
+    request(
+      `${structuredDirectorResource(projectId)}/commands`,
+      (value): ScriptImpact => {
+        const data = isRecord(value) ? value.data : null;
+        return parseScriptImpact(data);
+      },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "project.preview_impact",
+          expected_revision: revision,
+          idempotency_key: `script-preview-${revision}`,
+          arguments: {
+            command: {
+              ...change,
+              expected_revision: revision,
+              idempotency_key: `script-edit-${revision}`,
+            },
+          },
+        }),
+      },
+    ),
+  applyScriptChange: (
+    projectId: string,
+    revision: number,
+    change: ScriptChange,
+  ) =>
+    request(
+      `${structuredDirectorResource(projectId)}/commands`,
+      (value) => {
+        if (!isRecord(value) || !isRecord(value.snapshot))
+          throw new Error("脚本修改回执缺少项目快照。");
+        return parseStructuredDirectorSnapshot(value.snapshot);
+      },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "script.apply_operations",
+          expected_revision: revision,
+          idempotency_key: `script-edit-${revision}`,
+          arguments: change.arguments,
+        }),
+      },
+    ),
   generateLocationView: (projectId: string, revision: number, viewId: string) =>
     structuredMutation(projectId, `location-views/${viewId}/generate`, {
       expected_revision: revision,

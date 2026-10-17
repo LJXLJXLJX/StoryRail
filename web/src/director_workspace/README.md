@@ -2,11 +2,21 @@
 
 `StructuredDirectorWorkspace.tsx` 组合准备区、引用库、地点库与唯一故事工作台。
 `StoryNavigation.tsx` 管理左侧 Scene → Segment 导航，Segment 标签按 `shot_ids` 显示覆盖的镜头（“镜头 1–2”，
-与上一段共享边界 Shot 时附“（续）”）；Shot 在 Scene 页的“镜头设计”中列出。`StoryReader.tsx` 只挂载当前目标正文与媒体。
+与上一段共享边界 Shot 时附“（续）”），并展示 Core 提供的片段时长、视频 recipe 软时长上限
+（`recipe_state.soft_duration_limit_seconds`）与 `dialogue_timing_warnings` 对白时长提示；Web 不重算这些规则。
+Shot 在 Scene 页的“镜头设计”中列出，每行同时显示被哪些 Segment 覆盖；Segment 页顶部列出覆盖的 Shot 描述。
 `script_index.ts` 是 Segment↔Shot 覆盖关系的只读查找，不复制 Core 的覆盖校验。
-`NodeEditor.tsx` 暂存当前节点编辑输入，携带起点 project revision 保存，冲突保留草稿。
+`NodeEditor.tsx` 暂存当前节点编辑输入，携带起点 project revision 保存，冲突保留草稿。Shot 编辑器含创作字段与
+空间参考建议：`view_id` 选择器只列本 Scene 绑定地点的视图，未绑定地点时只能选择不使用。
+Segment 编辑器用起始/结束镜头选择连续覆盖区间并写 `shot_ids`；与上一 Segment 共享边界 Shot 时显示并编辑
+`boundary_from_previous`，不共享时说明这是剪辑边界。覆盖是否合法只由 Core 判断，保存失败原样显示服务端错误。
+`script_structure.tsx` 提供 Scene 页的新增镜头入口（并入已有 Segment 或新建一个只覆盖它的 Segment，保存走 v33 整卡，
+新 Shot 可带 `view_id`）和 Segment 页的拆分/合并入口。拆分/合并提交 `script.apply_operations` 的
+`split_segment` / `merge_adjacent_segments`，提交前用 `project.preview_impact` 展示服务端影响预览，确认后才写入；
+拆分在 Shot 内部时两段共享该 Shot 且第二段必填延续说明，合并的 `shot_ids` 为两段并集。
+**服务端是覆盖校验的唯一来源**：Web 只组装连续区间、消费快照、影响预览与 `allowed_actions`，不复制 §4.1 规则。
 `SceneMedia.tsx` 展示 Scene Animatic/成片与版本；其余媒体卡复用原有专业回调。
-`script_draft.ts` 只提供新 Scene 的暂存输入，正式 ID 仍由 Core 分配。
+`script_draft.ts` 只提供新 Scene 的暂存输入（默认一个 Shot 与一个覆盖它的 Segment），正式 ID 仍由 Core 分配。
 `keyframe.tsx` 的手动关键帧计划弹窗与 Keyframe Planner 读写同一组地点视图字段：
 视图选择器只列所属 Segment 的 Scene 绑定地点的视图（名称、purpose、状态、Shot 绑定、未选图提示），
 帧当前引用其它地点的视图时作为“当前值”保留并标明来源，Scene 未绑定地点时只能选择不使用并给出提示；

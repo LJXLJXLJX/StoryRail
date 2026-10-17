@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import type { Scene } from "../api";
+import type { DialogueTimingWarning, Scene } from "../api";
 import type { StoryTarget } from "../api/projection";
 import { segmentShotLabel } from "./script_index";
 
@@ -9,6 +9,8 @@ export function StoryNavigation({
   title,
   target,
   timingConfirmed,
+  timingWarnings = [],
+  softDurationLimits = {},
   onChoose,
   children,
 }: {
@@ -16,6 +18,10 @@ export function StoryNavigation({
   title: string;
   target: StoryTarget | null;
   timingConfirmed: boolean;
+  /** Core 的对白时长软提示（dialogue_timing_warnings），Web 不复算。 */
+  timingWarnings?: DialogueTimingWarning[];
+  /** Core 视频 recipe 声明的软时长上限；没有该 recipe 时为空。 */
+  softDurationLimits?: Record<string, number | null | undefined>;
   onChoose: (target: StoryTarget | null) => void;
   children: ReactNode;
 }) {
@@ -132,28 +138,53 @@ export function StoryNavigation({
                     className="story-reader-tree-children"
                     aria-label={`场景 ${sceneIndex + 1} 的生成片段`}
                   >
-                    {s.segments.map((segment, segmentIndex) => (
-                      <li key={segment.id}>
-                        <button
-                          aria-current={target?.id === segment.id ? "page" : undefined}
-                          onClick={() =>
-                            choose({
-                              level: "segment",
-                              sceneId: s.id,
-                              id: segment.id,
-                            })
-                          }
-                        >
-                          <small>
-                            片段 {segmentIndex + 1} · {segmentShotLabel(s, segment)}
-                          </small>
-                          <span>{segment.action}</span>
-                          <small className="story-reader-duration">
-                            {duration(segment.duration_estimate_seconds)}
-                          </small>
-                        </button>
-                      </li>
-                    ))}
+                    {s.segments.map((segment, segmentIndex) => {
+                      const softLimit = softDurationLimits[segment.id];
+                      const timing = timingWarnings.find(
+                        (item) => item.segment_id === segment.id,
+                      );
+                      const exceedsSoft =
+                        softLimit !== null &&
+                        softLimit !== undefined &&
+                        segment.duration_estimate_seconds > softLimit;
+                      return (
+                        <li key={segment.id}>
+                          <button
+                            className={
+                              exceedsSoft || timing ? "has-warnings" : undefined
+                            }
+                            aria-current={
+                              target?.id === segment.id ? "page" : undefined
+                            }
+                            onClick={() =>
+                              choose({
+                                level: "segment",
+                                sceneId: s.id,
+                                id: segment.id,
+                              })
+                            }
+                          >
+                            <small>
+                              片段 {segmentIndex + 1} · {segmentShotLabel(s, segment)}
+                            </small>
+                            {exceedsSoft ? (
+                              <small className="story-reader-warning">
+                                超过 {softLimit} 秒软约束
+                              </small>
+                            ) : null}
+                            {timing ? (
+                              <small className="story-reader-warning" role="note">
+                                对白约需 {timing.estimated_seconds} 秒，超过预估时长
+                              </small>
+                            ) : null}
+                            <span>{segment.action}</span>
+                            <small className="story-reader-duration">
+                              {duration(segment.duration_estimate_seconds)}
+                            </small>
+                          </button>
+                        </li>
+                      );
+                    })}
                     {!s.segments.length ? (
                       <li className="story-reader-tree-empty">
                         <p>镜头与片段尚未规划</p>

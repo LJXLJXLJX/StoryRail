@@ -24,7 +24,13 @@ import { FinalAssemblyWorkspace } from "./final";
 import { SceneMedia } from "./SceneMedia";
 import { copyText } from "./clipboard";
 import { newSceneDraft } from "./script_draft";
-import { segmentShotLabel, segmentShots, shotSegments } from "./script_index";
+import {
+  segmentShotLabel,
+  segmentShots,
+  shotLabel,
+  shotSegments,
+} from "./script_index";
+import { InsertShotSection, SegmentStructureActions } from "./script_structure";
 import "./story_reader.css";
 const noop = () => undefined;
 
@@ -162,6 +168,13 @@ export function StoryReader(props: WorkspaceFlatProps) {
           snapshot.director_script &&
             snapshot.director_script.production_baseline_revision ===
               snapshot.director_script.revision,
+        )}
+        timingWarnings={snapshot.dialogue_timing_warnings}
+        softDurationLimits={Object.fromEntries(
+          (snapshot.video_plan?.segments ?? []).map((item) => [
+            item.segment_id,
+            item.recipe_state?.soft_duration_limit_seconds ?? null,
+          ]),
         )}
         onChoose={choose}
       >
@@ -322,19 +335,43 @@ export function StoryReader(props: WorkspaceFlatProps) {
                   </section>
                 ))}
                 <h2>镜头设计</h2>
-                {scene.shots.map((s, i) => (
-                  <section key={s.id}>
-                    <button
-                      className="text-button"
-                      onClick={() =>
-                        choose({ level: "shot", sceneId: scene.id, id: s.id })
-                      }
-                    >
-                      镜头 {i + 1}
-                    </button>
-                    <ShotText shot={s} character={character} />
-                  </section>
-                ))}
+                {scene.shots.map((s, i) => {
+                  const covers = shotSegments(scene, s.id);
+                  return (
+                    <section key={s.id}>
+                      <button
+                        className="text-button"
+                        onClick={() =>
+                          choose({ level: "shot", sceneId: scene.id, id: s.id })
+                        }
+                      >
+                        镜头 {i + 1}
+                      </button>
+                      <ShotText shot={s} character={character} />
+                      <small className="story-shot-coverage">
+                        {covers.length
+                          ? `被片段 ${covers
+                              .map(
+                                (cover) =>
+                                  `${scene.segments.indexOf(cover) + 1}（${segmentShotLabel(scene, cover)}）`,
+                              )
+                              .join("、")}覆盖`
+                          : "尚未被任何片段覆盖"}
+                      </small>
+                    </section>
+                  );
+                })}
+                {can("edit_script") ? (
+                  <InsertShotSection
+                    key={`insert-shot:${scene.id}`}
+                    snapshot={snapshot}
+                    scene={scene}
+                    busy={busy}
+                    error={error}
+                    disabled={dirty}
+                    onSave={props.onSaveScript}
+                  />
+                ) : null}
                 {scene.segments.length ? <h2>生成片段</h2> : null}
                 {scene.segments.map((g, i) => (
                   <section key={g.id}>
@@ -431,11 +468,51 @@ export function StoryReader(props: WorkspaceFlatProps) {
                     .map((item) => `镜头 ${scene.shots.indexOf(item) + 1}`)
                     .join("、")}
                 </p>
+                <ul className="story-segment-shots" aria-label="覆盖的镜头">
+                  {segmentShots(scene, segment).map((item) => (
+                    <li key={item.id}>
+                      <button
+                        className="text-button"
+                        onClick={() =>
+                          choose({
+                            level: "shot",
+                            sceneId: scene.id,
+                            id: item.id,
+                          })
+                        }
+                      >
+                        {shotLabel(scene, item.id)}
+                      </button>
+                      <p>{item.action}</p>
+                      <small>
+                        构图：{item.composition} · 运镜：{item.camera_movement}
+                        {item.visible_character_ids.length
+                          ? ` · 可见角色：${item.visible_character_ids
+                              .map(character)
+                              .join("、")}`
+                          : ""}
+                      </small>
+                    </li>
+                  ))}
+                </ul>
                 <SegmentText
                   segment={segment}
                   character={character}
                   timingWarnings={snapshot.dialogue_timing_warnings}
                 />
+                {can("edit_script") ? (
+                  <SegmentStructureActions
+                    key={`structure:${segment.id}`}
+                    snapshot={snapshot}
+                    scene={scene}
+                    segment={segment}
+                    busy={busy}
+                    error={error}
+                    disabled={dirty}
+                    onPreview={props.onPreviewScriptChange}
+                    onApply={props.onApplyScriptChange}
+                  />
+                ) : null}
                 {!snapshot.production_availability.keyframes.unlocked ? <section aria-label="关键帧尚未解锁"><h3>首尾关键帧</h3><p>{snapshot.production_availability.keyframes.reason}</p><button onClick={() => choose(null)}>前往项目概览完成前置步骤</button></section> : null}
                 {!snapshot.production_availability.videos.unlocked ? <section aria-label="视频尚未解锁"><h3>片段视频</h3><p>{snapshot.production_availability.videos.reason}</p><button onClick={() => choose(null)}>前往项目概览完成前置步骤</button></section> : null}
                 <SegmentVideoDraftProvider

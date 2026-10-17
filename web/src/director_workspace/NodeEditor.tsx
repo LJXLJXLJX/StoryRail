@@ -8,6 +8,7 @@ import type {
 } from "../api";
 import type { StoryTarget } from "../api/projection";
 import { stableStringify } from "./draft_protection";
+import { shotNumber } from "./script_index";
 import { TextArea, TextField, toggleId } from "./shared";
 
 // 对白说话者下拉框里“引用库外说话者”的哨兵值；提交时写 character_id=null 与 speaker_label。
@@ -101,6 +102,53 @@ export function NodeEditor({
     target.level === "segment"
       ? snapshot.dialogue_timing_warnings.find((item) => item.segment_id === target.id)
       : undefined;
+  const sceneLocation = snapshot.location_library.locations.find(
+    (location) => location.id === scene.location_id,
+  );
+  const locationViews = sceneLocation?.views ?? [];
+  const shotViewId = value.shot?.view_id ?? null;
+  const segmentShotIds = value.segment?.shot_ids ?? [];
+  const segmentStart = segmentShotIds.length
+    ? Math.max(
+        0,
+        value.scene.shots.findIndex((item) => item.id === segmentShotIds[0]),
+      )
+    : 0;
+  const segmentEnd = segmentShotIds.length
+    ? Math.max(
+        segmentStart,
+        value.scene.shots.findIndex(
+          (item) => item.id === segmentShotIds[segmentShotIds.length - 1],
+        ),
+      )
+    : segmentStart;
+  const segmentIndex = segment ? scene.segments.indexOf(segment) : -1;
+  const previousSegment =
+    segmentIndex > 0 ? scene.segments[segmentIndex - 1] : undefined;
+  const continues =
+    segment !== undefined &&
+    previousSegment?.shot_ids.at(-1) === value.segment?.shot_ids[0];
+  const boundary = value.segment?.boundary_from_previous ?? {
+    reason: "continuity_anchor" as const,
+    continuity_instruction: "",
+  };
+  // 覆盖区间只是输入辅助；是否合法（跳过、倒序、非边界重复）由 Core 校验。
+  const setCoverage = (start: number, end: number) => {
+    const low = Math.min(start, end);
+    const high = Math.max(start, end);
+    const shotIds = value.scene.shots.slice(low, high + 1).map((item) => item.id);
+    const shares = previousSegment?.shot_ids.at(-1) === shotIds[0];
+    setSegment({
+      ...value.segment!,
+      shot_ids: shotIds,
+      boundary_from_previous: shares
+        ? (value.segment!.boundary_from_previous ?? {
+            reason: "continuity_anchor" as const,
+            continuity_instruction: "",
+          })
+        : null,
+    });
+  };
   return (
     <form
       className="story-node-editor"
@@ -231,10 +279,77 @@ export function NodeEditor({
                 })
               }
             />
+            <label className="card-field">
+              <span>空间参考建议（view_id，不强制）</span>
+              <select
+                value={shotViewId ?? ""}
+                disabled={locationViews.length === 0}
+                onChange={(e) =>
+                  setShot({
+                    ...value.shot!,
+                    view_id: e.target.value || null,
+                  })
+                }
+              >
+                <option value="">不使用</option>
+                {shotViewId !== null &&
+                !locationViews.some((view) => view.id === shotViewId) ? (
+                  <option value={shotViewId}>当前视图（不属于本 Scene 地点）</option>
+                ) : null}
+                {locationViews.map((view) => (
+                  <option key={view.id} value={view.id}>
+                    {view.name} · {view.purpose}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="muted-copy">
+              {sceneLocation === undefined
+                ? "本 Scene 尚未绑定地点，镜头只能不使用空间参考视图。"
+                : locationViews.length === 0
+                  ? "该地点还没有机位视图，镜头只能不使用空间参考视图。"
+                  : "视图只提供空间关系建议（布局、陈设方位、主光方向），不强制构图与机位，也不直接生成图片。"}
+            </p>
           </>
         ) : null}
         {target.level === "segment" && value.segment ? (
           <>
+            <fieldset className="segment-coverage">
+              <legend>覆盖区间（shot_ids）</legend>
+              <label className="card-field">
+                <span>起始镜头</span>
+                <select
+                  value={String(segmentStart)}
+                  onChange={(e) =>
+                    setCoverage(Number(e.target.value), segmentEnd)
+                  }
+                >
+                  {value.scene.shots.map((item, i) => (
+                    <option key={item.id} value={String(i)}>
+                      镜头 {i + 1} · {item.action.slice(0, 24)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="card-field">
+                <span>结束镜头</span>
+                <select
+                  value={String(segmentEnd)}
+                  onChange={(e) =>
+                    setCoverage(segmentStart, Number(e.target.value))
+                  }
+                >
+                  {value.scene.shots.map((item, i) => (
+                    <option key={item.id} value={String(i)}>
+                      镜头 {i + 1} · {item.action.slice(0, 24)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="muted-copy">
+                一个片段覆盖一段连续的镜头；保存时由 Core 校验是否跳过镜头、倒序或重复覆盖。
+              </p>
+            </fieldset>
             <label className="card-field">
               <span>预估时长（秒）</span>
               <input
@@ -338,17 +453,22 @@ export function NodeEditor({
                 />
               </div>
             ))}
-            {value.segment.boundary_from_previous ? (
+            {continues ? (
               <>
+                <p className="muted-copy">
+                  本段与上一片段共享镜头{" "}
+                  {shotNumber(scene, value.segment.shot_ids[0])}
+                  ，延续同一镜头时必须填写切分原因与边界连续性说明。
+                </p>
                 <label className="card-field">
                   <span>与上一段的切分原因</span>
                   <select
-                    value={value.segment.boundary_from_previous.reason}
+                    value={boundary.reason}
                     onChange={(e) =>
                       setSegment({
                         ...value.segment!,
                         boundary_from_previous: {
-                          ...value.segment!.boundary_from_previous!,
+                          ...boundary,
                           reason: e.target.value as NonNullable<
                             ShotSegment["boundary_from_previous"]
                           >["reason"],
@@ -370,22 +490,24 @@ export function NodeEditor({
                 </label>
                 <TextArea
                   label="边界连续性说明"
-                  value={
-                    value.segment.boundary_from_previous.continuity_instruction
-                  }
+                  value={boundary.continuity_instruction}
                   required
                   onChange={(continuity_instruction) =>
                     setSegment({
                       ...value.segment!,
                       boundary_from_previous: {
-                        ...value.segment!.boundary_from_previous!,
+                        ...boundary,
                         continuity_instruction,
                       },
                     })
                   }
                 />
               </>
-            ) : null}
+            ) : (
+              <p className="muted-copy">
+                本段从新镜头开始，不与上一片段共享边界 Shot，不需要延续说明。
+              </p>
+            )}
           </>
         ) : null}
       </fieldset>

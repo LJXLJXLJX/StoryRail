@@ -3854,6 +3854,9 @@ function renderWorkspace(
     globalReferencesOpen?: boolean;
     onCloseGlobalReferences?: () => void;
     onConfirmReferences?: () => void;
+    onPreviewScriptChange?: WorkspaceActions["onPreviewScriptChange"];
+    onApplyScriptChange?: WorkspaceActions["onApplyScriptChange"];
+    error?: string | null;
   } = {},
   currentSnapshot = snapshot,
   enterProduction = true,
@@ -3868,10 +3871,12 @@ function renderWorkspace(
       busy={busy}
       pending={busy ? "edit_script" : null}
       pendingSegmentVideoId={overrides.pendingSegmentVideoId}
-      error={null}
+      error={overrides.error ?? null}
       globalReferencesOpen={overrides.globalReferencesOpen}
       onCloseGlobalReferences={overrides.onCloseGlobalReferences}
       onConfirmReferences={overrides.onConfirmReferences ?? vi.fn()}
+      onPreviewScriptChange={overrides.onPreviewScriptChange}
+      onApplyScriptChange={overrides.onApplyScriptChange}
       onSaveScript={overrides.onSaveScript ?? vi.fn()}
       onConfirmScript={overrides.onConfirmScript ?? vi.fn()}
       onSaveNarrationCue={vi.fn()}
@@ -4241,4 +4246,349 @@ it('阅读视图按 shot_ids 展示段内切镜的覆盖镜头',()=>{
  fireEvent.click(within(list).getByRole("button",{name:/片段 1 · 镜头 1–2/}));
  expect(screen.getByText("覆盖 镜头 1、镜头 2")).toBeInTheDocument();
  expect(screen.getByText(/片段 1（镜头 1–2）/)).toBeInTheDocument();
+});
+
+function scriptSnapshot(): StructuredDirectorSnapshot {
+  return structuredClone(
+    readerFixture.continuity.production_snapshot,
+  ) as unknown as StructuredDirectorSnapshot;
+}
+
+function withLocation(
+  value: StructuredDirectorSnapshot,
+  sceneIndex: number,
+): { locationId: string; viewId: string } {
+  const scene = value.director_script!.scenes[sceneIndex];
+  const locationId = "a".repeat(32);
+  const viewId = "b".repeat(32);
+  scene.location_id = locationId;
+  scene.state_id = null;
+  value.location_library = {
+    locations: [
+      {
+        id: locationId,
+        name: "站台",
+        kind: "interior" as const,
+        description: "站台。",
+        fixtures: [],
+        key_light: null,
+        master: {
+          prompt_text: "",
+          reference_asset_ids: [],
+          selected_asset_id: null,
+        },
+        calibrated_master_asset_id: null,
+        states: [],
+        views: [
+          {
+            id: viewId,
+            name: "正打",
+            purpose: "中景",
+            azimuth_deg: 0,
+            look_at_fixture_id: null,
+            yaw_offset_deg: null,
+            pitch_deg: 0,
+            hfov_deg: 75,
+            state_id: null,
+            refine_prompt_text: "",
+            reference_view_ids: [],
+            crop_asset_id: null,
+            selected_asset_id: null,
+          },
+        ],
+        allowed_actions: ["edit", "create_view", "create_fixture", "create_state"],
+      },
+    ],
+    allowed_actions: ["create_location", "bind_scene", "bind_shot"],
+  };
+  return { locationId, viewId };
+}
+
+function openScene(index: number) {
+  const nav = screen.getByRole("navigation", { name: "故事层级" });
+  fireEvent.click(
+    within(nav).getByRole("button", { name: new RegExp(`场景 ${index} ·`) }),
+  );
+}
+
+function openSegment(sceneIndex: number, segmentIndex: number) {
+  const nav = screen.getByRole("navigation", { name: "故事层级" });
+  const list = within(nav).getByRole("list", {
+    name: `场景 ${sceneIndex} 的生成片段`,
+  });
+  fireEvent.click(within(list).getAllByRole("button")[segmentIndex - 1]);
+}
+
+function impactFor(revision: number) {
+  return {
+    revision,
+    command_name: "script.apply_operations",
+    will_write: true,
+    high_impact: false,
+    changed_ids: ["segment"],
+    invalidated: [],
+    preserved: ["asset_history", "generation_history"],
+  };
+}
+
+it("Scene 镜头设计列出覆盖片段，Segment 页列出覆盖镜头描述", () => {
+  const value = scriptSnapshot();
+  const scene = value.director_script!.scenes[1];
+  scene.segments[0].shot_ids = [scene.shots[0].id, scene.shots[1].id];
+  renderWorkspace({}, value, false);
+  openScene(2);
+  expect(
+    screen.getByText("被片段 1（镜头 1–2）覆盖"),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      "被片段 1（镜头 1–2）、2（镜头 2（续））、3（镜头 2（续））覆盖",
+    ),
+  ).toBeInTheDocument();
+  openSegment(2, 1);
+  const list = screen.getByRole("list", { name: "覆盖的镜头" });
+  expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+  expect(within(list).getAllByText(/构图：/)).toHaveLength(2);
+  expect(within(list).getAllByText(/运镜：/)).toHaveLength(2);
+});
+
+it("Shot 编辑器只列出本 Scene 绑定地点的视图建议，并以整卡 v33 保存", () => {
+  const value = scriptSnapshot();
+  const { viewId } = withLocation(value, 1);
+  const onSaveScript = vi.fn();
+  renderWorkspace({ onSaveScript }, value, false);
+  openScene(2);
+  fireEvent.click(screen.getByRole("button", { name: "镜头 1" }));
+  fireEvent.click(screen.getByRole("button", { name: "编辑这一段" }));
+  const select = screen.getByLabelText("空间参考建议（view_id，不强制）");
+  expect(
+    within(select)
+      .getAllByRole("option")
+      .map((option) => option.textContent),
+  ).toEqual(["不使用", "正打 · 中景"]);
+  fireEvent.change(select, { target: { value: viewId } });
+  fireEvent.click(screen.getByRole("button", { name: "保存脚本修改" }));
+  expect(onSaveScript).toHaveBeenCalledOnce();
+  expect(onSaveScript.mock.calls[0][0][1].shots[0].view_id).toBe(viewId);
+});
+
+it("Scene 未绑定地点时 Shot 编辑器只能选择不使用视图", () => {
+  const value = scriptSnapshot();
+  renderWorkspace({}, value, false);
+  openScene(1);
+  fireEvent.click(screen.getByRole("button", { name: "镜头 1" }));
+  fireEvent.click(screen.getByRole("button", { name: "编辑这一段" }));
+  expect(
+    screen.getByLabelText("空间参考建议（view_id，不强制）"),
+  ).toBeDisabled();
+  expect(
+    screen.getByText("本 Scene 尚未绑定地点，镜头只能不使用空间参考视图。"),
+  ).toBeInTheDocument();
+});
+
+it("Segment 覆盖区间选择按连续区间写 shot_ids，提交整卡保存", () => {
+  const value = scriptSnapshot();
+  const onSaveScript = vi.fn();
+  renderWorkspace({ onSaveScript }, value, false);
+  openScene(2);
+  openSegment(2, 1);
+  fireEvent.click(screen.getByRole("button", { name: "编辑这一段" }));
+  expect(screen.getByText(/本段从新镜头开始/)).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("结束镜头"), {
+    target: { value: "1" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "保存脚本修改" }));
+  expect(onSaveScript).toHaveBeenCalledOnce();
+  const saved = onSaveScript.mock.calls[0][0][1];
+  expect(saved.segments[0].shot_ids).toEqual([
+    saved.shots[0].id,
+    saved.shots[1].id,
+  ]);
+  expect(saved.segments[0].boundary_from_previous).toBeNull();
+});
+
+it("共享边界 Shot 的 Segment 显示并保存延续说明", () => {
+  const value = scriptSnapshot();
+  const onSaveScript = vi.fn();
+  renderWorkspace({ onSaveScript }, value, false);
+  openScene(2);
+  openSegment(2, 3);
+  fireEvent.click(screen.getByRole("button", { name: "编辑这一段" }));
+  expect(screen.getByText(/本段与上一片段共享镜头 2/)).toBeInTheDocument();
+  expect(screen.getByLabelText("边界连续性说明 *")).toHaveValue(
+    "从同一静态交接时刻继续",
+  );
+  fireEvent.change(screen.getByLabelText("边界连续性说明 *"), {
+    target: { value: "保持同一抬手姿态。" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "保存脚本修改" }));
+  const saved = onSaveScript.mock.calls[0][0][1];
+  expect(saved.segments[2].boundary_from_previous).toEqual({
+    reason: "model_constraint",
+    continuity_instruction: "保持同一抬手姿态。",
+  });
+});
+
+it("Segment 结构修改服务端拒绝时保留输入并显示原始错误", async () => {
+  const value = scriptSnapshot();
+  const message = "Scene「沿岸行走」的 Segment 1 覆盖必须恰好覆盖全部 Shot。";
+  const onPreview = vi.fn().mockRejectedValue(new Error(message));
+  renderWorkspace(
+    { onPreviewScriptChange: onPreview, onApplyScriptChange: vi.fn() },
+    value,
+    false,
+  );
+  openScene(2);
+  openSegment(2, 1);
+  fireEvent.click(screen.getByRole("button", { name: "拆分片段" }));
+  fireEvent.change(screen.getByLabelText("边界连续性说明 *"), {
+    target: { value: "延续站台动作。" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "预览影响" }));
+  expect(await screen.findByText(message)).toBeInTheDocument();
+  expect(screen.getByLabelText("边界连续性说明 *")).toHaveValue(
+    "延续站台动作。",
+  );
+  expect(screen.getByRole("dialog", { name: "拆分片段" })).toBeInTheDocument();
+});
+
+it("新增镜头并入已有片段与新建片段的整卡请求形状", () => {
+  const value = scriptSnapshot();
+  const onSaveScript = vi.fn();
+  const first = renderWorkspace({ onSaveScript }, value, false);
+  openScene(2);
+  fireEvent.click(screen.getByRole("button", { name: "新增镜头" }));
+  expect(screen.getByRole("form", { name: "新增镜头" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "保存新镜头" }));
+  expect(onSaveScript).toHaveBeenCalledOnce();
+  const attached = onSaveScript.mock.calls[0][0][1];
+  expect(attached.shots).toHaveLength(3);
+  const newShot = attached.shots[2];
+  expect(newShot.id.startsWith("new:")).toBe(true);
+  expect(newShot.view_id).toBeNull();
+  expect(attached.segments[2].shot_ids).toEqual([
+    attached.shots[1].id,
+    newShot.id,
+  ]);
+  first.unmount();
+
+  const onSaveScriptNew = vi.fn();
+  renderWorkspace({ onSaveScript: onSaveScriptNew }, value, false);
+  openScene(2);
+  fireEvent.click(screen.getByRole("button", { name: "新增镜头" }));
+  fireEvent.click(screen.getByLabelText("新建片段"));
+  fireEvent.click(screen.getByRole("button", { name: "保存新镜头" }));
+  expect(onSaveScriptNew).toHaveBeenCalledOnce();
+  const created = onSaveScriptNew.mock.calls[0][0][1];
+  expect(created.shots).toHaveLength(3);
+  const newSegment = created.segments.at(-1)!;
+  expect(newSegment.shot_ids).toEqual([created.shots[2].id]);
+  expect(newSegment.boundary_from_previous).toBeNull();
+  expect(newSegment.duration_estimate_seconds).toBe(3);
+});
+
+it("拆分片段时两段共享 Shot 且第二段必填延续说明；预览后提交 apply_operations", async () => {
+  const value = scriptSnapshot();
+  const onPreview = vi.fn().mockImplementation(async (_change: unknown, revision: number) =>
+    impactFor(revision),
+  );
+  const onApply = vi.fn().mockResolvedValue(true);
+  renderWorkspace(
+    { onPreviewScriptChange: onPreview, onApplyScriptChange: onApply },
+    value,
+    false,
+  );
+  openScene(2);
+  openSegment(2, 1);
+  const scene = value.director_script!.scenes[1];
+  fireEvent.click(screen.getByRole("button", { name: "拆分片段" }));
+  fireEvent.change(screen.getByLabelText("边界连续性说明 *"), {
+    target: { value: "从同一抬手姿态继续。" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "预览影响" }));
+  await waitFor(() => expect(onPreview).toHaveBeenCalledOnce());
+  const change = onPreview.mock.calls[0][0];
+  expect(change.arguments.scope.scene_ids).toEqual([scene.id]);
+  const operation = change.arguments.operations[0];
+  expect(operation.op).toBe("split_segment");
+  expect(operation.segment_id).toBe(scene.segments[0].id);
+  expect(operation.preserve_id).toBe("first");
+  expect(operation.first.shot_ids).toEqual([scene.shots[0].id]);
+  expect(operation.second.shot_ids).toEqual([scene.shots[0].id]);
+  expect(operation.second.boundary_from_previous).toEqual({
+    reason: "continuity_anchor",
+    continuity_instruction: "从同一抬手姿态继续。",
+  });
+  expect(operation.first.boundary_from_previous).toBeNull();
+  fireEvent.click(await screen.findByRole("button", { name: "确认保存" }));
+  await waitFor(() => expect(onApply).toHaveBeenCalledOnce());
+  expect(onApply.mock.calls[0][0]).toEqual(change);
+});
+
+it("合并相邻片段时 shot_ids 为并集，预览后提交 apply_operations", async () => {
+  const value = scriptSnapshot();
+  const onPreview = vi.fn().mockImplementation(async (_change: unknown, revision: number) =>
+    impactFor(revision),
+  );
+  const onApply = vi.fn().mockResolvedValue(true);
+  renderWorkspace(
+    { onPreviewScriptChange: onPreview, onApplyScriptChange: onApply },
+    value,
+    false,
+  );
+  openScene(2);
+  openSegment(2, 1);
+  const scene = value.director_script!.scenes[1];
+  fireEvent.click(screen.getByRole("button", { name: "与下一片段合并" }));
+  fireEvent.click(screen.getByRole("button", { name: "预览影响" }));
+  await waitFor(() => expect(onPreview).toHaveBeenCalledOnce());
+  const change = onPreview.mock.calls[0][0];
+  const operation = change.arguments.operations[0];
+  expect(operation.op).toBe("merge_adjacent_segments");
+  expect(operation.left_segment_id).toBe(scene.segments[0].id);
+  expect(operation.right_segment_id).toBe(scene.segments[1].id);
+  expect(operation.preserve_id).toBe("left");
+  expect(operation.merged.shot_ids).toEqual([
+    scene.shots[0].id,
+    scene.shots[1].id,
+  ]);
+  expect(operation.merged.duration_estimate_seconds).toBe(
+    scene.segments[0].duration_estimate_seconds +
+      scene.segments[1].duration_estimate_seconds,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "确认保存" }));
+  await waitFor(() => expect(onApply).toHaveBeenCalledOnce());
+});
+
+it("Segment 保存被服务端拒绝时保留输入并原样显示错误", () => {
+  const value = scriptSnapshot();
+  const message = "Scene「沿岸行走」的 Segment 2 覆盖必须恰好覆盖全部 Shot。";
+  const onSaveScript = vi.fn();
+  renderWorkspace({ onSaveScript, error: message }, value, false);
+  openScene(2);
+  openSegment(2, 1);
+  fireEvent.click(screen.getByRole("button", { name: "编辑这一段" }));
+  const input = screen.getByLabelText("本段动作 *");
+  fireEvent.change(input, { target: { value: "服务端拒绝后仍保留的输入" } });
+  fireEvent.click(screen.getByRole("button", { name: "保存脚本修改" }));
+  expect(
+    screen.getByText(`${message} 输入已保留。`),
+  ).toBeInTheDocument();
+  expect(input).toHaveValue("服务端拒绝后仍保留的输入");
+});
+
+it("新增镜头时可选择本 Scene 绑定地点的视图建议", () => {
+  const value = scriptSnapshot();
+  const { viewId } = withLocation(value, 1);
+  const onSaveScript = vi.fn();
+  renderWorkspace({ onSaveScript }, value, false);
+  openScene(2);
+  fireEvent.click(screen.getByRole("button", { name: "新增镜头" }));
+  fireEvent.change(
+    screen.getByLabelText("空间参考建议（view_id，可空）"),
+    { target: { value: viewId } },
+  );
+  fireEvent.click(screen.getByRole("button", { name: "保存新镜头" }));
+  const saved = onSaveScript.mock.calls[0][0][1];
+  expect(saved.shots.at(-1).view_id).toBe(viewId);
 });
