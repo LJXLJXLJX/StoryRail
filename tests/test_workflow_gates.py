@@ -147,7 +147,7 @@ def test_voice_only_identity_roundtrip_dialogue_and_visibility(tmp_path):
                 parse_structured_director_script_proposal(json.dumps(script))
             )
         script["scenes"][0]["shots"][0]["visible_character_ids"] = []
-        script["scenes"][0]["shots"][0]["segments"][0]["dialogue_lines"] = [
+        script["scenes"][0]["segments"][0]["dialogue_lines"] = [
             {"character_id": voice.id, "text": "请保持安静。", "delivery": "广播"}
         ]
         doc = store.apply_script_proposal(

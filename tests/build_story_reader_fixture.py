@@ -10,9 +10,9 @@ from provider_factory import provider_registry
 from structured_director_fixtures import RecordingProvider
 from test_scene_driver_invariants import (
     MixedProposer,
+    insert_shot,
     narration_project,
     select_audio,
-    shot_input,
 )
 
 from core.director_commands import DirectorCommand, DirectorCommandRegistry
@@ -39,28 +39,13 @@ async def build(path):
         store, service, _, document = await narration_project(Path(directory), SmokeProposer())
         document = await select_audio(service, document)
         scene = document.director_script.scenes[1]
-        document = (
-            DirectorCommandRegistry(store)
-            .execute(
-                DirectorCommand(
-                    "script.apply_operations",
-                    document.revision,
-                    "smoke-long-shot",
-                    {
-                        "scope": {"scene_ids": [scene.id]},
-                        "operations": [
-                            {
-                                "op": "insert_shot",
-                                "scene_id": scene.id,
-                                "after_shot_id": scene.shots[-1].id,
-                                "shot": shot_input(),
-                            }
-                        ],
-                    },
-                )
-            )
-            .document
-        )
+        document = insert_shot(
+            DirectorCommandRegistry(store),
+            document,
+            scene_id=scene.id,
+            after_shot_id=scene.shots[-1].id,
+            idempotency_key="smoke-long-shot",
+        ).document
         projections = {}
         queries = [("outline", {"project_id": document.project_id})]
         queries += [
@@ -99,28 +84,13 @@ async def build(path):
             "projections": projections,
         }
         narration = document.director_script.scenes[0]
-        document = (
-            DirectorCommandRegistry(store)
-            .execute(
-                DirectorCommand(
-                    "script.apply_operations",
-                    document.revision,
-                    "smoke-narration-plan",
-                    {
-                        "scope": {"scene_ids": [narration.id]},
-                        "operations": [
-                            {
-                                "op": "insert_shot",
-                                "scene_id": narration.id,
-                                "after_shot_id": None,
-                                "shot": shot_input(),
-                            }
-                        ],
-                    },
-                )
-            )
-            .document
-        )
+        document = insert_shot(
+            DirectorCommandRegistry(store),
+            document,
+            scene_id=narration.id,
+            after_shot_id=None,
+            idempotency_key="smoke-narration-plan",
+        ).document
         for plugin in provider_registry(
             fl2va_provider=RecordingProvider(media_type="video/mp4", content=b"fixture"),
             ref2va_provider=RecordingProvider(media_type="video/mp4", content=b"ref-fixture"),

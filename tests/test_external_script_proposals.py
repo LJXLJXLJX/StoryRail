@@ -77,10 +77,9 @@ def mixed_proposal(character_id):
     narration.update(
         driver="narration",
         shots=[],
+        segments=[],
         narration_cues=[
             {
-                "start_shot_index": None,
-                "end_shot_index": None,
                 "zh": {"text": "车站见证了最后一次告别。", "seed": 42},
                 "en": {"text": "The station witnessed the last farewell.", "seed": 42},
             }

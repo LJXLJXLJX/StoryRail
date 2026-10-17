@@ -102,6 +102,9 @@ def test_insert_delete_and_noop_receipts_are_original(tmp_path):
         store, service, document, _ = await _visual_project(str(tmp_path))
         caller = human(document.project_id)
         scene = document.director_script.scenes[0]
+        first_segment = next(
+            segment for segment in scene.segments if scene.shots[0].id in segment.shot_ids
+        )
         insert = DirectorCommand(
             "script.apply_operations",
             document.revision,
@@ -116,6 +119,7 @@ def test_insert_delete_and_noop_receipts_are_original(tmp_path):
                         "shot": _script_shot_payload(
                             scene.shots[0].visible_character_ids[0], "新镜头"
                         ),
+                        "attach_to_segment_id": first_segment.id,
                     }
                 ],
             },

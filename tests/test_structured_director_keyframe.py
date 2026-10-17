@@ -7,7 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from proposal_fixture_service import ProposalFixtureService as StructuredDirectorService
-from script_helpers import v32_scene_payload
+from script_helpers import editable_scene_payload
 from structured_director_fixtures import (
     RecordingProposer,
     RecordingProvider,
@@ -261,12 +261,12 @@ class StructuredDirectorKeyframeTests(unittest.IsolatedAsyncioTestCase):
             api = StructuredDirectorHttpApi(service, resource_path="/structured-director")
             snapshot = await api.handle("GET", "/structured-director")
             scenes = [
-                v32_scene_payload(item) for item in snapshot.body["director_script"]["scenes"]
+                editable_scene_payload(item) for item in snapshot.body["director_script"]["scenes"]
             ]
-            split_source = dict(scenes[0]["shots"][0]["segments"][0])
+            split_source = dict(scenes[0]["segments"][0])
             split_source["action"] = "前半段动作。"
             split_source["duration_estimate_seconds"] = 1.0
-            second_segment = dict(scenes[0]["shots"][0]["segments"][0])
+            second_segment = dict(scenes[0]["segments"][0])
             second_segment.update(
                 id=None,
                 action="后半段动作。",
@@ -276,7 +276,7 @@ class StructuredDirectorKeyframeTests(unittest.IsolatedAsyncioTestCase):
                     "continuity_instruction": "延续前半段结束状态。",
                 },
             )
-            scenes[0]["shots"][0]["segments"] = [split_source, second_segment]
+            scenes[0]["segments"] = [split_source, second_segment]
             edited = await api.handle(
                 "PUT",
                 "/structured-director/director-script",

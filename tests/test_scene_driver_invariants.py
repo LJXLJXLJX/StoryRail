@@ -72,66 +72,91 @@ def shot_input():
         "action": "同一镜头连续观察环境",
         "audio_direction": "风声",
         "transition_in": None,
-        "segments": [
-            {
-                "duration_estimate_seconds": 8,
-                "action": "连续推进的前半程",
-                "dialogue_lines": [],
-                "boundary_from_previous": None,
-            },
-            {
-                "duration_estimate_seconds": 8,
-                "action": "连续推进的后半程",
-                "dialogue_lines": [],
-                "boundary_from_previous": {
-                    "reason": "model_constraint",
-                    "continuity_instruction": "从同一静态交接时刻继续",
-                },
-            },
-        ],
     }
 
 
-def insert_shot(document):
-    scene_id = document.director_script.scenes[0].id
-    return DirectorCommand(
-        "script.apply_operations",
-        document.revision,
-        "plan-real-duration",
-        {
-            "scope": {"scene_ids": [scene_id]},
-            "operations": [
-                {
-                    "op": "insert_shot",
-                    "scene_id": scene_id,
-                    "after_shot_id": None,
-                    "shot": shot_input(),
-                },
-            ],
-        },
-    )
+def segment_input(duration: float, index: int) -> dict:
+    return {
+        "duration_estimate_seconds": duration,
+        "action": "连续推进的前半程" if index == 0 else "连续推进的后半程",
+        "dialogue_lines": [],
+        "boundary_from_previous": (
+            None
+            if index == 0
+            else {
+                "reason": "model_constraint",
+                "continuity_instruction": "从同一静态交接时刻继续",
+            }
+        ),
+    }
 
 
-def insert_scene_shot(document, scene_id, *, durations, idempotency_key):
-    shot = shot_input()
-    for segment, duration in zip(shot["segments"], durations, strict=True):
-        segment["duration_estimate_seconds"] = duration
-    return DirectorCommand(
-        "script.apply_operations",
-        document.revision,
-        idempotency_key,
-        {
-            "scope": {"scene_ids": [scene_id]},
-            "operations": [
-                {
-                    "op": "insert_shot",
-                    "scene_id": scene_id,
-                    "after_shot_id": None,
-                    "shot": shot,
-                },
-            ],
-        },
+def insert_shot(
+    registry,
+    document,
+    *,
+    scene_id=None,
+    durations=(8, 8),
+    after_shot_id=None,
+    idempotency_key="plan-real-duration",
+):
+    """插入一个新 Shot：首段随 Shot 创建，其余段以 insert_segment 接到同一 Shot 上。"""
+    scene_id = scene_id or document.director_script.scenes[0].id
+    existing = next(scene for scene in document.director_script.scenes if scene.id == scene_id)
+    known_shot_ids = {shot.id for shot in existing.shots}
+    first, *rest = durations
+    result = registry.execute(
+        DirectorCommand(
+            "script.apply_operations",
+            document.revision,
+            idempotency_key,
+            {
+                "scope": {"scene_ids": [scene_id]},
+                "operations": [
+                    {
+                        "op": "insert_shot",
+                        "scene_id": scene_id,
+                        "after_shot_id": after_shot_id,
+                        "shot": shot_input(),
+                        "new_segment": {"shot_indexes": [0], **segment_input(first, 0)},
+                    },
+                ],
+            },
+        )
     )
+    scene = next(item for item in result.document.director_script.scenes if item.id == scene_id)
+    inserted = next(shot for shot in scene.shots if shot.id not in known_shot_ids)
+    if rest:
+        covering = [segment.id for segment in scene.segments if inserted.id in segment.shot_ids]
+        # narration Scene 每次写入都会把 Segment 时长校准到规划总长；同批补段时按总长填，
+        # 最终各段均分。drama Scene 不做校准，按字面时长写入。
+        total = float(sum(durations))
+        result = registry.execute(
+            DirectorCommand(
+                "script.apply_operations",
+                result.document.revision,
+                f"{idempotency_key}-rest",
+                {
+                    "scope": {"scene_ids": [scene_id]},
+                    "operations": [
+                        {
+                            "op": "insert_segment",
+                            "scene_id": scene_id,
+                            "after_segment_id": covering[-1],
+                            "segment": {
+                                "shot_ids": [inserted.id],
+                                **segment_input(
+                                    total if existing.driver == "narration" else duration,
+                                    index,
+                                ),
+                            },
+                        }
+                        for index, duration in enumerate(rest, start=1)
+                    ],
+                },
+            )
+        )
+    return result
 
 
 async def narration_project(path, proposer=None):
@@ -178,7 +203,7 @@ async def _test_tts_first_then_one_sixteen_second_shot_and_invalidation(tmp_path
     registry = DirectorCommandRegistry(store)
     before = store.path.read_bytes()
     with pytest.raises(ValueError, match="必须先选择项目所选语言的 TTS"):
-        registry.execute(insert_shot(document))
+        registry.execute(insert_shot(registry, document))
     assert store.path.read_bytes() == before
 
     # The manual UI saves the cue before narration-driven Shot planning.
@@ -226,7 +251,7 @@ async def _test_tts_first_then_one_sixteen_second_shot_and_invalidation(tmp_path
     assert selected.director_script.production_baseline_revision != (
         selected.director_script.revision
     )
-    planned = registry.execute(insert_shot(selected)).document
+    planned = insert_shot(registry, selected).document
     cue = planned.director_script.scenes[0].narration_cues[0]
     assert cue.fully_selected
     # 规划 Shot 的同一次写入里 Core 按真实音频校准并建立生产基线，直接进入视觉生产解锁。
@@ -354,21 +379,19 @@ async def _test_adjacent_narration_planning_keeps_fixed_visual_tail(tmp_path):
 
     registry = DirectorCommandRegistry(store)
     first, second = document.director_script.scenes
-    document = registry.execute(
-        insert_scene_shot(
-            document,
-            first.id,
-            durations=(8.2, 8.2),
-            idempotency_key="plan-first-narration-with-tail",
-        )
+    document = insert_shot(
+        registry,
+        document,
+        scene_id=first.id,
+        durations=(8.2, 8.2),
+        idempotency_key="plan-first-narration-with-tail",
     ).document
-    document = registry.execute(
-        insert_scene_shot(
-            document,
-            second.id,
-            durations=(8.0, 8.0),
-            idempotency_key="plan-final-narration-without-tail",
-        )
+    document = insert_shot(
+        registry,
+        document,
+        scene_id=second.id,
+        durations=(8.0, 8.0),
+        idempotency_key="plan-final-narration-without-tail",
     ).document
     baseline = document
     assert [
@@ -482,23 +505,12 @@ async def _mixed_authoring(tmp_path):
     narration, drama = document.director_script.scenes
     assert narration.driver == "narration" and narration.shots == ()
     assert drama.driver == "drama" and drama.shots
-    result = DirectorCommandRegistry(store).execute(
-        DirectorCommand(
-            "script.apply_operations",
-            document.revision,
-            "drama-shot-before-tts",
-            {
-                "scope": {"scene_ids": [drama.id]},
-                "operations": [
-                    {
-                        "op": "insert_shot",
-                        "scene_id": drama.id,
-                        "after_shot_id": drama.shots[-1].id,
-                        "shot": shot_input(),
-                    }
-                ],
-            },
-        )
+    result = insert_shot(
+        DirectorCommandRegistry(store),
+        document,
+        scene_id=drama.id,
+        after_shot_id=drama.shots[-1].id,
+        idempotency_key="drama-shot-before-tts",
     )
     assert result.document.director_script.scenes[0] == narration
     assert (
@@ -542,7 +554,7 @@ async def _driver_rule_commands(tmp_path):
     store, service, _provider, document = await narration_project(tmp_path, MixedProposer())
     document = await select_audio(service, document)
     registry = DirectorCommandRegistry(store)
-    document = registry.execute(insert_shot(document)).document
+    document = insert_shot(registry, document).document
     narration, drama = document.director_script.scenes
     character_id = document.reference_library.characters[0].id
     before = store.path.read_bytes()

@@ -83,24 +83,28 @@ def create_sample(root: Path, kind: str, count: int):
                     TEXT,
                     "安静室内环境声。",
                     None,
-                    (
-                        ShotSegmentProposal(3, TEXT, (), None),
-                        ShotSegmentProposal(
-                            3,
-                            TEXT,
-                            (),
-                            SegmentBoundaryProposal("continuity_anchor", "保持杯子交接边界。"),
-                        ),
-                    ),
                 )
                 for _ in range(5)
+            )
+        )
+        segments = (
+            ()
+            if narration
+            else (
+                ShotSegmentProposal((0,), 3, TEXT, (), None),
+                ShotSegmentProposal(
+                    (0,),
+                    3,
+                    TEXT,
+                    (),
+                    SegmentBoundaryProposal("continuity_anchor", "保持杯子交接边界。"),
+                ),
+                *(ShotSegmentProposal((index,), 3, TEXT, (), None) for index in range(1, 5)),
             )
         )
         cues = (
             (
                 NarrationCueProposal(
-                    None,
-                    None,
                     NarrationTrackProposal(TEXT, 42),
                     NarrationTrackProposal("Benchmark narration.", 42),
                 ),
@@ -114,6 +118,7 @@ def create_sample(root: Path, kind: str, count: int):
                 TEXT,
                 "白墙木桌右窗。",
                 shots,
+                segments,
                 cues,
                 "narration" if narration else "drama",
             )

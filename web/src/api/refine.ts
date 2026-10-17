@@ -179,32 +179,35 @@ function editableTrack(track: Scene["narration_cues"][number]["zh"]) {
   };
 }
 
-// 整卡手工保存的请求仍是 Shot 下挂 Segment、Cue 带 Shot 锚点的形状（脚本写入面翻转后改为直接回传）：
-// 每个 Segment 挂到它覆盖的第一个 Shot 下，Cue 覆盖整个 Scene。
-export function serializeEditableScene(scene: Scene) {
-  const { segments, ...fields } = scene;
-  const anchor = (shot: Scene["shots"][number] | undefined) =>
-    shot === undefined || shot.id.startsWith("new:") ? null : shot.id;
+// 整卡手工保存请求使用 v33 写入形状：Shot 无 segments，Segment 用本 Scene 新 shots 数组的序号。
+export function editableScenePayload(scene: Scene) {
+  const positions = new Map(scene.shots.map((shot, index) => [shot.id, index]));
   return {
-    ...fields,
+    ...scene,
     id: scene.id.startsWith("new:") ? null : scene.id,
-    // 只回传编辑器字段；时长与时间基准是 Core 派生的只读投影。
-    narration_cues: scene.narration_cues.map((cue) => ({
-      id: cue.id,
-      start_shot_id: anchor(scene.shots[0]),
-      end_shot_id: anchor(scene.shots.at(-1)),
-      zh: editableTrack(cue.zh),
-      en: editableTrack(cue.en),
-    })),
     shots: scene.shots.map((shot) => ({
       ...shot,
       id: shot.id.startsWith("new:") ? null : shot.id,
-      segments: segments
-        .filter((segment) => segment.shot_ids[0] === shot.id)
-        .map(({ shot_ids: _shotIds, ...segment }) => ({
-          ...segment,
-          id: segment.id.startsWith("new:") ? null : segment.id,
-        })),
+    })),
+    segments: scene.segments.map((segment) => ({
+      id: segment.id.startsWith("new:") ? null : segment.id,
+      shot_indexes: segment.shot_ids.map((shotId) => {
+        const index = positions.get(shotId);
+        if (index === undefined) {
+          throw new Error("Segment 覆盖了当前 Scene 中不存在的 Shot。");
+        }
+        return index;
+      }),
+      duration_estimate_seconds: segment.duration_estimate_seconds,
+      action: segment.action,
+      dialogue_lines: segment.dialogue_lines,
+      boundary_from_previous: segment.boundary_from_previous,
+    })),
+    // 只回传编辑器字段；时长与时间基准是 Core 派生的只读投影。
+    narration_cues: scene.narration_cues.map((cue) => ({
+      id: cue.id,
+      zh: editableTrack(cue.zh),
+      en: editableTrack(cue.en),
     })),
   };
 }

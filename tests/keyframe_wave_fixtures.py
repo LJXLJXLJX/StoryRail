@@ -24,17 +24,15 @@ class FiveShotScript(RecordingScriptProposer):
         base = await super().propose(**kwargs)
         scene = base.scenes[0]
         shot = scene.shots[0]
-        shot = replace(
-            shot,
+        segment = replace(scene.segments[0], duration_estimate_seconds=2, dialogue_lines=())
+        scene = replace(
+            scene,
+            shots=(shot,) * 5,
             segments=(
-                replace(
-                    shot.segments[0],
-                    duration_estimate_seconds=2,
-                    dialogue_lines=(),
-                ),
+                replace(segment, shot_indexes=(0,)),
+                *(replace(segment, shot_indexes=(index,)) for index in range(1, 5)),
             ),
         )
-        scene = replace(scene, shots=(shot,) * 5)
         return replace(base, scenes=(scene, replace(scene, title="不能扩大的另一场")))
 
 

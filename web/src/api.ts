@@ -29,7 +29,7 @@ import {
   parseStructuredDirectorSnapshot,
   parseError,
   parseImageSubmissionPreview,
-  serializeEditableScene,
+  editableScenePayload,
   isRecord,
 } from "./api/validation";
 export type * from "./api/types";
@@ -227,7 +227,7 @@ export const structuredDirectorApi = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           expected_revision: revision,
-          scenes: scenes.map(serializeEditableScene),
+          scenes: scenes.map(editableScenePayload),
         }),
       },
     ),

@@ -3,6 +3,26 @@
     "description": "局部脚本类型化编辑，Core分配新ID。",
     "inputSchema": {
       "$defs": {
+        "InsertShot": {
+          "additionalProperties": false,
+          "properties": {
+            "after_shot_id": {},
+            "attach_to_segment_id": {},
+            "new_segment": {},
+            "op": {
+              "const": "insert_shot"
+            },
+            "scene_id": {},
+            "shot": {}
+          },
+          "required": [
+            "op",
+            "scene_id",
+            "after_shot_id",
+            "shot"
+          ],
+          "type": "object"
+        },
         "delete_scene": {
           "additionalProperties": false,
           "properties": {
@@ -23,12 +43,12 @@
             "op": {
               "const": "delete_segment"
             },
-            "segment_id": {},
-            "shot_id": {}
+            "scene_id": {},
+            "segment_id": {}
           },
           "required": [
             "op",
-            "shot_id",
+            "scene_id",
             "segment_id"
           ],
           "type": "object"
@@ -72,32 +92,14 @@
             "op": {
               "const": "insert_segment"
             },
-            "segment": {},
-            "shot_id": {}
-          },
-          "required": [
-            "op",
-            "shot_id",
-            "after_segment_id",
-            "segment"
-          ],
-          "type": "object"
-        },
-        "insert_shot": {
-          "additionalProperties": false,
-          "properties": {
-            "after_shot_id": {},
-            "op": {
-              "const": "insert_shot"
-            },
             "scene_id": {},
-            "shot": {}
+            "segment": {}
           },
           "required": [
             "op",
             "scene_id",
-            "after_shot_id",
-            "shot"
+            "after_segment_id",
+            "segment"
           ],
           "type": "object"
         },
@@ -144,33 +146,14 @@
             "op": {
               "const": "move_segment"
             },
-            "segment_id": {},
-            "shot_id": {}
-          },
-          "required": [
-            "op",
-            "shot_id",
-            "segment_id",
-            "after_segment_id"
-          ],
-          "type": "object"
-        },
-        "move_shot": {
-          "additionalProperties": false,
-          "properties": {
-            "after_shot_id": {},
-            "op": {
-              "const": "move_shot"
-            },
             "scene_id": {},
-            "shot_id": {},
-            "target_scene_id": {}
+            "segment_id": {}
           },
           "required": [
             "op",
             "scene_id",
-            "shot_id",
-            "after_shot_id"
+            "segment_id",
+            "after_segment_id"
           ],
           "type": "object"
         },
@@ -258,7 +241,7 @@
           "items": {
             "anyOf": [
               {
-                "$ref": "#/$defs/move_shot"
+                "$ref": "#/$defs/InsertShot"
               },
               {
                 "$ref": "#/$defs/update_scene_fields"
@@ -274,9 +257,6 @@
               },
               {
                 "$ref": "#/$defs/update_shot_fields"
-              },
-              {
-                "$ref": "#/$defs/insert_shot"
               },
               {
                 "$ref": "#/$defs/delete_shot"

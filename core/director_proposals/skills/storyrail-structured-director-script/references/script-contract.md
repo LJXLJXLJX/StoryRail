@@ -17,14 +17,13 @@ Scene 的 `driver` 必须明确为 `narration` 或 `drama`，同一项目可混�
 也不要把旁白改写成角色对白、或把对白塞进旁白来绕过限制。
 
 `narration`：正文是一个语义原子的旁白单元，通常接近一句完整旁白，不能用标点计数替代语义判断。
-初稿仅返回一个 Cue 与空 `shots`，Cue 的 `start_shot_index` / `end_shot_index` 为 null。
+初稿仅返回一个 Cue 与空 `shots`、空 `segments`；Cue 没有 Shot 锚点，永远覆盖整个 Scene。
 用户先生成、审核并选择项目所选语言的 TTS。后续根据 Core 提供的 `narration_timing.planning_duration_seconds` 规划
-Shot，每个 Shot 一个 Segment（见下文 ShotSegment）。该值以所选语言已选音频中最长一条的真实时长为基础（`timing_language` 标明是
+Shot 与 Segment（见下文 ShotSegment）。该值以所选语言已选音频中最长一条的真实时长为基础（`timing_language` 标明是
 哪种语言）；当下一 Scene 也是 narration 时，Core 固定给当前
 Scene 增加 `visual_tail_seconds=0.4` 的尾部画面缓冲。各 Segment 时长总和应等于规划时长，且缓冲只放在
 最后一个 Shot 的结尾，不重复加到每个 Segment。任一语言音频未选择时不能规划 Shot timing，不按字符数估算最终时序。
-有 Shot 后 Cue 覆盖本 Scene 全部 Shot，锚点为 0 和最后一个 Shot 的索引。后续规划的 Segment 只写画面动作，
-`dialogue_lines` 始终为空数组；画面中人物可以有口型以外的表演，但不说台词。
+后续规划的 Segment 只写画面动作，`dialogue_lines` 始终为空数组；画面中人物可以有口型以外的表演，但不说台词。
 旁白正文回改只使该语言的音频选择失效，并使时序与装配失效；保留现有视觉设计，待新音频就绪后再调整时序。
 
 `drama`：先按意图、画面、动作与表演设计 Shot，不预设 Scene 总时长；`narration_cues` 必须为空数组，
@@ -57,10 +56,17 @@ Shot 是一个中间不存在剪辑的连续镜头。切镜必须创建新 Shot�
 
 ## ShotSegment
 
+Segment 与 Shot 平级写在 `scenes[].segments[]`，Shot 本身没有 `segments` 字段。每个 Segment 用
+`shot_indexes`（本 Scene `shots` 数组的序号）按顺序声明覆盖的 Shot：非空、不重复、连续，按顺序恰好覆盖本 Scene
+全部 Shot；相邻 Segment 只允许共享边界 Shot（前一段最后一个 = 后一段第一个），共享即延续。
+一个 Segment 可以覆盖多个相邻 Shot（段内切镜），一个 Shot 也可以跨多个相邻 Segment（长镜头拆段）。
+改稿里的 `replace_scene` 同样用本 Scene 新 `shots` 数组的序号。
+
 **初次规划一个 Shot 只对应一个 Segment。** 首次写出某个 Shot 时（drama 初稿、narration Scene 在 TTS 后规划
-Shot、改稿中新建 Shot），一律只返回一个 Segment，`boundary_from_previous` 为 null；不因预计时长、模型限制、
+Shot、改稿中新建 Shot），一律只返回一个覆盖它的 Segment；不因预计时长、模型限制、
 控制方式或连续性锚点预先拆分。已有 Shot 的 Segment 只在用户明确要求时拆分或合并（`split_segment`、
-`merge_adjacent_segments`），拆出的第二段及以后填写 `boundary_from_previous`；第一段必须返回 null。
+`merge_adjacent_segments`），拆出的第二段及以后在同一 Shot 内部拆分时两段共享该 Shot 并填写
+`boundary_from_previous`；不与上一段共享边界 Shot 的 Segment 必须返回 null。
 改稿时保留已有 Segment 划分，不擅自合并用户已拆开的分段。
 
 `duration_estimate_seconds` 只是节奏预估。Segment 的 `action` 写该分段负责的动作区间。角色对白写入
@@ -88,5 +94,6 @@ Narration Scene 的 Segment 时长在 TTS 之后规划，Core 随写入按真实
 每次改稿都使用 Core 在本轮 `<core-script-context>` 中内联的只读事实。不要调用工具补读文件，不要依赖
 Thread 中的旧脚本判断当前事实，也不要输出完整 state。结果必须是类型化局部操作：现有 Scene
 使用 `replace_scene`，单个 Segment 使用 `replace_segment`，Scene 结构变化使用显式插入、删除或移动操作，
-不能从结果缺失项推断删除。现有层级沿用输入 ID；新增层级返回 null ID。`reply_markdown` 只简要说明实际修改；新建或整体重写 drama Scene 时，每个 Scene 用一两句白话写导演阐述：
+不能从结果缺失项推断删除。现有层级沿用输入 ID；新增层级返回 null ID；`replace_scene` / `replace_segment`
+的 Segment 一律用本 Scene 新 `shots` 数组的序号表达覆盖。`reply_markdown` 只简要说明实际修改；新建或整体重写 drama Scene 时，每个 Scene 用一两句白话写导演阐述：
 这场戏是谁的、转折在哪、最重的镜头是哪个。

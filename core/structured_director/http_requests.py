@@ -60,45 +60,36 @@ def _parse_scene(value: object) -> EditableSceneProposal:
     _optional_id(item["location_id"], "location_id")
     _optional_id(item["state_id"], "state_id")
     shots = item["shots"]
+    segments = item["segments"]
     if not isinstance(shots, list):
         raise ValueError("scene.shots 必须是数组。")
-    parsed_shots = tuple(_parse_shot(shot) for shot in shots)
+    if not isinstance(segments, list):
+        raise ValueError("scene.segments 必须是数组。")
     return EditableSceneProposal(
         id=_optional_id(item["id"], "scene.id"),
         title=_plain_string(item["title"], "scene.title").strip(),
         summary=_plain_string(item["summary"], "scene.summary").strip(),
         setting=_plain_string(item["setting"], "scene.setting").strip(),
         driver=_plain_string(item["driver"], "scene.driver"),
-        shots=parsed_shots,
-        narration_cues=_parse_editable_narration_cues(item["narration_cues"], parsed_shots),
+        shots=tuple(_parse_shot(shot) for shot in shots),
+        segments=tuple(_parse_segment(segment) for segment in segments),
+        narration_cues=_parse_editable_narration_cues(item["narration_cues"]),
     )
 
 
 def _parse_editable_narration_cues(
-    value: object, shots: tuple[EditableShotProposal, ...]
+    value: object,
 ) -> tuple[EditableNarrationCueProposal, ...]:
     if not isinstance(value, list):
         raise ValueError("scene.narration_cues 必须是数组。")
-    shot_positions = {shot.id: index for index, shot in enumerate(shots) if shot.id is not None}
-    result = []
-    for raw in value:
-        item = _exact_object(raw, _NARRATION_CUE_FIELDS, "narration_cue")
-        start_id = _optional_id(item["start_shot_id"], "narration_cue.start_shot_id")
-        end_id = _optional_id(item["end_shot_id"], "narration_cue.end_shot_id")
-        if not shots and start_id is None and end_id is None:
-            shot_positions[None] = None
-        if start_id not in shot_positions or end_id not in shot_positions:
-            raise ValueError("人工编辑旁白 Cue 必须引用本 Scene 的已有 Shot。")
-        result.append(
-            EditableNarrationCueProposal(
-                id=_optional_id(item["id"], "narration_cue.id"),
-                start_shot_index=shot_positions[start_id],
-                end_shot_index=shot_positions[end_id],
-                zh=_parse_narration_track(item["zh"], "narration_cue.zh", editor=True),
-                en=_parse_narration_track(item["en"], "narration_cue.en", editor=True),
-            )
+    return tuple(
+        EditableNarrationCueProposal(
+            id=_optional_id(item["id"], "narration_cue.id"),
+            zh=_parse_narration_track(item["zh"], "narration_cue.zh", editor=True),
+            en=_parse_narration_track(item["en"], "narration_cue.en", editor=True),
         )
-    return tuple(result)
+        for item in (_exact_object(raw, _NARRATION_CUE_FIELDS, "narration_cue") for raw in value)
+    )
 
 
 def _parse_narration_track(
@@ -122,11 +113,8 @@ def _parse_shot(value: object) -> EditableShotProposal:
     item = _exact_object(value, _SHOT_FIELDS, "shot")
     _optional_id(item["view_id"], "view_id")
     character_ids = item["visible_character_ids"]
-    segments = item["segments"]
     if not isinstance(character_ids, list):
         raise ValueError("shot.visible_character_ids 必须是数组。")
-    if not isinstance(segments, list):
-        raise ValueError("shot.segments 必须是数组。")
     return EditableShotProposal(
         id=_optional_id(item["id"], "shot.id"),
         visible_character_ids=tuple(
@@ -137,18 +125,21 @@ def _parse_shot(value: object) -> EditableShotProposal:
         action=_plain_string(item["action"], "shot.action").strip(),
         audio_direction=_plain_string(item["audio_direction"], "shot.audio_direction").strip(),
         transition_in=_optional_text(item["transition_in"], "shot.transition_in"),
-        segments=tuple(_parse_segment(segment) for segment in segments),
     )
 
 
 def _parse_segment(value: object) -> EditableShotSegmentProposal:
     item = _exact_object(value, _SEGMENT_FIELDS, "segment")
     dialogue = item["dialogue_lines"]
+    shot_indexes = item["shot_indexes"]
     if not isinstance(dialogue, list):
         raise ValueError("segment.dialogue_lines 必须是数组。")
+    if not isinstance(shot_indexes, list) or not shot_indexes:
+        raise ValueError("segment.shot_indexes 必须是非空数组。")
     boundary = item["boundary_from_previous"]
     return EditableShotSegmentProposal(
         id=_optional_id(item["id"], "segment.id"),
+        shot_indexes=tuple(_index(value, "segment.shot_indexes") for value in shot_indexes),
         duration_estimate_seconds=_number(
             item["duration_estimate_seconds"], "segment.duration_estimate_seconds"
         ),
@@ -363,6 +354,12 @@ def _number(value: object, field: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f"{field} 必须是数字。")
     return float(value)
+
+
+def _index(value: object, field: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{field} 必须是非负整数序号。")
+    return value
 
 
 def _integer(value: object, field: str) -> int:

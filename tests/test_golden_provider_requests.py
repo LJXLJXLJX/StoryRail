@@ -161,9 +161,9 @@ def _enabled_keyframe_ids(snap: dict) -> list[str]:
 def _drama_scene(character_id: str) -> dict:
     """一个 Shot、两个 Segment：第一个有对白（默认 Ref2VA），第二个无对白（默认 FL2VA）。"""
     scene = Journey.drama_scene(character_id)
-    shot = scene["shots"][0]
-    shot["segments"].append(
+    scene["segments"].append(
         {
+            "shot_indexes": [0],
             "duration_estimate_seconds": 4.5,
             "action": "小满松开拉杆，转身望向轨道尽头。",
             "dialogue_lines": [],

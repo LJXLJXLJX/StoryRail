@@ -179,25 +179,35 @@ def _validate_segment_coverage(scene: Scene) -> None:
         raise ValueError(f"{label} 的 Shot 与 Segment 必须同时为空或同时非空。")
     positions = {shot.id: index for index, shot in enumerate(scene.shots)}
     previous_last: int | None = None
-    for segment in scene.segments:
+    for ordinal, segment in enumerate(scene.segments, start=1):
+        prefix = f"{label} 的第 {ordinal} 个 Segment"
         if any(shot_id not in positions for shot_id in segment.shot_ids):
-            raise ValueError(f"{label} 的 Segment 覆盖了不属于本 Scene 的 Shot。")
+            raise ValueError(f"{prefix} 覆盖了不属于本 Scene 的 Shot。")
         indexes = [positions[shot_id] for shot_id in segment.shot_ids]
         if indexes != list(range(indexes[0], indexes[0] + len(indexes))):
-            raise ValueError(f"{label} 的 Segment 必须覆盖按顺序连续的 Shot。")
-        expected_new = 0 if previous_last is None else previous_last + 1
+            raise ValueError(f"{prefix} 必须按 Shot 顺序连续覆盖，不能倒序或跳过中间的 Shot。")
         shares = previous_last is not None and indexes[0] == previous_last
-        if not shares and indexes[0] != expected_new:
-            raise ValueError(
-                f"{label} 的 Segment 必须按顺序覆盖全部 Shot，不能跳过、倒序或重复覆盖。"
-            )
+        if previous_last is None and indexes[0] != 0:
+            raise ValueError(f"{prefix} 必须从本 Scene 的第一个 Shot 开始，不能跳过前面的 Shot。")
+        if previous_last is not None and not shares:
+            if indexes[0] < previous_last:
+                raise ValueError(
+                    f"{prefix} 重复覆盖了前面的 Shot；只允许相邻 Segment 共享边界 Shot。"
+                )
+            if indexes[0] > previous_last + 1:
+                raise ValueError(f"{prefix} 跳过了第 {previous_last + 2} 个 Shot。")
         if shares and segment.boundary_from_previous is None:
-            raise ValueError(f"{label} 延续上一 Segment 镜头的 Segment 必须说明前置边界。")
+            raise ValueError(
+                f"{prefix} 延续上一段镜头（共享边界 Shot），必须填写 boundary_from_previous。"
+            )
         if not shares and segment.boundary_from_previous is not None:
-            raise ValueError(f"{label} 不延续上一 Segment 镜头的 Segment 不能包含前置边界。")
+            raise ValueError(f"{prefix} 不延续上一段镜头，boundary_from_previous 必须为 null。")
         previous_last = indexes[-1]
     if previous_last is not None and previous_last != len(scene.shots) - 1:
-        raise ValueError(f"{label} 的 Segment 必须覆盖全部 Shot。")
+        raise ValueError(
+            f"{label} 的 Segment 没有覆盖到最后一个 Shot"
+            f"（第 {len(scene.shots)} 个 Shot 未被覆盖）。"
+        )
 
 
 @dataclass(frozen=True, slots=True)

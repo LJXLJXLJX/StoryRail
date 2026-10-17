@@ -50,9 +50,7 @@ from .script_index import (
     script_segments,
     segment_shots,
     segment_view_ids,
-    shot_segments,
 )
-from .v32_projection import require_v32_cue_anchors, require_v32_shot_segments, v32_shot_segments
 
 
 def _finish_director_run(
@@ -98,12 +96,16 @@ def _materialize_script(
 ) -> DirectorScript:
     scenes: list[Scene] = []
     for scene in proposal.scenes:
-        if scene.driver == "narration" and scene.shots:
+        if scene.driver == "narration" and (scene.shots or scene.segments):
             raise ValueError("Narration Scene 初稿只提交旁白；TTS 审核后再规划 Shot。")
-        shots, segments = _materialize_shots(scene.shots, lambda _shot: uuid4().hex)
+        shot_values, segments = _materialize_scene_parts(
+            scene.title.strip(),
+            scene.shots,
+            scene.segments,
+            shot_id=lambda _shot: uuid4().hex,
+        )
         cues = []
         for cue in scene.narration_cues:
-            _require_cue_anchor_indexes(shots, cue)
             cues.append(
                 NarrationCue(
                     id=uuid4().hex,
@@ -118,7 +120,7 @@ def _materialize_script(
                 summary=scene.summary.strip(),
                 setting=scene.setting.strip(),
                 driver=scene.driver,
-                shots=shots,
+                shots=shot_values,
                 segments=segments,
                 narration_cues=tuple(cues),
             )
@@ -157,15 +159,16 @@ def _materialize_script_revision(
 
     scenes: list[Scene] = []
     for scene in proposals:
-        shots, segments = _materialize_shots(
+        shot_values, segments = _materialize_scene_parts(
+            scene.title.strip(),
             scene.shots,
-            lambda shot: resolved(shot.id, known_shot_ids, "shot.id"),
+            scene.segments,
+            shot_id=lambda shot: resolved(shot.id, known_shot_ids, "shot.id"),
             segment_id=lambda value: resolved(value, known_segment_ids, "segment.id"),
         )
         cues: list[NarrationCue] = []
         for cue in scene.narration_cues:
             cue_id = resolved(cue.id, known_cue_ids, "narration_cue.id")
-            _require_cue_anchor_indexes(shots, cue)
             previous_cue = previous_cues.get(cue_id)
             candidate = NarrationCue(
                 id=cue_id,
@@ -193,7 +196,7 @@ def _materialize_script_revision(
                 driver=scene.driver,
                 shots=tuple(
                     replace(shot, view_id=_kept_view_id(previous_views.get(shot.id), location_id))
-                    for shot in shots
+                    for shot in shot_values
                 ),
                 segments=segments,
                 narration_cues=tuple(cues),
@@ -281,27 +284,33 @@ def _apply_script_scene_operations(
             assert (
                 operation.operation == "replace_segment"
                 and scene_id is not None
-                and operation.shot_id is not None
                 and operation.segment is not None
                 and operation.segment.id is not None
             )
             scene_index = locate(scene_id)
             scene = scenes[scene_index]
-            if all(shot.id != operation.shot_id for shot in scene.shots):
-                raise ValueError("replace_segment 的 Shot 不属于指定 Scene。")
-            if all(
-                segment.id != operation.segment.id
-                for segment in v32_shot_segments(scene, operation.shot_id)
-            ):
-                raise ValueError("replace_segment 的 Segment 不属于指定 Shot。")
-            segments = tuple(
-                _materialize_segment(operation.segment, segment.id, segment.shot_ids)
-                if segment.id == operation.segment.id
-                else segment
-                for segment in scene.segments
+            replacement = operation.segment
+            if all(segment.id != replacement.id for segment in scene.segments):
+                raise ValueError("replace_segment 的 Segment 不属于指定 Scene。")
+            indexes = _coverage_indexes(scene, replacement)
+            resolved = _resolve_shot_indexes(
+                scene_label=f"Scene「{scene.title}」",
+                shot_ids=tuple(shot.id for shot in scene.shots),
+                segment_indexes=indexes,
+                has_boundary=tuple(
+                    (
+                        replacement.boundary_from_previous is not None
+                        if segment.id == replacement.id
+                        else segment.boundary_from_previous is not None
+                    )
+                    for segment in scene.segments
+                ),
             )
-            require_v32_shot_segments(
-                [segment for segment in segments if segment.shot_ids[0] == operation.shot_id]
+            segments = tuple(
+                _materialize_segment(replacement, segment.id, shot_ids)
+                if segment.id == replacement.id
+                else replace(segment, shot_ids=shot_ids)
+                for segment, shot_ids in zip(scene.segments, resolved, strict=True)
             )
             scenes[scene_index] = replace(scene, segments=segments)
     if not scenes:
@@ -314,17 +323,20 @@ def _validate_new_scene_ids(scene: EditableSceneProposal) -> None:
         raise ValueError("新增 Scene 的 ID 必须为 null。")
     if any(shot.id is not None for shot in scene.shots):
         raise ValueError("新增 Scene 的 Shot ID 必须为 null。")
-    if any(segment.id is not None for shot in scene.shots for segment in shot.segments):
+    if any(segment.id is not None for segment in scene.segments):
         raise ValueError("新增 Scene 的 Segment ID 必须为 null。")
     if any(cue.id is not None for cue in scene.narration_cues):
         raise ValueError("新增 Scene 的旁白 Cue ID 必须为 null。")
 
 
-def _require_cue_anchor_indexes(shots: tuple[Shot, ...], cue: Any) -> None:
-    require_v32_cue_anchors(
-        [shot.id for shot in shots],
-        None if cue.start_shot_index is None else shots[cue.start_shot_index].id,
-        None if cue.end_shot_index is None else shots[cue.end_shot_index].id,
+def _coverage_indexes(scene: Any, replacement: Any) -> tuple[tuple[int, ...], ...]:
+    """replace_segment 里被替换的 Segment 用新的 shot_indexes，其余沿用现状。"""
+    positions = {shot.id: index for index, shot in enumerate(scene.shots)}
+    return tuple(
+        replacement.shot_indexes
+        if segment.id == replacement.id
+        else tuple(positions[shot_id] for shot_id in segment.shot_ids)
+        for segment in scene.segments
     )
 
 
@@ -372,8 +384,7 @@ def _validate_scene_revision_scope(
             raise ValueError("局部脚本修改不能挪用其他 Scene 的 Shot ID。")
         if any(
             segment.id is not None and segment.id not in segment_ids
-            for shot in proposal.shots
-            for segment in shot.segments
+            for segment in proposal.segments
         ):
             raise ValueError("局部脚本修改不能挪用其他 Scene 的 Segment ID。")
         if any(cue.id is not None and cue.id not in cue_ids for cue in proposal.narration_cues):
@@ -468,6 +479,7 @@ def _invalidate_production_after_script_revision(
 @dataclass(slots=True)
 class _ScriptSegmentDraft:
     id: str
+    shot_ids: tuple[str, ...]
     duration_estimate_seconds: float
     action: str
     dialogue_lines: tuple[DialogueLine, ...]
@@ -483,7 +495,6 @@ class _ScriptShotDraft:
     action: str
     audio_direction: str
     transition_in: str | None
-    segments: list[_ScriptSegmentDraft]
     # 原绑定（所在地点, 视图）；Shot 移到其它地点的 Scene 后不再保留。
     view: tuple[str | None, str] | None = None
 
@@ -495,6 +506,7 @@ class _ScriptSceneDraft:
     summary: str
     setting: str
     shots: list[_ScriptShotDraft]
+    segments: list[_ScriptSegmentDraft]
     narration_cues: tuple[NarrationCue, ...]
     driver: str
     location_id: str | None
@@ -511,22 +523,22 @@ def _validate_script_references(
     for scene in previous_scenes:
         for shot in scene.shots:
             character_ids.update(shot.visible_character_ids)
-            for segment in shot_segments(scene, shot.id):
-                character_ids.update(
-                    line.character_id
-                    for line in segment.dialogue_lines
-                    if line.character_id is not None
-                )
+        for segment in scene.segments:
+            character_ids.update(
+                line.character_id
+                for line in segment.dialogue_lines
+                if line.character_id is not None
+            )
     for scene in scenes:
         for shot in scene.shots:
             if any(item not in character_ids for item in shot.visible_character_ids):
                 raise ValueError("Shot 引用了未声明的角色卡。")
-            if any(
-                line.character_id is not None and line.character_id not in character_ids
-                for segment in shot_segments(scene, shot.id)
-                for line in segment.dialogue_lines
-            ):
-                raise ValueError("角色对白引用了未声明的角色卡。")
+        if any(
+            line.character_id is not None and line.character_id not in character_ids
+            for segment in scene.segments
+            for line in segment.dialogue_lines
+        ):
+            raise ValueError("角色对白引用了未声明的角色卡。")
 
 
 def _apply_script_operations(
@@ -548,7 +560,7 @@ def _apply_script_operations(
         for value in (
             scene.id,
             *(shot.id for shot in scene.shots),
-            *(segment.id for shot in scene.shots for segment in shot.segments),
+            *(segment.id for segment in scene.segments),
         )
     }
 
@@ -570,14 +582,11 @@ def _apply_script_operations(
         scoped(matches[0][0])
         return matches[0]
 
-    def find_segment(
-        segment_id: str,
-    ) -> tuple[_ScriptSceneDraft, _ScriptShotDraft, _ScriptSegmentDraft]:
+    def find_segment(segment_id: str) -> tuple[_ScriptSceneDraft, _ScriptSegmentDraft]:
         matches = [
-            (scene, shot, segment)
+            (scene, segment)
             for scene in drafts
-            for shot in scene.shots
-            for segment in shot.segments
+            for segment in scene.segments
             if segment.id == segment_id
         ]
         if len(matches) != 1:
@@ -614,18 +623,13 @@ def _apply_script_operations(
                 operation.scene,
                 fresh_id=lambda label, current=operation_index: fresh_id(current, label),
             )
-            for shot_id in operation.scene.move_shot_ids:
-                source, shot = find_shot(shot_id)
-                source.shots.remove(shot)
-                scene.shots.append(shot)
-                changed_ids.update((source.id, shot.id))
             drafts.insert(index, scene)
             created_scene_ids.add(scene.id)
             changed_ids.update(
                 (
                     scene.id,
                     *(shot.id for shot in scene.shots),
-                    *(segment.id for shot in scene.shots for segment in shot.segments),
+                    *(segment.id for segment in scene.segments),
                     *(cue.id for cue in scene.narration_cues),
                 )
             )
@@ -642,8 +646,6 @@ def _apply_script_operations(
         if operation.op == "delete_scene":
             assert operation.scene_id is not None
             scene = find_scene(operation.scene_id)
-            if scene.shots:
-                raise ValueError("Scene 仍包含 Shot；请先删除或用 move_shot 迁出后再删除 Scene。")
             if any(
                 track.selected_audio_asset_id is not None
                 for cue in scene.narration_cues
@@ -664,61 +666,108 @@ def _apply_script_operations(
             assert operation.scene_id is not None and operation.shot is not None
             scene = find_scene(operation.scene_id)
             shot_id = fresh_id(operation_index, "shot")
-            shot = _script_shot_draft(
-                operation.shot,
-                shot_id=shot_id,
-                segment_id=lambda index, current=operation_index: fresh_id(
-                    current, f"segment:{index}"
-                ),
-            )
+            shot = _script_shot_draft(operation.shot, shot_id=shot_id)
+            order_before = [item.id for item in scene.shots]
             _insert_after(scene.shots, shot, operation.after_id, "Shot")
-            changed_ids.update((scene.id, shot_id, *(item.id for item in shot.segments)))
+            position = scene.shots.index(shot)
+            if operation.attach_to_segment_id is not None:
+                segment = next(
+                    (item for item in scene.segments if item.id == operation.attach_to_segment_id),
+                    None,
+                )
+                if segment is None:
+                    raise ValueError("insert_shot 的 attach_to_segment_id 不属于指定 Scene。")
+                first = order_before.index(segment.shot_ids[0])
+                last = order_before.index(segment.shot_ids[-1])
+                if position == first and segment.boundary_from_previous is not None:
+                    raise ValueError(
+                        "insert_shot 不能把新 Shot 插在 Segment 的共享边界 Shot 之前；"
+                        "请改为 attach 到前一个 Segment。"
+                    )
+                if not first <= position <= last + 1:
+                    raise ValueError(
+                        "insert_shot 的插入位置不在 attach_to_segment_id 的覆盖区间内；"
+                        "新 Shot 只能并入与之相邻的 Segment。"
+                    )
+                segment.shot_ids = tuple(item.id for item in scene.shots[first : last + 2])
+                changed_ids.update((scene.id, shot_id, segment.id))
+            elif operation.new_segment is not None:
+                for item in scene.segments:
+                    first = order_before.index(item.shot_ids[0])
+                    last = order_before.index(item.shot_ids[-1])
+                    if first < position <= last:
+                        raise ValueError(
+                            "insert_shot 的 new_segment 不能落在已有 Segment 的覆盖区间中间；"
+                            "请用 attach_to_segment_id 并入该 Segment。"
+                        )
+                segment_id = fresh_id(operation_index, "segment")
+                new_segment = _script_segment_draft(
+                    operation.new_segment,
+                    segment_id,
+                    (shot_id,),
+                )
+                insertion = next(
+                    (
+                        item_index
+                        for item_index, item in enumerate(scene.segments)
+                        if order_before.index(item.shot_ids[-1]) >= position
+                    ),
+                    len(scene.segments),
+                )
+                scene.segments.insert(insertion, new_segment)
+                changed_ids.update((scene.id, shot_id, segment_id))
+            else:
+                raise ValueError("insert_shot 必须同时给出 attach_to_segment_id 或 new_segment。")
             continue
-        if operation.op in {"move_shot", "delete_shot"}:
+        if operation.op == "delete_shot":
             assert operation.scene_id is not None and operation.shot_id is not None
             scene = find_scene(operation.scene_id)
             actual_scene, shot = find_shot(operation.shot_id)
             if actual_scene is not scene:
                 raise ValueError("Shot 不属于 operation 指定的 Scene。")
-            target = (
-                scene
-                if operation.target_scene_id is None
-                else find_scene(operation.target_scene_id)
-            )
             scene.shots.remove(shot)
-            if operation.op == "move_shot":
-                if operation.after_id == shot.id:
-                    raise ValueError("Shot 不能移动到自身之后。")
-                _insert_after(target.shots, shot, operation.after_id, "Shot")
-            changed_ids.update((scene.id, target.id, shot.id))
+            for segment in scene.segments:
+                if shot.id not in segment.shot_ids:
+                    continue
+                remaining = tuple(item for item in segment.shot_ids if item != shot.id)
+                if not remaining:
+                    raise ValueError(
+                        f"删除 Shot 会使 Segment「{segment.id}」失去全部 Shot；"
+                        "请先在同一次修改里调整覆盖。"
+                    )
+                segment.shot_ids = remaining
+            changed_ids.update((scene.id, shot.id))
             continue
         if operation.op == "update_segment_fields":
             assert operation.segment_id is not None and operation.fields is not None
-            scene, _shot, segment = find_segment(operation.segment_id)
+            scene, segment = find_segment(operation.segment_id)
             for name, value in operation.fields.items():
                 setattr(segment, name, _script_segment_field(name, value))
             changed_ids.update((scene.id, segment.id))
             continue
         if operation.op == "insert_segment":
-            assert operation.shot_id is not None and operation.segment is not None
-            scene, shot = find_shot(operation.shot_id)
+            assert operation.scene_id is not None and operation.segment is not None
+            scene = find_scene(operation.scene_id)
             segment_id = fresh_id(operation_index, "segment")
-            segment = _script_segment_draft(operation.segment, segment_id)
-            _insert_after(shot.segments, segment, operation.after_id, "Segment")
-            changed_ids.update((scene.id, shot.id, segment_id))
+            segment = _script_segment_draft(
+                operation.segment,
+                segment_id,
+                operation.segment.shot_ids,
+            )
+            _insert_after(scene.segments, segment, operation.after_id, "Segment")
+            changed_ids.update((scene.id, segment_id))
             continue
         if operation.op in {"move_segment", "delete_segment"}:
-            assert operation.shot_id is not None and operation.segment_id is not None
-            scene, shot = find_shot(operation.shot_id)
-            actual_scene, actual_shot, segment = find_segment(operation.segment_id)
-            if actual_scene is not scene or actual_shot is not shot:
-                raise ValueError("Segment 不属于 operation 指定的 Shot。")
-            shot.segments.remove(segment)
+            assert operation.scene_id is not None and operation.segment_id is not None
+            scene, segment = find_segment(operation.segment_id)
+            if scene.id != operation.scene_id:
+                raise ValueError("Segment 不属于 operation 指定的 Scene。")
+            scene.segments.remove(segment)
             if operation.op == "move_segment":
                 if operation.after_id == segment.id:
                     raise ValueError("Segment 不能移动到自身之后。")
-                _insert_after(shot.segments, segment, operation.after_id, "Segment")
-            changed_ids.update((scene.id, shot.id, segment.id))
+                _insert_after(scene.segments, segment, operation.after_id, "Segment")
+            changed_ids.update((scene.id, segment.id))
             continue
         if operation.op == "split_segment":
             assert (
@@ -727,15 +776,15 @@ def _apply_script_operations(
                 and operation.second is not None
                 and operation.preserve_id in {"first", "second"}
             )
-            scene, shot, segment = find_segment(operation.segment_id)
-            segment_index = shot.segments.index(segment)
+            scene, segment = find_segment(operation.segment_id)
+            segment_index = scene.segments.index(segment)
             new_id = fresh_id(operation_index, "split")
             first_id = segment.id if operation.preserve_id == "first" else new_id
             second_id = segment.id if operation.preserve_id == "second" else new_id
-            first = _script_segment_draft(operation.first, first_id)
-            second = _script_segment_draft(operation.second, second_id)
-            shot.segments[segment_index : segment_index + 1] = [first, second]
-            changed_ids.update((scene.id, shot.id, segment.id, new_id))
+            first = _script_segment_draft(operation.first, first_id, operation.first.shot_ids)
+            second = _script_segment_draft(operation.second, second_id, operation.second.shot_ids)
+            scene.segments[segment_index : segment_index + 1] = [first, second]
+            changed_ids.update((scene.id, segment.id, new_id))
             continue
         if operation.op == "merge_adjacent_segments":
             assert (
@@ -744,17 +793,20 @@ def _apply_script_operations(
                 and operation.segment is not None
                 and operation.preserve_id in {"left", "right"}
             )
-            scene, shot, left = find_segment(operation.segment_id)
-            right_scene, right_shot, right = find_segment(operation.right_segment_id)
-            if scene is not right_scene or shot is not right_shot:
-                raise ValueError("只能合并同一 Shot 中的相邻 Segment。")
-            left_index = shot.segments.index(left)
-            if left_index + 1 >= len(shot.segments) or shot.segments[left_index + 1] is not right:
+            scene, left = find_segment(operation.segment_id)
+            right_scene, right = find_segment(operation.right_segment_id)
+            if scene is not right_scene:
+                raise ValueError("只能合并同一 Scene 中的相邻 Segment。")
+            left_index = scene.segments.index(left)
+            if left_index + 1 >= len(scene.segments) or scene.segments[left_index + 1] is not right:
                 raise ValueError("merge_adjacent_segments 的左右 Segment 不相邻。")
+            union = tuple(dict.fromkeys((*left.shot_ids, *right.shot_ids)))
+            if operation.segment.shot_ids != union:
+                raise ValueError("合并后的 shot_ids 必须是两段覆盖的并集。")
             merged_id = left.id if operation.preserve_id == "left" else right.id
-            merged = _script_segment_draft(operation.segment, merged_id)
-            shot.segments[left_index : left_index + 2] = [merged]
-            changed_ids.update((scene.id, shot.id, left.id, right.id))
+            merged = _script_segment_draft(operation.segment, merged_id, union)
+            scene.segments[left_index : left_index + 2] = [merged]
+            changed_ids.update((scene.id, left.id, right.id))
             continue
         raise TypeError("未支持的 Script operation。")
 
@@ -778,19 +830,20 @@ def _script_scene_draft(scene: Scene) -> _ScriptSceneDraft:
                 shot.action,
                 shot.audio_direction,
                 shot.transition_in,
-                [
-                    _ScriptSegmentDraft(
-                        segment.id,
-                        segment.duration_estimate_seconds,
-                        segment.action,
-                        segment.dialogue_lines,
-                        segment.boundary_from_previous,
-                    )
-                    for segment in v32_shot_segments(scene, shot.id)
-                ],
                 None if shot.view_id is None else (scene.location_id, shot.view_id),
             )
             for shot in scene.shots
+        ],
+        [
+            _ScriptSegmentDraft(
+                segment.id,
+                segment.shot_ids,
+                segment.duration_estimate_seconds,
+                segment.action,
+                segment.dialogue_lines,
+                segment.boundary_from_previous,
+            )
+            for segment in scene.segments
         ],
         scene.narration_cues,
         scene.driver,
@@ -805,17 +858,24 @@ def _script_new_scene_draft(
     fresh_id: Callable[[str], str],
 ) -> _ScriptSceneDraft:
     scene_id = fresh_id("scene")
-    shots = []
-    for shot_index, shot in enumerate(value.shots):
-        shots.append(
-            _script_shot_draft(
-                shot,
-                shot_id=fresh_id(f"scene:shot:{shot_index}"),
-                segment_id=lambda index, current=shot_index: fresh_id(
-                    f"scene:shot:{current}:segment:{index}"
-                ),
-            )
+    shot_ids = {index: fresh_id(f"scene:shot:{index}") for index in range(len(value.shots))}
+    shots = [
+        _script_shot_draft(shot, shot_id=shot_ids[index]) for index, shot in enumerate(value.shots)
+    ]
+    resolved = _resolve_shot_indexes(
+        scene_label=f"Scene「{value.title}」",
+        shot_ids=tuple(shot_ids[index] for index in range(len(value.shots))),
+        segment_indexes=tuple(segment.shot_indexes for segment in value.segments),
+        has_boundary=tuple(
+            segment.boundary_from_previous is not None for segment in value.segments
+        ),
+    )
+    segments = [
+        _script_segment_draft(segment, fresh_id(f"scene:segment:{index}"), shot_ids_for_segment)
+        for index, (segment, shot_ids_for_segment) in enumerate(
+            zip(value.segments, resolved, strict=True)
         )
+    ]
     cues = (
         ()
         if value.narration_cue is None
@@ -833,6 +893,7 @@ def _script_new_scene_draft(
         value.summary,
         value.setting,
         shots,
+        segments,
         cues,
         value.driver,
         None,
@@ -844,7 +905,6 @@ def _script_shot_draft(
     value: ScriptShotInput,
     *,
     shot_id: str,
-    segment_id: Callable[[int], str],
 ) -> _ScriptShotDraft:
     return _ScriptShotDraft(
         shot_id,
@@ -854,19 +914,17 @@ def _script_shot_draft(
         value.action,
         value.audio_direction,
         value.transition_in,
-        [
-            _script_segment_draft(segment, segment_id(index))
-            for index, segment in enumerate(value.segments)
-        ],
     )
 
 
 def _script_segment_draft(
     value: ScriptSegmentInput,
     segment_id: str,
+    shot_ids: tuple[str, ...],
 ) -> _ScriptSegmentDraft:
     return _ScriptSegmentDraft(
         segment_id,
+        shot_ids,
         value.duration_estimate_seconds,
         value.action,
         tuple(_script_dialogue(item) for item in value.dialogue_lines),
@@ -928,40 +986,37 @@ def _insert_after(
 
 
 def _materialize_script_scene_draft(scene: _ScriptSceneDraft) -> Scene:
-    shots: list[Shot] = []
-    segments: list[ShotSegment] = []
-    for shot in scene.shots:
-        require_v32_shot_segments(shot.segments)
-        shots.append(
-            Shot(
-                shot.id,
-                shot.visible_character_ids,
-                shot.composition,
-                shot.camera_movement,
-                shot.action,
-                shot.audio_direction,
-                shot.transition_in,
-                view_id=_kept_view_id(shot.view, scene.location_id),
-            )
+    shots = tuple(
+        Shot(
+            shot.id,
+            shot.visible_character_ids,
+            shot.composition,
+            shot.camera_movement,
+            shot.action,
+            shot.audio_direction,
+            shot.transition_in,
+            view_id=_kept_view_id(shot.view, scene.location_id),
         )
-        segments.extend(
-            ShotSegment(
-                segment.id,
-                (shot.id,),
-                segment.duration_estimate_seconds,
-                segment.action,
-                segment.dialogue_lines,
-                segment.boundary_from_previous,
-            )
-            for segment in shot.segments
+        for shot in scene.shots
+    )
+    segments = tuple(
+        ShotSegment(
+            segment.id,
+            segment.shot_ids,
+            segment.duration_estimate_seconds,
+            segment.action,
+            segment.dialogue_lines,
+            segment.boundary_from_previous,
         )
+        for segment in scene.segments
+    )
     return Scene(
         scene.id,
         scene.title,
         scene.summary,
         scene.setting,
-        tuple(shots),
-        tuple(segments),
+        shots,
+        segments,
         scene.narration_cues,
         scene.driver,
         scene.location_id,
@@ -1118,18 +1173,17 @@ def _segment_visual_contexts(scenes: tuple[Scene, ...]) -> dict[str, tuple[objec
     }
 
 
-def _materialize_shots(
+def _materialize_scene_parts(
+    title: str,
     shots: tuple[Any, ...],
+    segments: tuple[Any, ...],
+    *,
     shot_id: Callable[[Any], str],
     segment_id: Callable[[str | None], str] | None = None,
 ) -> tuple[tuple[Shot, ...], tuple[ShotSegment, ...]]:
-    """v32 形状的 Shot（各自下挂 Segment）物化为并列的 shots 与覆盖各自 Shot 的 segments。"""
-    segment_id = segment_id or (lambda _value: uuid4().hex)
-    materialized_shots: list[Shot] = []
-    segments: list[ShotSegment] = []
-    for shot in shots:
-        require_v32_shot_segments(shot.segments)
-        materialized = Shot(
+    """把 proposal 的 shots + segments（shot_indexes）物化为 v33 的并列结构并校验覆盖。"""
+    materialized_shots = tuple(
+        Shot(
             id=shot_id(shot),
             visible_character_ids=shot.visible_character_ids,
             composition=shot.composition.strip(),
@@ -1138,11 +1192,62 @@ def _materialize_shots(
             audio_direction=shot.audio_direction.strip(),
             transition_in=None if shot.transition_in is None else shot.transition_in.strip(),
         )
-        materialized_shots.append(materialized)
-        segments.extend(
-            _materialize_segment(
-                segment, segment_id(getattr(segment, "id", None)), (materialized.id,)
+        for shot in shots
+    )
+    resolved = _resolve_shot_indexes(
+        scene_label=f"Scene「{title}」",
+        shot_ids=tuple(item.id for item in materialized_shots),
+        segment_indexes=tuple(segment.shot_indexes for segment in segments),
+        has_boundary=tuple(segment.boundary_from_previous is not None for segment in segments),
+    )
+    segment_id = segment_id or (lambda _value: uuid4().hex)
+    materialized_segments = tuple(
+        _materialize_segment(segment, segment_id(getattr(segment, "id", None)), shot_ids)
+        for segment, shot_ids in zip(segments, resolved, strict=True)
+    )
+    return materialized_shots, materialized_segments
+
+
+def _resolve_shot_indexes(
+    *,
+    scene_label: str,
+    shot_ids: tuple[str, ...],
+    segment_indexes: tuple[tuple[int, ...], ...],
+    has_boundary: tuple[bool, ...],
+) -> tuple[tuple[str, ...], ...]:
+    """按 §4.1 把 shot_indexes 解析为 shot_ids；错误指出 Scene、Segment 序号与子规则。"""
+    resolved: list[tuple[str, ...]] = []
+    previous_last: int | None = None
+    for ordinal, indexes in enumerate(segment_indexes, start=1):
+        label = f"{scene_label} 的第 {ordinal} 个 Segment"
+        if not indexes:
+            raise ValueError(f"{label} 必须至少覆盖一个 Shot。")
+        if any(index >= len(shot_ids) for index in indexes):
+            raise ValueError(f"{label} 的 shot_indexes 引用了不属于本 Scene 的 Shot 序号。")
+        if indexes != tuple(range(indexes[0], indexes[0] + len(indexes))):
+            raise ValueError(f"{label} 必须按 Shot 顺序连续覆盖，不能倒序或跳过中间的 Shot。")
+        shares = previous_last is not None and indexes[0] == previous_last
+        if previous_last is None and indexes[0] != 0:
+            raise ValueError(f"{label} 必须从本 Scene 的第一个 Shot 开始，不能跳过前面的 Shot。")
+        if previous_last is not None and not shares:
+            if indexes[0] < previous_last:
+                raise ValueError(
+                    f"{label} 重复覆盖了前面的 Shot；只允许相邻 Segment 共享边界 Shot。"
+                )
+            if indexes[0] > previous_last + 1:
+                raise ValueError(f"{label} 跳过了第 {previous_last + 2} 个 Shot。")
+        boundary = has_boundary[ordinal - 1]
+        if shares and not boundary:
+            raise ValueError(
+                f"{label} 延续上一段镜头（共享边界 Shot），必须填写 boundary_from_previous。"
             )
-            for segment in shot.segments
+        if not shares and boundary:
+            raise ValueError(f"{label} 不延续上一段镜头，boundary_from_previous 必须为 null。")
+        previous_last = indexes[-1]
+        resolved.append(tuple(shot_ids[index] for index in indexes))
+    if previous_last is not None and previous_last != len(shot_ids) - 1:
+        raise ValueError(
+            f"{scene_label} 的 Segment 没有覆盖到最后一个 Shot"
+            f"（第 {len(shot_ids)} 个 Shot 未被覆盖）。"
         )
-    return tuple(materialized_shots), tuple(segments)
+    return tuple(resolved)

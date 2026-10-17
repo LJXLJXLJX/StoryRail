@@ -41,17 +41,28 @@ CASES = [
                         "title": "甲板",
                         "summary": "转场。",
                         "setting": "夜间甲板。",
-                        "move_shot_ids": [TARGET],
+                        "shots": [
+                            {
+                                "visible_character_ids": [],
+                                "composition": "全景。",
+                                "camera_movement": "固定。",
+                                "action": "甲板空镜。",
+                                "audio_direction": "",
+                                "transition_in": None,
+                            }
+                        ],
+                        "segments": [
+                            {
+                                "shot_indexes": [0],
+                                "duration_estimate_seconds": 3,
+                                "action": "甲板空镜。",
+                                "dialogue_lines": [],
+                                "boundary_from_previous": None,
+                            }
+                        ],
                     },
                 },
                 {"op": "move_scene", "scene_id": TARGET, "after_scene_id": None},
-                {
-                    "op": "move_shot",
-                    "scene_id": TARGET,
-                    "shot_id": TARGET,
-                    "after_shot_id": None,
-                    "target_scene_id": TARGET,
-                },
                 {"op": "delete_scene", "scene_id": TARGET},
             ],
         },
@@ -429,7 +440,25 @@ def test_mcp_delegated_agent_edits_and_splits_scene(tmp_path):
                                 "title": "母船甲板",
                                 "summary": "转移到母船甲板。",
                                 "setting": "夜间母船甲板。",
-                                "move_shot_ids": [scene.shots[1].id],
+                                "shots": [
+                                    {
+                                        "visible_character_ids": [],
+                                        "composition": "全景。",
+                                        "camera_movement": "固定。",
+                                        "action": "母船甲板空镜。",
+                                        "audio_direction": "海风。",
+                                        "transition_in": None,
+                                    }
+                                ],
+                                "segments": [
+                                    {
+                                        "shot_indexes": [0],
+                                        "duration_estimate_seconds": 3,
+                                        "action": "母船甲板空镜。",
+                                        "dialogue_lines": [],
+                                        "boundary_from_previous": None,
+                                    }
+                                ],
                             },
                         }
                     ],
@@ -441,6 +470,9 @@ def test_mcp_delegated_agent_edits_and_splits_scene(tmp_path):
         asyncio.run(run(params))
     scenes = store.read().director_script.scenes
     assert scenes[0].title == "拐角通道·时空重叠交错"
-    assert [shot.id for shot in scenes[0].shots] == [scene.shots[0].id]
+    assert [shot.id for shot in scenes[0].shots] == [item.id for item in scene.shots]
     assert scenes[1].title == "母船甲板"
-    assert [shot.id for shot in scenes[1].shots] == [scene.shots[1].id]
+    (new_shot,) = scenes[1].shots
+    assert new_shot.id not in {item.id for item in scene.shots}
+    (new_segment,) = scenes[1].segments
+    assert new_segment.shot_ids == (new_shot.id,)

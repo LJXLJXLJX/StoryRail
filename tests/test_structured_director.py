@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from proposal_fixture_service import ProposalFixtureService as StructuredDirectorService
-from script_helpers import v32_scene_payload
+from script_helpers import editable_scene_payload
 from structured_director_fixtures import (
     RecordingProposer,
     RecordingScriptProposer,
@@ -36,15 +36,15 @@ class StructuredDirectorWorkflowTests(unittest.IsolatedAsyncioTestCase):
             scripted = await service.prepare_script(expected_revision=references.revision)
             api = StructuredDirectorHttpApi(service, resource_path="/structured-director")
             snapshot = await api.handle("GET", "/structured-director")
-            original = v32_scene_payload(snapshot.body["director_script"]["scenes"][0])
+            original = editable_scene_payload(snapshot.body["director_script"]["scenes"][0])
             inserted = json.loads(json.dumps(original, ensure_ascii=False))
             inserted["id"] = None
             inserted["title"] = "雨停后的站台"
             inserted["summary"] = "雨停后，小满发现末班车的灯光终于出现。"
             for shot in inserted["shots"]:
                 shot["id"] = None
-                for segment in shot["segments"]:
-                    segment["id"] = None
+            for segment in inserted["segments"]:
+                segment["id"] = None
 
             created = await api.handle(
                 "PUT",
@@ -68,7 +68,7 @@ class StructuredDirectorWorkflowTests(unittest.IsolatedAsyncioTestCase):
                 json.dumps(
                     {
                         "expected_revision": created.body["revision"],
-                        "scenes": [v32_scene_payload(created_scenes[1])],
+                        "scenes": [editable_scene_payload(created_scenes[1])],
                     }
                 ).encode(),
             )

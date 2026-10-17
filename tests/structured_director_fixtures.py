@@ -132,7 +132,6 @@ class RecordingScriptProposer:
                     title="末班车",
                     summary="小满在停用前的车站等最后一班车。",
                     setting="傍晚，空旷站台，冷蓝色天光。",
-                    narration_cues=(),
                     shots=(
                         ShotProposal(
                             visible_character_ids=(character_id,),
@@ -141,22 +140,24 @@ class RecordingScriptProposer:
                             action="小满握住行李箱拉杆，抬头看向站牌。",
                             audio_direction="远处风声和站内电流声。",
                             transition_in=None,
-                            segments=(
-                                ShotSegmentProposal(
-                                    duration_estimate_seconds=6.0,
-                                    action="小满抬头看向站牌。",
-                                    dialogue_lines=(
-                                        DialogueLineProposal(
-                                            character_id,
-                                            "还会来吗？",
-                                            "轻声，带一点迟疑",
-                                        ),
-                                    ),
-                                    boundary_from_previous=None,
-                                ),
-                            ),
                         ),
                     ),
+                    segments=(
+                        ShotSegmentProposal(
+                            shot_indexes=(0,),
+                            duration_estimate_seconds=6.0,
+                            action="小满抬头看向站牌。",
+                            dialogue_lines=(
+                                DialogueLineProposal(
+                                    character_id,
+                                    "还会来吗？",
+                                    "轻声，带一点迟疑",
+                                ),
+                            ),
+                            boundary_from_previous=None,
+                        ),
+                    ),
+                    narration_cues=(),
                 ),
             ),
         )
@@ -188,7 +189,6 @@ class ScopedRevisionScriptProposer(RecordingScriptProposer):
                             "scene_id": scenes[0]["id"],
                             "after_scene_id": None,
                             "scene": scenes[0],
-                            "shot_id": None,
                             "segment": None,
                         }
                     ],
@@ -236,10 +236,9 @@ class NarrationScriptProposer(RecordingScriptProposer):
                     base.scenes[0],
                     driver="narration",
                     shots=(),
+                    segments=(),
                     narration_cues=(
                         NarrationCueProposal(
-                            start_shot_index=None,
-                            end_shot_index=None,
                             zh=NarrationTrackProposal(
                                 text="末班车到来以前，站台仍旧保持着漫长的安静。", seed=42
                             ),

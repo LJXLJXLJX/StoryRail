@@ -97,6 +97,11 @@ async def _characterize(tmp_path):
                     "scene_id": scene.id,
                     "after_shot_id": scene.shots[0].id,
                     "shot": _script_shot_payload(scene.shots[0].visible_character_ids[0], "插入"),
+                    "attach_to_segment_id": next(
+                        segment.id
+                        for segment in scene.segments
+                        if scene.shots[0].id in segment.shot_ids
+                    ),
                 }
             ],
         },

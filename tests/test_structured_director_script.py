@@ -23,13 +23,14 @@ def proposal_json() -> str:
           "camera_movement": "缓慢推近。",
           "action": "小满握住行李箱拉杆，抬头看向站牌。",
           "audio_direction": "远处风声和站内电流声。",
-          "transition_in": null,
-          "segments": [{
-            "duration_estimate_seconds": 6.0,
-            "action": "小满保持站立，抬头看向站牌。",
-            "dialogue_lines": [],
-            "boundary_from_previous": null
-          }]
+          "transition_in": null
+        }],
+        "segments": [{
+          "shot_indexes": [0],
+          "duration_estimate_seconds": 6.0,
+          "action": "小满保持站立，抬头看向站牌。",
+          "dialogue_lines": [],
+          "boundary_from_previous": null
         }]
       }]
     }"""
@@ -41,11 +42,9 @@ def narrated_proposal_json(
     proposal = json.loads(proposal_json())
     scene = proposal["scenes"][0]
     scene["driver"] = "narration"
-    scene["shots"][0]["segments"][0]["duration_estimate_seconds"] = duration
+    scene["segments"][0]["duration_estimate_seconds"] = duration
     scene["narration_cues"] = [
         {
-            "start_shot_index": 0,
-            "end_shot_index": 0,
             "zh": {"text": text, "seed": 42},
             "en": {"text": "Before the last train arrives, the platform stays quiet.", "seed": 42},
         }
@@ -66,8 +65,9 @@ class StructuredDirectorScriptAgentTests(unittest.IsolatedAsyncioTestCase):
 
         partial = json.loads(narrated_proposal_json())
         partial["scenes"][0]["shots"].append(partial["scenes"][0]["shots"][0].copy())
-        with self.assertRaisesRegex(ProposalError, "全部 Shot"):
-            parse_structured_director_script_proposal(json.dumps(partial, ensure_ascii=False))
+        # 覆盖校验由 Core 在物化时执行；proposal 解析只校验字段形状。
+        parsed = parse_structured_director_script_proposal(json.dumps(partial, ensure_ascii=False))
+        self.assertEqual(parsed.scenes[0].segments[0].shot_indexes, (0,))
 
         for text in (
             "这是一段非常长且仍然持续展开的完整旁白" * 12 + "。",
@@ -88,7 +88,7 @@ class StructuredDirectorScriptAgentTests(unittest.IsolatedAsyncioTestCase):
             )
 
         narration_with_dialogue = json.loads(narrated_proposal_json())
-        narration_with_dialogue["scenes"][0]["shots"][0]["segments"][0]["dialogue_lines"] = [
+        narration_with_dialogue["scenes"][0]["segments"][0]["dialogue_lines"] = [
             {
                 "character_id": "a" * 32,
                 "text": "还会来吗？",
@@ -101,9 +101,9 @@ class StructuredDirectorScriptAgentTests(unittest.IsolatedAsyncioTestCase):
             )
 
         drama_with_dialogue = json.loads(proposal_json())
-        drama_with_dialogue["scenes"][0]["shots"][0]["segments"][0]["dialogue_lines"] = (
-            narration_with_dialogue["scenes"][0]["shots"][0]["segments"][0]["dialogue_lines"]
-        )
+        drama_with_dialogue["scenes"][0]["segments"][0]["dialogue_lines"] = narration_with_dialogue[
+            "scenes"
+        ][0]["segments"][0]["dialogue_lines"]
         parsed = parse_structured_director_script_proposal(
             json.dumps(drama_with_dialogue, ensure_ascii=False)
         )
@@ -119,10 +119,9 @@ class StructuredDirectorScriptAgentTests(unittest.IsolatedAsyncioTestCase):
 
         invalid_boundary = proposal_json().replace(
             '"boundary_from_previous": null',
-            '"boundary_from_previous": {"reason":"control_boundary",'
-            '"continuity_instruction":"保持构图"}',
+            '"boundary_from_previous": {"reason": "invented","continuity_instruction": "保持构图"}',
         )
-        with self.assertRaisesRegex(ProposalError, "第一个 Segment"):
+        with self.assertRaisesRegex(ProposalError, "boundary"):
             parse_structured_director_script_proposal(invalid_boundary)
 
     def test_agent_rejects_duplicate_visible_character_ids_in_core(self) -> None:

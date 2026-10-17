@@ -21,16 +21,8 @@ class SilentMixedProposer(MixedProposer):
         narration, drama = proposal.scenes
         drama = replace(
             drama,
-            shots=tuple(
-                replace(
-                    shot,
-                    visible_character_ids=(),
-                    segments=tuple(
-                        replace(segment, dialogue_lines=()) for segment in shot.segments
-                    ),
-                )
-                for shot in drama.shots
-            ),
+            shots=tuple(replace(shot, visible_character_ids=()) for shot in drama.shots),
+            segments=tuple(replace(segment, dialogue_lines=()) for segment in drama.segments),
         )
         return replace(proposal, scenes=(narration, drama))
 
@@ -48,10 +40,10 @@ async def mixed_acceptance(
     assert [s.driver for s in document.director_script.scenes] == ["narration", "drama"]
     before = store.path.read_bytes()
     with pytest.raises(ValueError, match="必须先选择项目所选语言的 TTS"):
-        DirectorCommandRegistry(store).execute(insert_shot(document))
+        insert_shot(DirectorCommandRegistry(store), document)
     assert store.path.read_bytes() == before
     document = await select_audio(service, document)
-    document = DirectorCommandRegistry(store).execute(insert_shot(document)).document
+    document = insert_shot(DirectorCommandRegistry(store), document).document
     assert (
         sum(
             s.duration_estimate_seconds

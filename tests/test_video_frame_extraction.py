@@ -42,14 +42,14 @@ class ContinuousScript(_ScriptCompiler):
     async def propose(self, **kwargs):
         proposal = await super().propose(**kwargs)
         scene = proposal.scenes[0]
-        shot = scene.shots[0]
-        first = replace(shot.segments[0], dialogue_lines=())
+        first = replace(scene.segments[0], dialogue_lines=())
         second = replace(
             first,
             boundary_from_previous=SegmentBoundaryProposal("continuity_anchor", "延续同一动作。"),
         )
         return replace(
-            proposal, scenes=(replace(scene, shots=(replace(shot, segments=(first, second)),)),)
+            proposal,
+            scenes=(replace(scene, segments=(first, second, *scene.segments[1:])),),
         )
 
 

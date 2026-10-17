@@ -16,7 +16,7 @@ import {
   refineScene,
   refineWorkflow,
   refineWorkspaceLayers,
-  serializeEditableScene,
+  editableScenePayload,
   snapshotConsistencyError,
 } from "./refine";
 import type {
@@ -165,7 +165,7 @@ export {
   isThreadId,
   isVideoSeed,
 } from "./schema_check";
-export { serializeEditableScene } from "./refine";
+export { editableScenePayload } from "./refine";
 
 const schemas: Record<string, JsonSchema> = {
   "Id": {
@@ -4972,108 +4972,6 @@ const schemas: Record<string, JsonSchema> = {
                         "type": "null"
                       }
                     ]
-                  },
-                  "segments": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "duration_estimate_seconds": {
-                          "type": "number",
-                          "minimum": 0.2
-                        },
-                        "action": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 4000
-                        },
-                        "dialogue_lines": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "character_id": {
-                                "anyOf": [
-                                  {
-                                    "type": "string",
-                                    "pattern": "^[0-9a-f]{32}$"
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              },
-                              "text": {
-                                "type": "string",
-                                "minLength": 1,
-                                "maxLength": 2000
-                              },
-                              "delivery": {
-                                "type": "string",
-                                "maxLength": 1000
-                              },
-                              "speaker_label": {
-                                "anyOf": [
-                                  {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 60
-                                  },
-                                  {
-                                    "type": "null"
-                                  }
-                                ]
-                              }
-                            },
-                            "required": [
-                              "character_id",
-                              "text",
-                              "delivery"
-                            ],
-                            "additionalProperties": false
-                          }
-                        },
-                        "boundary_from_previous": {
-                          "anyOf": [
-                            {
-                              "type": "object",
-                              "properties": {
-                                "reason": {
-                                  "type": "string",
-                                  "enum": [
-                                    "model_constraint",
-                                    "continuity_anchor",
-                                    "control_boundary",
-                                    "failure_cost"
-                                  ]
-                                },
-                                "continuity_instruction": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 2000
-                                }
-                              },
-                              "required": [
-                                "reason",
-                                "continuity_instruction"
-                              ],
-                              "additionalProperties": false
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "duration_estimate_seconds",
-                        "action",
-                        "dialogue_lines",
-                        "boundary_from_previous"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "minItems": 1
                   }
                 },
                 "required": [
@@ -5082,8 +4980,117 @@ const schemas: Record<string, JsonSchema> = {
                   "camera_movement",
                   "action",
                   "audio_direction",
-                  "transition_in",
-                  "segments"
+                  "transition_in"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "segments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shot_indexes": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "minItems": 1
+                  },
+                  "duration_estimate_seconds": {
+                    "type": "number",
+                    "minimum": 0.2
+                  },
+                  "action": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "dialogue_lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "character_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{32}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "delivery": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "speaker_label": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 60
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "character_id",
+                        "text",
+                        "delivery"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "boundary_from_previous": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "reason": {
+                            "type": "string",
+                            "enum": [
+                              "model_constraint",
+                              "continuity_anchor",
+                              "control_boundary",
+                              "failure_cost"
+                            ]
+                          },
+                          "continuity_instruction": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2000
+                          }
+                        },
+                        "required": [
+                          "reason",
+                          "continuity_instruction"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "shot_indexes",
+                  "duration_estimate_seconds",
+                  "action",
+                  "dialogue_lines",
+                  "boundary_from_previous"
                 ],
                 "additionalProperties": false
               }
@@ -5093,28 +5100,6 @@ const schemas: Record<string, JsonSchema> = {
               "items": {
                 "type": "object",
                 "properties": {
-                  "start_shot_index": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": 0
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "end_shot_index": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": 0
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
                   "zh": {
                     "anyOf": [
                       {
@@ -5219,8 +5204,6 @@ const schemas: Record<string, JsonSchema> = {
                   }
                 },
                 "required": [
-                  "start_shot_index",
-                  "end_shot_index",
                   "zh",
                   "en"
                 ],
@@ -5241,6 +5224,7 @@ const schemas: Record<string, JsonSchema> = {
             "summary",
             "setting",
             "shots",
+            "segments",
             "narration_cues",
             "driver"
           ],
@@ -5381,120 +5365,6 @@ const schemas: Record<string, JsonSchema> = {
                                 "type": "null"
                               }
                             ]
-                          },
-                          "segments": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "id": {
-                                  "anyOf": [
-                                    {
-                                      "type": "string",
-                                      "pattern": "^[0-9a-f]{32}$"
-                                    },
-                                    {
-                                      "type": "null"
-                                    }
-                                  ]
-                                },
-                                "duration_estimate_seconds": {
-                                  "type": "number",
-                                  "minimum": 0.2
-                                },
-                                "action": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 4000
-                                },
-                                "dialogue_lines": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "object",
-                                    "properties": {
-                                      "character_id": {
-                                        "anyOf": [
-                                          {
-                                            "type": "string",
-                                            "pattern": "^[0-9a-f]{32}$"
-                                          },
-                                          {
-                                            "type": "null"
-                                          }
-                                        ]
-                                      },
-                                      "text": {
-                                        "type": "string",
-                                        "minLength": 1,
-                                        "maxLength": 2000
-                                      },
-                                      "delivery": {
-                                        "type": "string",
-                                        "maxLength": 1000
-                                      },
-                                      "speaker_label": {
-                                        "anyOf": [
-                                          {
-                                            "type": "string",
-                                            "minLength": 1,
-                                            "maxLength": 60
-                                          },
-                                          {
-                                            "type": "null"
-                                          }
-                                        ]
-                                      }
-                                    },
-                                    "required": [
-                                      "character_id",
-                                      "text",
-                                      "delivery"
-                                    ],
-                                    "additionalProperties": false
-                                  }
-                                },
-                                "boundary_from_previous": {
-                                  "anyOf": [
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "reason": {
-                                          "type": "string",
-                                          "enum": [
-                                            "model_constraint",
-                                            "continuity_anchor",
-                                            "control_boundary",
-                                            "failure_cost"
-                                          ]
-                                        },
-                                        "continuity_instruction": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 2000
-                                        }
-                                      },
-                                      "required": [
-                                        "reason",
-                                        "continuity_instruction"
-                                      ],
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "type": "null"
-                                    }
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "id",
-                                "duration_estimate_seconds",
-                                "action",
-                                "dialogue_lines",
-                                "boundary_from_previous"
-                              ],
-                              "additionalProperties": false
-                            },
-                            "minItems": 1
                           }
                         },
                         "required": [
@@ -5504,13 +5374,12 @@ const schemas: Record<string, JsonSchema> = {
                           "camera_movement",
                           "action",
                           "audio_direction",
-                          "transition_in",
-                          "segments"
+                          "transition_in"
                         ],
                         "additionalProperties": false
                       }
                     },
-                    "narration_cues": {
+                    "segments": {
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -5526,22 +5395,122 @@ const schemas: Record<string, JsonSchema> = {
                               }
                             ]
                           },
-                          "start_shot_index": {
+                          "shot_indexes": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "minItems": 1
+                          },
+                          "duration_estimate_seconds": {
+                            "type": "number",
+                            "minimum": 0.2
+                          },
+                          "action": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4000
+                          },
+                          "dialogue_lines": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "character_id": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{32}$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "text": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 2000
+                                },
+                                "delivery": {
+                                  "type": "string",
+                                  "maxLength": 1000
+                                },
+                                "speaker_label": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 60
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "character_id",
+                                "text",
+                                "delivery"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "boundary_from_previous": {
                             "anyOf": [
                               {
-                                "type": "integer",
-                                "minimum": 0
+                                "type": "object",
+                                "properties": {
+                                  "reason": {
+                                    "type": "string",
+                                    "enum": [
+                                      "model_constraint",
+                                      "continuity_anchor",
+                                      "control_boundary",
+                                      "failure_cost"
+                                    ]
+                                  },
+                                  "continuity_instruction": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  }
+                                },
+                                "required": [
+                                  "reason",
+                                  "continuity_instruction"
+                                ],
+                                "additionalProperties": false
                               },
                               {
                                 "type": "null"
                               }
                             ]
-                          },
-                          "end_shot_index": {
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "shot_indexes",
+                          "duration_estimate_seconds",
+                          "action",
+                          "dialogue_lines",
+                          "boundary_from_previous"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "narration_cues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
                             "anyOf": [
                               {
-                                "type": "integer",
-                                "minimum": 0
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{32}$"
                               },
                               {
                                 "type": "null"
@@ -5653,8 +5622,6 @@ const schemas: Record<string, JsonSchema> = {
                         },
                         "required": [
                           "id",
-                          "start_shot_index",
-                          "end_shot_index",
                           "zh",
                           "en"
                         ],
@@ -5676,21 +5643,11 @@ const schemas: Record<string, JsonSchema> = {
                     "summary",
                     "setting",
                     "shots",
+                    "segments",
                     "narration_cues",
                     "driver"
                   ],
                   "additionalProperties": false
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "shot_id": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{32}$"
                 },
                 {
                   "type": "null"
@@ -5712,6 +5669,14 @@ const schemas: Record<string, JsonSchema> = {
                           "type": "null"
                         }
                       ]
+                    },
+                    "shot_indexes": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "minItems": 1
                     },
                     "duration_estimate_seconds": {
                       "type": "number",
@@ -5802,6 +5767,7 @@ const schemas: Record<string, JsonSchema> = {
                   },
                   "required": [
                     "id",
+                    "shot_indexes",
                     "duration_estimate_seconds",
                     "action",
                     "dialogue_lines",
@@ -5820,7 +5786,6 @@ const schemas: Record<string, JsonSchema> = {
             "scene_id",
             "after_scene_id",
             "scene",
-            "shot_id",
             "segment"
           ],
           "additionalProperties": false

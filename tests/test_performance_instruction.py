@@ -177,15 +177,13 @@ def test_script_contracts_accept_optional_recipe_params():
     assert NarrationTrackProposal("旁白", 1).recipe_params == {}
     with pytest.raises(ValueError, match="recipe_params"):
         NarrationTrackProposal("旁白", 1, {CLONE: "平静叙述。"})
-    cue = NarrationCueProposal(None, None, track, NarrationTrackProposal("Narration.", 1))
+    cue = NarrationCueProposal(track, NarrationTrackProposal("Narration.", 1))
     assert cue.en.text == "Narration."
 
     parsed = _parse_editable_narration_cues(
         [
             {
                 "id": ID_C,
-                "start_shot_id": None,
-                "end_shot_id": None,
                 "zh": {
                     "text": "旁白",
                     "seed": 1,
@@ -199,8 +197,7 @@ def test_script_contracts_accept_optional_recipe_params():
                     "recipe_params": {},
                 },
             }
-        ],
-        (),
+        ]
     )
     assert parsed[0].zh.recipe_params == _params("平静叙述。")
     assert parsed[0].en.recipe_params == {}

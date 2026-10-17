@@ -52,13 +52,20 @@ class PromptScript(_ScriptCompiler):
         scene = proposal.scenes[0]
         first, second = scene.shots
         a, b = kwargs["characters"]
-        segment = replace(
-            first.segments[0],
-            dialogue_lines=(
-                DialogueLineProposal(b.id, "先听我说。", "平静。"),
-                DialogueLineProposal(a.id, "好的。", "低声。"),
-                DialogueLineProposal(b.id, "我们开始。", "平静。"),
-            ),
+        segments = tuple(
+            replace(
+                segment,
+                dialogue_lines=(
+                    (
+                        DialogueLineProposal(b.id, "先听我说。", "平静。"),
+                        DialogueLineProposal(a.id, "好的。", "低声。"),
+                        DialogueLineProposal(b.id, "我们开始。", "平静。"),
+                    )
+                    if index == 0
+                    else ()
+                ),
+            )
+            for index, segment in enumerate(scene.segments)
         )
         return replace(
             proposal,
@@ -66,9 +73,10 @@ class PromptScript(_ScriptCompiler):
                 replace(
                     scene,
                     shots=(
-                        replace(first, visible_character_ids=(a.id, b.id), segments=(segment,)),
-                        replace(second, segments=(replace(second.segments[0], dialogue_lines=()),)),
+                        replace(first, visible_character_ids=(a.id, b.id)),
+                        second,
                     ),
+                    segments=segments,
                 ),
             ),
         )

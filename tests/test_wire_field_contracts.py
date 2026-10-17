@@ -46,7 +46,9 @@ def test_script_editor_fields_have_one_declaration() -> None:
     assert _SEGMENT_FIELDS == SEGMENT_EDITOR_FIELDS
     assert _SHOT_FIELDS == SHOT_EDITOR_FIELDS
     assert _SCENE_FIELDS == SCENE_EDITOR_FIELDS
-    assert set(segment_fields) == DECLARED_SEGMENT_FIELDS
+    # 写入面的覆盖键按形状不同：edit_script 用已有 Shot ID，整卡保存用新 shots 序号。
+    assert set(segment_fields) | {"shot_ids"} == DECLARED_SEGMENT_FIELDS
+    assert set(segment_fields) | {"id", "shot_indexes"} == SEGMENT_EDITOR_FIELDS
     assert set(shot_fields) == DECLARED_SHOT_CONTENT
 
 

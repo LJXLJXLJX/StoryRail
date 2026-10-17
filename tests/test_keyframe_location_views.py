@@ -97,10 +97,13 @@ def _insert_segment(store, document, shot, character_id):
                     "operations": [
                         {
                             "op": "insert_segment",
-                            "shot_id": shot.id,
+                            "scene_id": scene.id,
                             "after_segment_id": segments_of_shot(document, shot)[-1].id,
                             "segment": _script_segment_payload(
-                                character_id, "新增动作。", boundary=True
+                                character_id,
+                                "新增动作。",
+                                boundary=True,
+                                shot_ids=(shot.id,),
                             ),
                         }
                     ],

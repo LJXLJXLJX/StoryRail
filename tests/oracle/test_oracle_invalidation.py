@@ -54,6 +54,12 @@ def test_oracle_script_structural_edit_invalidates_precisely(
     character_id = journey.snapshot()["reference_library"]["characters"][0]["id"]
     first_scene = Journey.drama_scene(character_id, title="第一场")
     first_scene["shots"].append(json.loads(json.dumps(first_scene["shots"][0])))
+    first_scene["segments"].append(
+        {
+            **json.loads(json.dumps(first_scene["segments"][0])),
+            "shot_indexes": [1],
+        }
+    )
     journey.apply_script(
         scenes=[
             first_scene,
@@ -71,6 +77,9 @@ def test_oracle_script_structural_edit_invalidates_precisely(
     first, second = before["structured_director"]["director_script"]["scenes"]
     removed_shot_id = first["shots"][1]["id"]
     surviving_shot_id = first["shots"][0]["id"]
+    removed_segment_id = next(
+        segment["id"] for segment in first["segments"] if removed_shot_id in segment["shot_ids"]
+    )
     before_generations = len(before["generations"])
     before_assets = len(before["assets"])
     before_revision = before["revision"]
@@ -129,6 +138,11 @@ def test_oracle_script_structural_edit_invalidates_precisely(
         {
             "scope": {"scene_ids": [first["id"]]},
             "operations": [
+                {
+                    "op": "delete_segment",
+                    "scene_id": first["id"],
+                    "segment_id": removed_segment_id,
+                },
                 {"op": "delete_shot", "scene_id": first["id"], "shot_id": removed_shot_id},
             ],
         },

@@ -35,7 +35,7 @@ _BOUNDARY_REASONS = [
 
 def _content_overrides(prefix: str) -> dict[str, dict[str, object]]:
     p = f"{prefix}." if prefix else ""
-    segment = f"{p}shots[].segments[]"
+    segment = f"{p}segments[]"
     cue = f"{p}narration_cues[]"
     return {
         f"{p}driver": {"enum": ["narration", "drama"], "__required__": True},
@@ -49,7 +49,7 @@ def _content_overrides(prefix: str) -> dict[str, dict[str, object]]:
         f"{p}shots[].camera_movement": {"minLength": 1, "maxLength": 2_000},
         f"{p}shots[].action": {"minLength": 1, "maxLength": 4_000},
         f"{p}shots[].audio_direction": {"maxLength": 2_000},
-        f"{p}shots[].segments": {"minItems": 1},
+        f"{segment}.shot_indexes": {"items": {"type": "integer", "minimum": 0}, "minItems": 1},
         f"{segment}.duration_estimate_seconds": {"minimum": 0.2},
         f"{segment}.action": {"minLength": 1, "maxLength": 4_000},
         f"{segment}.dialogue_lines[].character_id": _DIALOGUE_CHARACTER_SCHEMA,
@@ -62,9 +62,6 @@ def _content_overrides(prefix: str) -> dict[str, dict[str, object]]:
             "maxLength": 2_000,
         },
         f"{p}narration_cues": {"maxItems": 1},
-        f"{cue}.text": {"minLength": 1, "maxLength": 4_000},
-        f"{cue}.start_shot_index": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
-        f"{cue}.end_shot_index": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
         f"{cue}.seed": {"minimum": 0, "maximum": 2**63 - 1},
         f"{cue}.zh.recipe_params": RECIPE_PARAMS_SCHEMA,
         f"{cue}.en.recipe_params": RECIPE_PARAMS_SCHEMA,
@@ -88,7 +85,7 @@ _REVISION_OVERRIDES: dict[str, dict[str, object]] = {
         ]
     },
 }
-for _field in ("scene_id", "after_scene_id", "shot_id"):
+for _field in ("scene_id", "after_scene_id"):
     _REVISION_OVERRIDES[f"operations[].{_field}"] = {
         **_ID_SCHEMA,
         "__required__": True,
@@ -100,13 +97,17 @@ for _prefix in ("operations[].scene",):
 for _path in (
     "operations[].scene.id",
     "operations[].scene.shots[].id",
-    "operations[].scene.shots[].segments[].id",
+    "operations[].scene.segments[].id",
     "operations[].scene.narration_cues[].id",
     "operations[].segment.id",
 ):
     _REVISION_OVERRIDES[_path] = _ID_SCHEMA
 _REVISION_OVERRIDES.update(
     {
+        "operations[].segment.shot_indexes": {
+            "items": {"type": "integer", "minimum": 0},
+            "minItems": 1,
+        },
         "operations[].segment.duration_estimate_seconds": {"minimum": 0.2},
         "operations[].segment.action": {"minLength": 1, "maxLength": 4_000},
         "operations[].segment.dialogue_lines[].character_id": _DIALOGUE_CHARACTER_SCHEMA,
@@ -195,17 +196,18 @@ def _script_revision_context(
                 "id": scene.get("id"),
                 "title": scene.get("title"),
                 "shots": [
-                    {
-                        "ordinal": shot_number,
-                        "id": shot.get("id"),
-                        "segment_ids": [
-                            segment.get("id")
-                            for segment in shot.get("segments", [])
-                            if isinstance(segment, dict)
-                        ],
-                    }
+                    {"ordinal": shot_number, "id": shot.get("id")}
                     for shot_number, shot in enumerate(scene.get("shots", []), start=1)
                     if isinstance(shot, dict)
+                ],
+                "segments": [
+                    {
+                        "ordinal": segment_number,
+                        "id": segment.get("id"),
+                        "shot_ids": segment.get("shot_ids", []),
+                    }
+                    for segment_number, segment in enumerate(scene.get("segments", []), start=1)
+                    if isinstance(segment, dict)
                 ],
             }
             for scene_number, scene in enumerate(scenes, start=1)

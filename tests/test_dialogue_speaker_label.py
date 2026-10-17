@@ -42,6 +42,7 @@ def test_persistence_round_trips_speaker_label_and_accepts_omitted_key():
 
 def _proposal(dialogue: dict) -> str:
     segment = {
+        "shot_indexes": [0],
         "duration_estimate_seconds": 3.0,
         "action": "研究员对着麦克风宣读。",
         "dialogue_lines": [dialogue],
@@ -54,7 +55,6 @@ def _proposal(dialogue: dict) -> str:
         "action": "宣读。",
         "audio_direction": "扬声器底噪。",
         "transition_in": None,
-        "segments": [segment],
     }
     scene = {
         "driver": "drama",
@@ -62,6 +62,7 @@ def _proposal(dialogue: dict) -> str:
         "summary": "宣读协议。",
         "setting": "实验室。",
         "shots": [shot],
+        "segments": [segment],
         "narration_cues": [],
     }
     return json.dumps({"scenes": [scene]}, ensure_ascii=False)
@@ -73,7 +74,7 @@ def test_script_proposal_accepts_external_speaker():
             {"character_id": None, "speaker_label": "研究员", "text": "开始。", "delivery": ""}
         )
     )
-    (line,) = proposal.scenes[0].shots[0].segments[0].dialogue_lines
+    (line,) = proposal.scenes[0].segments[0].dialogue_lines
     assert (line.character_id, line.speaker_label) == (None, "研究员")
 
 

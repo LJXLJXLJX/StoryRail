@@ -60,12 +60,15 @@ class SegmentBoundaryProposal:
 
 @dataclass(frozen=True, slots=True)
 class ShotSegmentProposal:
+    # 新建 Shot 在 proposal 里没有 ID，因此覆盖用本 Scene 新 shots 数组的序号表达。
+    shot_indexes: tuple[int, ...]
     duration_estimate_seconds: float
     action: str
     dialogue_lines: tuple[DialogueLineProposal, ...]
     boundary_from_previous: SegmentBoundaryProposal | None
 
     def __post_init__(self) -> None:
+        _validate_shot_indexes(self.shot_indexes)
         if (
             isinstance(self.duration_estimate_seconds, bool)
             or not isfinite(self.duration_estimate_seconds)
@@ -83,7 +86,6 @@ class ShotProposal:
     action: str
     audio_direction: str
     transition_in: str | None
-    segments: tuple[ShotSegmentProposal, ...]
 
     def __post_init__(self) -> None:
         if len(self.visible_character_ids) != len(set(self.visible_character_ids)):
@@ -97,12 +99,6 @@ class ShotProposal:
             raise ValueError("shot.audio_direction 过长。")
         if self.transition_in is not None:
             _require_text(self.transition_in, "shot.transition_in", 500)
-        if not self.segments:
-            raise ValueError("每个 Shot 至少需要一个 Segment。")
-        if self.segments[0].boundary_from_previous is not None:
-            raise ValueError("Shot 的第一个 Segment 不能包含前置边界。")
-        if any(item.boundary_from_previous is None for item in self.segments[1:]):
-            raise ValueError("Shot 的后续 Segment 必须说明前置边界。")
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,27 +117,14 @@ class NarrationTrackProposal:
 
 @dataclass(frozen=True, slots=True)
 class NarrationCueProposal:
-    """旁白固定中英双语：zh 与 en 各自合成，时间以较长的一条为准。"""
+    """旁白固定中英双语：zh 与 en 各自合成，时间以较长的一条为准。Cue 覆盖整个 Scene。"""
 
-    start_shot_index: int | None
-    end_shot_index: int | None
     zh: NarrationTrackProposal | None
     en: NarrationTrackProposal | None
 
     def __post_init__(self) -> None:
         if self.zh is None and self.en is None:
             raise ValueError("旁白至少需要一种语言的正文。")
-        if self.start_shot_index is None and self.end_shot_index is None:
-            return
-        if (
-            self.start_shot_index is None
-            or self.end_shot_index is None
-            or isinstance(self.start_shot_index, bool)
-            or isinstance(self.end_shot_index, bool)
-            or self.start_shot_index < 0
-            or self.end_shot_index < self.start_shot_index
-        ):
-            raise ValueError("narration_cue Shot 范围不合法。")
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +133,7 @@ class SceneProposal:
     summary: str
     setting: str
     shots: tuple[ShotProposal, ...]
+    segments: tuple[ShotSegmentProposal, ...]
     narration_cues: tuple[NarrationCueProposal, ...]
     driver: str = "drama"
 
@@ -157,8 +141,8 @@ class SceneProposal:
         _require_text(self.title, "scene.title", 300)
         _require_text(self.summary, "scene.summary", 4_000)
         _require_text(self.setting, "scene.setting", 4_000)
-        _validate_scene_driver(self.driver, self.shots, self.narration_cues)
-        _validate_scene_narration(self.shots, self.narration_cues)
+        _validate_scene_driver(self.driver, self.shots, self.segments, self.narration_cues)
+        _validate_scene_narration(self.narration_cues)
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,6 +157,8 @@ class StructuredDirectorScriptProposal:
 @dataclass(frozen=True, slots=True)
 class EditableShotSegmentProposal:
     id: str | None
+    # 改稿中一律使用本 Scene 新 shots 数组的序号；物化时由 Core 转成 shot_ids。
+    shot_indexes: tuple[int, ...]
     duration_estimate_seconds: float
     action: str
     dialogue_lines: tuple[DialogueLineProposal, ...]
@@ -188,14 +174,11 @@ class EditableShotProposal:
     action: str
     audio_direction: str
     transition_in: str | None
-    segments: tuple[EditableShotSegmentProposal, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class EditableNarrationCueProposal:
     id: str | None
-    start_shot_index: int | None
-    end_shot_index: int | None
     zh: NarrationTrackProposal | None
     en: NarrationTrackProposal | None
 
@@ -207,6 +190,7 @@ class EditableSceneProposal:
     summary: str
     setting: str
     shots: tuple[EditableShotProposal, ...]
+    segments: tuple[EditableShotSegmentProposal, ...]
     narration_cues: tuple[EditableNarrationCueProposal, ...]
     driver: str = "drama"
 
@@ -219,7 +203,6 @@ class ScriptRevisionOperationProposal:
     scene_id: str | None = None
     after_scene_id: str | None = None
     scene: EditableSceneProposal | None = None
-    shot_id: str | None = None
     segment: EditableShotSegmentProposal | None = None
 
     def __post_init__(self) -> None:
@@ -235,10 +218,9 @@ class ScriptRevisionOperationProposal:
             _require_text(self.scene_id, "operation.scene_id", 32)
         if self.after_scene_id is not None:
             _require_text(self.after_scene_id, "operation.after_scene_id", 32)
-        if self.shot_id is not None:
-            _require_text(self.shot_id, "operation.shot_id", 32)
         if self.segment is not None:
             ShotSegmentProposal(
+                self.segment.shot_indexes,
                 self.segment.duration_estimate_seconds,
                 self.segment.action,
                 self.segment.dialogue_lines,
@@ -249,7 +231,6 @@ class ScriptRevisionOperationProposal:
                 self.scene_id is None
                 or self.scene is None
                 or self.scene.id != self.scene_id
-                or self.shot_id is not None
                 or self.segment is not None
             ):
                 raise ValueError("replace_scene 必须携带 ID 一致的已有 Scene。")
@@ -258,7 +239,6 @@ class ScriptRevisionOperationProposal:
                 self.scene_id is not None
                 or self.scene is None
                 or self.scene.id is not None
-                or self.shot_id is not None
                 or self.segment is not None
             ):
                 raise ValueError("insert_scene 的新 Scene 必须使用 null ID。")
@@ -267,7 +247,6 @@ class ScriptRevisionOperationProposal:
                 self.scene_id is None
                 or self.scene is not None
                 or self.after_scene_id is not None
-                or self.shot_id is not None
                 or self.segment is not None
             ):
                 raise ValueError("delete_scene 只能指定已有 Scene ID。")
@@ -275,19 +254,17 @@ class ScriptRevisionOperationProposal:
             self.scene_id is None
             or self.scene is not None
             or self.scene_id == self.after_scene_id
-            or self.shot_id is not None
             or self.segment is not None
         ):
             raise ValueError("move_scene 必须指定不同的 Scene 与锚点。")
         elif self.operation == "replace_segment" and (
             self.scene_id is None
-            or self.shot_id is None
             or self.segment is None
             or self.segment.id is None
             or self.scene is not None
             or self.after_scene_id is not None
         ):
-            raise ValueError("replace_segment 必须指定 Scene、Shot 和已有 Segment。")
+            raise ValueError("replace_segment 必须指定 Scene 和已有 Segment。")
 
 
 @dataclass(frozen=True, slots=True)
@@ -323,7 +300,7 @@ def _validate_optional_ids(scenes: tuple[EditableSceneProposal, ...]) -> None:
         _require_text(scene.title, "scene.title", 300)
         _require_text(scene.summary, "scene.summary", 4_000)
         _require_text(scene.setting, "scene.setting", 4_000)
-        _validate_scene_driver(scene.driver, scene.shots, scene.narration_cues)
+        _validate_scene_driver(scene.driver, scene.shots, scene.segments, scene.narration_cues)
         for shot in scene.shots:
             if shot.id is not None:
                 _require_text(shot.id, "shot.id", 32)
@@ -331,22 +308,18 @@ def _validate_optional_ids(scenes: tuple[EditableSceneProposal, ...]) -> None:
             _require_text(shot.composition, "shot.composition", 4_000)
             _require_text(shot.camera_movement, "shot.camera_movement", 2_000)
             _require_text(shot.action, "shot.action", 4_000)
-            if not shot.segments:
-                raise ValueError("每个 Shot 至少需要一个 Segment。")
-            for index, segment in enumerate(shot.segments):
-                if segment.id is not None:
-                    _require_text(segment.id, "segment.id", 32)
-                    ids.append(segment.id)
-                if (
-                    not isfinite(segment.duration_estimate_seconds)
-                    or segment.duration_estimate_seconds < 0.2
-                ):
-                    raise ValueError("segment.duration_estimate_seconds 不合法。")
-                _require_text(segment.action, "segment.action", 4_000)
-                if index == 0 and segment.boundary_from_previous is not None:
-                    raise ValueError("Shot 的第一个 Segment 不能包含前置边界。")
-                if index > 0 and segment.boundary_from_previous is None:
-                    raise ValueError("Shot 的后续 Segment 必须说明前置边界。")
+        for segment in scene.segments:
+            if segment.id is not None:
+                _require_text(segment.id, "segment.id", 32)
+                ids.append(segment.id)
+            _validate_shot_indexes(segment.shot_indexes)
+            if (
+                isinstance(segment.duration_estimate_seconds, bool)
+                or not isfinite(segment.duration_estimate_seconds)
+                or segment.duration_estimate_seconds < 0.2
+            ):
+                raise ValueError("segment.duration_estimate_seconds 不合法。")
+            _require_text(segment.action, "segment.action", 4_000)
         for cue in scene.narration_cues:
             if cue.id is not None:
                 _require_text(cue.id, "narration_cue.id", 32)
@@ -355,36 +328,25 @@ def _validate_optional_ids(scenes: tuple[EditableSceneProposal, ...]) -> None:
                 _require_text(track.text, "narration_track.text", 4_000)
                 _validate_seed(track.seed)
                 validate_recipe_params_shape(track.recipe_params, "narration_track.recipe_params")
-            if scene.shots and (
-                cue.start_shot_index is None
-                or cue.end_shot_index is None
-                or isinstance(cue.start_shot_index, bool)
-                or isinstance(cue.end_shot_index, bool)
-                or cue.start_shot_index < 0
-                or cue.end_shot_index < cue.start_shot_index
-                or cue.end_shot_index >= len(scene.shots)
-            ):
-                raise ValueError("旁白 Cue 的 Shot 范围不合法。")
-        _validate_scene_narration(scene.shots, scene.narration_cues)
+        _validate_scene_narration(scene.narration_cues)
     if len(ids) != len(set(ids)):
         raise ValueError("Agent 脚本 proposal 中的已有 ID 不能重复。")
 
 
+def _validate_shot_indexes(indexes: tuple[int, ...]) -> None:
+    if not indexes:
+        raise ValueError("segment.shot_indexes 必须至少覆盖一个 Shot。")
+    if any(isinstance(index, bool) or not isinstance(index, int) or index < 0 for index in indexes):
+        raise ValueError("segment.shot_indexes 必须是非负整数序号。")
+    if len(indexes) != len(set(indexes)):
+        raise ValueError("segment.shot_indexes 不能重复。")
+
+
 def _validate_scene_narration(
-    shots: tuple[ShotProposal | EditableShotProposal, ...],
     cues: tuple[NarrationCueProposal | EditableNarrationCueProposal, ...],
 ) -> None:
     if len(cues) > 1:
         raise ValueError("每个 Scene 最多只能有一段旁白。")
-    if not cues:
-        return
-    cue = cues[0]
-    if not shots:
-        if cue.start_shot_index is not None or cue.end_shot_index is not None:
-            raise ValueError("未规划 Shot 的旁白必须使用 null 锚点。")
-        return
-    if cue.start_shot_index != 0 or cue.end_shot_index != len(shots) - 1:
-        raise ValueError("Scene 旁白必须覆盖本 Scene 的全部 Shot。")
 
 
 def _validate_seed(seed: int) -> None:
@@ -392,13 +354,13 @@ def _validate_seed(seed: int) -> None:
         raise ValueError("seed 不合法。")
 
 
-def _validate_scene_driver(driver: str, shots: tuple, cues: tuple) -> None:
+def _validate_scene_driver(driver: str, shots: tuple, segments: tuple, cues: tuple) -> None:
     if driver not in {"narration", "drama"}:
         raise ValueError("Scene driver 必须是 narration 或 drama。")
     if driver == "narration":
         if len(cues) != 1:
             raise ValueError("Narration Scene 必须包含一个语义原子的旁白 Cue。")
-        if any(segment.dialogue_lines for shot in shots for segment in shot.segments):
+        if any(segment.dialogue_lines for segment in segments):
             raise ValueError("Narration Scene 不能包含对白；需要对白的内容请使用 Drama Scene。")
         return
     if cues:

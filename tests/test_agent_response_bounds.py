@@ -31,11 +31,10 @@ class FifteenShotScript(RecordingScriptProposer):
     async def propose(self, **kwargs):
         base = await super().propose(**kwargs)
         scene = base.scenes[0]
-        shot = replace(
-            scene.shots[0],
-            segments=(replace(scene.shots[0].segments[0], dialogue_lines=()),),
+        scene = replace(
+            scene,
+            segments=tuple(replace(segment, dialogue_lines=()) for segment in scene.segments),
         )
-        scene = replace(scene, shots=(shot,))
         return replace(
             base,
             scenes=tuple(replace(scene, title=f"大型项目场景 {index + 1}") for index in range(15)),

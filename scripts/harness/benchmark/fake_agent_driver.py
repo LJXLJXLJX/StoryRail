@@ -186,7 +186,6 @@ def _script_proposal(character_id: str) -> StructuredDirectorScriptProposal:
                 title="末班车",
                 summary="小满在停用前的车站等最后一班车。",
                 setting="傍晚，空旷站台，冷蓝色天光。",
-                narration_cues=(),
                 shots=(
                     ShotProposal(
                         visible_character_ids=(character_id,),
@@ -195,20 +194,20 @@ def _script_proposal(character_id: str) -> StructuredDirectorScriptProposal:
                         action="小满握住行李箱拉杆，抬头看向站牌。",
                         audio_direction="远处风声和站内电流声。",
                         transition_in=None,
-                        segments=(
-                            ShotSegmentProposal(
-                                duration_estimate_seconds=6.0,
-                                action="小满抬头看向站牌。",
-                                dialogue_lines=(
-                                    DialogueLineProposal(
-                                        character_id, "还会来吗？", "轻声，带一点迟疑"
-                                    ),
-                                ),
-                                boundary_from_previous=None,
-                            ),
-                        ),
                     ),
                 ),
+                segments=(
+                    ShotSegmentProposal(
+                        shot_indexes=(0,),
+                        duration_estimate_seconds=6.0,
+                        action="小满抬头看向站牌。",
+                        dialogue_lines=(
+                            DialogueLineProposal(character_id, "还会来吗？", "轻声，带一点迟疑"),
+                        ),
+                        boundary_from_previous=None,
+                    ),
+                ),
+                narration_cues=(),
             ),
         )
     )

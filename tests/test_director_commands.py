@@ -103,14 +103,15 @@ class _ScriptCompiler:
                 action=action,
                 audio_direction="环境声。",
                 transition_in=None,
-                segments=(
-                    ShotSegmentProposal(
-                        duration_estimate_seconds=3.0,
-                        action=action,
-                        dialogue_lines=(DialogueLineProposal(character_id, "好。", "轻声。"),),
-                        boundary_from_previous=None,
-                    ),
-                ),
+            )
+
+        def segment(index: int, action: str, character_id: str) -> ShotSegmentProposal:
+            return ShotSegmentProposal(
+                shot_indexes=(index,),
+                duration_estimate_seconds=3.0,
+                action=action,
+                dialogue_lines=(DialogueLineProposal(character_id, "好。", "轻声。"),),
+                boundary_from_previous=None,
             )
 
         return StructuredDirectorScriptProposal(
@@ -122,6 +123,10 @@ class _ScriptCompiler:
                     shots=(
                         shot("甲抬头。", characters[0].id),
                         shot("乙转身。", characters[1].id),
+                    ),
+                    segments=(
+                        segment(0, "甲抬头。", characters[0].id),
+                        segment(1, "乙转身。", characters[1].id),
                     ),
                     narration_cues=(),
                 ),
@@ -1524,6 +1529,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                 item.segment_id: (item.start_keyframe_id, item.end_keyframe_id)
                 for item in document.keyframe_plan.segments
             }
+            first_segment = shot_segments(scene, first_shot.id)[0]
             registry = DirectorCommandRegistry(store)
             inserted = registry.execute(
                 DirectorCommand(
@@ -1538,62 +1544,34 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                                 "scene_id": scene.id,
                                 "after_shot_id": first_shot.id,
                                 "shot": _script_shot_payload(character_id, "新镜头动作。"),
+                                "attach_to_segment_id": first_segment.id,
                             }
                         ],
                     },
                 )
             )
             assert inserted.document.director_script is not None
-            shots = inserted.document.director_script.scenes[0].shots
+            inserted_scene = inserted.document.director_script.scenes[0]
+            shots = inserted_scene.shots
             self.assertEqual(len(shots), 3)
             inserted_shot = shots[1]
             self.assertNotIn(inserted_shot.id, {first_shot.id, second_shot.id})
-            inserted_segment_id = shot_segments(
-                inserted.document.director_script.scenes[0], inserted_shot.id
-            )[0].id
+            # 新 Shot 并入已有 Segment 的覆盖，不新建生产单元。
+            inserted_segment = shot_segments(inserted_scene, inserted_shot.id)[0]
+            self.assertEqual(inserted_segment.id, first_segment.id)
+            self.assertEqual(inserted_segment.shot_ids, (first_shot.id, inserted_shot.id))
             assert inserted.document.keyframe_plan is not None
-            assert inserted.document.video_plan is not None
-            self.assertIn(
-                inserted_segment_id,
-                {item.segment_id for item in inserted.document.keyframe_plan.segments},
-            )
-            self.assertIn(
-                inserted_segment_id,
-                {item.segment_id for item in inserted.document.video_plan.segments},
-            )
-            inserted_bindings = {
-                item.segment_id: (item.start_keyframe_id, item.end_keyframe_id)
-                for item in inserted.document.keyframe_plan.segments
-            }
-            for segment_id, binding in original_bindings.items():
-                self.assertEqual(inserted_bindings[segment_id], binding)
-            moved = registry.execute(
-                DirectorCommand(
-                    "script.apply_operations",
-                    inserted.document.revision,
-                    "script-shot-move",
-                    {
-                        "scope": {"scene_ids": [scene.id]},
-                        "operations": [
-                            {
-                                "op": "move_shot",
-                                "scene_id": scene.id,
-                                "shot_id": inserted_shot.id,
-                                "after_shot_id": None,
-                            }
-                        ],
-                    },
-                )
-            )
-            assert moved.document.director_script is not None
             self.assertEqual(
-                moved.document.director_script.scenes[0].shots[0].id,
-                inserted_shot.id,
+                {
+                    item.segment_id: (item.start_keyframe_id, item.end_keyframe_id)
+                    for item in inserted.document.keyframe_plan.segments
+                },
+                original_bindings,
             )
             deleted = registry.execute(
                 DirectorCommand(
                     "script.apply_operations",
-                    moved.document.revision,
+                    inserted.document.revision,
                     "script-shot-delete",
                     {
                         "scope": {"scene_ids": [scene.id]},
@@ -1608,9 +1586,14 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                 )
             )
             assert deleted.document.director_script is not None
+            deleted_scene = deleted.document.director_script.scenes[0]
             self.assertEqual(
-                [item.id for item in deleted.document.director_script.scenes[0].shots],
+                [item.id for item in deleted_scene.shots],
                 [first_shot.id, second_shot.id],
+            )
+            self.assertEqual(
+                shot_segments(deleted_scene, first_shot.id)[0].shot_ids,
+                (first_shot.id,),
             )
             self.assertEqual(deleted.document.assets, document.assets)
             self.assertEqual(deleted.document.generations, document.generations)
@@ -1694,24 +1677,24 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                     }
                 )
 
-    async def test_script_scene_insert_split_move_and_delete(self) -> None:
+    async def test_script_scene_insert_move_and_delete(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store, _service, document, _route = await _visual_project(directory)
             assert document.director_script is not None
             assert document.keyframe_plan is not None
             document = install_location(store, scene_ids=(document.director_script.scenes[0].id,))
             scene = document.director_script.scenes[0]
-            first_shot, second_shot = scene.shots
+            character_id = document.reference_library.characters[0].id
             original_bindings = {
                 item.segment_id: (item.start_keyframe_id, item.end_keyframe_id)
                 for item in document.keyframe_plan.segments
             }
             registry = DirectorCommandRegistry(store)
-            split = registry.execute(
+            inserted = registry.execute(
                 DirectorCommand(
                     "script.apply_operations",
                     document.revision,
-                    "script-scene-split",
+                    "script-scene-insert",
                     {
                         "scope": {"scene_ids": [scene.id]},
                         "operations": [
@@ -1722,43 +1705,53 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                                     "title": "母船甲板",
                                     "summary": "转移到数海里外的母船甲板。",
                                     "setting": "夜间母船甲板，海风强烈。",
-                                    "move_shot_ids": [second_shot.id],
+                                    "shots": [_script_shot_payload(character_id, "海风中站着。")],
+                                    "segments": [
+                                        _script_new_segment_payload(
+                                            character_id, "海风中站着。", boundary=False
+                                        )
+                                    ],
                                 },
                             }
                         ],
                     },
                 )
             )
-            assert split.document.director_script is not None
-            scenes = split.document.director_script.scenes
-            self.assertEqual([item.id for item in scenes[0].shots], [first_shot.id])
+            assert inserted.document.director_script is not None
+            scenes = inserted.document.director_script.scenes
+            self.assertEqual(
+                [item.id for item in scenes[0].shots], [item.id for item in scene.shots]
+            )
             new_scene = scenes[1]
             self.assertNotEqual(new_scene.id, scene.id)
             self.assertEqual(new_scene.title, "母船甲板")
             self.assertEqual(new_scene.driver, "drama")
             self.assertIsNone(new_scene.location_id)
-            self.assertEqual([item.id for item in new_scene.shots], [second_shot.id])
-            # 移出原地点的 Shot 不再保留视图绑定；留下的 Shot 保持原绑定。
-            self.assertIsNone(new_scene.shots[0].view_id)
-            self.assertEqual(scenes[0].shots[0].view_id, first_shot.view_id)
-            self.assertIsNotNone(first_shot.view_id)
-            self.assertEqual(split.receipt.new_revision, document.revision + 1)
-            self.assertIn(new_scene.id, split.receipt.changed_ids)
-            self.assertIn(new_scene.id, split.receipt.decision_summary or "")
-            assert split.document.keyframe_plan is not None
-            self.assertEqual(
-                {
-                    item.segment_id: (item.start_keyframe_id, item.end_keyframe_id)
-                    for item in split.document.keyframe_plan.segments
-                },
-                original_bindings,
+            (new_shot,) = new_scene.shots
+            self.assertRegex(new_shot.id, r"^[0-9a-f]{32}$")
+            self.assertIsNone(new_shot.view_id)
+            (new_segment,) = new_scene.segments
+            self.assertEqual(new_segment.shot_ids, (new_shot.id,))
+            self.assertEqual(inserted.receipt.new_revision, document.revision + 1)
+            self.assertIn(new_scene.id, inserted.receipt.changed_ids)
+            self.assertIn(new_scene.id, inserted.receipt.decision_summary or "")
+            assert inserted.document.keyframe_plan is not None
+            inserted_bindings = {
+                item.segment_id: (item.start_keyframe_id, item.end_keyframe_id)
+                for item in inserted.document.keyframe_plan.segments
+            }
+            for segment_id, binding in original_bindings.items():
+                self.assertEqual(inserted_bindings[segment_id], binding)
+            self.assertIn(
+                new_segment.id,
+                {item.segment_id for item in inserted.document.keyframe_plan.segments},
             )
 
             with self.assertRaisesRegex(ValueError, "超出已授权 Scene scope"):
                 registry.execute(
                     DirectorCommand(
                         "script.apply_operations",
-                        split.document.revision,
+                        inserted.document.revision,
                         "script-scene-out-of-scope",
                         {
                             "scope": {"scene_ids": [scene.id]},
@@ -1772,11 +1765,11 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                         },
                     )
                 )
-            moved_back = registry.execute(
+            moved = registry.execute(
                 DirectorCommand(
                     "script.apply_operations",
-                    split.document.revision,
-                    "script-scene-merge-back",
+                    inserted.document.revision,
+                    "script-scene-move",
                     {
                         "scope": {"scene_ids": [scene.id, new_scene.id]},
                         "operations": [
@@ -1784,31 +1777,33 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                                 "op": "move_scene",
                                 "scene_id": new_scene.id,
                                 "after_scene_id": None,
-                            },
-                            {
-                                "op": "move_shot",
-                                "scene_id": new_scene.id,
-                                "shot_id": second_shot.id,
-                                "target_scene_id": scene.id,
-                                "after_shot_id": first_shot.id,
-                            },
-                            {"op": "delete_scene", "scene_id": new_scene.id},
+                            }
                         ],
                     },
                 )
             )
-            assert moved_back.document.director_script is not None
+            assert moved.document.director_script is not None
             self.assertEqual(
-                [item.id for item in moved_back.document.director_script.scenes],
-                [scene.id],
+                [item.id for item in moved.document.director_script.scenes],
+                [new_scene.id, scene.id],
             )
-            # 移出后再移回的 Shot 不会自动恢复视图绑定。
+            deleted = registry.execute(
+                DirectorCommand(
+                    "script.apply_operations",
+                    moved.document.revision,
+                    "script-scene-delete",
+                    {
+                        "scope": {"scene_ids": [new_scene.id]},
+                        "operations": [{"op": "delete_scene", "scene_id": new_scene.id}],
+                    },
+                )
+            )
+            assert deleted.document.director_script is not None
             self.assertEqual(
-                moved_back.document.director_script.scenes[0].shots,
-                (scene.shots[0], replace(scene.shots[1], view_id=None)),
+                [item.id for item in deleted.document.director_script.scenes], [scene.id]
             )
-            self.assertEqual(moved_back.document.assets, document.assets)
-            self.assertEqual(moved_back.document.generations, document.generations)
+            self.assertEqual(deleted.document.assets, document.assets)
+            self.assertEqual(deleted.document.generations, document.generations)
 
     async def test_script_scene_operations_reject_invalid_states_without_write(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1824,10 +1819,22 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                 "setting": "室外。",
             }
             cases = (
-                ("仍包含 Shot", [{"op": "delete_scene", "scene_id": scene.id}]),
                 (
                     "至少需要一个 Shot",
                     [{"op": "insert_scene", "after_scene_id": scene.id, "scene": new_scene}],
+                ),
+                (
+                    "同时为空或同时非空",
+                    [
+                        {
+                            "op": "insert_scene",
+                            "after_scene_id": scene.id,
+                            "scene": {
+                                **new_scene,
+                                "shots": [_script_shot_payload(character_id, "动作。")],
+                            },
+                        }
+                    ],
                 ),
                 (
                     "Scene 不存在",
@@ -1838,6 +1845,11 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                             "scene": {
                                 **new_scene,
                                 "shots": [_script_shot_payload(character_id, "动作。")],
+                                "segments": [
+                                    _script_new_segment_payload(
+                                        character_id, "动作。", boundary=False
+                                    )
+                                ],
                             },
                         }
                     ],
@@ -1921,6 +1933,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             scene = document.director_script.scenes[0]
             shot = scene.shots[0]
             original = shot_segments(scene, shot.id)[0]
+            character_id = document.reference_library.characters[0].id
             registry = DirectorCommandRegistry(store)
             inserted = registry.execute(
                 DirectorCommand(
@@ -1932,12 +1945,13 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                         "operations": [
                             {
                                 "op": "insert_segment",
-                                "shot_id": shot.id,
+                                "scene_id": scene.id,
                                 "after_segment_id": original.id,
                                 "segment": _script_segment_payload(
-                                    document.reference_library.characters[0].id,
+                                    character_id,
                                     "新增动作。",
                                     boundary=True,
+                                    shot_ids=(shot.id,),
                                 ),
                             }
                         ],
@@ -1957,7 +1971,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                         "operations": [
                             {
                                 "op": "move_segment",
-                                "shot_id": shot.id,
+                                "scene_id": scene.id,
                                 "segment_id": added.id,
                                 "after_segment_id": None,
                             },
@@ -1983,7 +1997,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual([item.id for item in segments], [added.id, original.id])
             self.assertEqual(segments[0].duration_estimate_seconds, 4)
             before = store.path.read_bytes()
-            with self.assertRaisesRegex(ValueError, "后续 Segment"):
+            with self.assertRaisesRegex(ValueError, "必须填写 boundary_from_previous"):
                 registry.execute(
                     DirectorCommand(
                         "script.apply_operations",
@@ -2012,7 +2026,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                         "operations": [
                             {
                                 "op": "delete_segment",
-                                "shot_id": shot.id,
+                                "scene_id": scene.id,
                                 "segment_id": original.id,
                             }
                         ],
@@ -2096,11 +2110,13 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                                     character_id,
                                     "前半动作。",
                                     boundary=False,
+                                    shot_ids=(shot.id,),
                                 ),
                                 "second": _script_segment_payload(
                                     character_id,
                                     "后半动作。",
                                     boundary=True,
+                                    shot_ids=(shot.id,),
                                 ),
                             }
                         ],
@@ -2128,6 +2144,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                                     character_id,
                                     "完整动作。",
                                     boundary=False,
+                                    shot_ids=(shot.id,),
                                 ),
                             }
                         ],
@@ -3073,8 +3090,34 @@ def _script_segment_payload(
     action: str,
     *,
     boundary: bool,
+    shot_ids: tuple[str, ...] | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "duration_estimate_seconds": 2.0,
+        "action": action,
+        "dialogue_lines": [
+            {
+                "character_id": character_id,
+                "text": "好。",
+                "delivery": "轻声。",
+            }
+        ],
+        "boundary_from_previous": _boundary_payload() if boundary else None,
+    }
+    if shot_ids is not None:
+        payload["shot_ids"] = list(shot_ids)
+    return payload
+
+
+def _script_new_segment_payload(
+    character_id: str,
+    action: str,
+    *,
+    boundary: bool,
+    shot_indexes: tuple[int, ...] = (0,),
 ) -> dict[str, object]:
     return {
+        "shot_indexes": list(shot_indexes),
         "duration_estimate_seconds": 2.0,
         "action": action,
         "dialogue_lines": [
@@ -3096,7 +3139,4 @@ def _script_shot_payload(character_id: str, action: str) -> dict[str, object]:
         "action": action,
         "audio_direction": "环境声。",
         "transition_in": None,
-        "segments": [
-            _script_segment_payload(character_id, action, boundary=False),
-        ],
     }

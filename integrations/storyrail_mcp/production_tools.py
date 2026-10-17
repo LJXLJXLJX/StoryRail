@@ -85,10 +85,22 @@ shot_fields = {
     "audio_direction": Text,
     "transition_in": str | None,
 }
-Segment = object_model("Segment", segment_fields)
-Shot = object_model(
-    "Shot", {**shot_fields, "segments": Annotated[list[Segment], Field(min_length=1)]}
+# 已有 Scene 内的 Segment 用已有 Shot ID 表达覆盖。
+Segment = object_model(
+    "Segment",
+    {"shot_ids": Annotated[list[ID], Field(min_length=1, max_length=100)], **segment_fields},
 )
+# 随新 Scene 一起创建的 Segment 用新 shots 数组的序号表达覆盖。
+NewSegment = object_model(
+    "NewSegment",
+    {
+        "shot_indexes": Annotated[
+            list[Annotated[int, Field(ge=0)]], Field(min_length=1, max_length=100)
+        ],
+        **segment_fields,
+    },
+)
+Shot = object_model("Shot", shot_fields)
 ShotFields = object_model("ShotFields", shot_fields, shot_fields)
 scene_fields = {
     "title": Annotated[str, Field(min_length=1, max_length=300)],
@@ -115,28 +127,40 @@ SceneNarrationCue = object_model(
 scene_insert_optional = {
     "driver": Literal["drama", "narration"],
     "shots": Annotated[list[Shot], Field(max_length=100)],
-    "move_shot_ids": IDs,
+    "segments": Annotated[list[NewSegment], Field(max_length=100)],
     "narration_cue": SceneNarrationCue,
 }
 SceneInsert = object_model(
     "SceneInsert", {**scene_fields, **scene_insert_optional}, scene_insert_optional
 )
-SegmentFields = object_model("SegmentFields", segment_fields, segment_fields)
-# target_scene_id 可选：缺省为同 Scene 重排，指定时跨 Scene 迁移。
-MoveShot = object_model(
-    "move_shot",
-    {
-        "op": Literal["move_shot"],
-        "scene_id": ID,
-        "shot_id": ID,
-        "after_shot_id": ID | None,
-        "target_scene_id": ID | None,
-    },
-    ("target_scene_id",),
+SegmentFields = object_model(
+    "SegmentFields",
+    {"shot_ids": Annotated[list[ID], Field(min_length=1, max_length=100)], **segment_fields},
+    ("shot_ids", *segment_fields),
 )
+
+
+# 新 Shot 必须同时说明它如何进入覆盖：并入已有 Segment，或新建一个只覆盖它的 Segment。
+class InsertShot(Strict):
+    op: Literal["insert_shot"]
+    scene_id: ID
+    after_shot_id: ID | None
+    shot: Shot
+    attach_to_segment_id: ID | None = None
+    new_segment: NewSegment | None = None
+
+    @model_validator(mode="after")
+    def exact_coverage(self):
+        if (self.attach_to_segment_id is None) == (self.new_segment is None):
+            raise ValueError(
+                "insert_shot 必须且只能给出 attach_to_segment_id 或 new_segment 之一。"
+            )
+        return self
+
+
 ScriptOperation = reduce(
     or_,
-    (MoveShot,)
+    (InsertShot,)
     + tuple(
         operation(name, fields)
         for name, fields in {
@@ -145,12 +169,15 @@ ScriptOperation = reduce(
             "move_scene": {"scene_id": ID, "after_scene_id": ID | None},
             "delete_scene": {"scene_id": ID},
             "update_shot_fields": {"shot_id": ID, "fields": ShotFields},
-            "insert_shot": {"scene_id": ID, "after_shot_id": ID | None, "shot": Shot},
             "delete_shot": {"scene_id": ID, "shot_id": ID},
             "update_segment_fields": {"segment_id": ID, "fields": SegmentFields},
-            "insert_segment": {"shot_id": ID, "after_segment_id": ID | None, "segment": Segment},
-            "move_segment": {"shot_id": ID, "segment_id": ID, "after_segment_id": ID | None},
-            "delete_segment": {"shot_id": ID, "segment_id": ID},
+            "insert_segment": {
+                "scene_id": ID,
+                "after_segment_id": ID | None,
+                "segment": Segment,
+            },
+            "move_segment": {"scene_id": ID, "segment_id": ID, "after_segment_id": ID | None},
+            "delete_segment": {"scene_id": ID, "segment_id": ID},
             "split_segment": {
                 "segment_id": ID,
                 "preserve_id": Literal["first", "second"],

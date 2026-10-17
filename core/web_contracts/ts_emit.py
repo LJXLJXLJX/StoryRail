@@ -230,7 +230,7 @@ def _render_validation(catalog: dict[str, dict]) -> str:
         "  refineScene,\n"
         "  refineWorkflow,\n"
         "  refineWorkspaceLayers,\n"
-        "  serializeEditableScene,\n"
+        "  editableScenePayload,\n"
         "  snapshotConsistencyError,\n"
         '} from "./refine";\n'
         f'import type {{\n  {imported},\n}} from "./types";\n\n'
@@ -247,7 +247,7 @@ def _render_validation(catalog: dict[str, dict]) -> str:
         "  isThreadId,\n"
         "  isVideoSeed,\n"
         '} from "./schema_check";\n'
-        'export { serializeEditableScene } from "./refine";\n\n'
+        'export { editableScenePayload } from "./refine";\n\n'
         f"const schemas: Record<string, JsonSchema> = {schema_json};\n\n"
         f"{guards}\n\n"
         f"{_PARSERS}\n\n"

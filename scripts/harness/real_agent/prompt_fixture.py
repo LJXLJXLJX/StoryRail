@@ -50,14 +50,15 @@ async def prepare(store, value):
                         action="甲递出白色杯子，乙接稳。",
                         audio_direction="安静室内环境声。",
                         transition_in=None,
-                        segments=(
-                            ShotSegmentProposal(
-                                duration_estimate_seconds=3,
-                                action="甲递杯，乙接稳，保持左右站位。",
-                                dialogue_lines=dialogue,
-                                boundary_from_previous=None,
-                            ),
-                        ),
+                    ),
+                ),
+                segments=(
+                    ShotSegmentProposal(
+                        shot_indexes=(0,),
+                        duration_estimate_seconds=3,
+                        action="甲递杯，乙接稳，保持左右站位。",
+                        dialogue_lines=dialogue,
+                        boundary_from_previous=None,
                     ),
                 ),
                 narration_cues=(),

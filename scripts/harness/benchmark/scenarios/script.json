@@ -85,21 +85,22 @@
                     "camera_movement": "缓慢推近。",
                     "action": "小满握住行李箱拉杆，抬头看向站牌。",
                     "audio_direction": "远处风声和站内电流声。",
-                    "transition_in": null,
-                    "segments": [
+                    "transition_in": null
+                  }
+                ],
+                "segments": [
+                  {
+                    "shot_indexes": [0],
+                    "duration_estimate_seconds": 6.0,
+                    "action": "小满抬头看向站牌。",
+                    "dialogue_lines": [
                       {
-                        "duration_estimate_seconds": 6.0,
-                        "action": "小满抬头看向站牌。",
-                        "dialogue_lines": [
-                          {
-                            "character_id": "$base.character_id",
-                            "text": "还会来吗？",
-                            "delivery": "轻声，带一点迟疑"
-                          }
-                        ],
-                        "boundary_from_previous": null
+                        "character_id": "$base.character_id",
+                        "text": "还会来吗？",
+                        "delivery": "轻声，带一点迟疑"
                       }
-                    ]
+                    ],
+                    "boundary_from_previous": null
                   }
                 ]
               }

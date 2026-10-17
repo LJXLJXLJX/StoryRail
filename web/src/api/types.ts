@@ -909,6 +909,7 @@ export interface SceneProposal {
   summary: string;
   setting: string;
   shots: ShotProposal[];
+  segments: ShotSegmentProposal[];
   narration_cues: NarrationCueProposal[];
   driver: "narration" | "drama";
 }
@@ -920,10 +921,10 @@ export interface ShotProposal {
   action: string;
   audio_direction: string;
   transition_in: string | null;
-  segments: ShotSegmentProposal[];
 }
 
 export interface ShotSegmentProposal {
+  shot_indexes: number[];
   duration_estimate_seconds: number;
   action: string;
   dialogue_lines: DialogueLineProposal[];
@@ -943,8 +944,6 @@ export interface SegmentBoundaryProposal {
 }
 
 export interface NarrationCueProposal {
-  start_shot_index: number | null;
-  end_shot_index: number | null;
   zh: NarrationTrackProposal | null;
   en: NarrationTrackProposal | null;
 }
@@ -965,7 +964,6 @@ export interface ScriptRevisionOperationProposal {
   scene_id: string | null;
   after_scene_id: string | null;
   scene: EditableSceneProposal | null;
-  shot_id: string | null;
   segment: EditableShotSegmentProposal | null;
 }
 
@@ -975,6 +973,7 @@ export interface EditableSceneProposal {
   summary: string;
   setting: string;
   shots: EditableShotProposal[];
+  segments: EditableShotSegmentProposal[];
   narration_cues: EditableNarrationCueProposal[];
   driver: "narration" | "drama";
 }
@@ -987,11 +986,11 @@ export interface EditableShotProposal {
   action: string;
   audio_direction: string;
   transition_in: string | null;
-  segments: EditableShotSegmentProposal[];
 }
 
 export interface EditableShotSegmentProposal {
   id: string | null;
+  shot_indexes: number[];
   duration_estimate_seconds: number;
   action: string;
   dialogue_lines: DialogueLineProposal[];
@@ -1000,8 +999,6 @@ export interface EditableShotSegmentProposal {
 
 export interface EditableNarrationCueProposal {
   id: string | null;
-  start_shot_index: number | null;
-  end_shot_index: number | null;
   zh: NarrationTrackProposal | null;
   en: NarrationTrackProposal | null;
 }

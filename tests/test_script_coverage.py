@@ -61,9 +61,9 @@ def test_rule1_shot_ids_must_be_non_empty_unique_and_contiguous() -> None:
         _segment(0)
     with pytest.raises(ValueError, match="不能重复"):
         _segment(0, 0, 0)
-    with pytest.raises(ValueError, match="按顺序连续"):
+    with pytest.raises(ValueError, match="必须按 Shot 顺序连续覆盖"):
         _scene(3, _segment(0, 0, 2), _segment(1, 1))
-    with pytest.raises(ValueError, match="按顺序连续"):
+    with pytest.raises(ValueError, match="必须按 Shot 顺序连续覆盖"):
         _scene(2, _segment(0, 1, 0))
     with pytest.raises(ValueError, match="不属于本 Scene"):
         _scene(1, _segment(0, 0, 5))
@@ -79,23 +79,26 @@ def test_rule1_shot_ids_must_be_non_empty_unique_and_contiguous() -> None:
     ],
 )
 def test_rule2_segments_cover_every_shot_in_order_once(segments) -> None:
-    with pytest.raises(ValueError, match="按顺序覆盖全部 Shot|必须覆盖按顺序连续"):
+    with pytest.raises(
+        ValueError,
+        match="必须从本 Scene 的第一个 Shot 开始|跳过了第|重复覆盖了前面的 Shot",
+    ):
         _scene(3, *segments)
 
 
 def test_rule2_trailing_shots_must_be_covered() -> None:
-    with pytest.raises(ValueError, match="必须覆盖全部 Shot"):
+    with pytest.raises(ValueError, match="没有覆盖到最后一个 Shot"):
         _scene(3, _segment(0, 0), _segment(1, 1))
 
 
 def test_rule3_sharing_the_boundary_shot_iff_boundary_from_previous() -> None:
     assert _scene(1, _segment(0, 0), _segment(1, 0, continues=True))
     assert _scene(2, _segment(0, 0), _segment(1, 1))
-    with pytest.raises(ValueError, match="必须说明前置边界"):
+    with pytest.raises(ValueError, match="必须填写 boundary_from_previous"):
         _scene(1, _segment(0, 0), _segment(1, 0))
-    with pytest.raises(ValueError, match="不能包含前置边界"):
+    with pytest.raises(ValueError, match="boundary_from_previous 必须为 null"):
         _scene(2, _segment(0, 0), _segment(1, 1, continues=True))
-    with pytest.raises(ValueError, match="不能包含前置边界"):
+    with pytest.raises(ValueError, match="boundary_from_previous 必须为 null"):
         _scene(1, _segment(0, 0, continues=True))
 
 
@@ -104,7 +107,7 @@ def test_rule4_middle_segment_of_a_three_segment_shot_covers_only_that_shot() ->
         3, _segment(0, 0, 1), _segment(1, 1, continues=True), _segment(2, 1, 2, continues=True)
     )
     # 中间段多覆盖了 s2，第三段就无法再从共享的 s1 继续。
-    with pytest.raises(ValueError, match="按顺序覆盖全部 Shot"):
+    with pytest.raises(ValueError, match="重复覆盖了前面的 Shot"):
         _scene(
             3,
             _segment(0, 0, 1),

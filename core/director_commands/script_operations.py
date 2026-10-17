@@ -33,6 +33,20 @@ class ScriptBoundaryInput:
 
 @dataclass(frozen=True, slots=True)
 class ScriptSegmentInput:
+    """已有 Scene 内的 Segment：用已有 Shot 的 ID 表达覆盖。"""
+
+    shot_ids: tuple[str, ...]
+    duration_estimate_seconds: float
+    action: str
+    dialogue_lines: tuple[ScriptDialogueInput, ...]
+    boundary_from_previous: ScriptBoundaryInput | None
+
+
+@dataclass(frozen=True, slots=True)
+class ScriptNewSegmentInput:
+    """随新 Scene / 新 Shot 一起创建的 Segment：用本 Scene 新 shots 数组的序号表达覆盖。"""
+
+    shot_indexes: tuple[int, ...]
     duration_estimate_seconds: float
     action: str
     dialogue_lines: tuple[ScriptDialogueInput, ...]
@@ -47,7 +61,6 @@ class ScriptShotInput:
     action: str
     audio_direction: str
     transition_in: str | None
-    segments: tuple[ScriptSegmentInput, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +85,7 @@ class ScriptSceneInput:
     setting: str
     driver: Literal["drama", "narration"]
     shots: tuple[ScriptShotInput, ...]
-    move_shot_ids: tuple[str, ...]
+    segments: tuple[ScriptNewSegmentInput, ...]
     narration_cue: ScriptNarrationCueInput | None
 
 
@@ -86,17 +99,18 @@ class ScriptOperation:
     fields: dict[str, object] | None = None
     shot: ScriptShotInput | None = None
     segment: ScriptSegmentInput | None = None
+    new_segment: ScriptNewSegmentInput | None = None
+    attach_to_segment_id: str | None = None
     first: ScriptSegmentInput | None = None
     second: ScriptSegmentInput | None = None
     preserve_id: Literal["first", "second", "left", "right"] | None = None
     right_segment_id: str | None = None
-    target_scene_id: str | None = None
     scene: ScriptSceneInput | None = None
 
 
 # 与 Scene 模型长度上限一致；Core 模型仍是最终校验。
 _SCENE_TEXT_LIMITS = {"title": 300, "summary": 4_000, "setting": 4_000}
-_SCENE_OPTIONAL_FIELDS = {"driver", "shots", "move_shot_ids", "narration_cue"}
+_SCENE_OPTIONAL_FIELDS = {"driver", "shots", "segments", "narration_cue"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,23 +166,25 @@ def _parse_operation(value: object) -> ScriptOperation:
             op, shot_id=_id(item["shot_id"], "shot_id"), fields=_shot_fields(item["fields"])
         )
     if op == "insert_shot":
-        item = _exact(value, {"op", "scene_id", "after_shot_id", "shot"}, op)
+        required = {"op", "scene_id", "after_shot_id", "shot"}
+        optional = {"attach_to_segment_id", "new_segment"}
+        item = _exact(value, required | (optional & set(value)), op)
+        attach_to_segment_id = _optional_id(
+            item.get("attach_to_segment_id"), "attach_to_segment_id"
+        )
+        raw_new_segment = item.get("new_segment")
+        new_segment = None if raw_new_segment is None else _new_segment(raw_new_segment)
+        if (attach_to_segment_id is None) == (new_segment is None):
+            raise ValueError(
+                "insert_shot 必须且只能给出 attach_to_segment_id 或 new_segment 之一。"
+            )
         return ScriptOperation(
             op,
             scene_id=_id(item["scene_id"], "scene_id"),
             after_id=_optional_id(item["after_shot_id"], "after_shot_id"),
             shot=_shot(item["shot"]),
-        )
-    if op == "move_shot":
-        # target_scene_id 可选：缺省为同 Scene 内重排，指定时跨 Scene 迁移。
-        keys = {"op", "scene_id", "shot_id", "after_shot_id"}
-        item = _exact(value, keys | ({"target_scene_id"} & set(value)), op)
-        return ScriptOperation(
-            op,
-            scene_id=_id(item["scene_id"], "scene_id"),
-            shot_id=_id(item["shot_id"], "shot_id"),
-            after_id=_optional_id(item["after_shot_id"], "after_shot_id"),
-            target_scene_id=_optional_id(item.get("target_scene_id"), "target_scene_id"),
+            attach_to_segment_id=attach_to_segment_id,
+            new_segment=new_segment,
         )
     if op == "delete_shot":
         item = _exact(value, {"op", "scene_id", "shot_id"}, op)
@@ -185,21 +201,21 @@ def _parse_operation(value: object) -> ScriptOperation:
             fields=_segment_fields(item["fields"]),
         )
     if op == "insert_segment":
-        item = _exact(value, {"op", "shot_id", "after_segment_id", "segment"}, op)
+        item = _exact(value, {"op", "scene_id", "after_segment_id", "segment"}, op)
         return ScriptOperation(
             op,
-            shot_id=_id(item["shot_id"], "shot_id"),
+            scene_id=_id(item["scene_id"], "scene_id"),
             after_id=_optional_id(item["after_segment_id"], "after_segment_id"),
             segment=_segment(item["segment"]),
         )
     if op in {"move_segment", "delete_segment"}:
-        keys = {"op", "shot_id", "segment_id"} | (
+        keys = {"op", "scene_id", "segment_id"} | (
             {"after_segment_id"} if op == "move_segment" else set()
         )
         item = _exact(value, keys, op)
         return ScriptOperation(
             op,
-            shot_id=_id(item["shot_id"], "shot_id"),
+            scene_id=_id(item["scene_id"], "scene_id"),
             segment_id=_id(item["segment_id"], "segment_id"),
             after_id=_optional_id(item["after_segment_id"], "after_segment_id")
             if op == "move_segment"
@@ -256,10 +272,13 @@ def _scene(value: object) -> ScriptSceneInput:
     shots = value.get("shots", [])
     if not isinstance(shots, list):
         raise ValueError("insert_scene.scene.shots 必须是数组。")
-    move_shot_ids = _id_list(value.get("move_shot_ids", []), "move_shot_ids")
+    raw_segments = value.get("segments", [])
+    if not isinstance(raw_segments, list):
+        raise ValueError("insert_scene.scene.segments 必须是数组。")
+    segments = tuple(_new_segment(segment) for segment in raw_segments)
     raw_cue = value.get("narration_cue")
     cue = None if raw_cue is None else _narration_cue(raw_cue)
-    if driver == "narration" and (cue is None or shots or move_shot_ids):
+    if driver == "narration" and (cue is None or shots or segments):
         raise ValueError(
             "新增 Narration Scene 必须提供 narration_cue，且先完成 TTS 选择再规划 Shot。"
         )
@@ -273,7 +292,7 @@ def _scene(value: object) -> ScriptSceneInput:
         _scene_text(value["setting"], "setting"),
         driver,
         tuple(_shot(shot) for shot in shots),
-        move_shot_ids,
+        segments,
         cue,
     )
 
@@ -337,7 +356,12 @@ def _segment_fields(value: object) -> dict[str, object]:
         raise ValueError("update_segment_fields.fields 包含未声明字段。")
     result: dict[str, object] = {}
     for name, item in value.items():
-        if name == "duration_estimate_seconds":
+        if name == "shot_ids":
+            shot_ids = _id_list(item, name)
+            if not shot_ids:
+                raise ValueError("shot_ids 必须至少包含一个 Shot。")
+            result[name] = shot_ids
+        elif name == "duration_estimate_seconds":
             result[name] = _duration(item)
         elif name == "action":
             result[name] = _string(item, name)
@@ -354,9 +378,6 @@ def _shot(value: object) -> ScriptShotInput:
         SHOT_FIELDS,
         "shot",
     )
-    segments = item["segments"]
-    if not isinstance(segments, list) or not segments:
-        raise ValueError("新增 Shot 必须包含 Segment。")
     return ScriptShotInput(
         _id_list(item["visible_character_ids"], "visible_character_ids"),
         _string(item["composition"], "composition"),
@@ -364,7 +385,6 @@ def _shot(value: object) -> ScriptShotInput:
         _string(item["action"], "action"),
         _string(item["audio_direction"], "audio_direction", allow_empty=True),
         None if item["transition_in"] is None else _string(item["transition_in"], "transition_in"),
-        tuple(_segment(segment) for segment in segments),
     )
 
 
@@ -374,7 +394,26 @@ def _segment(value: object) -> ScriptSegmentInput:
         SEGMENT_FIELDS,
         "segment",
     )
+    shot_ids = _id_list(item["shot_ids"], "shot_ids")
+    if not shot_ids:
+        raise ValueError("Segment 必须至少覆盖一个 Shot。")
     return ScriptSegmentInput(
+        shot_ids,
+        _duration(item["duration_estimate_seconds"]),
+        _string(item["action"], "action"),
+        _dialogues(item["dialogue_lines"]),
+        _boundary(item["boundary_from_previous"]),
+    )
+
+
+def _new_segment(value: object) -> ScriptNewSegmentInput:
+    fields = (SEGMENT_FIELDS - {"shot_ids"}) | {"shot_indexes"}
+    item = _exact(value, fields, "new_segment")
+    shot_indexes = item["shot_indexes"]
+    if not isinstance(shot_indexes, list) or not shot_indexes:
+        raise ValueError("Segment 必须至少覆盖一个 Shot。")
+    return ScriptNewSegmentInput(
+        tuple(_index(value, "shot_indexes") for value in shot_indexes),
         _duration(item["duration_estimate_seconds"]),
         _string(item["action"], "action"),
         _dialogues(item["dialogue_lines"]),
@@ -448,6 +487,12 @@ def _id(value: object, label: str) -> str:
 
 def _optional_id(value: object, label: str) -> str | None:
     return None if value is None else _id(value, label)
+
+
+def _index(value: object, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{label} 必须是非负整数序号。")
+    return value
 
 
 def _id_list(value: object, label: str) -> tuple[str, ...]:

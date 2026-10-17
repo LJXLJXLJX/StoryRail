@@ -113,6 +113,7 @@ class StructuredDirectorScriptTests(unittest.IsolatedAsyncioTestCase):
             store.begin_script_edit("只改第一个 Segment。", expected_revision=scripted.revision)
             replacement = EditableShotSegmentProposal(
                 id=original_segment.id,
+                shot_indexes=(0,),
                 duration_estimate_seconds=original_segment.duration_estimate_seconds,
                 action="小满抬头后又低头看向手机。",
                 dialogue_lines=tuple(
@@ -129,7 +130,6 @@ class StructuredDirectorScriptTests(unittest.IsolatedAsyncioTestCase):
                         ScriptRevisionOperationProposal(
                             operation="replace_segment",
                             scene_id=original_scene.id,
-                            shot_id=original_shot.id,
                             segment=replacement,
                         ),
                     ),

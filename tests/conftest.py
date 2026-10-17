@@ -649,20 +649,21 @@ class Journey:
                     "action": "小满握住行李箱拉杆，抬头看向站牌。",
                     "audio_direction": "远处风声和站内电流声。",
                     "transition_in": None,
-                    "segments": [
+                }
+            ],
+            "segments": [
+                {
+                    "shot_indexes": [0],
+                    "duration_estimate_seconds": 6.0,
+                    "action": "小满抬头看向站牌。",
+                    "dialogue_lines": [
                         {
-                            "duration_estimate_seconds": 6.0,
-                            "action": "小满抬头看向站牌。",
-                            "dialogue_lines": [
-                                {
-                                    "character_id": character_id,
-                                    "text": "还会来吗？",
-                                    "delivery": "轻声，带一点迟疑",
-                                }
-                            ],
-                            "boundary_from_previous": None,
+                            "character_id": character_id,
+                            "text": "还会来吗？",
+                            "delivery": "轻声，带一点迟疑",
                         }
                     ],
+                    "boundary_from_previous": None,
                 }
             ],
             "narration_cues": [],
@@ -679,10 +680,9 @@ class Journey:
             "summary": "画外旁白描述小满等待末班车的安静时刻。",
             "setting": "傍晚，空旷站台，冷蓝色天光。",
             "shots": [],
+            "segments": [],
             "narration_cues": [
                 {
-                    "start_shot_index": None,
-                    "end_shot_index": None,
                     "zh": {"text": "末班车到来以前，站台仍旧保持着漫长的安静。", "seed": 42},
                     "en": {
                         "text": "Before the last train arrives, the platform stays quiet.",
@@ -864,7 +864,6 @@ class Journey:
         """为尚无 Shot 的 narration Scene 插入覆盖真实音频时长的 Shot；Core 随写入建立基线。"""
         snap = self.snapshot()
         assets = {asset["id"]: asset for asset in snap["assets"]}
-        operations = []
         for scene in snap["director_script"]["scenes"]:
             if scene["driver"] != "narration" or scene["shots"]:
                 continue
@@ -877,58 +876,83 @@ class Journey:
                 duration = max(durations) if durations else 1.0
                 segment_count = max(1, math.ceil(duration / 10.0))
                 segment_duration = round(duration / segment_count, 3)
-                operations.append(
+                shot = {
+                    "visible_character_ids": [],
+                    "composition": "全景，固定机位观察。",
+                    "camera_movement": "缓慢推进。",
+                    "action": "同一镜头连续观察站台环境。",
+                    "audio_direction": "远处风声和站内电流声。",
+                    "transition_in": None,
+                }
+                first_segment = {
+                    "shot_indexes": [0],
+                    **self._narration_segment_payload(segment_duration, 0),
+                }
+                self._command(
+                    "script.apply_operations",
                     {
-                        "op": "insert_shot",
+                        "scope": {"scene_ids": [scene["id"]]},
+                        "operations": [
+                            {
+                                "op": "insert_shot",
+                                "scene_id": scene["id"],
+                                "after_shot_id": None,
+                                "shot": shot,
+                                "new_segment": first_segment,
+                            }
+                        ],
+                    },
+                    role="agent",
+                    step="plan_narration_shots",
+                )
+                snap = self.snapshot()
+                planned = next(
+                    item for item in snap["director_script"]["scenes"] if item["id"] == scene["id"]
+                )
+                shot_id = planned["shots"][0]["id"]
+                remaining = [
+                    {
+                        "op": "insert_segment",
                         "scene_id": scene["id"],
-                        "after_shot_id": None,
-                        "shot": {
-                            "visible_character_ids": [],
-                            "composition": "全景，固定机位观察。",
-                            "camera_movement": "缓慢推进。",
-                            "action": "同一镜头连续观察站台环境。",
-                            "audio_direction": "远处风声和站内电流声。",
-                            "transition_in": None,
-                            "segments": [
-                                {
-                                    "duration_estimate_seconds": segment_duration,
-                                    "action": (
-                                        "连续观察的前半程。"
-                                        if index == 0
-                                        else "从同一静态交接时刻继续。"
-                                    ),
-                                    "dialogue_lines": [],
-                                    "boundary_from_previous": (
-                                        None
-                                        if index == 0
-                                        else {
-                                            "reason": "model_constraint",
-                                            "continuity_instruction": "从同一静态交接时刻继续",
-                                        }
-                                    ),
-                                }
-                                for index in range(segment_count)
-                            ],
+                        "after_segment_id": planned["segments"][-1]["id"],
+                        "segment": {
+                            "shot_ids": [shot_id],
+                            "duration_estimate_seconds": duration,
+                            **self._narration_segment_payload(duration, index),
                         },
                     }
-                )
-        if operations:
-            self._command(
-                "script.apply_operations",
-                {
-                    "scope": {
-                        "scene_ids": sorted({operation["scene_id"] for operation in operations})
-                    },
-                    "operations": operations,
-                },
-                role="agent",
-                step="plan_narration_shots",
-            )
+                    for index in range(1, segment_count)
+                ]
+                if remaining:
+                    # 同批补段：Core 只在写入后校准一次总长，各段按总长填写后最终均分。
+                    self._command(
+                        "script.apply_operations",
+                        {"scope": {"scene_ids": [scene["id"]]}, "operations": remaining},
+                        role="agent",
+                        step="plan_narration_shots",
+                    )
+                    snap = self.snapshot()
         snap = self.snapshot()
         script = snap["director_script"]
         if script["production_baseline_revision"] != script["revision"]:
             raise JourneyStepError("plan_narration_shots", 409, snap["workflow"])
         return snap
+
+    @staticmethod
+    def _narration_segment_payload(segment_duration: float, index: int) -> dict:
+        return {
+            "duration_estimate_seconds": segment_duration,
+            "action": ("连续观察的前半程。" if index == 0 else "从同一静态交接时刻继续。"),
+            "dialogue_lines": [],
+            "boundary_from_previous": (
+                None
+                if index == 0
+                else {
+                    "reason": "model_constraint",
+                    "continuity_instruction": "从同一静态交接时刻继续",
+                }
+            ),
+        }
 
     def unlock_visual_production(self) -> dict:
         """POST /visual-production/unlock（visual_production.unlock）。"""
