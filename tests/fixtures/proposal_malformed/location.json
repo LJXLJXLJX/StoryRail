@@ -1,0 +1,6 @@
+{
+  "fence": "```json\n{}",
+  "extra": "{\"locations\":[],\"scene_bindings\":[],\"shot_bindings\":[],\"extra\":true}",
+  "missing": "{\"locations\":[],\"scene_bindings\":[]}",
+  "type": "{\"locations\":{},\"scene_bindings\":[],\"shot_bindings\":[]}"
+}

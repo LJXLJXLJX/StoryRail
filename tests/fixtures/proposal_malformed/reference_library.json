@@ -1,0 +1,6 @@
+{
+  "fence": "```json\n{}",
+  "extra": "{\"characters\":[],\"narrator\":null,\"extra\":true}",
+  "missing": "{\"characters\":[]}",
+  "type": "{\"characters\":{},\"narrator\":null}"
+}

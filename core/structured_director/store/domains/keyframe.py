@@ -1,0 +1,866 @@
+"""store/domains/keyframe：keyframe 域 collaborator（P2-D1）。
+
+方法体自 store facade 逐字迁移（行为保持）；未在域上定义的名字经
+__getattr__ 回退到 StructuredDirectorStore（read/_editable_document/
+persistence 私有助手等）。"""
+
+from __future__ import annotations
+
+from dataclasses import replace
+from datetime import UTC, datetime
+from uuid import uuid4
+
+from core.director_commands import (
+    CommandReceipt,
+    KeyframeCharacterReferenceSelection,
+    KeyframeOperation,
+    SetKeyframeActivation,
+    ShareKeyframeBoundary,
+    SplitKeyframeBoundary,
+    UpdateKeyframeFields,
+    parse_keyframe_operations,
+)
+from core.director_proposals import (
+    KeyframeCharacterReferenceProposal,
+    KeyframeOperationsProposal,
+    KeyframePlanProposal,
+)
+from core.director_proposals.keyframe_codec import resolve_keyframe_environment
+from core.structured_director.errors import RevisionConflictError as RevisionConflictError
+from core.structured_director.keyframe_mutations import (
+    _apply_keyframe_operations as _apply_keyframe_operations,
+)
+from core.structured_director.keyframe_mutations import (
+    _KeyframeMutationOperation,
+    _SplitKeyframeBoundaryWithId,
+    _validate_planned_shared_boundaries,
+)
+from core.structured_director.manual_commands import (
+    keyframe_activation_command,
+    keyframe_edit_command,
+    keyframe_references_command,
+)
+from core.structured_director.models import (
+    DirectorRunKind,
+    DirectorRunStatus,
+    Keyframe,
+    KeyframePlan,
+    ReferenceGenerationKind,
+    ReferenceGenerationPhase,
+    SegmentKeyframes,
+    SegmentVideo,
+    StructuredDirectorDocument,
+    StructuredDirectorStatus,
+    VideoPlan,
+    blank_keyframe,
+)
+from core.structured_director.run_state import _active_run_is as _active_run_is
+from core.structured_director.run_state import _start_director_run as _start_director_run
+from core.structured_director.script_mutations import _finish_director_run as _finish_director_run
+from core.structured_director.store import _keyframe_is_enabled as _keyframe_is_enabled
+from core.structured_director.store.pipeline import MutationResult as MutationResult
+from core.structured_director.store.pipeline import commit_mutation as commit_mutation
+
+
+class _DomainBase:
+    def __init__(self, store) -> None:
+        object.__setattr__(self, "_store", store)
+
+    def __getattr__(self, name):
+        if name == "_store":
+            raise AttributeError(name)
+        return getattr(object.__getattribute__(self, "_store"), name)
+
+
+def _keyframe_planning_context(
+    document: StructuredDirectorDocument,
+    *,
+    target_shot_ids: tuple[str, ...],
+    missing_message: str,
+    invalid_scope_message: str,
+):
+    script = document.director_script
+    plan = document.keyframe_plan
+    if (
+        not _active_run_is(document, DirectorRunKind.KEYFRAME_PLAN)
+        or script is None
+        or script.production_baseline_revision is None
+        or script.production_baseline_scenes is None
+        or plan is None
+    ):
+        raise ValueError(missing_message)
+    baseline_shots = {
+        shot.id: shot for scene in script.production_baseline_scenes for shot in scene.shots
+    }
+    if len(target_shot_ids) != len(set(target_shot_ids)) or not set(target_shot_ids) <= set(
+        baseline_shots
+    ):
+        raise ValueError(invalid_scope_message)
+    planning_scene_ids = {
+        scene.id
+        for scene in script.production_baseline_scenes
+        if any(shot.id in target_shot_ids for shot in scene.shots)
+    }
+    planning_scenes = tuple(
+        scene
+        for scene in script.production_baseline_scenes
+        if not target_shot_ids or scene.id in planning_scene_ids
+    )
+    allowed_segment_ids = {
+        segment.id
+        for shot_id, shot in baseline_shots.items()
+        if not target_shot_ids or shot_id in target_shot_ids
+        for segment in shot.segments
+    }
+    protected_keyframe_ids = {
+        item.id for item in plan.keyframes if item.selected_asset_id is not None
+    } | {
+        item.target_id
+        for item in document.generations
+        if item.kind is ReferenceGenerationKind.KEYFRAME_IMAGE
+        and item.phase is ReferenceGenerationPhase.SUCCEEDED
+        and item.output_asset_id is not None
+        and not item.dismissed
+    }
+    locked_segment_ids = {
+        item.segment_id
+        for item in plan.segments
+        if item.start_keyframe_id in protected_keyframe_ids
+        or item.end_keyframe_id in protected_keyframe_ids
+    }
+    return (
+        script,
+        plan,
+        planning_scenes,
+        allowed_segment_ids,
+        protected_keyframe_ids,
+        locked_segment_ids,
+    )
+
+
+def _translate_keyframe_plan_to_operations(
+    document: StructuredDirectorDocument,
+    proposal: KeyframePlanProposal,
+    *,
+    target_shot_ids: tuple[str, ...],
+) -> tuple[_KeyframeMutationOperation, ...]:
+    """Translate the legacy whole-plan proposal to the canonical operation list."""
+
+    (
+        _script,
+        plan,
+        planning_scenes,
+        allowed_segment_ids,
+        _protected_keyframe_ids,
+        locked_segment_ids,
+    ) = _keyframe_planning_context(
+        document,
+        target_shot_ids=target_shot_ids,
+        missing_message="当前没有等待保存的关键帧计划。",
+        invalid_scope_message="关键帧规划包含不存在或重复的目标 Shot。",
+    )
+    expected_shots = [shot for scene in planning_scenes for shot in scene.shots]
+    if [item.shot_id for item in proposal.shots] != [item.id for item in expected_shots]:
+        raise ValueError("关键帧计划必须完整对应生产基线 Shot。")
+    proposal_by_id = {item.shot_id: item for item in proposal.shots}
+    bindings = {item.segment_id: item for item in plan.segments}
+    operations: list[_KeyframeMutationOperation] = []
+    desired_fields: dict[
+        str,
+        tuple[
+            str,
+            tuple[str, ...],
+            str,
+            str | None,
+            str | None,
+            tuple[KeyframeCharacterReferenceSelection, ...],
+        ],
+    ] = {}
+
+    def set_desired(
+        keyframe_id: str,
+        prompt_text: str,
+        character_ids: tuple[str, ...],
+        environment: tuple[str | None, str | None, str | None],
+        shot_view_id: str | None,
+        character_references: tuple[KeyframeCharacterReferenceProposal, ...],
+    ) -> None:
+        environment_mode, environment_view_id, environment_none_reason = (
+            resolve_keyframe_environment(*environment, shot_view_id)
+        )
+        selections = tuple(
+            KeyframeCharacterReferenceSelection(item.character_id, item.look_id)
+            for item in character_references
+        )
+        desired = (
+            prompt_text.strip(),
+            character_ids,
+            environment_mode,
+            environment_view_id,
+            environment_none_reason,
+            selections,
+        )
+        previous = desired_fields.get(keyframe_id)
+        if previous is not None and (
+            previous[:5] != desired[:5]
+            or {item.character_id: set(item.asset_ids) for item in previous[5]}
+            != {item.character_id: set(item.asset_ids) for item in selections}
+        ):
+            raise ValueError("承接 Shot 的首帧必须与上一 Shot 尾帧完全一致。")
+        desired_fields[keyframe_id] = desired
+
+    for scene in planning_scenes:
+        previous_shot = None
+        previous_item = None
+        for shot_index, shot in enumerate(scene.shots):
+            item = proposal_by_id[shot.id]
+            if [value.segment_id for value in item.segments] != [
+                value.id for value in shot.segments
+            ]:
+                raise ValueError("关键帧计划必须完整对应 Shot 的 Segment。")
+            allowed_character_ids = set(shot.visible_character_ids)
+            next_shot = scene.shots[shot_index + 1] if shot_index + 1 < len(scene.shots) else None
+            next_item = None if next_shot is None else proposal_by_id[next_shot.id]
+            for segment_index, segment_item in enumerate(item.segments):
+                boundary_character_ids = set(allowed_character_ids)
+                if (
+                    segment_index == len(item.segments) - 1
+                    and next_shot is not None
+                    and next_item is not None
+                    and next_item.continues_from_previous_shot
+                ):
+                    boundary_character_ids.update(next_shot.visible_character_ids)
+                if not set(segment_item.end_visible_character_ids) <= boundary_character_ids:
+                    raise ValueError(
+                        "Keyframe 可见角色必须属于所属 Shot；跨 Shot 共享边界允许两侧角色并集。"
+                    )
+            if (
+                not item.continues_from_previous_shot
+                and not set(item.start_visible_character_ids) <= allowed_character_ids
+            ):
+                raise ValueError("关键帧可见角色必须属于所属 Shot。")
+            first_segment_id = shot.segments[0].id
+            if item.continues_from_previous_shot:
+                if previous_shot is None or previous_item is None:
+                    raise ValueError("Scene 首个 Shot 不能承接上一 Shot。")
+                previous_end = previous_item.segments[-1]
+                if (
+                    item.start_prompt_text.strip() != previous_end.end_prompt_text.strip()
+                    or set(item.start_visible_character_ids)
+                    != set(previous_end.end_visible_character_ids)
+                    or item.start_environment_mode != previous_end.end_environment_mode
+                    or item.start_environment_view_id != previous_end.end_environment_view_id
+                    or item.start_environment_none_reason
+                    != previous_end.end_environment_none_reason
+                    or {x.character_id: x.look_id for x in item.start_character_references}
+                    != {x.character_id: x.look_id for x in previous_end.end_character_references}
+                ):
+                    raise ValueError("承接 Shot 的首帧必须与上一 Shot 尾帧完全一致。")
+            if previous_shot is not None:
+                left_id = previous_shot.segments[-1].id
+                right_id = first_segment_id
+                left = bindings[left_id]
+                right = bindings[right_id]
+                boundary_mutable = (
+                    left_id in allowed_segment_ids
+                    and right_id in allowed_segment_ids
+                    and left_id not in locked_segment_ids
+                    and right_id not in locked_segment_ids
+                )
+                if item.continues_from_previous_shot and boundary_mutable:
+                    if left.end_keyframe_id != right.start_keyframe_id:
+                        operations.append(
+                            ShareKeyframeBoundary(
+                                left_id, right_id, left.end_keyframe_id, "cross_shot"
+                            )
+                        )
+                        bindings[right_id] = replace(right, start_keyframe_id=left.end_keyframe_id)
+                elif (
+                    not item.continues_from_previous_shot
+                    and boundary_mutable
+                    and left.end_keyframe_id == right.start_keyframe_id
+                ):
+                    clone_id = uuid4().hex
+                    operations.append(
+                        _SplitKeyframeBoundaryWithId(
+                            left_id, right_id, "right_start", False, clone_id
+                        )
+                    )
+                    bindings[right_id] = replace(right, start_keyframe_id=clone_id)
+            if (
+                first_segment_id in allowed_segment_ids
+                and first_segment_id not in locked_segment_ids
+            ):
+                set_desired(
+                    bindings[first_segment_id].start_keyframe_id,
+                    item.start_prompt_text,
+                    item.start_visible_character_ids,
+                    (
+                        item.start_environment_mode,
+                        item.start_environment_view_id,
+                        item.start_environment_none_reason,
+                    ),
+                    # 承接上一 Shot 的首帧就是上一 Shot 的尾帧，继承所属（左侧）Shot 的视图。
+                    (
+                        previous_shot.view_id
+                        if item.continues_from_previous_shot and previous_shot is not None
+                        else shot.view_id
+                    ),
+                    item.start_character_references,
+                )
+            for segment, segment_item in zip(shot.segments, item.segments, strict=True):
+                if segment.id not in allowed_segment_ids or segment.id in locked_segment_ids:
+                    continue
+                binding = bindings[segment.id]
+                set_desired(
+                    binding.end_keyframe_id,
+                    segment_item.end_prompt_text,
+                    segment_item.end_visible_character_ids,
+                    (
+                        segment_item.end_environment_mode,
+                        segment_item.end_environment_view_id,
+                        segment_item.end_environment_none_reason,
+                    ),
+                    shot.view_id,
+                    segment_item.end_character_references,
+                )
+                operations.append(
+                    SetKeyframeActivation(
+                        segment.id,
+                        segment_item.frame_strategy in {"start", "both"},
+                        segment_item.frame_strategy in {"end", "both"},
+                    )
+                )
+            previous_shot = shot
+            previous_item = item
+
+    operations.extend(
+        UpdateKeyframeFields(
+            keyframe_id,
+            prompt_text,
+            character_ids,
+            environment_mode=environment_mode,
+            environment_view_id=environment_view_id,
+            environment_none_reason=environment_none_reason,
+            environment_changed=True,
+            character_references=selections,
+        )
+        for keyframe_id, (
+            prompt_text,
+            character_ids,
+            environment_mode,
+            environment_view_id,
+            environment_none_reason,
+            selections,
+        ) in desired_fields.items()
+    )
+    return tuple(operations)
+
+
+def _validate_keyframe_planner_operations(
+    document: StructuredDirectorDocument,
+    operations: tuple[_KeyframeMutationOperation, ...],
+    *,
+    allowed_segment_ids: set[str],
+    protected_keyframe_ids: set[str],
+    locked_segment_ids: set[str],
+) -> None:
+    assert document.keyframe_plan is not None
+    bindings = {item.segment_id: item for item in document.keyframe_plan.segments}
+    keyframe_segments: dict[str, set[str]] = {}
+    for item in document.keyframe_plan.segments:
+        keyframe_segments.setdefault(item.start_keyframe_id, set()).add(item.segment_id)
+        keyframe_segments.setdefault(item.end_keyframe_id, set()).add(item.segment_id)
+    for operation in operations:
+        if isinstance(operation, SetKeyframeActivation):
+            if operation.segment_id not in allowed_segment_ids:
+                raise ValueError("Keyframe Planner operation 超出目标 Shot 范围。")
+            affected_segments = {operation.segment_id}
+            affected_keyframes: set[str] = set()
+        elif isinstance(operation, UpdateKeyframeFields):
+            affected_segments = keyframe_segments.get(operation.keyframe_id, set())
+            affected_keyframes = {operation.keyframe_id}
+            if not affected_segments or not affected_segments <= allowed_segment_ids:
+                raise ValueError("Keyframe Planner 字段修改超出目标 Shot 范围。")
+        elif isinstance(
+            operation, (ShareKeyframeBoundary, SplitKeyframeBoundary, _SplitKeyframeBoundaryWithId)
+        ):
+            affected_segments = {
+                operation.left_segment_id,
+                operation.right_segment_id,
+            }
+            if not affected_segments <= allowed_segment_ids or not affected_segments <= set(
+                bindings
+            ):
+                raise ValueError("Keyframe Planner 边界修改超出目标 Shot 范围。")
+            affected_keyframes = {
+                keyframe_id
+                for segment_id in affected_segments
+                for keyframe_id in (
+                    bindings[segment_id].start_keyframe_id,
+                    bindings[segment_id].end_keyframe_id,
+                )
+            }
+        else:
+            raise ValueError("Keyframe Planner 只能提交字段、激活和边界 operations。")
+        if affected_segments & locked_segment_ids or affected_keyframes & protected_keyframe_ids:
+            raise ValueError("Keyframe Planner 不能修改已有成功候选或已选图片的锁定节点。")
+
+
+def _finish_keyframe_operation_plan(
+    document: StructuredDirectorDocument,
+    operations: tuple[_KeyframeMutationOperation, ...],
+    *,
+    required_shared_boundaries: tuple[tuple[str, str], ...],
+) -> StructuredDirectorDocument:
+    result = _apply_keyframe_operations(document, operations)
+    updated = (
+        replace(document, revision=document.revision + 1)
+        if result.document == document
+        else result.document
+    )
+    updated = replace(
+        updated,
+        director_runs=_finish_director_run(document, DirectorRunKind.KEYFRAME_PLAN),
+    )
+    assert updated.keyframe_plan is not None
+    _validate_planned_shared_boundaries(updated.keyframe_plan, required_shared_boundaries)
+    return updated
+
+
+class KeyframeDomain(_DomainBase):
+    def begin_keyframe_plan(
+        self,
+        *,
+        expected_revision: int,
+        target_ids: tuple[str, ...] = (),
+        user_message: str = "",
+    ) -> tuple[StructuredDirectorDocument, bool]:
+        aux_cell: dict[str, bool] = {}
+
+        def load() -> StructuredDirectorDocument:
+            document = self.read()
+            if document.revision != expected_revision:
+                raise RevisionConflictError("项目已被更新，请重新读取后再准备关键帧。")
+            return document
+
+        def mutate(document: StructuredDirectorDocument) -> MutationResult:
+            active = document.active_director_run
+            if active is not None:
+                if active.kind is not DirectorRunKind.KEYFRAME_PLAN:
+                    raise ValueError("另一个 Director Agent 任务正在执行。")
+                aux_cell["already_active"] = True
+                return MutationResult(document, None, write=False)
+            script = document.director_script
+            from_visual_production = (
+                document.is_reviewing and document.workspace_layers.videos_unlocked
+            )
+            if (
+                not from_visual_production
+                or script is None
+                or script.production_baseline_revision != script.revision
+                or script.production_baseline_scenes is None
+            ):
+                raise ValueError("请先确认当前导演脚本。")
+            raw_user_request = user_message.strip() or "规划关键帧"
+            started = _start_director_run(
+                document,
+                DirectorRunKind.KEYFRAME_PLAN,
+                goal=raw_user_request,
+                raw_user_request=raw_user_request,
+                pending_target_ids=target_ids,
+            )
+            updated = replace(
+                document,
+                revision=document.revision + 1,
+                workspace_layers=replace(
+                    document.workspace_layers,
+                    keyframes_unlocked=True,
+                ),
+                director_runs=started.runs,
+                director_directives=started.directives,
+            )
+            aux_cell["already_active"] = False
+            return MutationResult(updated, None)
+
+        updated, _receipt = commit_mutation(self, loader=load, mutator=mutate)
+        return updated, aux_cell["already_active"]
+
+    def finish_keyframe_plan_without_changes(self) -> StructuredDirectorDocument:
+        def mutate(document: StructuredDirectorDocument) -> MutationResult:
+            if not _active_run_is(document, DirectorRunKind.KEYFRAME_PLAN):
+                raise ValueError("当前没有等待放弃的关键帧规划。")
+            updated = replace(
+                document,
+                revision=document.revision + 1,
+                director_runs=_finish_director_run(document, DirectorRunKind.KEYFRAME_PLAN),
+            )
+            return MutationResult(updated, None)
+
+        updated, _receipt = commit_mutation(self, loader=self.read, mutator=mutate)
+        return updated
+
+    def unlock_visual_production(
+        self,
+        segments: tuple[SegmentVideo, ...],
+        *,
+        expected_revision: int,
+    ) -> StructuredDirectorDocument:
+        def load() -> StructuredDirectorDocument:
+            document = self.read()
+            if document.revision != expected_revision:
+                raise RevisionConflictError("项目已被更新，请重新读取后再解锁视觉生产。")
+            return document
+
+        def mutate(document: StructuredDirectorDocument) -> MutationResult:
+            updated = _unlock(document, segments)
+            return MutationResult(updated, None)
+
+        def _unlock(
+            document: StructuredDirectorDocument, segments: tuple[SegmentVideo, ...]
+        ) -> StructuredDirectorDocument:
+            script = document.director_script
+            if (
+                not document.is_reviewing
+                or script is None
+                or (
+                    script.production_baseline_revision != script.revision
+                    or script.production_baseline_scenes is None
+                )
+            ):
+                raise ValueError("请先确认当前导演脚本。")
+
+            keyframes: list[Keyframe] = []
+            bindings: list[SegmentKeyframes] = []
+            # 每个 Segment 都有独立首尾 Keyframe；是否共享边界由用户或 Director 显式决定。
+            for scene in script.production_baseline_scenes:
+                for shot in scene.shots:
+                    for segment in shot.segments:
+                        start_keyframe_id = uuid4().hex
+                        end_keyframe_id = uuid4().hex
+                        keyframes.extend(
+                            (
+                                blank_keyframe(
+                                    start_keyframe_id,
+                                    segment.id,
+                                    None,
+                                    shot_view_id=shot.view_id,
+                                ),
+                                blank_keyframe(
+                                    end_keyframe_id,
+                                    segment.id,
+                                    start_keyframe_id,
+                                    shot_view_id=shot.view_id,
+                                ),
+                            )
+                        )
+                        bindings.append(
+                            SegmentKeyframes(
+                                segment_id=segment.id,
+                                start_keyframe_id=start_keyframe_id,
+                                end_keyframe_id=end_keyframe_id,
+                            )
+                        )
+
+            plan = KeyframePlan(
+                source_script_revision=script.production_baseline_revision,
+                keyframes=tuple(keyframes),
+                segments=tuple(bindings),
+            )
+            expected_ids = {
+                segment.id
+                for scene in script.scenes
+                for shot in scene.shots
+                for segment in shot.segments
+            }
+            if {item.segment_id for item in segments} != expected_ids:
+                raise ValueError("视频计划必须完整对应当前 Segment。")
+            return replace(
+                document,
+                revision=document.revision + 1,
+                status=(
+                    document.review_status
+                    if document.workspace_layers.final_assembly_unlocked
+                    else StructuredDirectorStatus.REVIEWING_VIDEOS
+                ),
+                workspace_layers=replace(
+                    document.workspace_layers,
+                    keyframes_unlocked=True,
+                    videos_unlocked=True,
+                ),
+                keyframe_plan=plan,
+                video_plan=VideoPlan(script.revision, segments),
+            )
+
+        updated, _receipt = commit_mutation(self, loader=load, mutator=mutate)
+        return updated
+
+    def save_keyframe(
+        self,
+        keyframe: Keyframe,
+        *,
+        expected_revision: int,
+        segment_id: str | None = None,
+        reference_asset_ids: tuple[str, ...] | None = None,
+    ) -> StructuredDirectorDocument:
+        document = self._editable_document(expected_revision)
+        command = keyframe_edit_command(
+            document,
+            keyframe,
+            expected_revision=expected_revision,
+            segment_id=segment_id,
+            reference_asset_ids=reference_asset_ids,
+        )
+        return self.apply_keyframe_operations(
+            parse_keyframe_operations(command.arguments["operations"]),
+            expected_revision=expected_revision,
+            command_id=command.idempotency_key,
+        )[0]
+
+    def apply_keyframe_operations(
+        self,
+        operations: tuple[KeyframeOperation, ...],
+        *,
+        expected_revision: int,
+        command_id: str,
+    ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
+        """原子应用细粒度 Keyframe 操作；整个事务只产生一次 project revision。"""
+
+        def mutate(document: StructuredDirectorDocument) -> MutationResult:
+            if not operations:
+                raise ValueError("Keyframe operations 不能为空。")
+            result = _apply_keyframe_operations(document, operations)
+            if result.document == document:
+                return MutationResult(
+                    document,
+                    CommandReceipt(
+                        command_id=command_id,
+                        status="noop",
+                        old_revision=document.revision,
+                        new_revision=document.revision,
+                        decision_summary=result.decision_summary,
+                        applied_summary=result.applied_summary,
+                        next_allowed_actions=("keyframe.generate",),
+                    ),
+                    write=False,
+                )
+            return MutationResult(
+                result.document,
+                CommandReceipt(
+                    command_id=command_id,
+                    status="succeeded",
+                    old_revision=document.revision,
+                    new_revision=result.document.revision,
+                    changed_ids=tuple(sorted(result.changed_ids)),
+                    invalidated=tuple(sorted(result.invalidated)),
+                    preserved=tuple(sorted(result.preserved)),
+                    decision_summary=result.decision_summary,
+                    applied_summary=result.applied_summary,
+                    next_allowed_actions=("keyframe.generate",),
+                ),
+            )
+
+        return commit_mutation(
+            self,
+            loader=lambda: self._editable_document(expected_revision),
+            mutator=mutate,
+        )
+
+    def apply_keyframe_operation_plan(
+        self,
+        proposal: KeyframeOperationsProposal,
+        *,
+        target_shot_ids: tuple[str, ...] = (),
+        required_shared_boundaries: tuple[tuple[str, str], ...] = (),
+    ) -> StructuredDirectorDocument:
+        """在规划锁内校验并应用 compiler operations，然后一次性回到审核态。"""
+
+        def mutate(document: StructuredDirectorDocument) -> MutationResult:
+            (
+                _script,
+                _plan,
+                _planning_scenes,
+                allowed_segment_ids,
+                protected_keyframe_ids,
+                locked_segment_ids,
+            ) = _keyframe_planning_context(
+                document,
+                target_shot_ids=target_shot_ids,
+                missing_message="当前没有等待保存的关键帧 operations。",
+                invalid_scope_message="关键帧 operations 包含不存在或重复的目标 Shot。",
+            )
+            _validate_keyframe_planner_operations(
+                document,
+                proposal.operations,
+                allowed_segment_ids=allowed_segment_ids,
+                protected_keyframe_ids=protected_keyframe_ids,
+                locked_segment_ids=locked_segment_ids,
+            )
+            return MutationResult(
+                _finish_keyframe_operation_plan(
+                    document,
+                    proposal.operations,
+                    required_shared_boundaries=required_shared_boundaries,
+                ),
+                None,
+            )
+
+        updated, _receipt = commit_mutation(self, loader=self.read, mutator=mutate)
+        return updated
+
+    def apply_keyframe_plan(
+        self,
+        proposal: KeyframePlanProposal,
+        *,
+        target_shot_ids: tuple[str, ...] = (),
+        required_shared_boundaries: tuple[tuple[str, str], ...] = (),
+    ) -> StructuredDirectorDocument:
+
+        def mutate(document: StructuredDirectorDocument) -> MutationResult:
+            operations = _translate_keyframe_plan_to_operations(
+                document,
+                proposal,
+                target_shot_ids=target_shot_ids,
+            )
+            return MutationResult(
+                _finish_keyframe_operation_plan(
+                    document,
+                    operations,
+                    required_shared_boundaries=required_shared_boundaries,
+                ),
+                None,
+            )
+
+        updated, _receipt = commit_mutation(self, loader=self.read, mutator=mutate)
+        return updated
+
+    def save_segment_keyframe_references(
+        self,
+        *,
+        segment_id: str,
+        asset_ids: tuple[str, ...],
+        expected_revision: int,
+    ) -> StructuredDirectorDocument:
+        command = keyframe_references_command(
+            segment_id=segment_id,
+            asset_ids=asset_ids,
+            expected_revision=expected_revision,
+        )
+        return self.apply_keyframe_operations(
+            parse_keyframe_operations(command.arguments["operations"]),
+            expected_revision=expected_revision,
+            command_id=command.idempotency_key,
+        )[0]
+
+    def save_segment_keyframe_activation(
+        self,
+        *,
+        segment_id: str,
+        start_enabled: bool,
+        end_enabled: bool,
+        expected_revision: int,
+    ) -> StructuredDirectorDocument:
+        command = keyframe_activation_command(
+            segment_id=segment_id,
+            start_enabled=start_enabled,
+            end_enabled=end_enabled,
+            expected_revision=expected_revision,
+        )
+        return self.apply_keyframe_operations(
+            parse_keyframe_operations(command.arguments["operations"]),
+            expected_revision=expected_revision,
+            command_id=command.idempotency_key,
+        )[0]
+
+    def select_keyframe_asset(
+        self, *, keyframe_id: str, asset_id: str, expected_revision: int
+    ) -> StructuredDirectorDocument:
+        def mutate(document: StructuredDirectorDocument) -> MutationResult:
+            plan = document.keyframe_plan
+            if plan is None:
+                raise ValueError("关键帧计划尚未建立。")
+            asset = next((item for item in document.assets if item.id == asset_id), None)
+            if asset is None or not asset.media_type.startswith("image/"):
+                raise ValueError("关键帧只能选择项目内的图片 Asset。")
+            if not _keyframe_is_enabled(plan, keyframe_id):
+                raise ValueError("该 Keyframe 未激活，不能选择候选。")
+            found = False
+            keyframes = []
+            for item in plan.keyframes:
+                if item.id == keyframe_id:
+                    item = replace(item, selected_asset_id=asset_id)
+                    found = True
+                keyframes.append(item)
+            if not found:
+                raise ValueError("Keyframe 不存在。")
+            updated = replace(
+                document,
+                revision=document.revision + 1,
+                keyframe_plan=replace(plan, keyframes=tuple(keyframes)),
+            )
+            return MutationResult(updated, None)
+
+        updated, _receipt = commit_mutation(
+            self,
+            loader=lambda: self._editable_document(expected_revision),
+            mutator=mutate,
+        )
+        return updated
+
+    def scope_keyframe_generation(
+        self, target_ids: tuple[str, ...], *, expected_revision: int
+    ) -> StructuredDirectorDocument:
+        """Persist the exact batch before submission, using existing run authorization."""
+
+        def load() -> StructuredDirectorDocument:
+            document = self.read()
+            if document.revision != expected_revision:
+                raise RevisionConflictError("项目已更新，请重新确认关键帧批次。")
+            return document
+
+        def mutate(document: StructuredDirectorDocument) -> MutationResult:
+            active = document.active_director_run
+            if (
+                active is None
+                or active.kind is not DirectorRunKind.DIRECTOR
+                or active.status is not DirectorRunStatus.RUNNING
+            ):
+                raise ValueError("关键帧批次缺少 running Director run。")
+            plan = document.keyframe_plan
+            known = (
+                set()
+                if plan is None
+                else {
+                    frame_id
+                    for item in plan.segments
+                    for enabled, frame_id in (
+                        (item.start_enabled, item.start_keyframe_id),
+                        (item.end_enabled, item.end_keyframe_id),
+                    )
+                    if enabled
+                }
+            )
+            if (
+                not target_ids
+                or len(set(target_ids)) != len(target_ids)
+                or not set(target_ids) <= known
+            ):
+                raise ValueError("关键帧批次必须是明确且不重复的已启用 Keyframe。")
+            scopes = tuple(f"keyframe:{item}" for item in target_ids)
+            updated_run = replace(
+                active,
+                authorization=replace(active.authorization, generation_scopes=scopes),
+                last_project_revision=document.revision + 1,
+                updated_at=datetime.now(UTC).isoformat(),
+            )
+            updated = replace(
+                document,
+                revision=document.revision + 1,
+                director_runs=tuple(
+                    updated_run if item.id == active.id else item for item in document.director_runs
+                ),
+            )
+            return MutationResult(updated, None)
+
+        updated, _receipt = commit_mutation(self, loader=load, mutator=mutate)
+        return updated

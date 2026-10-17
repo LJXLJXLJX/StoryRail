@@ -1,0 +1,132 @@
+{
+  "scenario": "keyframe",
+  "capability": "keyframe",
+  "bootstrap": "unlocked",
+  "summary": "视觉生产已解锁：读契约 → 读 keyframe 工作集（分页）→ 提交规划 → 批量生成 → wait。",
+  "steps": [
+    {
+      "id": "tools",
+      "action": "list_tools"
+    },
+    {
+      "id": "workflow",
+      "action": "call",
+      "tool": "read_workflow",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-keyframe-workflow"
+      }
+    },
+    {
+      "id": "contract",
+      "action": "pages",
+      "tool": "read_professional_contract",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-keyframe-contract",
+        "capability": "keyframe",
+        "page_bytes": 24576
+      }
+    },
+    {
+      "id": "workset",
+      "action": "pages",
+      "tool": "read_professional_workset",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-keyframe-workset",
+        "capability": "keyframe",
+        "scene_ids": "$base.scene_ids",
+        "page_bytes": 24576
+      },
+      "assert": {
+        "no_error": true
+      }
+    },
+    {
+      "id": "request",
+      "action": "call",
+      "tool": "keyframe_proposal",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-keyframe-request",
+        "action": "request",
+        "raw_user_instruction": "按当前生产基线为全部 Shot 规划关键帧",
+        "scene_ids": "$base.scene_ids",
+        "target_ids": "$base.shot_ids"
+      },
+      "assert": {
+        "no_error": true
+      }
+    },
+    {
+      "id": "submit",
+      "action": "keyframe_submit",
+      "tool": "keyframe_proposal",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision + 1",
+        "idempotency_key": "bench-keyframe-submit",
+        "action": "submit",
+        "request_id": "$request.data.request_id"
+      },
+      "assert": {
+        "no_error": true
+      }
+    },
+    {
+      "id": "saved",
+      "action": "pages",
+      "tool": "read_professional_workset",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision + 2",
+        "idempotency_key": "bench-keyframe-saved",
+        "capability": "keyframe",
+        "scene_ids": "$base.scene_ids",
+        "page_bytes": 24576
+      },
+      "assert": {
+        "no_error": true
+      },
+      "capture_ids": {
+        "planned": "core_facts.saved_keyframe_plan.keyframes[*].id"
+      }
+    },
+    {
+      "id": "batch",
+      "action": "call",
+      "tool": "media_batch",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision + 2",
+        "idempotency_key": "bench-keyframe-batch",
+        "kind": "keyframe",
+        "action": "start",
+        "target_ids": "$base.shot_ids"
+      },
+      "assert": {
+        "no_error": true
+      },
+      "capture_ids": {
+        "batched": "batch_observation.executions[*].generation_ids"
+      }
+    },
+    {
+      "id": "wait",
+      "action": "wait",
+      "tool": "manage_generation",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$batch.receipt.new_revision",
+        "idempotency_key": "bench-keyframe-wait",
+        "action": "wait",
+        "generation_ids": "$batched.ids"
+      }
+    }
+  ]
+}

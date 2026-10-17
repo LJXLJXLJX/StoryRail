@@ -1,0 +1,3 @@
+# 私有图片服务专用；不是 StoryRail Core 或 Agent runtime 依赖。
+openai-codex>=0.147,<0.148
+Pillow>=12,<13

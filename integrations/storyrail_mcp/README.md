@@ -1,0 +1,75 @@
+# StoryRail MCP
+
+把固定 MCP 工具翻译成 Core HTTP 命令的窄 adapter。固定使用官方 Python SDK `mcp==2.2.0`（MIT），协商协议 `2026-07-28`；SDK 负责协议、
+stdio 与取消，本包负责严格工具参数到 HTTP 命令的映射。它不启动 Core、不打开任何业务目录、不持有 Store。
+
+工具清单、授权模型与 Agent 行为准则见 [外部 Agent 接入](../../docs/external-agents.md)；错误分类见 [错误契约](../../docs/error-contract.md)。
+
+```sh
+.venv/bin/python -m integrations.storyrail_mcp --core-origin http://127.0.0.1:8765 --token-file /protected/agent-token
+```
+
+这是受信启动配置，不是模型工具参数。token 是专属限域 Agent Bearer，文件权限 0600；不得交给 adapter 人类或 Provider 凭据。必须连接启用了
+caller 策略（本机一键接入或 `--access-policy-file`）的既有单写服务；未配置策略的匿名开发服务不能作为外部 Agent 后端。Core origin 固定于
+启动配置，不跟随重定向或宿主代理。
+
+## 文件
+
+- `app.py`：工具模型、发布 schema 与分派；项目 scope 与 Playground scope 两个 server。
+- `production_tools.py`：编辑、生成、批次、装配、Generation 管理等工具的严格嵌套 schema 与固定翻译（不 import Core/Store）。
+- `playground_tools.py`：Playground scope 的 5 个工具。
+- `bridge.py`：到 Core 的 HTTP 传输、错误信封映射与响应序列化。
+
+## 项目 scope（默认）
+
+`tools/list` 发布 24 个工具，逐字节基线是 `tests/fixtures/mcp_project_tools.json`。`read_human_handoff`、`read_workflow_state`、
+`script_proposal`、`reference_proposal`、`location_proposal`、`keyframe_proposal` 仍可调用但不下发 schema；统一提交入口是
+`submit_proposal`（`capability` 为 `script`、`reference_library`、`location` 或 `keyframe`）。地点规划与引用库、脚本一样使用项目 scope：
+`read_professional_workset` / `read_professional_contract` 的 `capability="location"` 不带 `scene_ids`，`location_proposal` 的 request
+只有 `raw_user_instruction`，翻译为 `location.*_proposal`。`edit_script`、`edit_keyframes`、`edit_locations`、`edit_looks` 发布紧凑的操作 schema（只列 `op` 常量与字段名），完整校验
+由 runtime 模型执行；`edit_looks` 翻译为 `reference.apply_look_operations`，字段形状随 reference_library 契约
+（`references/look-sheets.md`）下发；`edit_locations` 各操作的字段形状随 location 专业契约（`references/location-bible.md` 附录）下发。`edit_locations` 翻译为 `location.apply_operations`，顶层 `location_ids`、`scene_ids`、`shot_ids`
+组成 scope；不提供主图/视图候选选择。`generate_media` 的 `look_sheet` 翻译为 `reference.generate_look_sheet`（`identity_asset_ids` 为 0–4 张身份参考）；`location_master` / `location_view` 分别翻译为
+`location.generate_master` / `location.generate_view`；室内视图没有与当前主图和几何一致的裁切时只提交全景裁切，
+裁切完成后需再次调用才提交细化。`media_batch` 的 `kind` 选择批次类型：`keyframe` 翻译为
+`keyframe.generate_batch` / `keyframe.continue_batch`，`location` 翻译为 `location.generate_set`
+（start 带 `target_ids` 固定地点范围，continue 带原 `batch_id` 或关联 `execution_run_id`）。
+
+参数规则：
+
+- 工具顶层与嵌套请求都拒绝未知字段；条件参数用公开 `oneOf` 表达，与 runtime 共用同一参数矩阵（`read_story` 的 level 分支、专业 workset
+  的项目级/Scene 级能力、`media_batch` 的 kind/start/continue、`assemble_media` 的 scene/final、`manage_generation` 的 wait/单目标；wait 只观察，可省略 `expected_revision` 与 `idempotency_key`）。
+- proposal 按 action 给出互斥字段分支；为兼容会把可选字段补成 null 的原生连接器，非当前 action 的 null 被归一为省略，非 null 越界值仍拒绝，
+  且不会传入 Core。非法组合返回固定字段说明，不回显正文、凭据或本机路径。
+- 读工具的幂等键由 MCP 生成（`mcp-read:<uuid>`）；写工具的 `idempotency_key` 必须由模型提供。
+- 旁白固定中英双语：`edit_narration.fields` 的正文与合成参数放在 `zh` / `en` 子对象；`generate_media` 生成旁白必须指定 `language`；
+  `edit_narration.fields.clear_selected_audio = "zh" | "en"` 独占一次调用并翻译为 `narration.clear_selection`。
+- `save_video_prompt` 不带 `recipe_inputs` 时翻译为 `video.set_prompt`；带 `recipe_inputs: {bindings, params}` 时翻译为
+  `video.update_recipe_inputs`，正文与当前 recipe 的绑定、参数整体替换。发布 schema 只把 `recipe_inputs` 声明为 object，形状随
+  `video_prompt` 工作集的 `recipe_inputs` 下发；runtime 模型仍严格校验 `{asset_id, description}` 绑定项并拒绝未知字段。
+
+响应：
+
+- Agent 写工具走 `/application/commands`，成功时返回 workflow、receipt、new revision、warnings、ApplicationRequest/replay 与紧凑目标 data，
+  不夹带 Web 全项目快照。
+- text content 始终是完整 JSON，`structured_content` 携带同一份数据；只读 text 的客户端（如 AGY）也能直接拿到结果。
+- `read_professional_contract` / `read_professional_workset` 在完整 JSON 超过 64 KiB 时进入 `json_utf8_chunks` 模式，单页 ≤ 24 KiB；续读必须
+  沿用同一 project/revision/capability/scope/target_ids/page_bytes 并携带 `next_cursor`，拼接后校验 `content_sha256` 再解析。
+- `read_request` 查询 proposal request 时只返回紧凑状态与 `workset_recovery`；原始工作集用对应 proposal 的 get 恢复，最新事实用
+  `read_professional_workset` 读取。
+- `read_workflow` 返回的 `workflow.recommended_next_actions` 是不阻塞主流程的可选建议（如规划地点、继续地点成套批次）；
+  读到后先向用户提议，收到明确指令再执行。
+
+## 断连与恢复
+
+- 断连不表示 Core 没提交。纯读取可省略 `expected_revision` 取得 latest，响应始终给出本次 observation revision。
+- 重连先用 `read_workflow` 的分页 `task_discovery` 发现 active/recent run 与 Generation，再按同一 revision 细查。
+- 写请求不得换 revision 自动重试；丢响应只用原参数、原 revision、原 key 重放取得 Core 原回执。
+- `manage_generation(action="wait")` 每次都动态观察，不缓存固定回执；Provider 事实未变化时不写回执、不递增 revision。
+- 协议层取消只终止等待；业务取消需要显式调用对应 cancel 工具，不把进程退出当作回滚，也不因恢复观察重新提交生成。
+
+## Playground scope
+
+`--scope playground`（由启动器在 Playground 连接下追加）只发布 5 个工具，全部翻译成 `POST /api/playground/commands` 的
+`{"name", "idempotency_key", "arguments"}` 信封，工具表见 [Playground](../../docs/playground.md#agent)。这些工具不接受 `project_id`，
+没有读取媒体字节的工具；项目 scope 的工具表、bridge URL/payload 与错误信封不受影响。

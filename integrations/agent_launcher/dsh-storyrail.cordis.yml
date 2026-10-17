@@ -1,0 +1,10 @@
+- insert:
+    - id: mcp-storyrail
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: storyrail
+        transport: stdio
+        command: python
+        args: ['/app/client.py', 'mcp']
+        cwd: /app
+        env: {}

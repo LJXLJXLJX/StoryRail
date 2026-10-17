@@ -1,0 +1,1239 @@
+{
+  "capabilities": [
+    {
+      "id": "video.extract_frame",
+      "label": "按帧号抽帧",
+      "group": "video",
+      "execution": "async",
+      "available": false,
+      "notes": "帧号范围由 Core 从 MP4 读出；同一视频同时只允许一个抽帧任务。",
+      "recipe": null
+    },
+    {
+      "id": "image.pano_view",
+      "label": "全景裁切",
+      "group": "image",
+      "execution": "async",
+      "available": false,
+      "notes": "输入必须是 2:1 等距柱状全景 PNG/JPEG（宽 1024–16384）；yaw [0, 360)、pitch [-60, 60]、hfov [20, 120]，与生产全景裁切契约一致；一次裁一个视图。",
+      "recipe": null
+    },
+    {
+      "id": "audio.remix",
+      "label": "音轨重新混音",
+      "group": "audio",
+      "execution": "async",
+      "available": false,
+      "notes": "增益范围 -100 到 24 dB；每一对起止时间必须同时提供或同时省略。",
+      "recipe": null
+    },
+    {
+      "id": "audio.effect",
+      "label": "音频后处理",
+      "group": "audio",
+      "execution": "sync",
+      "available": true,
+      "notes": "Core 本地 DSP，固定 radio 效果，不开放高级参数覆盖。",
+      "recipe": null
+    },
+    {
+      "id": "audio.trim",
+      "label": "音频截取",
+      "group": "audio",
+      "execution": "sync",
+      "available": true,
+      "notes": "Core 本地 DSP；结束时间不能超过源音频时长。",
+      "recipe": null
+    },
+    {
+      "id": "codex_image.generate",
+      "label": "生图",
+      "group": "image",
+      "execution": "async",
+      "available": true,
+      "notes": "参数约束与生产共用当前插件声明。",
+      "recipe": {
+        "plugin_id": "codex_image",
+        "plugin_label": "Codex 图片",
+        "recipe": {
+          "id": "codex_image.generate",
+          "capability": "image.generate",
+          "label": "生图",
+          "slots": [
+            {
+              "key": "reference_image",
+              "role": "reference_image",
+              "label": "参考图",
+              "minimum": 0,
+              "maximum": 5,
+              "media_types": [
+                "image/png",
+                "image/jpeg",
+                "image/webp"
+              ],
+              "duration_seconds": null,
+              "describe": "none",
+              "unique": true,
+              "namespace": null
+            }
+          ],
+          "params": [
+            {
+              "key": "prompt",
+              "widget": "prompt",
+              "label": "提示词",
+              "default": null,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": 20000,
+              "min_length": 1,
+              "dimension": null,
+              "component_labels": [],
+              "role": "prompt",
+              "help": ""
+            },
+            {
+              "key": "aspect_ratio",
+              "widget": "enum",
+              "label": "画面比例",
+              "default": "16:9",
+              "nullable": false,
+              "advanced": false,
+              "options": [
+                {
+                  "id": "16:9",
+                  "label": "16:9"
+                },
+                {
+                  "id": "9:16",
+                  "label": "9:16"
+                },
+                {
+                  "id": "2:1",
+                  "label": "2:1"
+                },
+                {
+                  "id": "1:2",
+                  "label": "1:2"
+                },
+                {
+                  "id": "1:1",
+                  "label": "1:1"
+                },
+                {
+                  "id": "3:2",
+                  "label": "3:2"
+                },
+                {
+                  "id": "2:3",
+                  "label": "2:3"
+                },
+                {
+                  "id": "4:3",
+                  "label": "4:3"
+                },
+                {
+                  "id": "3:4",
+                  "label": "3:4"
+                },
+                {
+                  "id": "5:4",
+                  "label": "5:4"
+                },
+                {
+                  "id": "4:5",
+                  "label": "4:5"
+                },
+                {
+                  "id": "21:9",
+                  "label": "21:9"
+                },
+                {
+                  "id": "9:21",
+                  "label": "9:21"
+                },
+                {
+                  "id": "3:1",
+                  "label": "3:1"
+                },
+                {
+                  "id": "1:3",
+                  "label": "1:3"
+                }
+              ],
+              "minimum": null,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "aspect_ratio",
+              "help": ""
+            }
+          ],
+          "require_any": [],
+          "label_namespaces": {},
+          "skills": [],
+          "distinct_slots": []
+        }
+      }
+    },
+    {
+      "id": "codex_image.edit",
+      "label": "改图",
+      "group": "image",
+      "execution": "async",
+      "available": true,
+      "notes": "参数约束与生产共用当前插件声明。",
+      "recipe": {
+        "plugin_id": "codex_image",
+        "plugin_label": "Codex 图片",
+        "recipe": {
+          "id": "codex_image.edit",
+          "capability": "image.edit",
+          "label": "改图",
+          "slots": [
+            {
+              "key": "source_image",
+              "role": "edit_source",
+              "label": "底图",
+              "minimum": 1,
+              "maximum": 1,
+              "media_types": [
+                "image/png",
+                "image/jpeg",
+                "image/webp"
+              ],
+              "duration_seconds": null,
+              "describe": "none",
+              "unique": true,
+              "namespace": null
+            },
+            {
+              "key": "reference_image",
+              "role": "reference_image",
+              "label": "参考图",
+              "minimum": 0,
+              "maximum": 4,
+              "media_types": [
+                "image/png",
+                "image/jpeg",
+                "image/webp"
+              ],
+              "duration_seconds": null,
+              "describe": "none",
+              "unique": true,
+              "namespace": null
+            }
+          ],
+          "params": [
+            {
+              "key": "prompt",
+              "widget": "prompt",
+              "label": "提示词",
+              "default": null,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": 20000,
+              "min_length": 1,
+              "dimension": null,
+              "component_labels": [],
+              "role": "prompt",
+              "help": ""
+            },
+            {
+              "key": "aspect_ratio",
+              "widget": "enum",
+              "label": "画面比例",
+              "default": "16:9",
+              "nullable": false,
+              "advanced": false,
+              "options": [
+                {
+                  "id": "16:9",
+                  "label": "16:9"
+                },
+                {
+                  "id": "9:16",
+                  "label": "9:16"
+                },
+                {
+                  "id": "2:1",
+                  "label": "2:1"
+                },
+                {
+                  "id": "1:2",
+                  "label": "1:2"
+                },
+                {
+                  "id": "1:1",
+                  "label": "1:1"
+                },
+                {
+                  "id": "3:2",
+                  "label": "3:2"
+                },
+                {
+                  "id": "2:3",
+                  "label": "2:3"
+                },
+                {
+                  "id": "4:3",
+                  "label": "4:3"
+                },
+                {
+                  "id": "3:4",
+                  "label": "3:4"
+                },
+                {
+                  "id": "5:4",
+                  "label": "5:4"
+                },
+                {
+                  "id": "4:5",
+                  "label": "4:5"
+                },
+                {
+                  "id": "21:9",
+                  "label": "21:9"
+                },
+                {
+                  "id": "9:21",
+                  "label": "9:21"
+                },
+                {
+                  "id": "3:1",
+                  "label": "3:1"
+                },
+                {
+                  "id": "1:3",
+                  "label": "1:3"
+                }
+              ],
+              "minimum": null,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "aspect_ratio",
+              "help": ""
+            }
+          ],
+          "require_any": [],
+          "label_namespaces": {},
+          "skills": [],
+          "distinct_slots": [
+            "source_image",
+            "reference_image"
+          ]
+        }
+      }
+    },
+    {
+      "id": "breeze_tts2.voice_design",
+      "label": "音色设计",
+      "group": "speech",
+      "execution": "async",
+      "available": true,
+      "notes": "参数约束与生产共用当前插件声明。",
+      "recipe": {
+        "plugin_id": "breeze_tts2",
+        "plugin_label": "Breeze-TTS-2",
+        "recipe": {
+          "id": "breeze_tts2.voice_design",
+          "capability": "voice.design",
+          "label": "音色设计",
+          "slots": [],
+          "params": [
+            {
+              "key": "text",
+              "widget": "prompt",
+              "label": "朗读文本",
+              "default": null,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": 20000,
+              "min_length": 1,
+              "dimension": null,
+              "component_labels": [],
+              "role": "speech_text",
+              "help": ""
+            },
+            {
+              "key": "voice_description",
+              "widget": "text",
+              "label": "音色描述",
+              "default": null,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": 4000,
+              "min_length": 1,
+              "dimension": null,
+              "component_labels": [],
+              "role": "prompt",
+              "help": "用自然语言描述音色，不提供参考音频。"
+            },
+            {
+              "key": "seed",
+              "widget": "seed",
+              "label": "Seed",
+              "default": 42,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "seed",
+              "help": ""
+            }
+          ],
+          "require_any": [],
+          "label_namespaces": {},
+          "skills": [],
+          "distinct_slots": []
+        }
+      }
+    },
+    {
+      "id": "breeze_tts2.clone",
+      "label": "声音克隆",
+      "group": "speech",
+      "execution": "async",
+      "available": true,
+      "notes": "参数约束与生产共用当前插件声明。",
+      "recipe": {
+        "plugin_id": "breeze_tts2",
+        "plugin_label": "Breeze-TTS-2",
+        "recipe": {
+          "id": "breeze_tts2.clone",
+          "capability": "speech.synthesize",
+          "label": "声音克隆",
+          "slots": [
+            {
+              "key": "voice",
+              "role": "voice_reference",
+              "label": "参考音色",
+              "minimum": 1,
+              "maximum": 1,
+              "media_types": [
+                "audio/wav"
+              ],
+              "duration_seconds": null,
+              "describe": "none",
+              "unique": true,
+              "namespace": null
+            }
+          ],
+          "params": [
+            {
+              "key": "text",
+              "widget": "prompt",
+              "label": "朗读文本",
+              "default": null,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": 20000,
+              "min_length": 1,
+              "dimension": null,
+              "component_labels": [],
+              "role": "speech_text",
+              "help": ""
+            },
+            {
+              "key": "reference_transcript",
+              "widget": "text",
+              "label": "参考音频文字稿",
+              "default": null,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": 20000,
+              "min_length": 1,
+              "dimension": null,
+              "component_labels": [],
+              "role": "voice_transcript",
+              "help": ""
+            },
+            {
+              "key": "performance_instruction",
+              "widget": "text",
+              "label": "表演指示",
+              "default": null,
+              "nullable": true,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": 200,
+              "min_length": 1,
+              "dimension": null,
+              "component_labels": [],
+              "role": null,
+              "help": "自然语言表演方式（语气、情绪、语速、停顿），可留空。"
+            },
+            {
+              "key": "seed",
+              "widget": "seed",
+              "label": "Seed",
+              "default": 42,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "seed",
+              "help": ""
+            }
+          ],
+          "require_any": [],
+          "label_namespaces": {},
+          "skills": [],
+          "distinct_slots": []
+        }
+      }
+    },
+    {
+      "id": "whisper_asr.transcribe",
+      "label": "语音转写",
+      "group": "speech",
+      "execution": "sync",
+      "available": true,
+      "notes": "参数约束与生产共用当前插件声明。",
+      "recipe": {
+        "plugin_id": "whisper_asr",
+        "plugin_label": "whisper.cpp",
+        "recipe": {
+          "id": "whisper_asr.transcribe",
+          "capability": "speech.recognize",
+          "label": "语音转写",
+          "slots": [
+            {
+              "key": "audio",
+              "role": "source_audio",
+              "label": "音频",
+              "minimum": 1,
+              "maximum": 1,
+              "media_types": [
+                "audio/wav"
+              ],
+              "duration_seconds": null,
+              "describe": "none",
+              "unique": true,
+              "namespace": null
+            }
+          ],
+          "params": [
+            {
+              "key": "language",
+              "widget": "enum",
+              "label": "识别语言",
+              "default": "auto",
+              "nullable": false,
+              "advanced": false,
+              "options": [
+                {
+                  "id": "auto",
+                  "label": "自动"
+                },
+                {
+                  "id": "zh",
+                  "label": "中文"
+                },
+                {
+                  "id": "en",
+                  "label": "英文"
+                }
+              ],
+              "minimum": null,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "language",
+              "help": ""
+            }
+          ],
+          "require_any": [],
+          "label_namespaces": {},
+          "skills": [],
+          "distinct_slots": []
+        }
+      }
+    },
+    {
+      "id": "minimax_h3.fl2va",
+      "label": "FL2VA",
+      "group": "video",
+      "execution": "async",
+      "available": true,
+      "notes": "参数约束与生产共用当前插件声明。",
+      "recipe": {
+        "plugin_id": "minimax_h3",
+        "plugin_label": "MiniMax H3",
+        "recipe": {
+          "id": "minimax_h3.fl2va",
+          "capability": "video.generate",
+          "label": "FL2VA",
+          "slots": [
+            {
+              "key": "first_frame",
+              "role": "first_frame",
+              "label": "首帧",
+              "minimum": 0,
+              "maximum": 1,
+              "media_types": [
+                "image/png",
+                "image/jpeg",
+                "image/webp"
+              ],
+              "duration_seconds": null,
+              "describe": "none",
+              "unique": true,
+              "namespace": "picture"
+            },
+            {
+              "key": "last_frame",
+              "role": "last_frame",
+              "label": "尾帧",
+              "minimum": 0,
+              "maximum": 1,
+              "media_types": [
+                "image/png",
+                "image/jpeg",
+                "image/webp"
+              ],
+              "duration_seconds": null,
+              "describe": "none",
+              "unique": true,
+              "namespace": "picture"
+            }
+          ],
+          "params": [
+            {
+              "key": "prompt",
+              "widget": "prompt",
+              "label": "H3 提示词",
+              "default": null,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": 20000,
+              "min_length": 1,
+              "dimension": null,
+              "component_labels": [],
+              "role": "prompt",
+              "help": ""
+            },
+            {
+              "key": "duration_seconds",
+              "widget": "number",
+              "label": "时长（秒）",
+              "default": 6,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": 0.2,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "duration",
+              "help": ""
+            },
+            {
+              "key": "seed",
+              "widget": "seed",
+              "label": "Seed",
+              "default": 42,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "seed",
+              "help": ""
+            },
+            {
+              "key": "aspect_ratio",
+              "widget": "enum",
+              "label": "画面比例",
+              "default": "16:9",
+              "nullable": false,
+              "advanced": false,
+              "options": [
+                {
+                  "id": "16:9",
+                  "label": "16:9"
+                },
+                {
+                  "id": "9:16",
+                  "label": "9:16"
+                },
+                {
+                  "id": "2:1",
+                  "label": "2:1"
+                }
+              ],
+              "minimum": null,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "aspect_ratio",
+              "help": ""
+            }
+          ],
+          "require_any": [
+            "first_frame",
+            "last_frame"
+          ],
+          "label_namespaces": {
+            "picture": "<Picture {n}>"
+          },
+          "skills": [
+            "h3-prompt-writing"
+          ],
+          "distinct_slots": []
+        }
+      }
+    },
+    {
+      "id": "minimax_h3.ref2va",
+      "label": "Ref2VA",
+      "group": "video",
+      "execution": "async",
+      "available": true,
+      "notes": "参数约束与生产共用当前插件声明。",
+      "recipe": {
+        "plugin_id": "minimax_h3",
+        "plugin_label": "MiniMax H3",
+        "recipe": {
+          "id": "minimax_h3.ref2va",
+          "capability": "video.generate",
+          "label": "Ref2VA",
+          "slots": [
+            {
+              "key": "first_frame",
+              "role": "first_frame",
+              "label": "首帧",
+              "minimum": 0,
+              "maximum": 1,
+              "media_types": [
+                "image/png",
+                "image/jpeg",
+                "image/webp"
+              ],
+              "duration_seconds": null,
+              "describe": "none",
+              "unique": true,
+              "namespace": "picture"
+            },
+            {
+              "key": "last_frame",
+              "role": "last_frame",
+              "label": "尾帧",
+              "minimum": 0,
+              "maximum": 1,
+              "media_types": [
+                "image/png",
+                "image/jpeg",
+                "image/webp"
+              ],
+              "duration_seconds": null,
+              "describe": "none",
+              "unique": true,
+              "namespace": "picture"
+            },
+            {
+              "key": "additional_images",
+              "role": "reference_image",
+              "label": "附加图片",
+              "minimum": 0,
+              "maximum": 4,
+              "media_types": [
+                "image/png",
+                "image/jpeg",
+                "image/webp"
+              ],
+              "duration_seconds": null,
+              "describe": "required",
+              "unique": true,
+              "namespace": "picture"
+            },
+            {
+              "key": "reference_audios",
+              "role": "reference_audio",
+              "label": "参考音频",
+              "minimum": 0,
+              "maximum": 8,
+              "media_types": [
+                "audio/wav"
+              ],
+              "duration_seconds": null,
+              "describe": "required",
+              "unique": true,
+              "namespace": "audio"
+            },
+            {
+              "key": "reference_videos",
+              "role": "reference_video",
+              "label": "参考视频",
+              "minimum": 0,
+              "maximum": 3,
+              "media_types": [
+                "video/mp4"
+              ],
+              "duration_seconds": [
+                2.0,
+                15.0
+              ],
+              "describe": "required",
+              "unique": true,
+              "namespace": "video"
+            }
+          ],
+          "params": [
+            {
+              "key": "prompt",
+              "widget": "prompt",
+              "label": "H3 提示词",
+              "default": null,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": 20000,
+              "min_length": 1,
+              "dimension": null,
+              "component_labels": [],
+              "role": "prompt",
+              "help": ""
+            },
+            {
+              "key": "duration_seconds",
+              "widget": "number",
+              "label": "时长（秒）",
+              "default": 8,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": 0.2,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "duration",
+              "help": ""
+            },
+            {
+              "key": "seed",
+              "widget": "seed",
+              "label": "Seed",
+              "default": 42,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "seed",
+              "help": ""
+            },
+            {
+              "key": "aspect_ratio",
+              "widget": "enum",
+              "label": "画面比例",
+              "default": "16:9",
+              "nullable": false,
+              "advanced": false,
+              "options": [
+                {
+                  "id": "16:9",
+                  "label": "16:9"
+                },
+                {
+                  "id": "9:16",
+                  "label": "9:16"
+                },
+                {
+                  "id": "2:1",
+                  "label": "2:1"
+                }
+              ],
+              "minimum": null,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "aspect_ratio",
+              "help": ""
+            }
+          ],
+          "require_any": [
+            "first_frame",
+            "last_frame",
+            "additional_images",
+            "reference_audios",
+            "reference_videos"
+          ],
+          "label_namespaces": {
+            "audio": "<Audio {n}>",
+            "picture": "<Picture {n}>",
+            "video": "<Video {n}>"
+          },
+          "skills": [
+            "h3-prompt-writing"
+          ],
+          "distinct_slots": []
+        }
+      }
+    },
+    {
+      "id": "seedvr2_7b_sharp_fp8.upscale",
+      "label": "720p 超分",
+      "group": "video",
+      "execution": "async",
+      "available": true,
+      "notes": "参数约束与生产共用当前插件声明。",
+      "recipe": {
+        "plugin_id": "seedvr2_7b_sharp_fp8",
+        "plugin_label": "SeedVR2 7B Sharp FP8",
+        "recipe": {
+          "id": "seedvr2_7b_sharp_fp8.upscale",
+          "capability": "video.upscale",
+          "label": "720p 超分",
+          "slots": [
+            {
+              "key": "video",
+              "role": "source_video",
+              "label": "来源视频",
+              "minimum": 1,
+              "maximum": 1,
+              "media_types": [
+                "video/mp4"
+              ],
+              "duration_seconds": null,
+              "describe": "none",
+              "unique": true,
+              "namespace": null
+            }
+          ],
+          "params": [
+            {
+              "key": "seed",
+              "widget": "seed",
+              "label": "Seed",
+              "default": 42,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "seed",
+              "help": ""
+            }
+          ],
+          "require_any": [],
+          "label_namespaces": {},
+          "skills": [],
+          "distinct_slots": []
+        }
+      }
+    },
+    {
+      "id": "stable_audio_3.generate",
+      "label": "文生音频",
+      "group": "audio",
+      "execution": "async",
+      "available": true,
+      "notes": "参数约束与生产共用当前插件声明。",
+      "recipe": {
+        "plugin_id": "stable_audio_3",
+        "plugin_label": "Stable Audio 3 Medium",
+        "recipe": {
+          "id": "stable_audio_3.generate",
+          "capability": "audio.generate",
+          "label": "文生音频",
+          "slots": [],
+          "params": [
+            {
+              "key": "prompt",
+              "widget": "prompt",
+              "label": "音乐或音效描述",
+              "default": null,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": 1000,
+              "min_length": 1,
+              "dimension": null,
+              "component_labels": [],
+              "role": "prompt",
+              "help": ""
+            },
+            {
+              "key": "duration_seconds",
+              "widget": "number",
+              "label": "时长（秒）",
+              "default": 10,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": 1,
+              "maximum": 380,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "duration",
+              "help": ""
+            },
+            {
+              "key": "seed",
+              "widget": "seed",
+              "label": "Seed",
+              "default": 42,
+              "nullable": false,
+              "advanced": false,
+              "options": [],
+              "minimum": null,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "seed",
+              "help": ""
+            }
+          ],
+          "require_any": [],
+          "label_namespaces": {},
+          "skills": [],
+          "distinct_slots": []
+        }
+      }
+    },
+    {
+      "id": "demucs_audio.separate",
+      "label": "音轨分离",
+      "group": "audio",
+      "execution": "async",
+      "available": true,
+      "notes": "参数约束与生产共用当前插件声明。",
+      "recipe": {
+        "plugin_id": "demucs_audio",
+        "plugin_label": "Demucs",
+        "recipe": {
+          "id": "demucs_audio.separate",
+          "capability": "audio.separate",
+          "label": "音轨分离",
+          "slots": [
+            {
+              "key": "video",
+              "role": "source_video",
+              "label": "来源视频",
+              "minimum": 1,
+              "maximum": 1,
+              "media_types": [
+                "video/mp4"
+              ],
+              "duration_seconds": null,
+              "describe": "none",
+              "unique": true,
+              "namespace": null
+            }
+          ],
+          "params": [
+            {
+              "key": "stem",
+              "widget": "enum",
+              "label": "音轨",
+              "default": "voice",
+              "nullable": false,
+              "advanced": false,
+              "options": [
+                {
+                  "id": "voice",
+                  "label": "人声"
+                },
+                {
+                  "id": "background",
+                  "label": "背景声"
+                }
+              ],
+              "minimum": null,
+              "maximum": null,
+              "max_length": null,
+              "min_length": null,
+              "dimension": null,
+              "component_labels": [],
+              "role": "audio_stem",
+              "help": ""
+            }
+          ],
+          "require_any": [],
+          "label_namespaces": {},
+          "skills": [],
+          "distinct_slots": []
+        }
+      }
+    }
+  ],
+  "sample_recipe": {
+    "id": "second_sample.speak",
+    "capability": "speech.synthesize",
+    "label": "通用语音",
+    "slots": [
+      {
+        "key": "speaker",
+        "role": "voice_reference",
+        "label": "参考音色",
+        "minimum": 1,
+        "maximum": 1,
+        "media_types": [
+          "audio/wav"
+        ],
+        "duration_seconds": null,
+        "describe": "none",
+        "unique": true,
+        "namespace": "voice"
+      }
+    ],
+    "params": [
+      {
+        "key": "content",
+        "widget": "prompt",
+        "label": "朗读正文",
+        "default": null,
+        "nullable": false,
+        "advanced": false,
+        "options": [],
+        "minimum": null,
+        "maximum": null,
+        "max_length": null,
+        "min_length": 1,
+        "dimension": null,
+        "component_labels": [],
+        "role": "speech_text",
+        "help": ""
+      },
+      {
+        "key": "randomness",
+        "widget": "seed",
+        "label": "随机种子",
+        "default": 42,
+        "nullable": false,
+        "advanced": false,
+        "options": [],
+        "minimum": null,
+        "maximum": null,
+        "max_length": null,
+        "min_length": null,
+        "dimension": null,
+        "component_labels": [],
+        "role": "seed",
+        "help": ""
+      },
+      {
+        "key": "emotion",
+        "widget": "vector",
+        "label": "情感",
+        "default": [
+          0.0,
+          0.0
+        ],
+        "nullable": false,
+        "advanced": false,
+        "options": [],
+        "minimum": -1,
+        "maximum": 1,
+        "max_length": null,
+        "min_length": null,
+        "dimension": 2,
+        "component_labels": [
+          "喜悦",
+          "平静"
+        ],
+        "role": null,
+        "help": ""
+      }
+    ],
+    "require_any": [],
+    "label_namespaces": {
+      "voice": "<Voice {n}>"
+    },
+    "skills": [],
+    "distinct_slots": []
+  },
+  "reference_preview": {
+    "ready": false,
+    "reason": "参考输入必须填写说明。",
+    "input_labels": [
+      {
+        "label": "<Picture 1>",
+        "provider_input": "first_frame",
+        "asset_id": "11111111111111111111111111111111",
+        "description": null
+      },
+      {
+        "label": "<Picture 2>",
+        "provider_input": "additional_images_1",
+        "asset_id": "22222222222222222222222222222222",
+        "description": ""
+      },
+      {
+        "label": "<Audio 1>",
+        "provider_input": "reference_audios_1",
+        "asset_id": "33333333333333333333333333333333",
+        "description": ""
+      }
+    ]
+  }
+}

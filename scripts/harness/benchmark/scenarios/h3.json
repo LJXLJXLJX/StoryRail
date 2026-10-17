@@ -1,0 +1,91 @@
+{
+  "scenario": "h3",
+  "capability": "video_prompt",
+  "bootstrap": "keyframes",
+  "summary": "关键帧已选：读契约 → 读 h3 工作集（分页）→ 保存提示词 → 提交视频生成 → wait。",
+  "steps": [
+    {
+      "id": "tools",
+      "action": "list_tools"
+    },
+    {
+      "id": "workflow",
+      "action": "call",
+      "tool": "read_workflow",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-h3-workflow"
+      }
+    },
+    {
+      "id": "contract",
+      "action": "pages",
+      "tool": "read_professional_contract",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-h3-contract",
+        "capability": "video_prompt",
+        "page_bytes": 24576
+      }
+    },
+    {
+      "id": "workset",
+      "action": "pages",
+      "tool": "read_professional_workset",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-h3-workset",
+        "capability": "video_prompt",
+        "scene_ids": "$base.scene_ids",
+        "target_ids": "$base.segment_ids",
+        "page_bytes": 24576
+      },
+      "assert": {
+        "no_error": true
+      }
+    },
+    {
+      "id": "prompt",
+      "action": "call",
+      "tool": "save_video_prompt",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-h3-prompt",
+        "scene_ids": "$base.scene_ids",
+        "segment_id": "$base.segment_id",
+        "prompt_text": "固定机位观察傍晚空旷站台，小满停在画面右侧，缓慢推近后停住。"
+      },
+      "assert": {
+        "no_error": true
+      }
+    },
+    {
+      "id": "generate",
+      "action": "call",
+      "tool": "generate_media",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision + 1",
+        "idempotency_key": "bench-h3-generate",
+        "kind": "video",
+        "target_id": "$base.segment_id"
+      }
+    },
+    {
+      "id": "wait",
+      "action": "wait",
+      "tool": "manage_generation",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$generate.receipt.new_revision",
+        "idempotency_key": "bench-h3-wait",
+        "action": "wait",
+        "generation_ids": "$generate.data.generation_ids"
+      }
+    }
+  ]
+}

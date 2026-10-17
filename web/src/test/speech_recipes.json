@@ -1,0 +1,160 @@
+[
+  {
+    "id": "breeze_tts2.voice_design",
+    "capability": "voice.design",
+    "label": "音色设计",
+    "slots": [],
+    "params": [
+      {
+        "key": "text",
+        "widget": "prompt",
+        "label": "朗读文本",
+        "default": null,
+        "nullable": false,
+        "advanced": false,
+        "options": [],
+        "minimum": null,
+        "maximum": null,
+        "max_length": 20000,
+        "min_length": 1,
+        "dimension": null,
+        "component_labels": [],
+        "role": "speech_text",
+        "help": ""
+      },
+      {
+        "key": "voice_description",
+        "widget": "text",
+        "label": "音色描述",
+        "default": null,
+        "nullable": false,
+        "advanced": false,
+        "options": [],
+        "minimum": null,
+        "maximum": null,
+        "max_length": 4000,
+        "min_length": 1,
+        "dimension": null,
+        "component_labels": [],
+        "role": "prompt",
+        "help": "用自然语言描述音色，不提供参考音频。"
+      },
+      {
+        "key": "seed",
+        "widget": "seed",
+        "label": "Seed",
+        "default": 42,
+        "nullable": false,
+        "advanced": false,
+        "options": [],
+        "minimum": null,
+        "maximum": null,
+        "max_length": null,
+        "min_length": null,
+        "dimension": null,
+        "component_labels": [],
+        "role": "seed",
+        "help": ""
+      }
+    ],
+    "require_any": [],
+    "label_namespaces": {},
+    "skills": [],
+    "distinct_slots": []
+  },
+  {
+    "id": "breeze_tts2.clone",
+    "capability": "speech.synthesize",
+    "label": "声音克隆",
+    "slots": [
+      {
+        "key": "voice",
+        "role": "voice_reference",
+        "label": "参考音色",
+        "minimum": 1,
+        "maximum": 1,
+        "media_types": [
+          "audio/wav"
+        ],
+        "duration_seconds": null,
+        "describe": "none",
+        "unique": true,
+        "namespace": null
+      }
+    ],
+    "params": [
+      {
+        "key": "text",
+        "widget": "prompt",
+        "label": "朗读文本",
+        "default": null,
+        "nullable": false,
+        "advanced": false,
+        "options": [],
+        "minimum": null,
+        "maximum": null,
+        "max_length": 20000,
+        "min_length": 1,
+        "dimension": null,
+        "component_labels": [],
+        "role": "speech_text",
+        "help": ""
+      },
+      {
+        "key": "reference_transcript",
+        "widget": "text",
+        "label": "参考音频文字稿",
+        "default": null,
+        "nullable": false,
+        "advanced": false,
+        "options": [],
+        "minimum": null,
+        "maximum": null,
+        "max_length": 20000,
+        "min_length": 1,
+        "dimension": null,
+        "component_labels": [],
+        "role": "voice_transcript",
+        "help": ""
+      },
+      {
+        "key": "performance_instruction",
+        "widget": "text",
+        "label": "表演指示",
+        "default": null,
+        "nullable": true,
+        "advanced": false,
+        "options": [],
+        "minimum": null,
+        "maximum": null,
+        "max_length": 200,
+        "min_length": 1,
+        "dimension": null,
+        "component_labels": [],
+        "role": null,
+        "help": "自然语言表演方式（语气、情绪、语速、停顿），可留空。"
+      },
+      {
+        "key": "seed",
+        "widget": "seed",
+        "label": "Seed",
+        "default": 42,
+        "nullable": false,
+        "advanced": false,
+        "options": [],
+        "minimum": null,
+        "maximum": null,
+        "max_length": null,
+        "min_length": null,
+        "dimension": null,
+        "component_labels": [],
+        "role": "seed",
+        "help": ""
+      }
+    ],
+    "require_any": [],
+    "label_namespaces": {},
+    "skills": [],
+    "distinct_slots": []
+  }
+]

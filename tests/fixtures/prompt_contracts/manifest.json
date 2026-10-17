@@ -1,0 +1,53 @@
+{
+  "source_commit": "254e43b16ef0c134b3f0f680874f318125737202",
+  "files": {
+    "media/aux-cup.png": {
+      "sha256": "500016b7ed20d18d101510500dd8f8ad0dc44a07a175c415c99da89730bd15f9",
+      "source": "git show 254e43b16ef0c134b3f0f680874f318125737202:.agent/archive/M3/ledger/T11/real-samples/aux-cup.png"
+    },
+    "media/character-a.png": {
+      "sha256": "c878d09dcec9dca2e1f3d4bf8067c109bdadfbcd9e55576f0dce2297974c0691",
+      "source": "git show 254e43b16ef0c134b3f0f680874f318125737202:.agent/archive/M3/ledger/T11/real-samples/character-a.png"
+    },
+    "media/character-b.png": {
+      "sha256": "70a6e03303179994b3567e177674bbadc378dccb7e0870288263d5e3f1bcdae8",
+      "source": "git show 254e43b16ef0c134b3f0f680874f318125737202:.agent/archive/M3/ledger/T11/real-samples/character-b.png"
+    },
+    "media/end.png": {
+      "sha256": "b5255c6ac3acb35785ff1d5e9c3f9c7ce6e12ffbac241ae44e77bfb28fcaab91",
+      "source": "git show 254e43b16ef0c134b3f0f680874f318125737202:.agent/archive/M3/ledger/T11/real-samples/end.png"
+    },
+    "media/scene.png": {
+      "sha256": "0a49be7302cc91eb4d318690cf16d4b15432c1a14b61719de8bafb89e1a165d7",
+      "source": "git show 254e43b16ef0c134b3f0f680874f318125737202:.agent/archive/M3/ledger/T11/real-samples/scene.png"
+    },
+    "media/start.png": {
+      "sha256": "36a5bc19f913c5468d55df6e75afc6349d1cc4138fde5ac9846fb907edcb18de",
+      "source": "git show 254e43b16ef0c134b3f0f680874f318125737202:.agent/archive/M3/ledger/T11/real-samples/start.png"
+    },
+    "media/audio-1.wav": {
+      "sha256": "f6ab4537278cbd99f6ad722314120583d19ca3f8324397a5423fbd9085f182c4",
+      "source": "git show 254e43b16ef0c134b3f0f680874f318125737202:.agent/archive/M3/ledger/T11/real-samples/audio-1.wav"
+    },
+    "media/audio-2.wav": {
+      "sha256": "8a75431ae5318002cb0b266e9d78c64d94c94509e398da8a199d70a2daae12fc",
+      "source": "git show 254e43b16ef0c134b3f0f680874f318125737202:.agent/archive/M3/ledger/T11/real-samples/audio-2.wav"
+    },
+    "historical/ref2va-builtin.json": {
+      "sha256": "00cd9b662127f2bf7960ed8f810d21dc9d3d323a34a2fbf509bf2312d28156af",
+      "source": "git show 254e43b16ef0c134b3f0f680874f318125737202:.agent/archive/M3/ledger/T11/kimi-final/results/ref2va-builtin/proposal.json"
+    },
+    "historical/ref2va-external.json": {
+      "sha256": "49b2cbbb280b14409ced2c6189e23336af3fed240e8288afacfaaa7eb7a4a394",
+      "source": "git show 254e43b16ef0c134b3f0f680874f318125737202:.agent/archive/M3/ledger/T11/kimi-final/results/ref2va-external/proposal.json"
+    },
+    "historical/fl2va-external.json": {
+      "sha256": "4d214837e350ef5ca86a82f63b5677dd7e736c8220128c4d3259a47f903f2b63",
+      "source": "git show 254e43b16ef0c134b3f0f680874f318125737202:.agent/archive/M3/ledger/T11/kimi-final/results/fl2va-external/proposal.json"
+    },
+    "historical/keyframe-external.json": {
+      "sha256": "c97a62fa8693e5319988a3245fc20db7785890bd90d05f30d682e609f477937d",
+      "source": "git show 254e43b16ef0c134b3f0f680874f318125737202:.agent/archive/M3/ledger/T11/kimi-final/results/keyframe-external/proposal.json"
+    }
+  }
+}

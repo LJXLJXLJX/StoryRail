@@ -1,0 +1,592 @@
+[
+  {
+    "body": {
+      "aspect_ratio": "9:16",
+      "instruction": "雨夜站台上的红色行李箱。",
+      "model": "gpt-5.6-terra",
+      "reference_images": [
+        {
+          "content_type": "image/png",
+          "data_base64": {
+            "blob": "upload:角色参考.png",
+            "bytes": 31,
+            "sha256": "7f1a2a093ef71bf68f760aa7c4d1f3ad855ebca728b2132a585f121741b425e5"
+          }
+        },
+        {
+          "content_type": "image/png",
+          "data_base64": {
+            "blob": "upload:道具参考.png",
+            "bytes": 31,
+            "sha256": "8e9ae7a4d5a77ca7da566b38619fef7e7d25a52059859a2023c9be780eb7bc65"
+          }
+        }
+      ],
+      "source_image": null
+    },
+    "method": "POST",
+    "path": "/codex/image-generations",
+    "plugin": "codex",
+    "step": "image.generate"
+  },
+  {
+    "body": {
+      "aspect_ratio": "2:1",
+      "instruction": "把雨夜改成清晨，保留行李箱位置。",
+      "model": "gpt-5.6-terra",
+      "reference_images": [
+        {
+          "content_type": "image/png",
+          "data_base64": {
+            "blob": "upload:道具参考.png",
+            "bytes": 31,
+            "sha256": "8e9ae7a4d5a77ca7da566b38619fef7e7d25a52059859a2023c9be780eb7bc65"
+          }
+        }
+      ],
+      "source_image": {
+        "content_type": "image/png",
+        "data_base64": {
+          "blob": "output:codex-1",
+          "bytes": 22,
+          "sha256": "4c34976e0ffddb00cf0bcdce5de6f23ddce1f3ab4a7e48ce608b456481b283e1"
+        }
+      }
+    },
+    "method": "POST",
+    "path": "/agy/image-edits",
+    "plugin": "agy",
+    "step": "image.edit.agy"
+  },
+  {
+    "body": {
+      "cfg_scale": 4.0,
+      "instruction": "低沉的男中音，略带沙哑",
+      "reference_transcript": null,
+      "seed": 31,
+      "text": "末班车已经离开。",
+      "voice": null
+    },
+    "method": "POST",
+    "path": "/breeze-tts2/speech",
+    "plugin": "breeze",
+    "step": "tts.voice_design"
+  },
+  {
+    "body": {
+      "cfg_scale": 4.0,
+      "instruction": "轻声，犹豫",
+      "reference_transcript": "参考音频的完整文字稿。",
+      "seed": 32,
+      "text": "我再等一会儿。",
+      "voice": {
+        "base64": {
+          "blob": "upload:参考音色.wav",
+          "bytes": 32044,
+          "sha256": "295186b7a55c86848e354dd405c849234100b54e49b8f328f6922ca07813aaf7"
+        },
+        "media_type": "audio/wav"
+      }
+    },
+    "method": "POST",
+    "path": "/breeze-tts2/speech",
+    "plugin": "breeze",
+    "step": "tts.voice_clone"
+  },
+  {
+    "body": {
+      "cfg_scale": 4.0,
+      "instruction": null,
+      "reference_transcript": "参考音频的完整文字稿。",
+      "seed": 33,
+      "text": "I will wait a little longer.",
+      "voice": {
+        "base64": {
+          "blob": "upload:参考音色.wav",
+          "bytes": 32044,
+          "sha256": "295186b7a55c86848e354dd405c849234100b54e49b8f328f6922ca07813aaf7"
+        },
+        "media_type": "audio/wav"
+      }
+    },
+    "method": "POST",
+    "path": "/breeze-tts2/speech",
+    "plugin": "breeze",
+    "step": "tts.voice_clone.no_instruction"
+  },
+  {
+    "body": [
+      {
+        "headers": [
+          "Content-Disposition: form-data; name=\"file\"; filename=\"reference.wav\"",
+          "Content-Type: audio/wav"
+        ],
+        "value": {
+          "blob": "upload:参考音色.wav",
+          "bytes": 32044,
+          "sha256": "295186b7a55c86848e354dd405c849234100b54e49b8f328f6922ca07813aaf7"
+        }
+      },
+      {
+        "headers": [
+          "Content-Disposition: form-data; name=\"response_format\""
+        ],
+        "value": "json"
+      },
+      {
+        "headers": [
+          "Content-Disposition: form-data; name=\"language\""
+        ],
+        "value": "auto"
+      },
+      {
+        "headers": [
+          "Content-Disposition: form-data; name=\"translate\""
+        ],
+        "value": "false"
+      },
+      {
+        "headers": [
+          "Content-Disposition: form-data; name=\"no_timestamps\""
+        ],
+        "value": "true"
+      },
+      {
+        "headers": [
+          "Content-Disposition: form-data; name=\"temperature\""
+        ],
+        "value": "0.0"
+      }
+    ],
+    "method": "POST",
+    "path": "/inference",
+    "plugin": "whisper",
+    "step": "asr.transcribe"
+  },
+  {
+    "body": {
+      "canvas": {
+        "height": 1280,
+        "width": 704
+      },
+      "closing_frame": null,
+      "include_audio": true,
+      "opening_frame": {
+        "base64": {
+          "blob": "output:codex-1",
+          "bytes": 22,
+          "sha256": "4c34976e0ffddb00cf0bcdce5de6f23ddce1f3ab4a7e48ce608b456481b283e1"
+        },
+        "mime": "image/png"
+      },
+      "prompt": "行李箱在站台上缓慢滑动。",
+      "sampling": {
+        "cfg": 1.0,
+        "sage_attention": true,
+        "selflift": true,
+        "steps": 20
+      },
+      "seconds": 5.0,
+      "seed": 41
+    },
+    "method": "POST",
+    "path": "/minimax-h3/fl2va/clips",
+    "plugin": "h3_fl2va",
+    "step": "video.fl2va"
+  },
+  {
+    "body": {
+      "canvas": {
+        "height": 480,
+        "width": 864
+      },
+      "closing_frame": {
+        "base64": {
+          "blob": "output:agy-1",
+          "bytes": 20,
+          "sha256": "b93b978fb588608afab7641c4f78c1ae12d54b154b72fa749678266de7ab4249"
+        },
+        "mime": "image/png"
+      },
+      "include_audio": true,
+      "opening_frame": null,
+      "prompt": "镜头停在清晨的站台。",
+      "sampling": {
+        "cfg": 1.0,
+        "sage_attention": true,
+        "selflift": false,
+        "steps": 20
+      },
+      "seconds": 16.5,
+      "seed": 42
+    },
+    "method": "POST",
+    "path": "/minimax-h3/fl2va/clips",
+    "plugin": "h3_fl2va",
+    "step": "video.fl2va.480p_last_only"
+  },
+  {
+    "body": {
+      "additional_references": [
+        {
+          "content": {
+            "blob": "upload:道具参考.png",
+            "bytes": 31,
+            "sha256": "8e9ae7a4d5a77ca7da566b38619fef7e7d25a52059859a2023c9be780eb7bc65"
+          },
+          "media_type": "image/png"
+        }
+      ],
+      "audio": true,
+      "audio_references": [
+        {
+          "content": {
+            "blob": "upload:环境声.wav",
+            "bytes": 48044,
+            "sha256": "6d3ee9b796b00732b86da1183e3c66961eb572dcc41ce740b0973c8eb08c0ec5"
+          },
+          "media_type": "audio/wav"
+        },
+        {
+          "content": {
+            "blob": "upload:参考音色.wav",
+            "bytes": 32044,
+            "sha256": "295186b7a55c86848e354dd405c849234100b54e49b8f328f6922ca07813aaf7"
+          },
+          "media_type": "audio/wav"
+        }
+      ],
+      "direction": "<Picture 1> 到 <Picture 2>，<Picture 3> 的道具保持可见，<Audio 1> 作为环境声。",
+      "duration_s": 6.0,
+      "first_reference": {
+        "content": {
+          "blob": "output:codex-1",
+          "bytes": 22,
+          "sha256": "4c34976e0ffddb00cf0bcdce5de6f23ddce1f3ab4a7e48ce608b456481b283e1"
+        },
+        "media_type": "image/png"
+      },
+      "guidance": 1.0,
+      "height_px": 960,
+      "last_reference": {
+        "content": {
+          "blob": "output:agy-1",
+          "bytes": 20,
+          "sha256": "b93b978fb588608afab7641c4f78c1ae12d54b154b72fa749678266de7ab4249"
+        },
+        "media_type": "image/png"
+      },
+      "random_seed": 43,
+      "sage_attention": false,
+      "selflift": true,
+      "step_count": 8,
+      "video_references": [
+        {
+          "content": {
+            "blob": "upload:运镜参考.mp4",
+            "bytes": 376,
+            "sha256": "ee4942b0c156a0ff4148b366e680983469d0abe5b59dd2fac2cc9b5d3e55d14d"
+          },
+          "media_type": "video/mp4"
+        }
+      ],
+      "width_px": 1920
+    },
+    "method": "POST",
+    "path": "/minimax-h3/ref2va/renders",
+    "plugin": "h3_ref2va",
+    "step": "video.ref2va.1080p_turbo"
+  },
+  {
+    "body": {
+      "additional_references": [
+        {
+          "content": {
+            "blob": "upload:角色参考.png",
+            "bytes": 31,
+            "sha256": "7f1a2a093ef71bf68f760aa7c4d1f3ad855ebca728b2132a585f121741b425e5"
+          },
+          "media_type": "image/png"
+        }
+      ],
+      "audio": true,
+      "audio_references": [
+        {
+          "content": {
+            "blob": "upload:参考音色.wav",
+            "bytes": 32044,
+            "sha256": "295186b7a55c86848e354dd405c849234100b54e49b8f328f6922ca07813aaf7"
+          },
+          "media_type": "audio/wav"
+        }
+      ],
+      "direction": "<Picture 1> 中 <Picture 2> 的人物用 <Audio 1> 的声音独白。",
+      "duration_s": 4.0,
+      "first_reference": {
+        "content": {
+          "blob": "output:codex-1",
+          "bytes": 22,
+          "sha256": "4c34976e0ffddb00cf0bcdce5de6f23ddce1f3ab4a7e48ce608b456481b283e1"
+        },
+        "media_type": "image/png"
+      },
+      "guidance": 1.0,
+      "height_px": 704,
+      "last_reference": null,
+      "random_seed": 44,
+      "sage_attention": true,
+      "selflift": true,
+      "step_count": 20,
+      "video_references": [],
+      "width_px": 1280
+    },
+    "method": "POST",
+    "path": "/minimax-h3/ref2va/renders",
+    "plugin": "h3_ref2va",
+    "step": "video.ref2va.first_frame_and_audio"
+  },
+  {
+    "body": {
+      "additional_references": [
+        {
+          "content": {
+            "blob": "upload:道具参考.png",
+            "bytes": 31,
+            "sha256": "8e9ae7a4d5a77ca7da566b38619fef7e7d25a52059859a2023c9be780eb7bc65"
+          },
+          "media_type": "image/png"
+        }
+      ],
+      "audio": true,
+      "audio_references": [],
+      "direction": "<Picture 1> 结束在 <Picture 2> 的道具特写。",
+      "duration_s": 3.0,
+      "first_reference": null,
+      "guidance": 1.0,
+      "height_px": 1280,
+      "last_reference": {
+        "content": {
+          "blob": "output:codex-1",
+          "bytes": 22,
+          "sha256": "4c34976e0ffddb00cf0bcdce5de6f23ddce1f3ab4a7e48ce608b456481b283e1"
+        },
+        "media_type": "image/png"
+      },
+      "random_seed": 45,
+      "sage_attention": true,
+      "selflift": true,
+      "step_count": 20,
+      "video_references": [],
+      "width_px": 704
+    },
+    "method": "POST",
+    "path": "/minimax-h3/ref2va/renders",
+    "plugin": "h3_ref2va",
+    "step": "video.ref2va.no_audio"
+  },
+  {
+    "body": {
+      "additional_references": [],
+      "audio": true,
+      "audio_references": [
+        {
+          "content": {
+            "blob": "upload:环境声.wav",
+            "bytes": 48044,
+            "sha256": "6d3ee9b796b00732b86da1183e3c66961eb572dcc41ce740b0973c8eb08c0ec5"
+          },
+          "media_type": "audio/wav"
+        }
+      ],
+      "direction": "空旷站台上，一盏顶灯轻微闪烁。",
+      "duration_s": 3.0,
+      "first_reference": null,
+      "guidance": 1.0,
+      "height_px": 704,
+      "last_reference": null,
+      "random_seed": 46,
+      "sage_attention": true,
+      "selflift": true,
+      "step_count": 20,
+      "video_references": [],
+      "width_px": 1280
+    },
+    "method": "POST",
+    "path": "/minimax-h3/ref2va/renders",
+    "plugin": "h3_ref2va",
+    "step": "video.ref2va.no_images"
+  },
+  {
+    "body": {
+      "max_long_side": 1280,
+      "seed": 51,
+      "source_video": {
+        "base64": {
+          "blob": "output:h3_fl2va-1",
+          "bytes": 370,
+          "sha256": "c9288b20a8d3dad742c139b9c4e89b10328deb256e9ccbc0976028ae6abd4e67"
+        },
+        "mime": "video/mp4"
+      },
+      "target_short_side": 720
+    },
+    "method": "POST",
+    "path": "/seedvr2/7b-sharp-fp8/upscales",
+    "plugin": "seedvr2",
+    "step": "video.upscale"
+  },
+  {
+    "body": {
+      "base64": {
+        "blob": "output:h3_fl2va-1",
+        "bytes": 370,
+        "sha256": "c9288b20a8d3dad742c139b9c4e89b10328deb256e9ccbc0976028ae6abd4e67"
+      },
+      "frame_index": 119,
+      "mime": "video/mp4"
+    },
+    "method": "POST",
+    "path": "/ffmpeg/video-frames",
+    "plugin": "video_frame",
+    "step": "video.extract_frame"
+  },
+  {
+    "body": {
+      "aspect_ratio": "9:16",
+      "base64": {
+        "blob": "upload:客厅全景.png",
+        "bytes": 52,
+        "sha256": "c1592dc5807588189b9c54092773a41bc02b4f834d066743149d170dd8a48294"
+      },
+      "hfov_deg": 75.0,
+      "mime": "image/png",
+      "pitch_deg": -10.5,
+      "yaw_deg": 270.0
+    },
+    "method": "POST",
+    "path": "/ffmpeg/pano-views",
+    "plugin": "pano_view",
+    "step": "image.pano_view"
+  },
+  {
+    "body": {
+      "stem": "voice",
+      "video": {
+        "base64": {
+          "blob": "output:h3_fl2va-1",
+          "bytes": 370,
+          "sha256": "c9288b20a8d3dad742c139b9c4e89b10328deb256e9ccbc0976028ae6abd4e67"
+        },
+        "mime": "video/mp4"
+      }
+    },
+    "method": "POST",
+    "path": "/demucs/audio-separations",
+    "plugin": "demucs",
+    "step": "audio.separate.voice"
+  },
+  {
+    "body": {
+      "stem": "background",
+      "video": {
+        "base64": {
+          "blob": "output:h3_fl2va-1",
+          "bytes": 370,
+          "sha256": "c9288b20a8d3dad742c139b9c4e89b10328deb256e9ccbc0976028ae6abd4e67"
+        },
+        "mime": "video/mp4"
+      }
+    },
+    "method": "POST",
+    "path": "/demucs/audio-separations",
+    "plugin": "demucs",
+    "step": "audio.separate.background"
+  },
+  {
+    "body": {
+      "background": {
+        "base64": {
+          "blob": "output:demucs-2",
+          "bytes": 64044,
+          "sha256": "fa7aaaf1088cf9e2b57b829b7a07b3bca5e64ab8a66f57f87be895f6b79d473a"
+        },
+        "mime": "audio/wav"
+      },
+      "background_gain_db": 6.0,
+      "background_gain_end_seconds": 2.5,
+      "background_gain_start_seconds": 0.5,
+      "video": {
+        "base64": {
+          "blob": "output:h3_fl2va-1",
+          "bytes": 370,
+          "sha256": "c9288b20a8d3dad742c139b9c4e89b10328deb256e9ccbc0976028ae6abd4e67"
+        },
+        "mime": "video/mp4"
+      },
+      "voice": {
+        "base64": {
+          "blob": "output:demucs-1",
+          "bytes": 64044,
+          "sha256": "4cdce1525778f8c07084e6da1b763259b6216225c53dc9d78bc3a901a1cc2645"
+        },
+        "mime": "audio/wav"
+      },
+      "voice_gain_db": -2.5,
+      "voice_gain_end_seconds": null,
+      "voice_gain_start_seconds": null
+    },
+    "method": "POST",
+    "path": "/ffmpeg/audio-remixes",
+    "plugin": "audio_remix",
+    "step": "audio.remix"
+  },
+  {
+    "body": {
+      "duration_seconds": 12.5,
+      "prompt": "rain on a train platform, distant announcement",
+      "seed": 61
+    },
+    "method": "POST",
+    "path": "/stable-audio-3/generations",
+    "plugin": "stable_audio",
+    "step": "audio.generate"
+  },
+  {
+    "body": {
+      "max_long_side": 1280,
+      "seed": 52,
+      "source_video": {
+        "base64": {
+          "blob": "output:h3_fl2va-1",
+          "bytes": 370,
+          "sha256": "c9288b20a8d3dad742c139b9c4e89b10328deb256e9ccbc0976028ae6abd4e67"
+        },
+        "mime": "video/mp4"
+      },
+      "target_short_side": 720
+    },
+    "method": "POST",
+    "path": "/seedvr2/7b-sharp-fp8/upscales",
+    "plugin": "seedvr2",
+    "step": "run.retry"
+  },
+  {
+    "body": {
+      "max_long_side": 1280,
+      "seed": 52,
+      "source_video": {
+        "base64": {
+          "blob": "output:h3_fl2va-1",
+          "bytes": 370,
+          "sha256": "c9288b20a8d3dad742c139b9c4e89b10328deb256e9ccbc0976028ae6abd4e67"
+        },
+        "mime": "video/mp4"
+      },
+      "target_short_side": 720
+    },
+    "method": "POST",
+    "path": "/seedvr2/7b-sharp-fp8/upscales",
+    "plugin": "seedvr2",
+    "step": "run.retry"
+  }
+]

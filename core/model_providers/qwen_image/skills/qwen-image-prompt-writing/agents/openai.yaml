@@ -1,0 +1,4 @@
+interface:
+  display_name: "Qwen Image Prompt Writing"
+  short_description: "Write StoryRail image prompts for Qwen Image 2.1"
+  default_prompt: "Use $qwen-image-prompt-writing to write this keyframe or environment reference prompt for Qwen Image 2.1."

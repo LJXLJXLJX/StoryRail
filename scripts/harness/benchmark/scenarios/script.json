@@ -1,0 +1,113 @@
+{
+  "scenario": "script",
+  "capability": "script",
+  "bootstrap": "ready",
+  "summary": "引用库已审核：读契约 → 读 script 工作集 → request/submit 结构化脚本。",
+  "steps": [
+    {
+      "id": "tools",
+      "action": "list_tools"
+    },
+    {
+      "id": "workflow",
+      "action": "call",
+      "tool": "read_workflow",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-script-workflow"
+      }
+    },
+    {
+      "id": "contract",
+      "action": "pages",
+      "tool": "read_professional_contract",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-script-contract",
+        "capability": "script",
+        "page_bytes": 24576
+      }
+    },
+    {
+      "id": "workset",
+      "action": "pages",
+      "tool": "read_professional_workset",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-script-workset",
+        "capability": "script",
+        "page_bytes": 24576
+      },
+      "assert": {"no_error": true}
+    },
+    {
+      "id": "request",
+      "action": "call",
+      "tool": "submit_proposal",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-script-request",
+        "capability": "script",
+        "payload": {
+          "action": "request",
+          "raw_user_instruction": "按已审核引用库与完整导演方案生成结构化导演脚本"
+        }
+      }
+    },
+    {
+      "id": "submit",
+      "action": "call",
+      "tool": "submit_proposal",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision + 1",
+        "idempotency_key": "bench-script-submit",
+        "capability": "script",
+        "payload": {
+          "action": "submit",
+          "request_id": "$request.data.request_id",
+          "proposal": {
+            "scenes": [
+              {
+                "driver": "drama",
+                "title": "末班车",
+                "summary": "小满在停用前的车站等最后一班车。",
+                "setting": "傍晚，空旷站台，冷蓝色天光。",
+                "narration_cues": [],
+                "shots": [
+                  {
+                    "visible_character_ids": ["$base.character_id"],
+                    "composition": "中远景，人物位于画面右侧。",
+                    "camera_movement": "缓慢推近。",
+                    "action": "小满握住行李箱拉杆，抬头看向站牌。",
+                    "audio_direction": "远处风声和站内电流声。",
+                    "transition_in": null,
+                    "segments": [
+                      {
+                        "duration_estimate_seconds": 6.0,
+                        "action": "小满抬头看向站牌。",
+                        "dialogue_lines": [
+                          {
+                            "character_id": "$base.character_id",
+                            "text": "还会来吗？",
+                            "delivery": "轻声，带一点迟疑"
+                          }
+                        ],
+                        "boundary_from_previous": null
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "assert": {"no_error": true}
+    }
+  ]
+}

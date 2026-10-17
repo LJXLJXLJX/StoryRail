@@ -1,0 +1,12 @@
+**
+!core/**
+!server/**
+!storyrail_contracts/**
+!integrations/**
+!tests/**
+!scripts/harness/real_agent/**
+!scripts/harness/probes/**
+!scripts/harness/fixtures/**
+!scripts/harness/__init__.py
+**/__pycache__/**
+**/*.pyc

@@ -1,0 +1,6 @@
+{
+  "fence": "```json\n{}",
+  "extra": "{\"scenes\":[],\"extra\":true}",
+  "missing": "{}",
+  "type": "{\"scenes\":{}}"
+}

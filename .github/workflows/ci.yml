@@ -1,0 +1,68 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "refactor/**"]
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install dev extras
+        run: pip install -e '.[dev]'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install web dependencies（O6 dist smoke 需要在测内构建 web）
+        working-directory: web
+        run: npm ci
+      - name: Ruff format
+        run: ruff format --check .
+      - name: Ruff lint
+        run: ruff check .
+      - name: Pytest
+        run: python -m pytest
+      - name: Fixture freshness（生成器重跑后不得漂移）
+        run: python scripts/check_fixture_freshness.py
+      - name: Web contract freshness（schema 生成物不得漂移）
+        run: python scripts/gen_web_contracts.py --check
+      - name: Doc link check（内部 Markdown 链接可达）
+        run: python scripts/check_doc_links.py
+      - name: Token benchmark（标准场景线上字节防回归）
+        run: python scripts/harness/benchmark/report.py --check
+      - name: Diff whitespace check
+        run: git diff --check
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+      - name: Typecheck
+        working-directory: web
+        run: npm run typecheck
+      - name: Vitest
+        working-directory: web
+        run: npm test
+      - name: Build
+        working-directory: web
+        run: npm run build

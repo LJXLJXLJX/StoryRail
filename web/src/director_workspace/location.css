@@ -1,0 +1,639 @@
+/* 地点库：左侧地点索引，右侧当前地点详情（主图 → 陈设与状态 → 机位视图）。 */
+.global-references-dialog.location-library-dialog {
+  width: min(1180px, 100%);
+}
+.location-library-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.location-library-toolbar p {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.location-library-toolbar .primary-button {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0 18px;
+}
+.location-library-empty {
+  margin: 0;
+  padding: 48px 20px;
+  border: 1px dashed var(--line-dark);
+  color: var(--muted);
+  text-align: center;
+}
+.location-library-body {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* 地点索引 */
+.location-index {
+  position: sticky;
+  top: 0;
+  display: grid;
+  gap: 6px;
+}
+.location-index > button {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  text-align: left;
+}
+.location-index > button:hover {
+  border-color: var(--line-dark);
+}
+.location-index > button.is-active {
+  border-color: var(--red);
+  box-shadow: inset 3px 0 0 var(--red);
+}
+.location-index-thumb {
+  display: block;
+  width: 56px;
+  height: 40px;
+  overflow: hidden;
+  background: var(--paper-deep);
+}
+.location-index-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.location-index-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.location-index-text strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.location-index-text small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* 地点详情 */
+.location-detail {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.location-detail-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.location-kicker {
+  color: var(--red);
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+.location-detail-header h2 {
+  margin: 4px 0 6px;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 26px;
+  overflow-wrap: anywhere;
+}
+.location-detail-header p {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.location-section {
+  min-width: 0;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--line);
+  background: var(--white);
+}
+.location-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.location-section-header h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 0;
+  font-size: 14px;
+}
+.location-section-header h3 small {
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 400;
+}
+.location-section-header > button {
+  margin-left: auto;
+}
+.location-section-hint {
+  margin: -4px 0 14px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+.location-list-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* 紧凑按钮：地点库内操作密集，统一降一档 */
+.location-library .primary-button,
+.location-library .secondary-button {
+  min-height: 34px;
+  padding: 0 14px;
+  font-size: 12px;
+}
+.location-inline-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+}
+.location-library .location-inline-actions .secondary-button {
+  min-height: 30px;
+  padding: 0 12px;
+}
+
+/* 状态徽标：只做视觉区分，状态本身来自 Core */
+.location-status {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.location-status.is-done {
+  border-color: rgba(52, 120, 76, 0.3);
+  background: #edf5ee;
+  color: #2f6b45;
+}
+.location-status.is-working {
+  border-color: rgba(64, 100, 150, 0.3);
+  background: #eef3f8;
+  color: #3a5d86;
+}
+.location-status.is-attention {
+  border-color: rgba(176, 124, 30, 0.35);
+  background: #fbf3e2;
+  color: #8a5f14;
+}
+.location-status.is-problem {
+  border-color: rgba(216, 75, 53, 0.35);
+  background: #fbece8;
+  color: var(--red-dark);
+}
+
+/* 图片 */
+.location-figure {
+  min-width: 0;
+  margin: 0;
+}
+.location-figure figcaption {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.location-image,
+.location-panorama {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--paper-deep);
+}
+.location-panorama {
+  aspect-ratio: 2 / 1;
+}
+.location-image .image-preview-trigger,
+.location-panorama .image-preview-trigger {
+  width: 100%;
+  height: 100%;
+}
+.location-image .image-preview-trigger > img,
+.location-panorama .image-preview-trigger > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.location-section > .location-figure .is-empty {
+  aspect-ratio: auto !important;
+  min-height: 96px;
+}
+.location-section > .location-figure .location-image:not(.is-empty) {
+  max-height: 480px;
+}
+.location-image-empty {
+  margin: 0;
+  padding: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.location-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.location-facts dt {
+  color: var(--muted);
+}
+.location-facts dd {
+  margin: 0;
+}
+
+/* 生成状态与候选 */
+.location-production {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.location-production:empty {
+  display: none;
+}
+.location-production-reason {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.location-candidate-list summary {
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.location-candidates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.location-candidate {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+.location-candidates:has(.location-panorama) {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+}
+.location-candidate .location-image .image-preview-trigger > img {
+  height: auto;
+}
+.location-production-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 固定陈设 / 地点状态 */
+.location-setting-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.location-resource-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.location-resource-list li {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.location-resource-list li > div:first-child {
+  min-width: 0;
+}
+.location-resource-list strong {
+  font-size: 13px;
+}
+.location-resource-list small {
+  margin-left: 8px;
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+.location-resource-list p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 机位视图 */
+.location-view-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 14px;
+}
+.location-view-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+.location-view-card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.location-view-card h4 {
+  margin: 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.location-view-purpose {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.location-view-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.location-view-facts li {
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--muted);
+  font-size: 10px;
+}
+.location-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.location-view-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.location-view-card .location-production {
+  margin-top: 0;
+}
+
+/* 编辑弹窗 */
+.location-editor form {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+.location-editor-group {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--line);
+}
+.location-editor-group legend {
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.location-editor-numbers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.location-camera-editor {
+  display: grid;
+  gap: 7px;
+}
+.location-camera-viewport {
+  position: relative;
+  width: 100%;
+  min-height: 260px;
+  overflow: hidden;
+  border: 1px solid var(--line-dark);
+  background: #171614;
+}
+.location-camera-viewport.is-portrait {
+  width: min(100%, 320px);
+  min-height: 480px;
+  justify-self: center;
+}
+.location-camera-panorama,
+.location-camera-panorama.pnlm-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #171614;
+}
+.location-camera-panorama .pnlm-dragfix {
+  cursor: grab;
+}
+.location-camera-panorama .pnlm-dragfix:active {
+  cursor: grabbing;
+}
+.location-camera-reticle {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+}
+.location-camera-reticle::before,
+.location-camera-reticle::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  content: "";
+  background: rgba(255, 255, 255, 0.9);
+  transform: translate(-50%, -50%);
+}
+.location-camera-reticle::before {
+  width: 42px;
+  height: 1px;
+}
+.location-camera-reticle::after {
+  width: 1px;
+  height: 42px;
+}
+.location-camera-readout {
+  position: absolute;
+  z-index: 2;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+  pointer-events: none;
+}
+.location-camera-readout span {
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(18, 16, 14, 0.76);
+  color: #fff;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+.location-camera-help,
+.location-camera-error,
+.location-camera-unavailable {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.location-camera-help,
+.location-camera-unavailable {
+  color: var(--muted);
+}
+.location-camera-unavailable {
+  padding: 16px;
+  border: 1px dashed var(--line-dark);
+  background: var(--paper);
+}
+.location-camera-error {
+  color: var(--red-dark);
+}
+.location-editor-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 13px;
+}
+.location-editor-checks label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.card-field .location-editor-checks input {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+}
+.location-editor form > footer {
+  display: flex;
+  justify-content: flex-end;
+}
+.location-editor select,
+.location-binding select {
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: #fbf8f1;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+/* 影响预览 */
+.location-impact {
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 1rem;
+}
+.location-impact header {
+  display: flex;
+  justify-content: space-between;
+}
+.location-impact h3 {
+  margin: 16px 0 6px;
+  font-size: 13px;
+}
+.location-impact ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+/* Scene / Shot 卡片内的地点绑定 */
+.location-binding {
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  margin-block: 1rem;
+}
+.location-binding .location-image {
+  max-width: 260px;
+}
+.location-binding form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+.location-binding label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+@media (max-width: 760px) {
+  .location-library-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .location-library-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .location-index {
+    position: static;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(200px, 1fr);
+    overflow-x: auto;
+  }
+  .location-setting-columns,
+  .location-editor-numbers {
+    grid-template-columns: 1fr;
+  }
+  .location-section {
+    padding: 14px;
+  }
+}

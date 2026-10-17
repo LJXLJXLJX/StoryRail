@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "StoryRail Core: Attach to debug start.sh",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "127.0.0.1",
+        "port": 5678
+      },
+      "justMyCode": true,
+      "subProcess": false
+    },
+    {
+      "name": "StoryRail Core: Launch Python",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "server",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "pythonArgs": [
+        "-Xfrozen_modules=off"
+      ],
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8765",
+        "--stories-directory",
+        ".stories"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "subProcess": false
+    }
+  ]
+}
