@@ -253,6 +253,7 @@ from ..run_state import (
     _start_director_run as _start_director_run,
 )
 from ..schema import PROJECT_SCHEMA_VERSION
+from ..script_index import scene_segments
 from ..script_mutations import (
     _apply_script_operations as _apply_script_operations,
 )
@@ -406,8 +407,7 @@ class StructuredDirectorStore:
         segments = {
             segment.id: segment
             for scene in document.director_script.scenes
-            for shot in scene.shots
-            for segment in shot.segments
+            for segment in scene_segments(scene)
         }
         changed = []
         for item in document.video_plan.segments:
@@ -895,7 +895,7 @@ def _scene_id_for_segment(
     if script is None:
         raise ValueError("结构化导演脚本尚未建立。")
     for scene in script.scenes:
-        if any(segment.id == segment_id for shot in scene.shots for segment in shot.segments):
+        if any(segment.id == segment_id for segment in scene_segments(scene)):
             return scene.id
     raise ValueError("Segment 视频计划不存在。")
 

@@ -45,6 +45,7 @@ from .models import (
     blank_keyframe,
 )
 from .narration_timing import conform_production_scenes
+from .script_index import scene_segments, script_segments, segment_view_ids, shot_segments
 
 
 def _finish_director_run(
@@ -133,9 +134,7 @@ def _materialize_script_revision(
 ) -> tuple[Scene, ...]:
     known_scene_ids = {scene.id for scene in previous}
     known_shot_ids = {shot.id for scene in previous for shot in scene.shots}
-    known_segment_ids = {
-        segment.id for scene in previous for shot in scene.shots for segment in shot.segments
-    }
+    known_segment_ids = {segment.id for segment in script_segments(previous)}
     known_cue_ids = {cue.id for scene in previous for cue in scene.narration_cues}
     all_known_ids = known_scene_ids | known_shot_ids | known_segment_ids | known_cue_ids
     previous_cues = {cue.id: cue for scene in previous for cue in scene.narration_cues}
@@ -367,7 +366,7 @@ def _validate_scene_revision_scope(
         assert proposal.id is not None
         current = previous_by_id[proposal.id]
         shot_ids = {shot.id for shot in current.shots}
-        segment_ids = {segment.id for shot in current.shots for segment in shot.segments}
+        segment_ids = {segment.id for segment in scene_segments(current)}
         cue_ids = {cue.id for cue in current.narration_cues}
         if any(shot.id is not None and shot.id not in shot_ids for shot in proposal.shots):
             raise ValueError("局部脚本修改不能挪用其他 Scene 的 Shot ID。")
@@ -510,7 +509,7 @@ def _validate_script_references(
     for scene in previous_scenes:
         for shot in scene.shots:
             character_ids.update(shot.visible_character_ids)
-            for segment in shot.segments:
+            for segment in shot_segments(scene, shot.id):
                 character_ids.update(
                     line.character_id
                     for line in segment.dialogue_lines
@@ -522,7 +521,7 @@ def _validate_script_references(
                 raise ValueError("Shot 引用了未声明的角色卡。")
             if any(
                 line.character_id is not None and line.character_id not in character_ids
-                for segment in shot.segments
+                for segment in shot_segments(scene, shot.id)
                 for line in segment.dialogue_lines
             ):
                 raise ValueError("角色对白引用了未声明的角色卡。")
@@ -1010,9 +1009,7 @@ def _rebase_keyframe_plan(
     # 否则把首帧复制为该 Segment 自己的独立 Keyframe（保留正文与已选图片）。
     old_keyframes = {item.id: item for item in plan.keyframes}
     old_bindings = {item.segment_id: item for item in plan.segments}
-    current_segment_ids = {
-        segment.id for scene in scenes for shot in scene.shots for segment in shot.segments
-    }
+    current_segment_ids = {segment.id for segment in script_segments(scenes)}
     keyframes: dict[str, Keyframe] = {}
     bindings: list[SegmentKeyframes] = []
 
@@ -1028,62 +1025,60 @@ def _rebase_keyframe_plan(
 
     for scene in scenes:
         previous_end_id: str | None = None
-        for shot in scene.shots:
-            for segment in shot.segments:
-                old_binding = old_bindings.get(segment.id)
-                reuse_binding = (
-                    old_binding is not None
-                    and old_binding.start_keyframe_id in old_keyframes
-                    and old_binding.end_keyframe_id in old_keyframes
+        for segment in scene_segments(scene):
+            start_view_id, end_view_id = segment_view_ids(scene, segment.id)
+            old_binding = old_bindings.get(segment.id)
+            reuse_binding = (
+                old_binding is not None
+                and old_binding.start_keyframe_id in old_keyframes
+                and old_binding.end_keyframe_id in old_keyframes
+            )
+            if not reuse_binding:
+                start_id = uuid4().hex
+                keyframes[start_id] = blank_keyframe(
+                    start_id, segment.id, None, shot_view_id=start_view_id
                 )
-                if not reuse_binding:
-                    start_id = uuid4().hex
-                    keyframes[start_id] = blank_keyframe(
-                        start_id, segment.id, None, shot_view_id=shot.view_id
-                    )
-                elif old_binding.start_keyframe_id == previous_end_id:
-                    start_id = old_binding.start_keyframe_id
-                elif old_binding.start_keyframe_id in keyframes or any(
-                    item.end_keyframe_id == old_binding.start_keyframe_id
-                    and item.segment_id in current_segment_ids
-                    for item in plan.segments
-                ):
-                    start_id = clone(old_binding.start_keyframe_id, segment.id, None)
-                else:
-                    start_id = old_binding.start_keyframe_id
-                    keyframes[start_id] = replace(
-                        old_keyframes[start_id],
-                        owner_segment_id=segment.id,
-                        predecessor_keyframe_id=None,
-                    )
-                if not reuse_binding:
-                    end_id = uuid4().hex
-                    keyframes[end_id] = blank_keyframe(
-                        end_id, segment.id, start_id, shot_view_id=shot.view_id
-                    )
-                elif old_binding.end_keyframe_id in keyframes:
-                    # 已被前面某个 Segment 作为首帧占用，说明原共享边界已不再紧邻。
-                    end_id = clone(old_binding.end_keyframe_id, segment.id, start_id)
-                else:
-                    end_id = old_binding.end_keyframe_id
-                    keyframes[end_id] = replace(
-                        old_keyframes[end_id],
-                        owner_segment_id=segment.id,
-                        predecessor_keyframe_id=start_id,
-                    )
-                bindings.append(
-                    SegmentKeyframes(
-                        segment_id=segment.id,
-                        start_keyframe_id=start_id,
-                        end_keyframe_id=end_id,
-                        start_enabled=old_binding.start_enabled if reuse_binding else False,
-                        end_enabled=old_binding.end_enabled if reuse_binding else False,
-                        reference_asset_ids=(
-                            old_binding.reference_asset_ids if reuse_binding else ()
-                        ),
-                    )
+            elif old_binding.start_keyframe_id == previous_end_id:
+                start_id = old_binding.start_keyframe_id
+            elif old_binding.start_keyframe_id in keyframes or any(
+                item.end_keyframe_id == old_binding.start_keyframe_id
+                and item.segment_id in current_segment_ids
+                for item in plan.segments
+            ):
+                start_id = clone(old_binding.start_keyframe_id, segment.id, None)
+            else:
+                start_id = old_binding.start_keyframe_id
+                keyframes[start_id] = replace(
+                    old_keyframes[start_id],
+                    owner_segment_id=segment.id,
+                    predecessor_keyframe_id=None,
                 )
-                previous_end_id = end_id
+            if not reuse_binding:
+                end_id = uuid4().hex
+                keyframes[end_id] = blank_keyframe(
+                    end_id, segment.id, start_id, shot_view_id=end_view_id
+                )
+            elif old_binding.end_keyframe_id in keyframes:
+                # 已被前面某个 Segment 作为首帧占用，说明原共享边界已不再紧邻。
+                end_id = clone(old_binding.end_keyframe_id, segment.id, start_id)
+            else:
+                end_id = old_binding.end_keyframe_id
+                keyframes[end_id] = replace(
+                    old_keyframes[end_id],
+                    owner_segment_id=segment.id,
+                    predecessor_keyframe_id=start_id,
+                )
+            bindings.append(
+                SegmentKeyframes(
+                    segment_id=segment.id,
+                    start_keyframe_id=start_id,
+                    end_keyframe_id=end_id,
+                    start_enabled=old_binding.start_enabled if reuse_binding else False,
+                    end_enabled=old_binding.end_enabled if reuse_binding else False,
+                    reference_asset_ids=(old_binding.reference_asset_ids if reuse_binding else ()),
+                )
+            )
+            previous_end_id = end_id
     return KeyframePlan(source_script_revision, tuple(keyframes.values()), tuple(bindings))
 
 
@@ -1102,7 +1097,7 @@ def _rebase_video_plan(
     items = []
     for scene in scenes:
         for shot in scene.shots:
-            for segment in shot.segments:
+            for segment in shot_segments(scene, shot.id):
                 current = old_items.get(segment.id)
                 if (
                     current is not None
@@ -1145,7 +1140,7 @@ def _segment_visual_contexts(scenes: tuple[Scene, ...]) -> dict[str, tuple[objec
         )
         for scene in scenes
         for shot in scene.shots
-        for segment in shot.segments
+        for segment in shot_segments(scene, shot.id)
     }
 
 

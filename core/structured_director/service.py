@@ -173,6 +173,7 @@ from .provider_ports import (
     VideoFrameProvider as VideoFrameProvider,
 )
 from .reads.video_recipes import video_recipe_state
+from .script_index import scene_segments
 from .store import RevisionConflictError, StructuredDirectorStore
 
 
@@ -592,8 +593,7 @@ class StructuredDirectorService:
                     "",
                 )
                 for scene in script.scenes
-                for shot in scene.shots
-                for segment in shot.segments
+                for segment in scene_segments(scene)
             )
             return self._store.unlock_visual_production(
                 segments, expected_revision=expected_revision
@@ -763,12 +763,7 @@ class StructuredDirectorService:
             script = document.director_script
             if script is None or document.keyframe_plan is None:
                 raise ValueError("关键帧计划尚未建立。")
-            ordered = [
-                segment.id
-                for scene in script.scenes
-                for shot in scene.shots
-                for segment in shot.segments
-            ]
+            ordered = [segment.id for scene in script.scenes for segment in scene_segments(scene)]
             if segment_id not in ordered or ordered.index(segment_id) == 0:
                 raise ValueError("第一个 Segment 没有可共享的上一段尾帧。")
             previous_id = ordered[ordered.index(segment_id) - 1]

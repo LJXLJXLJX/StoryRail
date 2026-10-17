@@ -27,6 +27,7 @@ from ..models import (
     asset_usage_reasons,
 )
 from ..narration_timing import narration_timing_language, narration_timing_seconds
+from ..script_index import shot_segments
 from ..video_inputs import start_frame_extraction_source, video_inputs_unchanged
 from .location_view import location_library_projection
 from .video_recipes import video_recipe_state
@@ -371,7 +372,7 @@ def _serialize_scene(
                             }
                         ),
                     }
-                    for segment in shot.segments
+                    for segment in shot_segments(scene, shot.id)
                 ],
             }
             for shot in scene.shots

@@ -13,7 +13,7 @@
 
 - L0 models/ 包（纯领域数据，按域拆分，__init__ 再导出）
 - L1 codec/ / schema / errors / video_contracts / video_inputs /
-  video_continuation / candidate_eligibility / project_settings /
+  video_continuation / candidate_eligibility / script_index / project_settings /
   project_workspaces / audio_effects / director_proposals（声明与契约）
 - L2 *_mutations.py / generation_lifecycle / assembly_timeline /
   production_context / run_state / asset_metadata / narration_timing /
@@ -50,6 +50,7 @@ LAYER_MAP = {
     "core.structured_director.video_inputs": 1,
     "core.structured_director.video_continuation": 1,
     "core.structured_director.candidate_eligibility": 1,
+    "core.structured_director.script_index": 1,
     "core.media_assets": 1,
     "core.playground.capabilities": 2,
     "core.playground.codec": 1,
@@ -230,6 +231,12 @@ DIRECTION_WHITELIST = [
     (
         "core.structured_director.video_continuation",
         "core.structured_director.video_inputs",
+        "L1 协作",
+    ),
+    # L1 脚本访问层：视频输入按 Segment 序列定位上一段，不直接展开脚本树。
+    (
+        "core.structured_director.video_inputs",
+        "core.structured_director.script_index",
         "L1 协作",
     ),
     # L2 复用 L5 命令类型（receipt/scope），P2-C pipeline 抽取时下沉。

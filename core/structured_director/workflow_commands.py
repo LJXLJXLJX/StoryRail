@@ -10,6 +10,7 @@ from core.director_commands.models import (
 from .models import SegmentVideo
 from .reads.impact import location_unlock_advisory
 from .reads.workflow_state import reference_fingerprint
+from .script_index import scene_segments
 
 OPERATIONS = {
     "reference.confirm_review",
@@ -55,8 +56,7 @@ def execute(store, command):
                 "",
             )
             for scene in document.director_script.scenes
-            for shot in scene.shots
-            for s in shot.segments
+            for s in scene_segments(scene)
         )
         updated = store.unlock_visual_production(
             segments, expected_revision=command.expected_revision

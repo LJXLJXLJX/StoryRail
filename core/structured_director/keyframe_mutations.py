@@ -26,6 +26,12 @@ from .models import (
     StructuredDirectorDocument,
     normalize_environment_none_reason,
 )
+from .script_index import (
+    scene_segments,
+    segment_continues_previous,
+    segment_visible_character_ids,
+    shot_segments,
+)
 
 
 def _validate_planned_shared_boundaries(
@@ -96,15 +102,10 @@ def _apply_keyframe_operations(
         segment.id: (scene, shot, index, segment)
         for scene in script.scenes
         for shot in scene.shots
-        for index, segment in enumerate(shot.segments)
+        for index, segment in enumerate(shot_segments(scene, shot.id))
     }
-    timeline = [
-        (scene.id, shot.id, segment.id)
-        for scene in script.scenes
-        for shot in scene.shots
-        for segment in shot.segments
-    ]
-    timeline_index = {segment_id: index for index, (_, _, segment_id) in enumerate(timeline)}
+    timeline = [(scene, segment.id) for scene in script.scenes for segment in scene_segments(scene)]
+    timeline_index = {segment_id: index for index, (_, segment_id) in enumerate(timeline)}
     original_bindings = dict(bindings)
     changed_ids: set[str] = set()
     generation_sensitive_keyframes: set[str] = set()
@@ -133,7 +134,8 @@ def _apply_keyframe_operations(
         right_index = timeline_index[right_id]
         if right_index != left_index + 1:
             raise ValueError("共享或拆分边界要求两个 Segment 在项目时间线上相邻。")
-        return "intra_shot" if timeline[left_index][1] == timeline[right_index][1] else "cross_shot"
+        right_scene = timeline[right_index][0]
+        return "intra_shot" if segment_continues_previous(right_scene, right_id) else "cross_shot"
 
     def remove_orphans() -> None:
         referenced = {
@@ -543,11 +545,10 @@ def _validate_keyframe_operation_context(
     script = document.director_script
     assert script is not None
     bindings = {item.segment_id: item for item in plan.segments}
-    shot_by_segment = {
-        segment.id: (scene.id, shot)
+    characters_by_segment = {
+        segment.id: (scene.id, segment_visible_character_ids(scene, segment.id))
         for scene in script.scenes
-        for shot in scene.shots
-        for segment in shot.segments
+        for segment in scene_segments(scene)
     }
     slots_by_keyframe: dict[str, list[tuple[str, str]]] = {}
     for binding in bindings.values():
@@ -565,9 +566,9 @@ def _validate_keyframe_operation_context(
         allowed_characters: set[str] = set()
         scene_ids: set[str] = set()
         for segment_id, _slot in slots:
-            scene_id, shot = shot_by_segment[segment_id]
+            scene_id, visible_character_ids = characters_by_segment[segment_id]
             scene_ids.add(scene_id)
-            allowed_characters.update(shot.visible_character_ids)
+            allowed_characters.update(visible_character_ids)
         if not set(keyframe.visible_character_ids) <= allowed_characters:
             raise ValueError("Keyframe 可见角色必须属于使用该边界的相邻 Shot 角色并集。")
         if (

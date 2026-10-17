@@ -22,6 +22,7 @@ from .models import (
 from .repair_mutations import (
     _repair_invalidated_items,
 )
+from .script_index import shot_segments
 
 
 def _apply_reference_library_change(
@@ -150,7 +151,7 @@ def _require_video_command_target(
         raise ValueError("video scope 包含不存在的 Scene。")
     for scene in script.scenes:
         for shot in scene.shots:
-            for segment in shot.segments:
+            for segment in shot_segments(scene, shot.id):
                 if segment.id != segment_id:
                     continue
                 if scene.id not in scope_scene_ids:

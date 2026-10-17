@@ -13,7 +13,7 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 | 层 | 位置 | 职责 |
 | --- | --- | --- |
 | L0 | `models/` | 不可变值对象与不变量 |
-| L1 | `codec/`、`schema.py`、`errors.py`、`video_contracts.py`、`video_inputs.py`、`candidate_eligibility.py` | 严格 JSON 编解码、schema 版本、共享错误、视频输入与候选可选性判定 |
+| L1 | `codec/`、`schema.py`、`errors.py`、`video_contracts.py`、`video_inputs.py`、`candidate_eligibility.py`、`script_index.py` | 严格 JSON 编解码、schema 版本、共享错误、视频输入与候选可选性判定、脚本访问层 |
 | L2 | `mutations/`、`*_mutations.py`、`generation_lifecycle.py`、`assembly_timeline.py`、`narration_timing.py`、`dialogue_timing.py`、`production_context.py`、`run_state.py`、`asset_metadata.py`、`planning_inputs.py` | 纯函数领域变换、失效传播、时序与装配时间线 |
 | L3 | `store/` | 唯一持久化入口：CAS、完整校验、fsync、原子替换 |
 | L4 | `reads/`、`prompt_worksets.py`、`keyframe_requests.py`、`location_requests.py`、`director_steps.py`、`manual_commands.py` | 只读投影与输入编译 |
@@ -63,6 +63,8 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 - `candidate_eligibility.py`：候选可审核性的共源判定。
 - `run_state.py`：DirectorRun 开始、唤醒与默认授权的对象变换。
 - `production_context.py`：从快照构造只读生产上下文。
+- `script_index.py`：脚本访问层：Scene 的 Segment 序列、Segment 覆盖的 Shot、派生可见角色与首尾视图；
+  只读遍历经它读取，不直接展开 `shot.segments`。
 - `provider_ports.py`：各媒体能力的 Core 侧窄 Protocol。
 - `asset_metadata.py`：媒体字节校验、时长读取与可读文件名（封装 `core/media_assets`）。
 

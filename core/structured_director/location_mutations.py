@@ -51,6 +51,7 @@ from .models import (
     Scene,
     StructuredDirectorDocument,
 )
+from .script_index import shot_segments
 
 _TERMINAL_PHASES = frozenset(
     {
@@ -112,7 +113,7 @@ class LocationActionIndex:
                 self.shot_views.setdefault(shot.view_id, []).append(
                     f"Shot {shot.id}（Scene「{scene.title}」）"
                 )
-                for segment in shot.segments:
+                for segment in shot_segments(scene, shot.id):
                     self.segment_scenes[segment.id] = scene.id
         for location in locations:
             for view in location.views:

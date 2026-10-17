@@ -25,6 +25,7 @@ from .models import (
     ShotSegment,
     StructuredDirectorDocument,
 )
+from .script_index import shot_segments
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +81,7 @@ def _keyframe_label(document: StructuredDirectorDocument, keyframe_id: str | Non
     binding_by_segment = {item.segment_id: item for item in document.keyframe_plan.segments}
     for scene_index, scene in enumerate(document.director_script.scenes, start=1):
         for shot_index, shot in enumerate(scene.shots, start=1):
-            for segment_index, segment in enumerate(shot.segments, start=1):
+            for segment_index, segment in enumerate(shot_segments(scene, shot.id), start=1):
                 binding = binding_by_segment[segment.id]
                 for side, enabled, candidate_id in (
                     ("首帧", binding.start_enabled, binding.start_keyframe_id),
@@ -155,7 +156,7 @@ def _resolve_keyframe_generation_targets(
         scene_frames: list[str] = []
         for shot in scene.shots:
             shot_frames: list[str] = []
-            for segment in shot.segments:
+            for segment in shot_segments(scene, shot.id):
                 binding = bindings[segment.id]
                 frames = tuple(
                     frame_id
@@ -229,7 +230,9 @@ def _keyframe_generation_inputs(
     owning_shot = None
     for scene in script.scenes:
         for shot in scene.shots:
-            if any(segment.id == keyframe.owner_segment_id for segment in shot.segments):
+            if any(
+                segment.id == keyframe.owner_segment_id for segment in shot_segments(scene, shot.id)
+            ):
                 owning_scene = scene
                 owning_shot = shot
                 break
@@ -489,7 +492,7 @@ def _find_segment_context(
 ) -> tuple[Scene, Shot, ShotSegment]:
     for scene in scenes:
         for shot in scene.shots:
-            for segment in shot.segments:
+            for segment in shot_segments(scene, shot.id):
                 if segment.id == segment_id:
                     return scene, shot, segment
     raise ValueError("Segment 不存在。")

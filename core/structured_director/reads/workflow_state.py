@@ -11,6 +11,7 @@ from ..models import (
     StructuredDirectorStatus as Status,
 )
 from ..narration_timing import conform_production_scenes, conform_scene_narration
+from ..script_index import shot_segments
 from .batch_observation import batch_observations
 from .dependencies import _dependency
 from .proposal_observation import proposal_observation
@@ -576,7 +577,7 @@ def _keyframe_workflow(document):
         shot.id
         for scene in script.scenes
         for shot in scene.shots
-        if any(segment.id in unplanned_segments for segment in shot.segments)
+        if any(segment.id in unplanned_segments for segment in shot_segments(scene, shot.id))
     )
     actions = []
     if shot_ids:

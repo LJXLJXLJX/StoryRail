@@ -12,6 +12,7 @@ from .keyframe_requests import (
     _keyframe_reference_prompt,
 )
 from .models import StructuredDirectorDocument
+from .script_index import scene_segments
 from .video_inputs import resolve_video_inputs
 
 
@@ -161,7 +162,7 @@ def _bindable_assets(document: StructuredDirectorDocument, scene, recipe) -> lis
     for location in document.location_library.locations:
         used.add(location.master.selected_asset_id)
         used.update(view.selected_asset_id for view in location.views)
-    segment_ids = {segment.id for shot in scene.shots for segment in shot.segments}
+    segment_ids = {segment.id for segment in scene_segments(scene)}
     for cue in scene.narration_cues:
         used.update(cue.selected_audio_asset_ids)
     if document.keyframe_plan is not None:

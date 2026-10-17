@@ -12,6 +12,7 @@ from .models import (
     Scene,
     StructuredDirectorDocument,
 )
+from .script_index import shot_segments
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +73,10 @@ def _validate_required_keyframe_boundary_scope(
     target_shot_ids: set[str] | None = None,
 ) -> None:
     adjacent = {
-        (left_shot.segments[-1].id, right_shot.segments[0].id): (
+        (
+            shot_segments(scene, left_shot.id)[-1].id,
+            shot_segments(scene, right_shot.id)[0].id,
+        ): (
             left_shot.id,
             right_shot.id,
         )

@@ -20,6 +20,7 @@ from ..planning_inputs import (
     reference_characters,
 )
 from ..prompt_worksets import image_prompt_guide, video_prompt_workset
+from ..script_index import scene_segments
 from .common import _exact_arguments, _ids, _json_value
 from .semantic_projection import build_semantic_projection, build_semantic_tree
 from .workflow_state import workflow_state
@@ -77,8 +78,7 @@ def _saved_keyframe_plan(document, scene_ids):
         segment.id
         for scene in script.scenes
         if scene.id in scene_ids
-        for shot in scene.shots
-        for segment in shot.segments
+        for segment in scene_segments(scene)
     }
     bindings = [item for item in plan.segments if item.segment_id in scoped_segment_ids]
     frame_bindings: dict[str, list[dict[str, str]]] = {}

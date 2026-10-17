@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import replace
 
 from .models import Asset, NarrationCue, NarrationLanguage, Scene
+from .script_index import shot_segments
 
 NARRATION_BOUNDARY_VISUAL_TAIL_SECONDS = 0.4
 
@@ -86,7 +87,9 @@ def conform_scene_narration(
         end = shot_positions[cue.end_shot_id]
         covered = shots[start : end + 1]
         current_duration = sum(
-            segment.duration_estimate_seconds for shot in covered for segment in shot.segments
+            segment.duration_estimate_seconds
+            for shot in covered
+            for segment in shot_segments(scene, shot.id)
         )
         required = narration_visual_duration_seconds(
             source_scenes,
@@ -100,7 +103,7 @@ def conform_scene_narration(
         scaled_durations = [
             segment.duration_estimate_seconds * factor
             for shot in covered
-            for segment in shot.segments
+            for segment in shot_segments(scene, shot.id)
         ]
         # Put the floating-point remainder on the final Segment so the serialized
         # script remains an exact timing contract instead of accumulating drift.

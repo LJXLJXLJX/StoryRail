@@ -19,6 +19,7 @@ from .narration_timing import (
     narration_timing_seconds,
     narration_visual_duration_seconds,
 )
+from .script_index import scene_segments, shot_segments
 from .video_inputs import effective_video
 
 
@@ -57,7 +58,7 @@ def _build_scene_animatic_spec(
     segment_clip_counts: dict[str, int] = {}
     previous_end_keyframe_id: str | None = None
     for shot_number, shot in enumerate(scene.shots, start=1):
-        for segment_number, segment in enumerate(shot.segments, start=1):
+        for segment_number, segment in enumerate(shot_segments(scene, shot.id), start=1):
             location = f"Shot {shot_number} Segment {segment_number}"
             binding = bindings.get(segment.id)
             if binding is None:
@@ -100,15 +101,12 @@ def _build_scene_animatic_spec(
     narration_asset_ids: list[str] = []
     narration_starts: list[int] = []
     ranges: list[tuple[int, int, float]] = []
-    shot_by_id = {shot.id: shot for shot in scene.shots}
     for cue in scene.narration_cues:
         # 预览节奏与成片一致：按中英较长的一条对轨并播放它。
         audio_duration = narration_timing_seconds(cue, asset_by_id)
         timing_track = cue.track(narration_timing_language(cue, asset_by_id))
-        start_shot = shot_by_id[cue.start_shot_id]
-        end_shot = shot_by_id[cue.end_shot_id]
-        start = segment_first_clip[start_shot.segments[0].id]
-        end_segment = end_shot.segments[-1].id
+        start = segment_first_clip[shot_segments(scene, cue.start_shot_id)[0].id]
+        end_segment = shot_segments(scene, cue.end_shot_id)[-1].id
         end = segment_first_clip[end_segment] + segment_clip_counts[end_segment] - 1
         # 只有 Narration Scene 有旁白（模型不变量），画面按旁白加边界缓冲对齐。
         ranges.append(
@@ -206,7 +204,7 @@ def _build_scene_final_plan(
         raise ValueError("项目未启用该旁白语言。")
     video_by_segment = {item.segment_id: item for item in videos.segments}
     binding_by_segment = {item.segment_id: item for item in keyframes.segments}
-    ordered_segments = [segment for shot in scene.shots for segment in shot.segments]
+    ordered_segments = scene_segments(scene)
     clips: list[SceneAssemblyClip] = []
     previous_end: str | None = None
     for segment in ordered_segments:
@@ -226,13 +224,12 @@ def _build_scene_final_plan(
         raise ValueError("导演脚本中没有可装配的 Segment。")
     narrations: list[FinalNarrationPlacement] = []
     timing_asset_ids: list[str] = []
-    shot_by_id = {item.id: item for item in scene.shots}
     asset_by_id = {item.id: item for item in document.assets}
     for cue in scene.narration_cues:
         if not cue.fully_selected:
             raise ValueError("请先为全部旁白 Cue 选择审核通过的所选语言音频。")
-        start_shot = shot_by_id.get(cue.start_shot_id)
-        if start_shot is None or not start_shot.segments:
+        start_segments = shot_segments(scene, cue.start_shot_id) if cue.start_shot_id else ()
+        if not start_segments:
             raise ValueError("旁白 Cue 的起始 Shot 无法定位。")
         asset_id = cue.track(language).selected_audio_asset_id
         assert asset_id is not None
@@ -240,7 +237,7 @@ def _build_scene_final_plan(
             FinalNarrationPlacement(
                 cue.id,
                 asset_id,
-                start_shot.segments[0].id,
+                start_segments[0].id,
                 narration_timing_seconds(cue, asset_by_id),
             )
         )
@@ -389,15 +386,12 @@ def _align_clip_durations_to_narration(
     for scene in document.director_script.scenes:
         if scene_ids is not None and scene.id not in scene_ids:
             continue
-        shot_by_id = {shot.id: shot for shot in scene.shots}
         for cue in scene.narration_cues:
             audio_duration = narration_durations.get(cue.id)
             if audio_duration is None or audio_duration <= 0:
                 raise ValueError("旁白 Cue 缺少真实音频时长。")
-            start_shot = shot_by_id[cue.start_shot_id]
-            end_shot = shot_by_id[cue.end_shot_id]
-            start = clip_index[start_shot.segments[0].id]
-            end = clip_index[end_shot.segments[-1].id]
+            start = clip_index[shot_segments(scene, cue.start_shot_id)[0].id]
+            end = clip_index[shot_segments(scene, cue.end_shot_id)[-1].id]
             ranges.append(
                 (
                     start,

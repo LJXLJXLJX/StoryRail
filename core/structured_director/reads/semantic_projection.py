@@ -8,6 +8,7 @@ import json
 from ..dialogue_timing import dialogue_timing
 from ..models import StructuredDirectorDocument
 from ..prompt_worksets import keyframe_workset, video_prompt_workset
+from ..script_index import shot_segments
 from .common import (
     ReadResultTooLarge,
     _ids,
@@ -86,7 +87,7 @@ def build_semantic_projection(
             for scene in scenes
             for shot in scene.shots
             if parent_id is None or shot.id == parent_id
-            for node in ((shot,) if level == "shot" else shot.segments)
+            for node in ((shot,) if level == "shot" else shot_segments(scene, shot.id))
             if ids is None or node.id in ids
         ]
         if ids is not None and set(ids) != {node.id for _, _, node in nodes}:
@@ -184,7 +185,7 @@ def build_semantic_projection(
                 audio_direction=text(shot.audio_direction),
                 visible_character_ids=list(shot.visible_character_ids),
                 transition_in=text(shot.transition_in),
-                segment_count=len(shot.segments),
+                segment_count=len(shot_segments(scene, shot.id)),
             )
         else:
             item.update(

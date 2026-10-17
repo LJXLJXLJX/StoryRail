@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from .models import ReferenceGenerationKind as Kind
 from .models import ReferenceGenerationPhase as Phase
+from .script_index import scene_segments, shot_segments
 from .video_contracts import VideoInputSnapshot
 
 TERMINAL = {Phase.SUCCEEDED, Phase.FAILED, Phase.CANCELLED}
@@ -16,7 +17,7 @@ TERMINAL = {Phase.SUCCEEDED, Phase.FAILED, Phase.CANCELLED}
 def segment_context(document, segment_id):
     for scene in document.director_script.scenes if document.director_script else ():
         for shot in scene.shots:
-            for index, segment in enumerate(shot.segments):
+            for index, segment in enumerate(shot_segments(scene, shot.id)):
                 if segment.id == segment_id:
                     return scene, shot, segment, index
     raise ValueError("Segment 不存在。")
@@ -160,9 +161,7 @@ def start_frame_extraction_source(document, keyframe_id):
     if binding is None:
         return result
     result["segment_id"] = binding.segment_id
-    ordered = [
-        segment.id for scene in script.scenes for shot in scene.shots for segment in shot.segments
-    ]
+    ordered = [segment.id for scene in script.scenes for segment in scene_segments(scene)]
     if binding.segment_id not in ordered or ordered.index(binding.segment_id) == 0:
         result["message"] = "这是第一个 Segment，没有上一段视频可抽取。"
         return result

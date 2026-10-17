@@ -207,6 +207,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `production_commands.py`：确定性生产命令分发。
 - `manual_commands.py`：UI 手工 Keyframe 值对象转为正式命令。
 - `candidate_eligibility.py`：候选可审核性的只读判定。
+- `script_index.py`：脚本访问层：Scene 的 Segment 序列与 Segment↔Shot 覆盖关系的只读遍历。
 
 外部 Agent 规划与 run：
 

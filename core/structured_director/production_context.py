@@ -20,6 +20,7 @@ from .narration_timing import (
 )
 from .reads.read_tools import _json_value
 from .reads.semantic_projection import PROJECTION_VERSION, build_semantic_tree
+from .script_index import shot_segments
 
 _TERMINAL_PHASES = {
     ReferenceGenerationPhase.SUCCEEDED,
@@ -224,7 +225,7 @@ def _director_state_json(
                                 )
                             ],
                         }
-                        for segment in shot.segments
+                        for segment in shot_segments(scene, shot.id)
                     ],
                 }
                 for shot in scene.shots

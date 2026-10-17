@@ -61,6 +61,8 @@ from core.structured_director.store import _keyframe_is_enabled as _keyframe_is_
 from core.structured_director.store.pipeline import MutationResult as MutationResult
 from core.structured_director.store.pipeline import commit_mutation as commit_mutation
 
+from ...script_index import scene_segments, shot_segments
+
 
 class _DomainBase:
     def __init__(self, store) -> None:
@@ -108,9 +110,10 @@ def _keyframe_planning_context(
     )
     allowed_segment_ids = {
         segment.id
-        for shot_id, shot in baseline_shots.items()
-        if not target_shot_ids or shot_id in target_shot_ids
-        for segment in shot.segments
+        for scene in script.production_baseline_scenes
+        for shot in scene.shots
+        if not target_shot_ids or shot.id in target_shot_ids
+        for segment in shot_segments(scene, shot.id)
     }
     protected_keyframe_ids = {
         item.id for item in plan.keyframes if item.selected_asset_id is not None
@@ -215,7 +218,7 @@ def _translate_keyframe_plan_to_operations(
         for shot_index, shot in enumerate(scene.shots):
             item = proposal_by_id[shot.id]
             if [value.segment_id for value in item.segments] != [
-                value.id for value in shot.segments
+                value.id for value in shot_segments(scene, shot.id)
             ]:
                 raise ValueError("关键帧计划必须完整对应 Shot 的 Segment。")
             allowed_character_ids = set(shot.visible_character_ids)
@@ -239,7 +242,7 @@ def _translate_keyframe_plan_to_operations(
                 and not set(item.start_visible_character_ids) <= allowed_character_ids
             ):
                 raise ValueError("关键帧可见角色必须属于所属 Shot。")
-            first_segment_id = shot.segments[0].id
+            first_segment_id = shot_segments(scene, shot.id)[0].id
             if item.continues_from_previous_shot:
                 if previous_shot is None or previous_item is None:
                     raise ValueError("Scene 首个 Shot 不能承接上一 Shot。")
@@ -257,7 +260,7 @@ def _translate_keyframe_plan_to_operations(
                 ):
                     raise ValueError("承接 Shot 的首帧必须与上一 Shot 尾帧完全一致。")
             if previous_shot is not None:
-                left_id = previous_shot.segments[-1].id
+                left_id = shot_segments(scene, previous_shot.id)[-1].id
                 right_id = first_segment_id
                 left = bindings[left_id]
                 right = bindings[right_id]
@@ -308,7 +311,9 @@ def _translate_keyframe_plan_to_operations(
                     ),
                     item.start_character_references,
                 )
-            for segment, segment_item in zip(shot.segments, item.segments, strict=True):
+            for segment, segment_item in zip(
+                shot_segments(scene, shot.id), item.segments, strict=True
+            ):
                 if segment.id not in allowed_segment_ids or segment.id in locked_segment_ids:
                     continue
                 binding = bindings[segment.id]
@@ -535,7 +540,7 @@ class KeyframeDomain(_DomainBase):
             # 每个 Segment 都有独立首尾 Keyframe；是否共享边界由用户或 Director 显式决定。
             for scene in script.production_baseline_scenes:
                 for shot in scene.shots:
-                    for segment in shot.segments:
+                    for segment in shot_segments(scene, shot.id):
                         start_keyframe_id = uuid4().hex
                         end_keyframe_id = uuid4().hex
                         keyframes.extend(
@@ -568,10 +573,7 @@ class KeyframeDomain(_DomainBase):
                 segments=tuple(bindings),
             )
             expected_ids = {
-                segment.id
-                for scene in script.scenes
-                for shot in scene.shots
-                for segment in shot.segments
+                segment.id for scene in script.scenes for segment in scene_segments(scene)
             }
             if {item.segment_id for item in segments} != expected_ids:
                 raise ValueError("视频计划必须完整对应当前 Segment。")

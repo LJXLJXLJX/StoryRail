@@ -20,6 +20,7 @@ from .director_steps import (
     _validate_required_keyframe_boundary_scope,
 )
 from .models import ReferenceGenerationKind, ReferenceGenerationPhase
+from .script_index import shot_segments
 
 
 def keyframe_inputs(document, target_ids=(), user_message=""):
@@ -141,7 +142,7 @@ def keyframe_inputs(document, target_ids=(), user_message=""):
                                 in protected_keyframe_ids
                             ),
                         )
-                        for item in shot.segments
+                        for item in shot_segments(scene, shot.id)
                     ),
                     audio_direction=shot.audio_direction,
                     planning_enabled=(not target_ids or shot.id in target_shot_ids),

@@ -14,6 +14,7 @@ from ..models import (
     ReferenceGenerationPhase,
     StructuredDirectorDocument,
 )
+from ..script_index import scene_segments
 from .common import _exact_arguments, _ids
 
 _TERMINAL_PHASES = {
@@ -93,8 +94,7 @@ def _dependency(
                 for scene in (
                     () if document.director_script is None else document.director_script.scenes
                 )
-                for shot in scene.shots
-                for segment in shot.segments
+                for segment in scene_segments(scene)
                 if segment.id == target_id
             ),
             None,

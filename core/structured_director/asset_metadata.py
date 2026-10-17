@@ -17,6 +17,7 @@ from .models import (
     ReferenceGenerationKind,
     StructuredDirectorDocument,
 )
+from .script_index import shot_segments
 
 # 位置无关的媒体工具已移到 core/media_assets；这里保留项目内部沿用的下划线名字，
 # 现有调用点不需要改动。
@@ -152,7 +153,7 @@ def _segment_coordinates(
         return None
     for scene_index, scene in enumerate(script.scenes, 1):
         for shot_index, shot in enumerate(scene.shots, 1):
-            for segment_index, segment in enumerate(shot.segments, 1):
+            for segment_index, segment in enumerate(shot_segments(scene, shot.id), 1):
                 if segment.id == segment_id:
                     return scene_index, scene.title, shot_index, segment_index
     return None

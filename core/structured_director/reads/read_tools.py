@@ -13,6 +13,7 @@ from ..models import (
     ReferenceGenerationPhase,
     StructuredDirectorDocument,
 )
+from ..script_index import scene_segments, script_segments, shot_segments
 from .batch_observation import batch_observation, owned_batch_id_for_run
 from .common import ReadResultTooLarge as ReadResultTooLarge
 from .common import (
@@ -153,11 +154,11 @@ def _locate_story(
         shot = scene.shots[shot_index - 1]
     if segment_index is not None:
         assert shot is not None
-        if segment_index > len(shot.segments):
+        if segment_index > len(shot_segments(scene, shot.id)):
             raise ValueError(
                 f"场景 {scene_index}－镜头 {shot_index}－片段 {segment_index} 不存在。"
             )
-        segment = shot.segments[segment_index - 1]
+        segment = shot_segments(scene, shot.id)[segment_index - 1]
     kind = "segment" if segment is not None else "shot" if shot is not None else "scene"
     canonical = f"场景 {scene_index}"
     if shot_index is not None:
@@ -256,7 +257,7 @@ def _get_scene(
     )
     if scene is None:
         raise ValueError("指定 Scene 不存在。")
-    segment_ids = {segment.id for shot in scene.shots for segment in shot.segments}
+    segment_ids = {segment.id for segment in scene_segments(scene)}
     shot_ids = {shot.id for shot in scene.shots}
     cue_ids = {cue.id for cue in scene.narration_cues}
     result: dict[str, object] = {"revision": document.revision, "scene_id": scene_id}
@@ -309,12 +310,7 @@ def _get_target(
     target_id = _id(arguments["target_id"], "target_id")
     script = document.director_script
     if script is not None:
-        timeline = [
-            (scene, shot, segment)
-            for scene in script.scenes
-            for shot in scene.shots
-            for segment in shot.segments
-        ]
+        timeline = script_segments(script)
         for scene in script.scenes:
             if scene.id == target_id:
                 return _semantic_target(document, "scene", scene.id, scene.id, {})
@@ -323,12 +319,10 @@ def _get_target(
                     return _semantic_target(
                         document, "shot", shot.id, scene.id, {"scene_id": scene.id}
                     )
-                for segment in shot.segments:
+                for segment in shot_segments(scene, shot.id):
                     if segment.id == target_id:
                         index = next(
-                            index
-                            for index, (_, _, item) in enumerate(timeline)
-                            if item.id == target_id
+                            index for index, item in enumerate(timeline) if item.id == target_id
                         )
                         return _semantic_target(
                             document,
@@ -339,10 +333,10 @@ def _get_target(
                                 "scene_id": scene.id,
                                 "shot_id": shot.id,
                                 "previous_segment_id": (
-                                    timeline[index - 1][2].id if index > 0 else None
+                                    timeline[index - 1].id if index > 0 else None
                                 ),
                                 "next_segment_id": (
-                                    timeline[index + 1][2].id if index + 1 < len(timeline) else None
+                                    timeline[index + 1].id if index + 1 < len(timeline) else None
                                 ),
                             },
                         )
