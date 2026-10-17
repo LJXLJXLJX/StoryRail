@@ -27,7 +27,7 @@ TOKEN = "mcp_fixture_" + "a" * 40
 
 
 @contextmanager
-def endpoint(tmp_path, store, service, caller, *, full_api=False):
+def _core_endpoint(tmp_path, store, service, caller, *, full_api=False):
     token = tmp_path / "token"
     token.write_text(TOKEN)
     token.chmod(0o600)
@@ -67,20 +67,8 @@ def endpoint(tmp_path, store, service, caller, *, full_api=False):
     listener = threading.Thread(target=server.serve_forever, daemon=True)
     listener.start()
     origin = f"http://127.0.0.1:{server.server_port}"
-    params = StdioServerParameters(
-        command=sys.executable,
-        args=[
-            "-m",
-            "integrations.storyrail_mcp",
-            "--core-origin",
-            origin,
-            "--token-file",
-            str(token),
-        ],
-        cwd=Path(__file__).resolve().parents[1],
-    )
     try:
-        yield params, CoreBridge(origin, token)
+        yield origin, token
     finally:
         server.shutdown()
         server.server_close()
@@ -88,6 +76,38 @@ def endpoint(tmp_path, store, service, caller, *, full_api=False):
         loop.call_soon_threadsafe(loop.stop)
         worker.join()
         loop.close()
+
+
+@contextmanager
+def endpoint(tmp_path, store, service, caller, *, full_api=False):
+    """进程内 MCP Client 对接真实 loopback Core；只有管道测试才起 stdio 子进程。"""
+    with _core_endpoint(tmp_path, store, service, caller, full_api=full_api) as (
+        origin,
+        token,
+    ):
+        bridge = CoreBridge(origin, token)
+        yield create_server(bridge), bridge
+
+
+@contextmanager
+def stdio_endpoint(tmp_path, store, service, caller, *, full_api=False):
+    with _core_endpoint(tmp_path, store, service, caller, full_api=full_api) as (
+        origin,
+        token,
+    ):
+        params = StdioServerParameters(
+            command=sys.executable,
+            args=[
+                "-m",
+                "integrations.storyrail_mcp",
+                "--core-origin",
+                origin,
+                "--token-file",
+                str(token),
+            ],
+            cwd=Path(__file__).resolve().parents[1],
+        )
+        yield params, CoreBridge(origin, token)
 
 
 def test_stdio_disconnect_retry_proposal_cancel_and_scope(tmp_path):
@@ -188,7 +208,7 @@ def test_stdio_disconnect_retry_proposal_cancel_and_scope(tmp_path):
             assert late.is_error and late.structured_content["http_status"] == 409
             assert late.structured_content["error"]["code"] == "business_rule_rejected"
 
-    with endpoint(tmp_path, store, service, caller) as (params, _):
+    with stdio_endpoint(tmp_path, store, service, caller) as (params, _):
         asyncio.run(run(params))
     assert len(dropped) == 1 and len(store.read().application_requests) == 3
 
@@ -411,11 +431,11 @@ def test_reference_stdio_submit_lost_response_keeps_core_ids(tmp_path):
             assert not get.is_error and get.structured_content["data"]["status"] == "completed"
             assert store.read().director_script is None and not store.read().generations
 
-    with endpoint(tmp_path, store, service, caller) as (params, _):
+    with stdio_endpoint(tmp_path, store, service, caller) as (params, _):
         asyncio.run(run(params))
 
 
-def test_script_stdio_request_get_submit_reaches_real_core(tmp_path):
+def test_mcp_script_request_get_submit_reaches_real_core(tmp_path):
     store, service = asyncio.run(ready(tmp_path))
     document = store.read()
     request = command(

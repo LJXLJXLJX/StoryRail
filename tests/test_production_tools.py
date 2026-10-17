@@ -235,7 +235,7 @@ def test_edit_narration_clear_selected_audio_has_strict_schema_and_translation()
         generate.model_validate({**BASE, "kind": "keyframe", "target_id": TARGET, "language": "zh"})
 
 
-def test_real_stdio_edit_and_human_handoff(tmp_path):
+def test_mcp_edit_and_human_handoff(tmp_path):
     store, service, doc, _ = asyncio.run(_visual_project(str(tmp_path)))
     scene = doc.director_script.scenes[0]
     args = {
@@ -283,7 +283,7 @@ def test_real_stdio_edit_and_human_handoff(tmp_path):
         asyncio.run(run(params))
 
 
-def test_real_stdio_agent_clears_selected_narration_then_dismisses_generation(tmp_path):
+def test_mcp_agent_clears_selected_narration_then_dismisses_generation(tmp_path):
     async def setup():
         store, service, _provider, document = await narration_project(tmp_path)
         # 测试 Provider 中英返回相同字节会共用 Asset；这里只合成并选择中文。
@@ -381,7 +381,7 @@ def test_real_stdio_agent_clears_selected_narration_then_dismisses_generation(tm
         asyncio.run(run(params))
 
 
-def test_real_stdio_delegated_agent_edits_and_splits_scene(tmp_path):
+def test_mcp_delegated_agent_edits_and_splits_scene(tmp_path):
     store, service, doc, _ = asyncio.run(_visual_project(str(tmp_path)))
     scene = doc.director_script.scenes[0]
     caller = Caller(

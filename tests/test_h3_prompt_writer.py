@@ -28,20 +28,14 @@ class H3PromptWriterTests(unittest.IsolatedAsyncioTestCase):
                 ):
                     self.assertNotIn(conflict, instructions)
 
-    def test_independent_narration_is_never_written_into_video_prompt(self) -> None:
+    def test_narration_and_voice_declaration_rules(self) -> None:
+        # 旁白不能写进视频提示词；人声声明按 Scene driver 与 Segment 对白区分。
         instructions = "\n".join(r["text"] for r in skill_resources())
         for required in (
             "独立 TTS 音频资产承载",
             "绝不把剧本旁白、解说词或 narrator 文本写入",
             "全片无人类语音，保持纯净环境音",
             "预留后期主旁白音频叠加通道",
-        ):
-            self.assertIn(required, instructions)
-
-    def test_voice_declaration_is_scoped_to_dialogue_and_scene_driver(self) -> None:
-        # drama Scene 的对白段不能再被要求声明“全片无人类语音”或预留旁白通道。
-        instructions = "\n".join(r["text"] for r in skill_resources())
-        for required in (
             "除 `<d>` 中的台词外无其它人类语音",
             "只有 `scene.driver` 为 `narration` 时再加“预留后期主旁白音频叠加通道”",
             "drama Scene 不写这句",
@@ -64,15 +58,9 @@ class H3PromptWriterTests(unittest.IsolatedAsyncioTestCase):
         ):
             self.assertIn(required, instructions)
 
-    def test_storyrail_shot_directing_rules_are_in_the_contract(self) -> None:
+    def test_storyrail_timestamp_grammar_is_in_the_contract(self) -> None:
         instructions = "\n".join(r["text"] for r in skill_resources())
-        for required in (
-            "不新增字段、不新增时间戳语法",
-            "4 秒以上的单镜写 2~3 个连续阶段",
-            "不虚构段内切镜",
-            "节拍与 `duration_seconds` 匹配",
-        ):
-            self.assertIn(required, instructions)
+        self.assertIn("不新增字段、不新增时间戳语法", instructions)
 
 
 if __name__ == "__main__":

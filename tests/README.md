@@ -15,6 +15,7 @@
 - 输出写到 `tmp_path`，不写 `web/dist`、`build/` 或其它共享产物。
 
 需要真实子进程验证传输协议时，每个测试自己启动并回收进程；不共享进程或固定 socket 路径。
+MCP 业务语义用进程内 `Client(create_server(bridge))` 断言，真实 stdio 只验证管道本身；oracle wire 与 token benchmark 保留真实子进程。
 
 ## 共享 fixture
 
@@ -41,7 +42,7 @@
 | 成片 | `test_final_scene_assembly.py`、`test_scene_final_overwrite.py`、`test_ffmpeg_*.py`、`test_video_candidate_duration.py` |
 | 应用层与授权 | `test_application_access.py`（真实 loopback HTTP 的 caller gate、撤权、旧路由拒绝、第二 writer 租约）、`test_application_requests.py`（原子回执、重放、提交不确定不重发）、`test_project_execution_delegation.py`、`test_workflow_gates.py` |
 | 外部 Agent 入口 | `test_external_reference_proposals.py`、`test_external_script_proposals.py`、`test_external_planning_proposals.py`、`test_external_production.py`（批次波次、中断回放、human-only 拒绝）、`test_external_workspace.py`、`test_professional_worksets.py`、`test_prompt_worksets.py` |
-| MCP | `test_storyrail_mcp.py`（官方 SDK + 真实 stdio 子进程 + HTTP，含丢响应重放）、`test_production_tools.py`、`test_mcp_conditional_schema.py`、`test_mcp_proposal_action_schema.py`、`test_mcp_response_serialization.py`、`test_agent_response_bounds.py` |
+| MCP | `test_storyrail_mcp.py`（官方 SDK + 进程内 Server + 真实 loopback HTTP；只有握手、断连重放与丢响应测试起真实 stdio 子进程）、`test_production_tools.py`、`test_mcp_conditional_schema.py`、`test_mcp_proposal_action_schema.py`、`test_mcp_response_serialization.py`、`test_agent_response_bounds.py` |
 | 错误契约 | `test_error_taxonomy.py`、`test_unified_error_contract.py` |
 | 读取投影 | `test_semantic_projection.py`、`test_projection_consumers.py`、`test_storage_benchmark.py` |
 | Provider 插件 | `test_golden_provider_requests.py`（项目旅程与 Playground 的线上请求逐字节不变）、`test_provider_settings.py`（manifest、能力绑定、插件设置与提交快照）、`test_provider_*.py`、`test_model_provider_contract.py`、各插件同名测试、`test_lane_dispatcher.py`、`test_resource_manager.py`、`test_controller_lease.py` |

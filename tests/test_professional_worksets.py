@@ -396,7 +396,7 @@ def test_keyframe_workset_reports_plan_not_established_before_unlock(tmp_path):
     assert store.path.read_bytes() == before
 
 
-def test_real_stdio_professional_reads_need_no_mutation_grant(tmp_path):
+def test_mcp_professional_reads_need_no_mutation_grant(tmp_path):
     store, service, doc, _ = asyncio.run(_visual_project(str(tmp_path)))
     caller = replace(
         agent(doc, command("get", doc.revision, "unused", request_id="f" * 32)),

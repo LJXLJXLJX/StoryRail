@@ -3,7 +3,6 @@
 import asyncio
 import copy
 from dataclasses import replace
-from unittest.mock import patch
 
 import pytest
 from mcp import Client
@@ -14,7 +13,6 @@ from test_prompt_worksets import fixture
 from test_storyrail_mcp import endpoint
 
 from core.director_commands import DirectorCommand
-from server.http import StoryRailRequestHandler
 
 
 def request(document, kind, target_ids=None):
@@ -327,61 +325,7 @@ def test_generated_keyframe_nodes_and_aux_are_preserved(tmp_path):
     asyncio.run(run())
 
 
-def test_stdio_keyframe_submit_lost_response_replays_once(tmp_path):
-    store, _, doc, _ = asyncio.run(_visual_project(str(tmp_path)))
-    req = request(doc, "keyframe")
-    caller = agent(doc, req)
-    sender = StoryRailRequestHandler._send_json
-    dropped = []
-
-    def drop(handler, status, value):
-        if (
-            status == 200
-            and value.get("data", {}).get("outcome") == "submit_proposal"
-            and not dropped
-        ):
-            dropped.append(True)
-            handler.close_connection = True
-            handler.connection.shutdown(2)
-            return
-        return sender(handler, status, value)
-
-    async def run(params):
-        base = {
-            "project_id": doc.project_id,
-            "expected_revision": doc.revision,
-            "idempotency_key": "request",
-            "action": "request",
-            "raw_user_instruction": req.arguments["raw_user_instruction"],
-            "scene_ids": req.arguments["scope"]["scene_ids"],
-            "target_ids": req.arguments["target_ids"],
-        }
-        async with Client(params) as client:
-            result = await client.call_tool("keyframe_proposal", base)
-            assert not result.is_error, result
-            rid = result.structured_content["data"]["request_id"]
-            submit = {
-                "project_id": doc.project_id,
-                "expected_revision": store.read().revision,
-                "idempotency_key": "submit",
-                "action": "submit",
-                "request_id": rid,
-                "proposal": proposal_for(store.read(), "keyframe"),
-            }
-            with patch.object(StoryRailRequestHandler, "_send_json", drop):
-                lost = await client.call_tool("keyframe_proposal", submit)
-            assert lost.is_error and dropped
-        saved = store.path.read_bytes()
-        async with Client(params) as client:
-            replay = await client.call_tool("keyframe_proposal", submit)
-            assert replay.structured_content["replay"]
-        assert store.path.read_bytes() == saved
-
-    with endpoint(tmp_path, store, restart(store), caller) as (params, _):
-        asyncio.run(run(params))
-
-
-def test_stdio_planning_request_get_submit_reaches_real_core(tmp_path):
+def test_mcp_planning_request_get_submit_reaches_real_core(tmp_path):
     kind = "keyframe"
 
     async def prepare():

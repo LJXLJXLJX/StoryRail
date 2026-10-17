@@ -34,7 +34,7 @@ def test_external_run_source_disables_builtin_recovery_even_if_configured(tmp_pa
     asyncio.run(run())
 
 
-def test_real_stdio_image_audio_read_uses_controlled_assets_and_no_writes(tmp_path):
+def test_mcp_image_audio_read_uses_controlled_assets_and_no_writes(tmp_path):
     store, service, doc, _ = asyncio.run(fixture(tmp_path))
     req = command("get", doc.revision, "unused", request_id="f" * 32)
     caller = replace(

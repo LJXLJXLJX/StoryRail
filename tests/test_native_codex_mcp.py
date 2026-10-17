@@ -9,7 +9,7 @@ import subprocess
 import pytest
 from test_director_commands import _visual_project
 from test_external_script_proposals import agent
-from test_storyrail_mcp import endpoint
+from test_storyrail_mcp import stdio_endpoint
 
 from core.director_commands import DirectorCommand
 
@@ -33,7 +33,7 @@ def test_native_codex_discovers_and_sends_keyframe_proposal_request(tmp_path):
         },
     )
     caller = agent(document, core_command)
-    with endpoint(tmp_path, store, service, caller) as (params, _bridge):
+    with stdio_endpoint(tmp_path, store, service, caller) as (params, _bridge):
         tool_arguments = {
             "project_id": document.project_id,
             "expected_revision": document.revision,

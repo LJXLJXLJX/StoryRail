@@ -650,7 +650,7 @@ def test_invalid_input_and_specialized_scope_are_read_only(tmp_path):
     assert store.path.read_bytes() == before
 
 
-def test_mcp_prompt_commit_disconnect_replay_and_invalidated_boundary(tmp_path):
+def test_mcp_prompt_commit_lost_response_replay_and_invalidated_boundary(tmp_path):
     from unittest.mock import patch
 
     from mcp import Client

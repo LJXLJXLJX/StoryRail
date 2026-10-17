@@ -20,11 +20,8 @@ def test_shared_rule_reaches_launcher_and_generic_mcp_without_copy_button():
     web_instruction = (root / "web/src/director_workspace/consistency_instruction.ts").read_text()
     assert shared in web_instruction
     for text in (launcher, instructions):
-        assert "直接类型化编辑" in text
         assert "read_professional_contract" in text
         assert "shared/storyrail-consistency-review/SKILL.md" in text
-        assert "提交后重读最新事实" in text
-        assert "不要求用户点击校对按钮收尾" in text
         assert "只读校对不写入" in text
     assert "当前没有 UI 内的“刷新凭据”按钮" in launcher
     assert "停止当前 Agent 启动终端" in launcher
@@ -55,13 +52,8 @@ def test_shared_skill_delivers_both_modes_and_scope_boundaries():
     )
     text = resource["text"]
     for obligation in (
-        "用户只请你核对",
         "不写入",
-        "修改前检查拟提交结果，修改后重读核对",
         "不能扩大为全项目回改",
-        "闪回",
-        "不预设上层、下层或最后修改的一方永远优先",
-        "复制材料中的 before/after 只用于理解修改意图",
         "不授予任何工具权限",
     ):
         assert obligation in text

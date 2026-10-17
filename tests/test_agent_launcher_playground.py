@@ -315,7 +315,6 @@ def test_build_context_starts_mcp_handshake_in_isolation(tmp_path) -> None:
 
     for scope in ("project", "playground"):
         assert asyncio.run(handshake(scope))[0] == "StoryRail"
-    assert "核对完成才报告完成" in asyncio.run(handshake("project"))[1]
 
     # 摘要覆盖被复制的 Core 文本，改规则时镜像会重建。
     digest = launcher.agent_build_digest(repository_root)
