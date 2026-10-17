@@ -10,11 +10,16 @@ from core.model_providers.minimax_h3.prompt_contract import (
     H3DialogueInput,
     H3PromptContext,
     H3PromptMode,
+    H3ShotInput,
 )
 from core.model_providers.recipe import RecipeBook, RecipeInputs, _parse_slot_wire
-from core.structured_director.keyframe_requests import _find_segment_context
 from core.structured_director.models import StructuredDirectorDocument
 from core.structured_director.models.video import SegmentVideo
+from core.structured_director.script_index import (
+    find_segment,
+    segment_shots,
+    segment_visible_character_ids,
+)
 from core.structured_director.video_inputs import resolve_video_inputs
 
 
@@ -199,7 +204,12 @@ def build_h3_context(
     video_plan = document.video_plan
     if script is None or keyframe_plan is None or video_plan is None:
         raise ValueError("视频生产上下文尚未建立。")
-    scene, shot, segment = _find_segment_context(script.scenes, segment_id)
+    found = find_segment(script.scenes, segment_id)
+    if found is None:
+        raise ValueError("Segment 不存在。")
+    scene, segment = found
+    shots = segment_shots(scene, segment.id)
+    visible_character_ids = set(segment_visible_character_ids(scene, segment.id))
     binding = next(
         (item for item in keyframe_plan.segments if item.segment_id == segment_id),
         None,
@@ -223,6 +233,11 @@ def build_h3_context(
     has_start = actual.start_asset_id is not None
     has_end = actual.end_asset_id is not None
     characters = {item.id: item for item in document.reference_library.characters}
+    view_names = {
+        view.id: view.name
+        for location in document.location_library.locations
+        for view in location.views
+    }
     if plan_item.active_recipe == "minimax_h3.ref2va":
         mode = H3PromptMode.REF2VA
     elif has_start and has_end:
@@ -239,9 +254,20 @@ def build_h3_context(
         aspect_ratio=document.aspect_ratio.value,
         scene_title=scene.title,
         scene_setting=scene.setting,
-        shot_composition=shot.composition,
-        camera_movement=shot.camera_movement,
-        shot_action=shot.action,
+        shots=tuple(
+            H3ShotInput(
+                composition=shot.composition,
+                camera_movement=shot.camera_movement,
+                action=shot.action,
+                audio_direction=shot.audio_direction,
+                visible_character_names=tuple(
+                    characters[character_id].name if character_id in characters else character_id
+                    for character_id in shot.visible_character_ids
+                ),
+                view_name=None if shot.view_id is None else view_names.get(shot.view_id),
+            )
+            for shot in shots
+        ),
         segment_action=segment.action,
         historical_prompt=(
             plan_item.prompt_text
@@ -249,7 +275,6 @@ def build_h3_context(
             else historical_prompt_text.strip()
         ),
         user_direction=user_message.strip(),
-        audio_direction=shot.audio_direction,
         start_frame_description=(
             (start.prompt_text.strip() or "以已选首帧图片的可见内容为准。") if has_start else None
         ),
@@ -270,7 +295,7 @@ def build_h3_context(
                 on_screen=(
                     None
                     if item.character_id is None
-                    else item.character_id in shot.visible_character_ids
+                    else item.character_id in visible_character_ids
                 ),
             )
             for item in segment.dialogue_lines

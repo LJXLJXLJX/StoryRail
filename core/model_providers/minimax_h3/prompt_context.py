@@ -2,13 +2,24 @@
 
 from pathlib import Path
 
-from .prompt_contract import H3DialogueInput, H3PromptContext, H3PromptMode
+from .prompt_contract import H3DialogueInput, H3PromptContext, H3PromptMode, H3ShotInput
 from .prompt_payload import h3_prompt_payload
 
 
 def context_from_workset(value):
     ctx = value["context"]
-    scene, shot, segment = ctx["scene"], ctx["shot"], ctx["segment"]
+    scene, segment = ctx["scene"], ctx["segment"]
+    shots = tuple(
+        H3ShotInput(
+            composition=item["composition"],
+            camera_movement=item["camera_movement"],
+            action=item["action"],
+            audio_direction=item["audio_direction"],
+            visible_character_names=tuple(item["visible_character_names"]),
+            view_name=item["view_name"],
+        )
+        for item in ctx["shots"]
+    )
     first, last = segment["start_frame_description"], segment["end_frame_description"]
     mode = (
         H3PromptMode.REF2VA
@@ -24,25 +35,24 @@ def context_from_workset(value):
         return tuple(item["description"] for item in ctx["bindings"] if item["role"] == role)
 
     context = H3PromptContext(
-        mode,
-        ctx["duration_seconds"],
-        ctx["aspect_ratio"],
-        scene["title"],
-        scene["setting"],
-        shot["composition"],
-        shot["camera_movement"],
-        shot["action"],
-        segment["action"],
-        segment["historical_prompt"],
-        "",
-        shot["audio_direction"],
-        first,
-        last,
-        tuple(H3DialogueInput(**item) for item in segment["dialogue"]),
-        descriptions("reference_image"),
-        descriptions("reference_audio"),
-        descriptions("reference_video"),
-        scene["driver"],
+        mode=mode,
+        duration_seconds=ctx["duration_seconds"],
+        aspect_ratio=ctx["aspect_ratio"],
+        scene_title=scene["title"],
+        scene_setting=scene["setting"],
+        shots=shots,
+        segment_action=segment["action"],
+        historical_prompt=segment["historical_prompt"],
+        user_direction="",
+        start_frame_description=first,
+        end_frame_description=last,
+        dialogue=tuple(H3DialogueInput(**item) for item in segment["dialogue"]),
+        continues_from_previous_segment=segment["continues_from_previous_segment"],
+        continues_into_next_segment=segment["continues_into_next_segment"],
+        additional_image_descriptions=descriptions("reference_image"),
+        audio_reference_descriptions=descriptions("reference_audio"),
+        video_reference_descriptions=descriptions("reference_video"),
+        scene_driver=scene["driver"],
     )
     return context
 

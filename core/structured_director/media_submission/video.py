@@ -8,9 +8,6 @@ from core.model_providers.recipe import MediaInput, RecipeParams
 from ..generation_lifecycle import (
     _next_generation_seed,
 )
-from ..keyframe_requests import (
-    _find_segment_context,
-)
 from ..models import (
     GenerationOperation,
     ReferenceGeneration,
@@ -21,6 +18,7 @@ from ..models import (
 from ..production_context import (
     _TERMINAL_PHASES,
 )
+from ..script_index import find_segment
 from ..video_inputs import resolve_video_inputs
 from .support import _commit_submission
 
@@ -37,7 +35,10 @@ def _segment_video_context(owner, document, segment_id: str, expected_revision: 
         raise ValueError("视频生产输入不完整。")
     if script.production_baseline_revision != script.revision:
         raise ValueError("当前 Shot timing 已失效；请先确认时序再生成视频。")
-    _scene, _shot, segment = _find_segment_context(script.scenes, segment_id)
+    found = find_segment(script.scenes, segment_id)
+    if found is None:
+        raise ValueError("Segment 不存在。")
+    segment = found[1]
     inputs = resolve_video_inputs(document, segment_id)
     if any(
         item.kind is ReferenceGenerationKind.SEGMENT_VIDEO

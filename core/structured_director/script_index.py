@@ -75,3 +75,12 @@ def segment_continues_previous(scene: Scene, segment_id: str) -> bool:
     if not index:
         return False
     return segments[index - 1].shot_ids[-1] == segments[index].shot_ids[0]
+
+
+def segment_continues_next(scene: Scene, segment_id: str) -> bool:
+    """Segment 是否与本 Scene 下一个 Segment 共享边界 Shot（延续同一镜头）。"""
+    segments = scene.segments
+    index = next((i for i, segment in enumerate(segments) if segment.id == segment_id), None)
+    if index is None or index + 1 >= len(segments):
+        return False
+    return segments[index].shot_ids[-1] == segments[index + 1].shot_ids[0]

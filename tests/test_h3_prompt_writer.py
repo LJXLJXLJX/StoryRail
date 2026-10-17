@@ -40,7 +40,8 @@ class H3PromptWriterTests(unittest.IsolatedAsyncioTestCase):
             "只有 `scene.driver` 为 `narration` 时再加“预留后期主旁白音频叠加通道”",
             "drama Scene 不写这句",
             "逐字照抄 `dialogue[].text`",
-            "`on_screen=null` 是引用库外的临时说话者",
+            "`null` 是引用库外的临时说话者",
+            "`on_screen` 是 Segment 覆盖的全部 Shot 的并集",
         ):
             self.assertIn(required, instructions)
         self.assertNotIn(
@@ -61,6 +62,23 @@ class H3PromptWriterTests(unittest.IsolatedAsyncioTestCase):
     def test_storyrail_timestamp_grammar_is_in_the_contract(self) -> None:
         instructions = "\n".join(r["text"] for r in skill_resources())
         self.assertIn("不新增字段、不新增时间戳语法", instructions)
+
+    def test_multi_shot_segment_contract_is_soft_and_bounded(self) -> None:
+        # 单 Shot 不虚构切镜；多 Shot 按官方语法顺序写，切点是软约束，段内上限 3 个。
+        instructions = "\n".join(r["text"] for r in skill_resources())
+        for required in (
+            "`context.shots` 只有一项时不要写切镜",
+            "[Shot 1]",
+            "[Shot 2] At MM:SS.mmm",
+            "软约束",
+            "切点漂移仍是合格候选",
+            "不超过 3 个",
+            "<scenetrans>",
+            "首尾 Picture 只锚定第一个 Shot 的开头与最后一个 Shot 的结尾",
+        ):
+            self.assertIn(required, instructions)
+        # 旧的“Segment 永远是连续单镜”说法不能与新规则并存。
+        self.assertNotIn("StoryRail 的 Segment 是连续镜头", instructions)
 
 
 if __name__ == "__main__":

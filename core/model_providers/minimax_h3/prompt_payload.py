@@ -50,15 +50,22 @@ def h3_prompt_payload(context: H3PromptContext, input_labels=None) -> dict[str, 
             "setting": context.scene_setting,
             "driver": context.scene_driver,
         },
-        "shot": {
-            "composition": context.shot_composition,
-            "camera_movement": context.camera_movement,
-            "action": context.shot_action,
-            "audio_direction": context.audio_direction,
-        },
+        "shots": [
+            {
+                "composition": shot.composition,
+                "camera_movement": shot.camera_movement,
+                "action": shot.action,
+                "audio_direction": shot.audio_direction,
+                "visible_character_names": list(shot.visible_character_names),
+                "view_name": shot.view_name,
+            }
+            for shot in context.shots
+        ],
         "segment": {
             "action": context.segment_action,
             "historical_prompt": context.historical_prompt,
+            "continues_from_previous_segment": context.continues_from_previous_segment,
+            "continues_into_next_segment": context.continues_into_next_segment,
             "user_direction": context_value(context.user_direction),
             "start_frame_description": context.start_frame_description,
             "end_frame_description": context.end_frame_description,

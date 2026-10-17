@@ -3,7 +3,9 @@
 当前工作区只提供项目连接上下文，不包含待自动执行的任务。等待用户输入，不主动整理引用库或启动任何业务动作。
 模型、推理强度、登录和动态切换均由用户通过当前 Agent 原生功能管理。
 
-StoryRail 的旁白是独立 TTS 音频，由 Scene/Final Assembly 后期混入。编写任何 H3、I2VA、FL2VA 或 Ref2VA 视频提示词时，绝不能把剧本旁白、解说词或 narrator 文本写入 `<d>...</d>`，也不能写成 off-screen voiceover 或“解说员画外音”；否则会让视频模型自行生成人声并与后期主旁白重叠。`<d>` 只承载当前 Segment `dialogue` 里的剧情对白或演唱，逐字照抄 `text`；`on_screen=null` 的说话者是引用库外的临时角色，是否入画以 Segment `action` 为准。人声声明按 Segment 区分：有对白时写明除 `<d>` 台词外无其它人类语音，不写“全片无人类语音”；没有对白时声明双唇闭合、全片无开口、无对白、无画外音配音，并注明“全片无人类语音，保持纯净环境音”，只有 `scene.driver` 为 `narration` 时再加“预留后期主旁白音频叠加通道”。`overall_soundscape` 只写环境/动作拟音和非语言人声，必须写出与画面动作或环境对应的具体音效，不得默认静音或写成 N/A（只有用户明确要求全片完全静音时例外）。非画内配乐只在用户指令或 Shot `audio_direction` 明确写出时才写入 `non_diegetic_music`（导演方案写明的配乐与音乐入点就是明确要求）；否则写 `N/A`，不要从电影感、情绪或风格推断 BGM。角色演奏、收音机、电视或手机播放的音乐属于画内声音，写入画面事件，不等同于 BGM。修改已有提示词时，主动清除历史画外音文本、错误的“预留旁白通道”声明及没有依据的 BGM。
+StoryRail 的旁白是独立 TTS 音频，由 Scene/Final Assembly 后期混入。编写任何 H3、I2VA、FL2VA 或 Ref2VA 视频提示词时，绝不能把剧本旁白、解说词或 narrator 文本写入 `<d>...</d>`，也不能写成 off-screen voiceover 或“解说员画外音”；否则会让视频模型自行生成人声并与后期主旁白重叠。`<d>` 只承载当前 Segment `dialogue` 里的剧情对白或演唱，逐字照抄 `text`；`on_screen` 是 Segment 覆盖 Shot 的并集，`true` 表示说话者在至少一个覆盖 Shot 中可见，具体在哪一镜入画按该 Shot 的可见角色落实；`on_screen=null` 的说话者是引用库外的临时角色，是否入画以 Segment `action` 为准。人声声明按 Segment 区分：有对白时写明除 `<d>` 台词外无其它人类语音，不写“全片无人类语音”；没有对白时声明双唇闭合、全片无开口、无对白、无画外音配音，并注明“全片无人类语音，保持纯净环境音”，只有 `scene.driver` 为 `narration` 时再加“预留后期主旁白音频叠加通道”。`overall_soundscape` 只写环境/动作拟音和非语言人声，必须写出与画面动作或环境对应的具体音效，不得默认静音或写成 N/A（只有用户明确要求全片完全静音时例外）。非画内配乐只在用户指令或 Shot `audio_direction` 明确写出时才写入 `non_diegetic_music`（导演方案写明的配乐与音乐入点就是明确要求）；否则写 `N/A`，不要从电影感、情绪或风格推断 BGM。角色演奏、收音机、电视或手机播放的音乐属于画内声音，写入画面事件，不等同于 BGM。修改已有提示词时，主动清除历史画外音文本、错误的“预留旁白通道”声明及没有依据的 BGM。
+
+视频提示词按工作集 `context.shots` 写：只有一项时是连续镜头，不虚构段内切镜；多项时按顺序写 `[Shot 1]`、`[Shot 2] At MM:SS.mmm …`，切点按各 Shot 的构图、动作与总时长估算，只是软约束——Core 不按 Shot 切视频、不记录段内切点，生成后切点漂移仍是合格候选。首尾 Picture 只锚定第一个 Shot 的开头与最后一个 Shot 的结尾，中间 Shot 的人物与空间靠参考图维持；Ref2VA 时优先建议用户为可见角色绑定造型图，但只在用户明确要求时改绑定。同一句台词跨越段内剪辑时用 `<scenetrans>`；段内 Shot 数当前不超过 3 个。
 
 如果 StoryRail 工具返回 HTTP 401、`unauthenticated`、"请求缺少有效身份" 或凭据过期：明确告诉用户这是当前项目连接凭据已过期或失效。当前没有 UI 内的“刷新凭据”按钮，也不要让用户去设置页寻找刷新入口。恢复动作是：保留原请求的参数、expected_revision 和 idempotency_key，不自动重提写请求；让用户先停止当前 Agent 启动终端，再从 StoryRail 页面重新复制同一项目的启动命令并在本机终端执行。若旧启动器仍占用项目连接，必须先退出旧进程；只重启 Core、gateway 或 MCP 不会刷新项目连接。恢复后先用省略 expected_revision 的 read_workflow 验证连接，再继续原任务。
 
@@ -13,7 +15,7 @@ StoryRail 的旁白是独立 TTS 音频，由 Scene/Final Assembly 后期混入�
 使用 read_workflow、read_run 和有界专业读取获取事实；显式精确读冲突时按返回的 current_revision 最多重新读取一次 latest。不要把外部会话、旧本地文件或连接时的 revision 当成当前业务 authority，也不要因恢复观察重新提交生成。写请求绝不能换 revision 自动重放。
 本机连接已由用户委托当前项目的有限执行能力。启动后等待用户输入；询问下一步时只读取与说明。
 用户明确要求生成脚本、修改或生产时，直接映射正式工具并执行，不要求再次开启写入授权或重复输入指令。
-用户要求生成 Segment 视频时，先读该 Segment 的 `video_prompt` 工作集；`exceeds_soft_duration_limit` 为 true 时，提交前主动提醒时长超过软约束可能 OOM、建议拆分并给出拆分点，用户同意后用 `split_segment` 拆分，用户坚持不拆则照常生成。`dialogue_timing.exceeds_duration` 为 true 时同样先提醒：台词按字数估算念不完，建议加长时长或拆分，不删减或改写台词。这些只是提醒，Core 不拒绝；脚本初次规划时一个 Shot 只有一个 Segment，不预先拆分。
+用户要求生成 Segment 视频时，先读该 Segment 的 `video_prompt` 工作集；`exceeds_soft_duration_limit` 为 true 时，提交前主动提醒时长超过软约束可能 OOM、建议拆分并给出拆分点，用户同意后用 `split_segment` 拆分，用户坚持不拆则照常生成。`dialogue_timing.exceeds_duration` 为 true 时同样先提醒：台词按字数估算念不完，建议加长时长或拆分，不删减或改写台词。这些只是提醒，Core 不拒绝。一个 Segment 可以覆盖多个 Shot 做段内切镜（当前建议不超过 3 个），也可以只覆盖一个 Shot；拆分 Segment 不改变 Shot 设计，共享边界 Shot 的两段是延续同一镜头，拆分时两段给出覆盖的 `shot_ids` 并在后一段填写 `boundary_from_previous`。
 Core 仍校验状态、目标、revision 和请求归属。遇到 403 应报告工具返回的真实错误；不要编造「项目设置中开启写入」入口。
 不同工具/动作使用不同 idempotency_key；同一请求的精确重放才复用原 key。未知响应先读取 Core request/run，不能推断未提交。
 四类 proposal 的 request 只建立原始不可变工作集；返回 `awaiting_agent_submission` 时由当前 Agent 直接编写并调用同一 proposal 工具的 submit。不要把持久 run 的 `running` 理解为 Core 正在后台调用模型，也不要无参数轮询 `run.get_status` 等待草稿自行出现。get/read_run 的相同 command_id 是确定性只读命令标识，不是缓存；应同时区分 source_revision 与 observation_revision。

@@ -20,12 +20,9 @@ from .models import (
     LocationView,
     ReferenceGenerationKind,
     ReferenceGenerationPhase,
-    Scene,
-    Shot,
-    ShotSegment,
     StructuredDirectorDocument,
 )
-from .script_index import find_segment, segment_shots, shot_segments
+from .script_index import find_segment, segment_shots
 
 
 @dataclass(frozen=True, slots=True)
@@ -473,14 +470,3 @@ def _keyframe_prompt_context_json(document: StructuredDirectorDocument, keyframe
         ensure_ascii=False,
         indent=2,
     )
-
-
-def _find_segment_context(
-    scenes: tuple[Scene, ...], segment_id: str
-) -> tuple[Scene, Shot, ShotSegment]:
-    for scene in scenes:
-        for shot in scene.shots:
-            for segment in shot_segments(scene, shot.id):
-                if segment.id == segment_id:
-                    return scene, shot, segment
-    raise ValueError("Segment 不存在。")

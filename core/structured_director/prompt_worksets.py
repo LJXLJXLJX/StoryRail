@@ -6,13 +6,19 @@ from core.model_providers.recipe import SlotBinding, binding_labels, explicit_sl
 from .dialogue_timing import dialogue_timing
 from .image_prompt_style import image_prompt_style
 from .keyframe_requests import (
-    _find_segment_context,
     _keyframe_generation_inputs,
     _keyframe_prompt_context_json,
     _keyframe_reference_prompt,
 )
 from .models import StructuredDirectorDocument
-from .script_index import scene_segments
+from .script_index import (
+    find_segment,
+    scene_segments,
+    segment_continues_next,
+    segment_continues_previous,
+    segment_shots,
+    segment_visible_character_ids,
+)
 from .video_inputs import resolve_video_inputs
 
 
@@ -30,7 +36,17 @@ def video_prompt_workset(
         or document.keyframe_plan is None
     ):
         raise ValueError("视频生产上下文尚未建立。")
-    scene, shot, segment = _find_segment_context(document.director_script.scenes, segment_id)
+    found = find_segment(document.director_script.scenes, segment_id)
+    if found is None:
+        raise ValueError("Segment 不存在。")
+    scene, segment = found
+    shots = segment_shots(scene, segment.id)
+    visible_character_ids = set(segment_visible_character_ids(scene, segment.id))
+    view_names = {
+        view.id: view.name
+        for location in document.location_library.locations
+        for view in location.views
+    }
     video = next(item for item in document.video_plan.segments if item.segment_id == segment_id)
     view = next(
         (item for item in provider_recipes or [] if item["recipe"]["id"] == video.active_recipe),
@@ -70,7 +86,7 @@ def video_prompt_workset(
 
     soft = view["hints"].get("soft_duration_limit_seconds")
     result = {
-        "workset_version": 5,
+        "workset_version": 6,
         "video_recipe": view,
         "context": {
             "recipe_id": recipe.id,
@@ -81,15 +97,25 @@ def video_prompt_workset(
                 "setting": scene.setting,
                 "driver": scene.driver,
             },
-            "shot": {
-                "composition": shot.composition,
-                "camera_movement": shot.camera_movement,
-                "action": shot.action,
-                "audio_direction": shot.audio_direction,
-            },
+            "shots": [
+                {
+                    "composition": shot.composition,
+                    "camera_movement": shot.camera_movement,
+                    "action": shot.action,
+                    "audio_direction": shot.audio_direction,
+                    "visible_character_names": [
+                        characters.get(character_id, character_id)
+                        for character_id in shot.visible_character_ids
+                    ],
+                    "view_name": None if shot.view_id is None else view_names.get(shot.view_id),
+                }
+                for shot in shots
+            ],
             "segment": {
                 "action": segment.action,
                 "historical_prompt": video.prompt_text,
+                "continues_from_previous_segment": segment_continues_previous(scene, segment.id),
+                "continues_into_next_segment": segment_continues_next(scene, segment.id),
                 "start_frame_description": frame_description(
                     boundary.start_enabled, boundary.start_keyframe_id
                 ),
@@ -109,7 +135,7 @@ def video_prompt_workset(
                         "on_screen": (
                             None
                             if item.character_id is None
-                            else item.character_id in shot.visible_character_ids
+                            else item.character_id in visible_character_ids
                         ),
                     }
                     for item in segment.dialogue_lines

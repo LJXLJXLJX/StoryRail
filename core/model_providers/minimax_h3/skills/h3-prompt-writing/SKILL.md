@@ -12,7 +12,7 @@ description: Write MiniMax H3 video generation prompts for T2VA, I2VA, FL2VA, L2
 ## Workflow
 
 1. Identify the input mode: T2VA, I2VA, FL2VA, L2VA, or full-reference Ref2VA.
-2. Read `references/cinematic-video-prompting.md` for StoryRail 的画面与单镜调度规范。
+2. Read `references/cinematic-video-prompting.md` for StoryRail 的画面与调度规范（含单镜与多 Shot 段内切镜）。
 3. For base text/keyframe modes, read `references/base-en.txt` and follow its final prompt structure.
 4. For full-reference mode, read `references/ref-en.txt` and follow its six-section rewrite format.
 5. Preserve the exact field names, section order, labels, and timing notation from the selected guide.
@@ -55,7 +55,7 @@ StoryRail 的 Scene 旁白由独立 TTS 音频资产承载，并在 Scene/Final 
 
 - 绝不把剧本旁白、解说词或 narrator 文本写入 `<d>...</d>`，也不要写成 `says in an off-screen voiceover`、"解说员以画外音叙述" 或任何其它画外音指令。
 - `<d>...</d>` 只允许承载当前 Segment 明确指定、确实由画面角色表演的剧情对白或演唱；不要把 Scene 旁白伪装成角色对白。
-- 当前 Segment `dialogue` 中 `on_screen=false` 的台词是同一空间内画外角色的剧情对白，不是旁白；按 `references/cinematic-video-prompting.md` 第 5 节写成画外说话者，画面中的听者双唇闭合。`on_screen=null` 是引用库外的临时说话者（`character_name` 是称呼），是否入画以 Segment `action` 为准。
+- `on_screen` 是 Segment 覆盖的全部 Shot 的并集：`true` 表示说话者在段内至少一个 Shot 可见，具体在哪一镜入画按该 Shot 的 `visible_character_names` 落实；`false` 是同一空间内画外角色的剧情对白，不是旁白，按 `references/cinematic-video-prompting.md` 第 5 节写成画外说话者，画面中的听者双唇闭合；`null` 是引用库外的临时说话者（`character_name` 是称呼），是否入画以 Segment `action` 为准。
 - `<d>` 中的台词逐字照抄 `dialogue[].text`，不改写、不纠错、不增删。
 - 没有明确剧情对白时，必须明确写出人物双唇全程闭合、全片无开口、无对白、无画外音配音；这不等于禁止呼吸、喘息或其它非语言拟音。
 - `overall_soundscape` 只描述环境声、动作拟音和非语言人声（例如呼吸、喘息、喊叫的非词语声）；必须根据画面动作和环境写出具体音效，除非用户明确要求全片完全静音，不得写成 `N/A` 或省略音效。末尾的人声声明按 Segment 区分：
@@ -68,7 +68,13 @@ StoryRail 的 Scene 旁白由独立 TTS 音频资产承载，并在 Scene/Final 
 
 完整规则见 `references/cinematic-video-prompting.md`；它与关键帧正文工程同源，只描述已确定的可见状态如何连续变化。
 
-- 4 秒以上的单镜写 2~3 个连续阶段（起势 → 物理交互与阻力 → 落点或悬念）；Segment 是连续镜头，不虚构段内切镜，也不为凑节拍硬写切镜。
+- 先看 `context.shots` 的数量。只有一项时，Segment 是连续镜头：4 秒以上写 2~3 个连续阶段（起势 → 物理交互与阻力 → 落点或悬念），不虚构段内切镜，也不为凑节拍硬写切镜。
+- 有多项时，按数组顺序写 `[Shot 1]`、`[Shot 2] At MM:SS.mmm …`。切点按各 Shot 的构图、动作与 `duration_seconds` 的比例估算；它只是软约束：Core 不按 Shot 切视频、不记录段内切点，生成后切点漂移仍是合格候选，由人挑选或重生成，不因此判定失败。
+- 首尾 Picture 只锚定第一个 Shot 的开头与最后一个 Shot 的结尾；中间 Shot 的人物身份、服装与空间关系靠参考图与已批准关键帧维持。Ref2VA 时优先建议用户为可见角色绑定造型图，但只在用户明确要求时修改绑定。
+- 同一个 Segment 的段内切镜数当前不超过 3 个；需要更多切镜时先向用户说明并建议拆成多个 Segment。
+- 每个 `shots[]` 带 `visible_character_names` 与 `view_name`。前者决定该镜谁入画；后者只是地点视图建议（空间参考），不强制复刻机位与构图，画面以已批准关键帧和 Shot 描述为准。
+- `segment.continues_from_previous_segment` / `continues_into_next_segment` 表示相邻 Segment 共享边界 Shot（延续同一镜头）：开头或结尾沿用同一空间、人物状态与光线，不重新建立场景；两者都为 false 时按独立剪辑处理。
+- 同一句台词跨越段内剪辑时用 `<scenetrans>` 连接两侧并写明音频连续；具体写法以官方 guide 为准。
 - 运镜按官方 Motion Type + Amplitude + Speed 写清，节拍与 `duration_seconds` 匹配，结尾落在可剪辑状态。
 - 年代、实体与材质按已确认设定正向锚定；最容易被替换的实体可在正文尾部写与已确认设定一致的排除句，但不得新增用户没有要求的排除项。空泛形容词不得代替可见事实。
 - 关键帧阶段已决定的景别与地点视图使用方式不在视频提示词里重新发明；视频只描述连续变化。
@@ -80,6 +86,6 @@ StoryRail 的 Scene 旁白由独立 TTS 音频资产承载，并在 Scene/Final 
 - `pictures` 中 `role=described_reference` 的 Picture 是用户显式参考图；按其 `description` 和原标签落实用途，不臆造时间锚点。
 - `audios` 可为空，不得虚构；按 `description` 区分音色与原声复用，不能默认都是角色音色。
 - `videos` 可为空，不得虚构；按 `description` 引用画面用途，不提交音轨。
-- 首尾 Picture 的精确时间取 `pictures[].time_seconds`；无 Picture 时不写图片标签或对齐句。`[Shot 1]` 不带切镜时间，后续切镜才用 `[Shot N] At MM:SS.mmm, ...`。Base 模式沿用对应 guide 的对齐句。
+- 首尾 Picture 的精确时间取 `pictures[].time_seconds`；无 Picture 时不写图片标签或对齐句。`context.shots` 只有一项时不要写切镜；多项时 `[Shot 1]` 不带切镜时间，后续切镜才用 `[Shot N] At MM:SS.mmm, ...`，切点是按 Shot 设计与总时长估算的软约束，不要求与生成结果逐帧一致。Base 模式沿用对应 guide 的对齐句。
 - 逐项保留用户明确的排除要求（例如无字幕、无水印、无新增角色、无对白或无背景旁白），在最终正文的相关画面/声音字段写清；不能只写在内部分析、工作集或摘要中，也不能用“不改剧情”等泛化表述代替。未要求的排除项不自动新增。
 - 完成以上核对后才提交；这些规则不授权改写用户已保存的正文，生成仍直接使用当前已保存提示词。

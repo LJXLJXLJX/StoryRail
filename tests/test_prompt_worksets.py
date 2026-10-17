@@ -6,7 +6,7 @@ import struct
 from dataclasses import replace
 
 from script_helpers import shot_segments_at
-from structured_director_fixtures import wav_bytes
+from structured_director_fixtures import install_location, wav_bytes
 from test_director_commands import _ScriptCompiler, _visual_project
 from video_recipes import (
     SegmentVideoAudioReference,
@@ -218,6 +218,14 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
         )
         workset = video_prompt_workset(store.read(), segment.id)
         assert not store.read().generations
+        # 单 Shot Segment：工作集只列一个 Shot，且不延续相邻 Segment。
+        single = workset["context"]
+        assert [
+            (item["action"], item["visible_character_names"], item["view_name"])
+            for item in single["shots"]
+        ] == [(scene.shots[0].action, ["甲", "乙"], None)]
+        assert single["segment"]["continues_from_previous_segment"] is False
+        assert single["segment"]["continues_into_next_segment"] is False
         provider = RecordingProvider(media_type="video/mp4", content=b"fake")
         replace_video_provider(service, "ref2va", provider)
         # 全局 H3 渲染设置在提交时读取，并决定画布与采样开关。
@@ -1006,6 +1014,66 @@ def test_dialogue_timing_soft_hint_reaches_snapshot_story_and_video_workset(tmp_
         )
         assert story["items"][0]["dialogue_timing"] == expected
         assert video_prompt_workset(document, segment.id)["dialogue_timing"] == expected
+
+    asyncio.run(run())
+
+
+def test_video_workset_lists_all_covering_shots_and_continuation_flags(tmp_path):
+    """多 Shot Segment：按覆盖顺序列出 Shot，对白可见性取并集，并标出边界延续。"""
+    from core.structured_director.models import SegmentBoundary, SegmentBoundaryReason
+
+    async def run():
+        store, service, document, _ = await fixture(tmp_path)
+        scene = document.director_script.scenes[0]
+        first, second = scene.shots
+        segment, next_segment = scene.segments
+        # 地点视图建议按 Shot 名进入工作集；绑定本身仍是软参考。
+        document = install_location(store, scene_ids=(scene.id,))
+        scene = document.director_script.scenes[0]
+        characters = document.reference_library.characters
+        first_visible, second_visible = characters[0].id, characters[1].id
+        first = replace(scene.shots[0], visible_character_ids=(first_visible,))
+        second = replace(scene.shots[1], visible_character_ids=(second_visible,))
+        segments = (
+            replace(segment, shot_ids=(first.id, second.id), duration_estimate_seconds=6.0),
+            replace(
+                next_segment,
+                shot_ids=(second.id,),
+                boundary_from_previous=SegmentBoundary(
+                    SegmentBoundaryReason.CONTINUITY_ANCHOR, "延续第二镜的视线。"
+                ),
+            ),
+        )
+        document = await service.save_script(
+            (
+                replace(scene, shots=(first, second), segments=segments),
+                *document.director_script.scenes[1:],
+            ),
+            expected_revision=document.revision,
+        )
+
+        context = video_prompt_workset(document, segment.id)["context"]
+        assert [item["action"] for item in context["shots"]] == [first.action, second.action]
+        assert [item["visible_character_names"] for item in context["shots"]] == [
+            [characters[0].name],
+            [characters[1].name],
+        ]
+        assert [item["view_name"] for item in context["shots"]] == ["主机位", "主机位"]
+        assert "shot" not in context
+        # 对白说话者只要在任一覆盖 Shot 可见即为 on_screen；这里两句都属于并集。
+        assert [item["on_screen"] for item in context["segment"]["dialogue"]] == [
+            True,
+            True,
+            True,
+        ]
+        assert context["segment"]["continues_from_previous_segment"] is False
+        assert context["segment"]["continues_into_next_segment"] is True
+
+        next_context = video_prompt_workset(document, next_segment.id)["context"]
+        assert [item["action"] for item in next_context["shots"]] == [second.action]
+        assert next_context["segment"]["dialogue"] == []
+        assert next_context["segment"]["continues_from_previous_segment"] is True
+        assert next_context["segment"]["continues_into_next_segment"] is False
 
     asyncio.run(run())
 

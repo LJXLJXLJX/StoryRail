@@ -17,9 +17,35 @@ class H3DialogueInput:
     character_name: str
     text: str
     delivery: str | None
-    # 说话者是否在本 Shot 可见；False 表示画外台词，落在可见听者的镜头上；
-    # None 表示引用库外的临时说话者，是否入画以 Segment action 为准。
+    # 说话者是否在 Segment 覆盖的任一 Shot 中可见（并集）；False 表示画外台词，
+    # 落在可见听者的镜头上；None 表示引用库外的临时说话者，是否入画以 Segment action 为准。
     on_screen: bool | None
+
+
+@dataclass(frozen=True, slots=True)
+class H3ShotInput:
+    """Segment 覆盖的一个 Shot；只含提示词需要的创作字段。"""
+
+    composition: str
+    camera_movement: str
+    action: str
+    audio_direction: str
+    visible_character_names: tuple[str, ...]
+    # Shot 的地点视图建议名；只是空间参考，不强制复刻机位。
+    view_name: str | None
+
+    def __post_init__(self) -> None:
+        required = (self.composition, self.camera_movement, self.action)
+        if any(not item.strip() or len(item) > 10_000 for item in required):
+            raise ValueError("H3 prompt Shot 上下文不完整或过长。")
+        if not isinstance(self.audio_direction, str) or len(self.audio_direction) > 10_000:
+            raise ValueError("H3 prompt Shot 声音方向不合法或过长。")
+        if len(self.visible_character_names) > 100 or any(
+            not item.strip() or len(item) > 200 for item in self.visible_character_names
+        ):
+            raise ValueError("H3 prompt Shot 可见角色名不合法或过多。")
+        if self.view_name is not None and (not self.view_name.strip() or len(self.view_name) > 200):
+            raise ValueError("H3 prompt Shot 视图建议名不合法或过长。")
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,16 +55,17 @@ class H3PromptContext:
     aspect_ratio: str
     scene_title: str
     scene_setting: str
-    shot_composition: str
-    camera_movement: str
-    shot_action: str
+    # Segment 覆盖的 Shot，按顺序；只有一项时是连续单镜。
+    shots: tuple[H3ShotInput, ...]
     segment_action: str
     historical_prompt: str
     user_direction: str
-    audio_direction: str
     start_frame_description: str | None
     end_frame_description: str | None
     dialogue: tuple[H3DialogueInput, ...]
+    # 相邻 Segment 是否共享边界 Shot（延续同一镜头）；Playground 没有 Segment，保持 False。
+    continues_from_previous_segment: bool = False
+    continues_into_next_segment: bool = False
     additional_image_descriptions: tuple[str, ...] = ()
     audio_reference_descriptions: tuple[str, ...] = ()
     video_reference_descriptions: tuple[str, ...] = ()
@@ -51,14 +78,12 @@ class H3PromptContext:
             raise ValueError("H3 prompt 画面比例不合法。")
         if not isfinite(self.duration_seconds) or self.duration_seconds < 0.2:
             raise ValueError("H3 prompt 时长不合法。")
+        if not self.shots:
+            raise ValueError("H3 prompt 至少需要一个 Shot。")
         required = (
             self.scene_title,
             self.scene_setting,
-            self.shot_composition,
-            self.camera_movement,
-            self.shot_action,
             self.segment_action,
-            self.audio_direction,
         )
         if any(not item.strip() or len(item) > 10_000 for item in required):
             raise ValueError("H3 prompt 上下文不完整或过长。")

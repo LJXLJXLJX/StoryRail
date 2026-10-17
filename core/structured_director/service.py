@@ -105,9 +105,6 @@ from .keyframe_requests import (
     _find_keyframe as _find_keyframe,
 )
 from .keyframe_requests import (
-    _find_segment_context as _find_segment_context,
-)
-from .keyframe_requests import (
     _keyframe_effective_prompt as _keyframe_effective_prompt,
 )
 from .keyframe_requests import (
@@ -173,7 +170,7 @@ from .provider_ports import (
     VideoFrameProvider as VideoFrameProvider,
 )
 from .reads.video_recipes import video_recipe_state
-from .script_index import scene_segments
+from .script_index import find_segment, scene_segments
 from .store import RevisionConflictError, StructuredDirectorStore
 
 
@@ -1465,9 +1462,10 @@ class StructuredDirectorService:
                 raise RevisionConflictError("项目已被更新，请重新读取后再保存视频输入。")
             if document.director_script is None:
                 raise ValueError("结构化脚本尚未建立。")
-            scene, _shot, _segment = _find_segment_context(
-                document.director_script.scenes, segment_id
-            )
+            found = find_segment(document.director_script.scenes, segment_id)
+            if found is None:
+                raise ValueError("Segment 不存在。")
+            scene, _segment = found
             return self._command_registry.execute(
                 DirectorCommand(
                     "video.update_recipe_inputs",
@@ -1492,9 +1490,10 @@ class StructuredDirectorService:
                 raise RevisionConflictError("项目已被更新，请重新读取后再保存视频 recipe。")
             if document.director_script is None:
                 raise ValueError("结构化脚本尚未建立。")
-            scene, _shot, _segment = _find_segment_context(
-                document.director_script.scenes, segment_id
-            )
+            found = find_segment(document.director_script.scenes, segment_id)
+            if found is None:
+                raise ValueError("Segment 不存在。")
+            scene, _segment = found
             return self._command_registry.execute(
                 DirectorCommand(
                     "video.set_recipe",
@@ -1535,10 +1534,12 @@ class StructuredDirectorService:
             document = self._store.read()
             if document.revision != expected_revision:
                 raise RevisionConflictError("项目已被更新，请重新读取后再清除视频选择。")
-            scene, _shot, _segment = _find_segment_context(
-                document.director_script.scenes if document.director_script else (),
-                segment_id,
+            found = find_segment(
+                document.director_script.scenes if document.director_script else (), segment_id
             )
+            if found is None:
+                raise ValueError("Segment 不存在。")
+            scene, _segment = found
             return self._command_registry.execute(
                 DirectorCommand(
                     "video.clear_selection",

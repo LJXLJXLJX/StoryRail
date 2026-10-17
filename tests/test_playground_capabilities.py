@@ -11,8 +11,15 @@ from core.model_providers.codex_image.provider import to_generate_request
 from core.model_providers.contracts import VideoFrameRequest
 from core.model_providers.minimax_h3.contracts import FL2VARequest, Ref2VARequest
 from core.model_providers.minimax_h3.manifest import MANIFEST as H3_MANIFEST
-from core.model_providers.minimax_h3.prompt_contract import H3PromptContext, H3PromptMode
-from core.model_providers.minimax_h3.prompt_payload import _actual_provider_inputs
+from core.model_providers.minimax_h3.prompt_contract import (
+    H3PromptContext,
+    H3PromptMode,
+    H3ShotInput,
+)
+from core.model_providers.minimax_h3.prompt_payload import (
+    _actual_provider_inputs,
+    h3_prompt_payload,
+)
 from core.model_providers.minimax_h3.render import H3RenderSettings, H3Resolution
 from core.model_providers.recipe import RecipeRequest, recipe_wire_schema
 from core.model_providers.registry import CAPABILITIES
@@ -348,13 +355,19 @@ def test_ref2va_labels_match_production_mapping() -> None:
         aspect_ratio="16:9",
         scene_title="雨夜",
         scene_setting="街道",
-        shot_composition="中景",
-        camera_movement="推近",
-        shot_action="等待",
+        shots=(
+            H3ShotInput(
+                composition="中景",
+                camera_movement="推近",
+                action="等待",
+                audio_direction="雨声",
+                visible_character_names=("小满",),
+                view_name=None,
+            ),
+        ),
         segment_action="上车",
         historical_prompt="",
         user_direction="",
-        audio_direction="雨声",
         start_frame_description="首帧描述",
         end_frame_description="尾帧描述",
         dialogue=(),
@@ -362,6 +375,19 @@ def test_ref2va_labels_match_production_mapping() -> None:
         audio_reference_descriptions=("音色参考", "对白"),
         video_reference_descriptions=("运镜参考",),
     )
+    # Playground 没有 Scene，单 Shot 也走同一个 shots 列表。
+    payload = h3_prompt_payload(context)
+    assert payload["scene"]["driver"] is None
+    assert payload["shots"] == [
+        {
+            "composition": "中景",
+            "camera_movement": "推近",
+            "action": "等待",
+            "audio_direction": "雨声",
+            "visible_character_names": ["小满"],
+            "view_name": None,
+        }
+    ]
     provider = _actual_provider_inputs(context)
     assert [item["label"] for item in labels if item["label"].startswith("<Picture")] == [
         item["label"] for item in provider["pictures"]

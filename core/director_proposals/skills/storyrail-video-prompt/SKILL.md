@@ -5,7 +5,17 @@ description: 根据当前视频 recipe 与实际输入优化单个 Segment 的�
 
 先读取 `project.get_workset` 的 `video_prompt` 工作集。当前 recipe 声明可用槽位、机制参数、实例设置摘要与提示；插件随工作集提供专业 Skill 和参考资料。按这些资料组织正文，使用 Core 提供的实际引用标签，不自行编号、不推导未提交的媒体。
 
-保持 Scene、Shot、Segment 已保存的导演意图。用户指定正文语言时服从，未指定时不增加语言约束。
+保持 Scene、覆盖 Shot、Segment 已保存的导演意图。用户指定正文语言时服从，未指定时不增加语言约束。
+
+## 多 Shot Segment
+
+`context.shots` 是该 Segment 覆盖的 Shot（按顺序），可能只有一项，也可能有多项。
+
+- 只有一项：Segment 是连续镜头，不虚构段内切镜；需要切镜时与用户讨论拆 Segment。
+- 多项：正文按顺序写 `[Shot 1]`、`[Shot 2] At MM:SS.mmm …`。切点按各 Shot 的构图、动作与 `duration_seconds` 的比例估算，只是软约束：Core 不按 Shot 切视频、不记录段内切点，生成后切点漂移仍是合格候选，不要求重生成。
+- 首尾 Picture 只锚定第一个 Shot 的开头与最后一个 Shot 的结尾；中间 Shot 的人物与空间靠参考图维持。Ref2VA 时优先建议用户为可见角色绑定造型图，但只在用户明确要求时改绑定。
+- 同一句台词跨越段内剪辑时用 `<scenetrans>`。
+- 段内 Shot 数当前不超过 3 个；更多切镜先建议拆 Segment。
 
 ## 保存
 
@@ -25,14 +35,15 @@ description: 根据当前视频 recipe 与实际输入优化单个 Segment 的�
 
 ## 时长提醒
 
-脚本初次规划时一个 Shot 只有一个 Segment，超长 Segment 留到这里处理。工作集 `exceeds_soft_duration_limit` 为
+超长 Segment 留到这里处理。工作集 `exceeds_soft_duration_limit` 为
 true 时（`context.duration_seconds` 超过插件声明的 `soft_duration_limit_seconds`，当前 H3 为 15 秒），在优化
 提示词或用户要求生成该 Segment 视频前主动提醒用户：说明时长和可能 OOM 的风险，建议拆成多个 Segment，并给出
 建议的拆分点（自然动作的稳定状态、明确的控制方式变化或可复用的连续性锚点，可直接截帧续拍），同时说明拆分后
 新 Segment 需要自己的关键帧和提示词。
 
 这只是提醒，不是 Core 约束。用户同意后再用 `script.apply_operations` 的 `split_segment` 拆分，然后分别为各段
-写提示词；用户选择不拆时照常保存或生成，不擅自拆分，也不拒绝提交。
+写提示词；拆分不改变 Shot 设计，拆出的相邻 Segment 共享边界 Shot 时是延续同一镜头，两段都要给出覆盖的
+`shot_ids` 并在后一段填写 `boundary_from_previous`。用户选择不拆时照常保存或生成，不擅自拆分，也不拒绝提交。
 
 工作集 `dialogue_timing.exceeds_duration` 为 true 时，台词按字数估算（`estimated_seconds`）念不完：同样先提醒
 用户，建议加长 Segment 时长或在听者反应处拆分；不要为了塞进时长而删减、改写或加速台词。

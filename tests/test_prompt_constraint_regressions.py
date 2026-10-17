@@ -49,7 +49,7 @@ def test_initial_planning_keeps_one_segment_per_shot_and_defers_split_to_video_r
         Path(__file__).resolve().parents[1] / "integrations/agent_launcher/PROMPT.md"
     ).read_text()
     assert "exceeds_soft_duration_limit" in launcher
-    assert "一个 Shot 只有一个 Segment" in launcher
+    assert "一个 Shot 只有一个 Segment" not in launcher
 
 
 def test_video_contract_defers_long_segment_split_to_pre_generation_reminder():
@@ -61,6 +61,28 @@ def test_video_contract_defers_long_segment_split_to_pre_generation_reminder():
         Path(__file__).resolve().parents[1] / "integrations/agent_launcher/PROMPT.md"
     ).read_text()
     assert "exceeds_soft_duration_limit" in launcher
+
+
+def test_multi_shot_video_segments_are_in_video_contract_and_launcher():
+    """视频提示词契约与启动器都描述多 Shot Segment 的切镜写法与软约束。"""
+    video = read_contract("video_prompt")["resources"][0]["text"]
+    launcher = (
+        Path(__file__).resolve().parents[1] / "integrations/agent_launcher/PROMPT.md"
+    ).read_text()
+    for text in (video, launcher):
+        for required in (
+            "context.shots",
+            "[Shot 1]",
+            "[Shot 2] At MM:SS.mmm",
+            "软约束",
+            "切点漂移",
+            "不超过 3 个",
+            "<scenetrans>",
+            "首尾 Picture",
+            "boundary_from_previous",
+        ):
+            assert required in text, required
+        assert "一个 Shot 只有一个 Segment" not in text
 
 
 def test_script_contract_carries_single_visible_speaker_rule():

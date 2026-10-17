@@ -12,6 +12,7 @@ from core.structured_director.script_index import (
     find_segment,
     scene_segments,
     script_segments,
+    segment_continues_next,
     segment_continues_previous,
     segment_shots,
     segment_view_ids,
@@ -106,3 +107,12 @@ def test_continuation_means_sharing_the_boundary_shot() -> None:
     assert segment_continues_previous(SCENE_A, G4.id)
     assert not segment_continues_previous(SCENE_B, G5.id)
     assert not segment_continues_previous(SCENE_A, G5.id)
+
+
+def test_next_continuation_means_sharing_the_boundary_shot() -> None:
+    assert not segment_continues_next(SCENE_A, G1.id)
+    assert segment_continues_next(SCENE_A, G2.id)
+    assert segment_continues_next(SCENE_A, G3.id)
+    assert not segment_continues_next(SCENE_A, G4.id)
+    assert not segment_continues_next(SCENE_B, G5.id)
+    assert not segment_continues_next(SCENE_A, G5.id)
