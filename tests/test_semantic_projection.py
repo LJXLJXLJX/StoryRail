@@ -13,7 +13,9 @@ from core.structured_director.models import (
     SegmentBoundary,
     SegmentBoundaryReason,
 )
+from core.structured_director.reads.read_tools import execute_project_read
 from core.structured_director.reads.semantic_projection import build_semantic_projection as build
+from core.structured_director.reads.semantic_projection import build_semantic_tree
 from core.structured_director.script_index import shot_segments
 
 
@@ -39,8 +41,12 @@ async def _mixed(tmp_path):
     shot = build(document, {**scoped, "level": "shot"})["items"][0]
     assert shot["parent"] == {"kind": "scene", "id": drama.id}
     assert shot["action"] == drama.shots[0].action
+    assert shot["segment_ids"] == [
+        segment.id for segment in drama.segments if drama.shots[0].id in segment.shot_ids
+    ]
     segment = build(document, {**scoped, "level": "segment"})["items"][0]
-    assert segment["parent"]["id"] == drama.shots[0].id
+    assert segment["parent"] == {"kind": "scene", "id": drama.id}
+    assert segment["shot_ids"] == list(drama.segments[0].shot_ids)
     assert segment["dialogue_lines"] == [
         {
             "character_id": line.character_id,
@@ -197,21 +203,21 @@ async def _parent_scope(tmp_path):
     request = {
         "level": "segment",
         "scope": {"scene_ids": [scene.id]},
-        "parent_id": shots[0].id,
+        "parent_id": scene.id,
         "limit": 1,
     }
     first = build(document, request)
-    assert first["total"] == 3 and first["parent_id"] == shots[0].id
+    assert first["total"] == 12 and first["parent_id"] == scene.id
     assert first["items"][0]["id"] == segments[0].id
     second = build(document, {**request, "cursor": first["next_cursor"]})
     assert second["items"][0]["id"] == segments[1].id
     for patch in (
-        {"parent_id": shots[1].id, "cursor": first["next_cursor"]},
-        {"parent_id": other.shots[0].id},
+        {"parent_id": shots[0].id},
+        {"parent_id": other.id},
         {"parent_id": "0" * 32},
         {"parent_id": None},
-        {"level": "shot"},
-        {"ids": [segments[3].id]},
+        {"level": "scene"},
+        {"ids": [other.segments[0].id]},
     ):
         with pytest.raises(ValueError):
             build(document, {**request, **patch})
@@ -224,8 +230,14 @@ async def _parent_scope(tmp_path):
     outline = build(document, {"level": "outline", "scope": {"project_id": document.project_id}})
     scene_shots = build(document, {"level": "shot", "scope": request["scope"]})
     scene_segments = build(document, {"level": "segment", "scope": request["scope"]})
+    # Shot 的 Segment 经 shot 层 segment_ids 精确读取。
     shot_page = build(
-        document, {"level": "segment", "scope": request["scope"], "parent_id": shots[0].id}
+        document,
+        {
+            "level": "segment",
+            "scope": request["scope"],
+            "ids": scene_shots["items"][0]["segment_ids"],
+        },
     )
     shot_detail = build(
         document,
@@ -273,3 +285,45 @@ async def _parent_scope(tmp_path):
     assert report["agent_shot_children"]["before"]["nodes"] == 12
     assert report["agent_shot_children"]["after"]["nodes"] == 3
     print("PROJECTION_BENCHMARK=" + json.dumps(report, ensure_ascii=False))
+
+
+def test_multi_shot_segment_and_long_shot_projection(tmp_path):
+    asyncio.run(_multi_shot(tmp_path))
+
+
+async def _multi_shot(tmp_path):
+    _, _, document, _ = await _visual_project(str(tmp_path))
+    scene = document.director_script.scenes[0]
+    template = scene.segments[0]
+    shots = tuple(replace(scene.shots[0], id=f"{i + 300:032x}") for i in range(3))
+    boundary = SegmentBoundary(SegmentBoundaryReason.CONTINUITY_ANCHOR, "延续上一段。")
+    # g0 段内切镜 s0–s1；s2 长镜头跨 g1、g2。
+    segments = (
+        replace(template, id=f"{400:032x}", shot_ids=(shots[0].id, shots[1].id)),
+        replace(template, id=f"{401:032x}", shot_ids=(shots[2].id,), boundary_from_previous=None),
+        replace(
+            template, id=f"{402:032x}", shot_ids=(shots[2].id,), boundary_from_previous=boundary
+        ),
+    )
+    scene = replace(scene, shots=shots, segments=segments)
+    document = replace(
+        document,
+        keyframe_plan=None,
+        video_plan=None,
+        location_library=LocationLibrary(),
+        director_script=replace(document.director_script, scenes=(scene,)),
+    )
+    scope = {"scene_ids": [scene.id]}
+    shot_items = build(document, {"level": "shot", "scope": scope})["items"]
+    assert [item["segment_ids"] for item in shot_items] == [
+        [segments[0].id],
+        [segments[0].id],
+        [segments[1].id, segments[2].id],
+    ]
+    segment_items = build(document, {"level": "segment", "scope": scope})["items"]
+    assert [item["shot_ids"] for item in segment_items] == [list(s.shot_ids) for s in segments]
+    assert {item["parent"]["id"] for item in segment_items} == {scene.id}
+    tree = build_semantic_tree(document, (scene.id,))
+    assert [item["id"] for item in tree["scenes"][0]["segments"]] == [s.id for s in segments]
+    located = execute_project_read(document, "project.locate_story", {"location": "场景 1－片段 1"})
+    assert located["segment"]["shot_ids"] == [shots[0].id, shots[1].id]

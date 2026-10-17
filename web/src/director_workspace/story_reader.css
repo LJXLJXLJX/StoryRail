@@ -13,18 +13,14 @@
 .story-reader-nav .story-reader-back { width: auto; margin: 0 12px 12px; padding: 6px 8px; font-size: 13px; }
 .story-reader-columns { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; min-height: 0; border-top: 1px solid var(--line); }
 .story-reader-tree { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.story-reader-tree-head { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.story-reader-tree-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
 .story-reader-tree-head h2 { font-size: 12px; font-weight: 600; color: var(--muted); margin: 0; padding: 12px 20px; border-bottom: 1px solid var(--line); }
 .story-reader-tree-head h2 + h2 { border-left: 1px solid var(--line); }
-.story-reader-tree-rows, .story-reader-shot-branches, .story-reader-tree-children { margin: 0; list-style: none; }
+.story-reader-tree-rows, .story-reader-tree-children { margin: 0; list-style: none; }
 .story-reader-tree-rows { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px; scrollbar-gutter: stable; }
 .story-reader-scene-branch { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); min-width: 0; border-radius: 8px; }
 .story-reader-scene-branch + .story-reader-scene-branch { margin-top: 4px; border-top: 1px solid var(--line); }
 .story-reader-scene-branch.is-current-path { background: rgba(216, 75, 53, .035); }
-.story-reader-shot-branches { min-width: 0; padding: 0; border-left: 1px solid var(--line-dark); }
-.story-reader-shot-branch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
-.story-reader-shot-branch + .story-reader-shot-branch { border-top: 1px solid var(--line); }
-.story-reader-shot-branch.is-current-path > .story-reader-tree-parent { background: rgba(216, 75, 53, .04); }
 .story-reader-tree-parent { position: relative; min-width: 0; padding: 8px; }
 .story-reader-tree-parent::after { content: ""; position: absolute; z-index: 1; top: 31px; right: -12px; width: 20px; border-top: 1px solid var(--line-dark); pointer-events: none; }
 .story-reader-tree-children { position: relative; min-width: 0; padding: 8px 8px 8px 20px; border-left: 1px solid var(--line-dark); }

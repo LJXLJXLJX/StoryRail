@@ -65,7 +65,7 @@ export function NodeEditor({
           ]
         : target.level === "shot"
           ? s?.shots.find((x) => x.id === target.id)
-          : s?.shots.flatMap((x) => x.segments).find((x) => x.id === target.id);
+          : s?.segments.find((x) => x.id === target.id);
     if (
       snapshot.revision !== edit.revision &&
       JSON.stringify(fields(wanted)) === JSON.stringify(fields(actual))
@@ -119,21 +119,17 @@ export function NodeEditor({
                   setting: value.scene.setting,
                   narration_cues: value.scene.narration_cues,
                 }
-              : {
-                  ...s,
-                  shots: s.shots.map((h) =>
-                    h.id !== shot?.id
-                      ? h
-                      : target.level === "shot"
-                        ? { ...value.shot!, segments: h.segments }
-                        : {
-                            ...h,
-                            segments: h.segments.map((g) =>
-                              g.id === segment?.id ? value.segment! : g,
-                            ),
-                          },
-                  ),
-                },
+              : target.level === "shot"
+                ? {
+                    ...s,
+                    shots: s.shots.map((h) => (h.id === shot?.id ? value.shot! : h)),
+                  }
+                : {
+                    ...s,
+                    segments: s.segments.map((g) =>
+                      g.id === segment?.id ? value.segment! : g,
+                    ),
+                  },
         );
         setSubmitted(JSON.stringify(scenes));
         onSave(scenes, edit.revision);

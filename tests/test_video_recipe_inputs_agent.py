@@ -56,8 +56,7 @@ def _segment_ids(snapshot: dict) -> list[tuple[str, str]]:
     return [
         (scene["id"], segment["id"])
         for scene in snapshot["director_script"]["scenes"]
-        for shot in scene["shots"]
-        for segment in shot["segments"]
+        for segment in scene["segments"]
     ]
 
 

@@ -26,7 +26,7 @@ it("在渲染前拒绝未知字段和畸形嵌套事实", () => {
       { undeclared: true },
       { duration_estimate_seconds: "8" },
       { duration_estimate_seconds: Number.NaN },
-      { parent: { kind: "scene", id: segmentPage.items[0].parent.id } },
+      { parent: { kind: "shot", id: segmentPage.items[0].parent.id } },
       { provenance: { source: "project.json", field: {} } },
       { boundary_from_previous: { reason: "model_limit", continuity_instruction: {} } },
       { dialogue_lines: [{ character_id: "x", text: "对白", delivery: "轻声", extra: true }] },

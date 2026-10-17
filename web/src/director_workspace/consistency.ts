@@ -1,10 +1,11 @@
 import type { Scene, StructuredDirectorSnapshot } from "../api";
 import { CONSISTENCY_INSTRUCTION } from "./consistency_instruction";
+import { segmentShotLabel } from "./script_index";
 
 type Kind = "project" | "scene" | "shot" | "segment" | "cue" | "character" | "narrator" | "keyframe" | "video_prompt";
 export type ContentSave = { kind: Kind; id?: string } | { kind: "script"; scenes: Scene[] };
 type Field = {
-  key: string; kind: Kind; id: string; sceneIds: string[]; shotId?: string;
+  key: string; kind: Kind; id: string; sceneIds: string[]; shotIds?: string[];
   label: string; field: string; value: string;
 };
 export type ContentChange = Omit<Field, "value"> & {
@@ -16,47 +17,45 @@ const names: Record<string, string> = {
   transition_in: "入镜转场", dialogue_lines: "对白及表演", boundary_from_previous: "连续性说明",
   zh_text: "中文旁白正文", en_text: "英文旁白正文", name: "名称", visual_description: "外观描述", voice_description: "声音描述",
   zh_voice_description: "中文旁白音色描述", en_voice_description: "英文旁白音色描述",
-  prompt_text: "提示词正文", structure: "结构",
+  prompt_text: "提示词正文", structure: "结构", shot_ids: "覆盖镜头",
 };
 function fields(snapshot: StructuredDirectorSnapshot): Map<string, Field> {
   const result = new Map<string, Field>();
   const scenes = snapshot.director_script?.scenes ?? [];
-  function add(kind: Kind, id: string, label: string, sceneIds: string[], data: object, keys: string[], shotId?: string) {
+  function add(kind: Kind, id: string, label: string, sceneIds: string[], data: object, keys: string[], shotIds?: string[]) {
     for (const field of keys) {
       const value = (data as Record<string, unknown>)[field];
       const key = `${kind}:${id}:${field}`;
-      result.set(key, { key, kind, id, label, sceneIds, shotId, field, value: typeof value === "string" ? value : JSON.stringify(value ?? null) });
+      result.set(key, { key, kind, id, label, sceneIds, shotIds, field, value: typeof value === "string" ? value : JSON.stringify(value ?? null) });
     }
   }
   add("project", "current_project", "项目场景结构", [], { structure: scenes.map(s => s.id) }, ["structure"]);
   for (const [i, scene] of scenes.entries()) {
     const label = `场景 ${String(i + 1).padStart(2, "0")} · ${scene.title}`;
     add("scene", scene.id, label, [scene.id], scene, ["title", "summary", "setting"]);
-    add("scene", scene.id, label, [scene.id], { structure: scene.shots.map(s => s.id) }, ["structure"]);
+    add("scene", scene.id, label, [scene.id], { structure: { shots: scene.shots.map(s => s.id), segments: scene.segments.map(s => s.id) } }, ["structure"]);
     for (const cue of scene.narration_cues) add("cue", cue.id, `${label} · 旁白`, [scene.id], { zh_text: cue.zh?.text, en_text: cue.en?.text }, ["zh_text", "en_text"]);
     for (const [j, shot] of scene.shots.entries()) {
-      const shotLabel = `${label} · 镜头 ${j + 1}`;
-      add("shot", shot.id, shotLabel, [scene.id], shot, ["action", "composition", "camera_movement", "audio_direction", "visible_character_ids", "transition_in"], shot.id);
-      add("shot", shot.id, shotLabel, [scene.id], { structure: shot.segments.map(s => s.id) }, ["structure"], shot.id);
-      for (const [k, segment] of shot.segments.entries()) {
-        const segmentLabel = `${shotLabel} · 片段 ${k + 1}`;
-        add("segment", segment.id, segmentLabel, [scene.id], segment, ["action", "dialogue_lines", "boundary_from_previous"], shot.id);
-        const video = snapshot.video_plan?.segments.find(v => v.segment_id === segment.id);
-        if (video) add("video_prompt", segment.id, `${segmentLabel} · 视频`, [scene.id], video, ["prompt_text"], shot.id);
-      }
+      add("shot", shot.id, `${label} · 镜头 ${j + 1}`, [scene.id], shot, ["action", "composition", "camera_movement", "audio_direction", "visible_character_ids", "transition_in"], [shot.id]);
+    }
+    for (const [k, segment] of scene.segments.entries()) {
+      const segmentLabel = `${label} · 片段 ${k + 1}（${segmentShotLabel(scene, segment)}）`;
+      add("segment", segment.id, segmentLabel, [scene.id], segment, ["shot_ids", "action", "dialogue_lines", "boundary_from_previous"], segment.shot_ids);
+      const video = snapshot.video_plan?.segments.find(v => v.segment_id === segment.id);
+      if (video) add("video_prompt", segment.id, `${segmentLabel} · 视频`, [scene.id], video, ["prompt_text"], segment.shot_ids);
     }
   }
   for (const card of snapshot.reference_library.characters) {
-    const linked = scenes.filter(s => s.shots.some(h => h.visible_character_ids.includes(card.id) || h.segments.some(g => g.dialogue_lines.some(l => l.character_id === card.id))) || snapshot.keyframe_plan?.keyframes.some(f => f.visible_character_ids.includes(card.id) && s.shots.some(h => h.segments.some(g => g.id === f.owner_segment_id)))).map(s => s.id);
+    const linked = scenes.filter(s => s.shots.some(h => h.visible_character_ids.includes(card.id)) || s.segments.some(g => g.dialogue_lines.some(l => l.character_id === card.id)) || snapshot.keyframe_plan?.keyframes.some(f => f.visible_character_ids.includes(card.id) && s.segments.some(g => g.id === f.owner_segment_id))).map(s => s.id);
     add("character", card.id, `角色 · ${card.name}`, linked, card, ["name", "visual_description", "voice_description"]);
   }
   const narrator = snapshot.reference_library.narrator;
   if (narrator) add("narrator", narrator.id, `旁白身份 · ${narrator.name}`, scenes.filter(s => s.narration_cues.length > 0).map(s => s.id), { name: narrator.name, zh_voice_description: narrator.zh?.voice_description, en_voice_description: narrator.en?.voice_description }, ["name", "zh_voice_description", "en_voice_description"]);
   for (const frame of snapshot.keyframe_plan?.keyframes ?? []) {
     const segments = snapshot.keyframe_plan!.segments.filter(b => b.start_keyframe_id === frame.id || b.end_keyframe_id === frame.id).map(b => b.segment_id);
-    const linked = scenes.filter(s => s.shots.some(h => h.segments.some(g => segments.includes(g.id))));
-    const shot = linked.flatMap(s => s.shots).find(h => h.segments.some(g => g.id === frame.owner_segment_id));
-    add("keyframe", frame.id, `${linked.map(s => s.title).join(" / ")} · Keyframe`, linked.map(s => s.id), frame, ["prompt_text"], shot?.id);
+    const linked = scenes.filter(s => s.segments.some(g => segments.includes(g.id)));
+    const owner = linked.flatMap(s => s.segments).find(g => g.id === frame.owner_segment_id);
+    add("keyframe", frame.id, `${linked.map(s => s.title).join(" / ")} · Keyframe`, linked.map(s => s.id), frame, ["prompt_text"], owner?.shot_ids);
   }
   return result;
 }
@@ -104,7 +103,7 @@ export function formatConsistencyTask(project: { id: string; title: string }, ch
   };
   const sceneIds = [...new Set(changes.flatMap(c => c.sceneIds))];
   const data = changes.map(c => ({
-    target_level: c.kind, target_id: c.kind === "project" ? project.id : c.id, scene_ids: c.sceneIds, shot_id: c.shotId ?? null,
+    target_level: c.kind, target_id: c.kind === "project" ? project.id : c.id, scene_ids: c.sceneIds, shot_ids: c.shotIds ?? [],
     locator: c.label, field: c.field, before_revision: c.beforeRevision, after_revision: c.afterRevision,
     before: bounded(c.before), after: bounded(c.after),
   }));

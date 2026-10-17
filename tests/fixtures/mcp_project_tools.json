@@ -354,28 +354,6 @@
             "en": {
               "$ref": "#/$defs/NarrationTrackFields"
             },
-            "end_shot_id": {
-              "anyOf": [
-                {
-                  "pattern": "^[0-9a-f]{32}$",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "start_shot_id": {
-              "anyOf": [
-                {
-                  "pattern": "^[0-9a-f]{32}$",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
             "zh": {
               "$ref": "#/$defs/NarrationTrackFields"
             }
@@ -1754,7 +1732,7 @@
     "name": "read_media_input"
   },
   {
-    "description": "按 level 的公开 oneOf 契约读取故事；outline 使用项目 scope，scene/shot/segment 必须给 scene_ids，parent_id 只是 segment 的 Shot 父节点，h3/keyframe 扩展只用于 segment。",
+    "description": "按 level 的公开 oneOf 契约读取故事；outline 使用项目 scope，scene/shot/segment 必须给 scene_ids；Shot 与 Segment 都直接属于 Scene，shot 层给出覆盖它的 segment_ids，segment 层给出 shot_ids；h3/keyframe 扩展只用于 segment。",
     "inputSchema": {
       "additionalProperties": false,
       "oneOf": [
@@ -2025,7 +2003,7 @@
     "name": "read_story"
   },
   {
-    "description": "按“场景 N－镜头 N－片段 N”一键解析当前脚本的稳定 ID；只读，不修改项目。可省略镜头或片段以定位 Scene/Shot。",
+    "description": "按“场景 N”“场景 N－镜头 N”或“场景 N－片段 N”（片段在场景内编号）解析当前脚本的稳定 ID；只读，不修改项目。",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {

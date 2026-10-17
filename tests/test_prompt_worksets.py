@@ -421,8 +421,7 @@ def test_video_labels_number_independently_and_map_to_provider_order(tmp_path):
         video_state = next(
             item["video"]
             for scene in state["scenes"]
-            for shot in scene.get("shots", ())
-            for item in shot["segments"]
+            for item in scene.get("segments", ())
             if item["id"] == segment.id
         )
         assert [item["asset_id"] for item in video_wire_slot(video_state, "reference_videos")] == [

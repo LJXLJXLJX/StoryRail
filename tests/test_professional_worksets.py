@@ -138,7 +138,7 @@ def test_narration_before_shot_planning_and_result_size(tmp_path):
     scene = doc.director_script.scenes[0]
     request = {"capability": "narration", "scope": {"scene_ids": [scene.id]}}
     result = execute_project_read(doc, "project.get_workset", request)
-    assert "尚未规划" in result["core_facts"]["cues"][0]["shot_range"]
+    assert "尚未规划" in result["core_facts"]["cues"][0]["coverage"]
     huge = replace(doc, director_plan_markdown="文" * 50000)
     query = {"capability": "script", "scope": {"project_id": doc.project_id}}
     chunks = []

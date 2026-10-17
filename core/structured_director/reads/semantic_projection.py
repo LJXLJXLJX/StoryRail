@@ -8,7 +8,7 @@ import json
 from ..dialogue_timing import dialogue_timing
 from ..models import StructuredDirectorDocument
 from ..prompt_worksets import keyframe_workset, video_prompt_workset
-from ..v32_projection import v32_cue_anchors, v32_shot_segments
+from ..script_index import shot_segments
 from .common import (
     ReadResultTooLarge,
     _ids,
@@ -70,27 +70,26 @@ def build_semantic_projection(
     parent_id = request.get("parent_id")
     if "parent_id" in request:
         if level != "segment":
-            raise ValueError("parent_id 只接受 Segment 的 Shot 父节点。")
+            raise ValueError("parent_id 只接受 Segment 的 Scene 父节点。")
         _ids([parent_id], "parent_id")
-        if parent_id not in {shot.id for scene in scenes for shot in scene.shots}:
+        if parent_id not in {scene.id for scene in scenes}:
             raise ValueError("parent_id 未知或越出显式 Scene scope。")
     if level in {"outline", "scene"}:
         if level == "scene" and "ids" in request:
             raise ValueError("Scene 层仅使用 scene_ids scope，不接受 ids。")
-        nodes = [(scene, None, scene) for scene in scenes]
+        nodes = [(scene, scene) for scene in scenes]
     else:
         ids = _ids(request["ids"], "ids") if "ids" in request else None
         if ids is not None and len(ids) > 100:
             raise ValueError("ids 最多包含 100 个节点。")
         nodes = [
-            (scene, shot, node)
+            (scene, node)
             for scene in scenes
-            for shot in scene.shots
-            if parent_id is None or shot.id == parent_id
-            for node in ((shot,) if level == "shot" else v32_shot_segments(scene, shot.id))
+            if parent_id is None or scene.id == parent_id
+            for node in (scene.shots if level == "shot" else scene.segments)
             if ids is None or node.id in ids
         ]
-        if ids is not None and set(ids) != {node.id for _, _, node in nodes}:
+        if ids is not None and set(ids) != {node.id for _, node in nodes}:
             raise ValueError("节点 ID 未知或越出 scene_ids scope。")
     limit = request.get("limit", 30)
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100:
@@ -129,13 +128,11 @@ def build_semantic_projection(
         return value if "text" in extensions or value is None else value[:_TEXT_PREVIEW]
 
     items = []
-    for scene, shot, node in nodes[offset : offset + limit]:
+    for scene, node in nodes[offset : offset + limit]:
         kind = "scene" if level == "outline" else level
         source = f"director_script.scenes[id={scene.id}]"
-        if shot is not None:
-            source += f".shots[id={shot.id}]"
-        if kind == "segment":
-            source += f".segments[id={node.id}]"
+        if kind != "scene":
+            source += f".{kind}s[id={node.id}]"
         item = {
             "id": node.id,
             "kind": kind,
@@ -143,14 +140,16 @@ def build_semantic_projection(
             "driver": scene.driver,
             "parent": {"kind": "project", "id": document.project_id}
             if kind == "scene"
-            else {
-                "kind": "scene" if kind == "shot" else "shot",
-                "id": scene.id if kind == "shot" else shot.id,
-            },
+            else {"kind": "scene", "id": scene.id},
             "provenance": {"source": "project.json", "field": source},
         }
         if kind == "scene":
-            item.update(title=scene.title, summary=text(scene.summary), shot_count=len(scene.shots))
+            item.update(
+                title=scene.title,
+                summary=text(scene.summary),
+                shot_count=len(scene.shots),
+                segment_count=len(scene.segments),
+            )
             item["narration"] = [
                 {
                     "id": cue.id,
@@ -169,9 +168,9 @@ def build_semantic_projection(
                         }
                         for language, track in cue.tracks
                     },
-                    "timing": "旁白以所选语言已选音频中最长的一条为时间基准。",
-                    "start_shot_id": v32_cue_anchors(scene)[0],
-                    "end_shot_id": v32_cue_anchors(scene)[1],
+                    "timing": (
+                        "旁白覆盖本 Scene 全部 Segment，以所选语言已选音频中最长的一条为时间基准。"
+                    ),
                 }
                 for cue in scene.narration_cues
             ]
@@ -179,16 +178,17 @@ def build_semantic_projection(
                 item["setting"] = text(scene.setting)
         elif kind == "shot":
             item.update(
-                action=text(shot.action),
-                composition=text(shot.composition),
-                camera_movement=text(shot.camera_movement),
-                audio_direction=text(shot.audio_direction),
-                visible_character_ids=list(shot.visible_character_ids),
-                transition_in=text(shot.transition_in),
-                segment_count=len(v32_shot_segments(scene, shot.id)),
+                action=text(node.action),
+                composition=text(node.composition),
+                camera_movement=text(node.camera_movement),
+                audio_direction=text(node.audio_direction),
+                visible_character_ids=list(node.visible_character_ids),
+                transition_in=text(node.transition_in),
+                segment_ids=[segment.id for segment in shot_segments(scene, node.id)],
             )
         else:
             item.update(
+                shot_ids=list(node.shot_ids),
                 action=text(node.action),
                 duration_estimate_seconds=node.duration_estimate_seconds,
                 dialogue_lines=[
@@ -340,17 +340,16 @@ def build_semantic_tree(
             request["cursor"] = page["next_cursor"]
 
     scenes, shots, segments = read("scene"), read("shot"), read("segment")
-    shots_by_scene = {}
-    segments_by_shot = {}
+    shots_by_scene: dict[str, list] = {}
+    segments_by_scene: dict[str, list] = {}
     for shot in shots:
         shots_by_scene.setdefault(shot["scene_id"], []).append(shot)
     for segment in segments:
-        segments_by_shot.setdefault(segment["parent"]["id"], []).append(segment)
+        segments_by_scene.setdefault(segment["scene_id"], []).append(segment)
     for scene in scenes:
         scene["narration_cues"] = scene.pop("narration")
         scene["shots"] = shots_by_scene.get(scene["id"], [])
-        for shot in scene["shots"]:
-            shot["segments"] = segments_by_shot.get(shot["id"], [])
+        scene["segments"] = segments_by_scene.get(scene["id"], [])
     return {
         "projection_version": PROJECTION_VERSION,
         "project_id": document.project_id,

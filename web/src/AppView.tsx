@@ -1628,20 +1628,17 @@ export function changedDialogueSegmentLocators(
 ) {
   const previousDialogueBySegmentId = new Map(
     previous
-      .flatMap((scene) => scene.shots)
-      .flatMap((shot) => shot.segments)
+      .flatMap((scene) => scene.segments)
       .map((segment) => [segment.id, JSON.stringify(segment.dialogue_lines)]),
   );
   return current.flatMap((scene, sceneIndex) =>
-    scene.shots.flatMap((shot, shotIndex) =>
-      shot.segments.flatMap((segment, segmentIndex) =>
-        previousDialogueBySegmentId.get(segment.id) !==
-        JSON.stringify(segment.dialogue_lines)
-          ? [
-              `scene${String(sceneIndex + 1).padStart(2, "0")}-shot${String(shotIndex + 1).padStart(2, "0")}-seg${String(segmentIndex + 1).padStart(2, "0")}`,
-            ]
-          : [],
-      ),
+    scene.segments.flatMap((segment, segmentIndex) =>
+      previousDialogueBySegmentId.get(segment.id) !==
+      JSON.stringify(segment.dialogue_lines)
+        ? [
+            `scene${String(sceneIndex + 1).padStart(2, "0")}-seg${String(segmentIndex + 1).padStart(2, "0")}`,
+          ]
+        : [],
     ),
   );
 }

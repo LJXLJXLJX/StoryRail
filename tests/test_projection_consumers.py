@@ -31,21 +31,21 @@ async def _story_location(tmp_path):
     store, service, document, _ = await _visual_project(str(tmp_path))
     scene = document.director_script.scenes[0]
     shot = scene.shots[0]
-    segment = shot_segments(scene, shot.id)[0]
+    segment = scene.segments[1]
     before = store.path.read_bytes()
-    result = execute_project_read(
-        document,
-        "project.locate_story",
-        {"location": "场景 1－镜头 1－片段 1"},
-    )
+    result = execute_project_read(document, "project.locate_story", {"location": "场景 1－片段 2"})
     assert result == {
         "revision": document.revision,
-        "location": "场景 1－镜头 1－片段 1",
+        "location": "场景 1－片段 2",
         "target_type": "segment",
         "target_id": segment.id,
         "scene": {"id": scene.id, "index": 1, "title": scene.title},
-        "shot": {"id": shot.id, "index": 1, "action": shot.action},
-        "segment": {"id": segment.id, "index": 1, "action": segment.action},
+        "segment": {
+            "id": segment.id,
+            "index": 2,
+            "shot_ids": list(segment.shot_ids),
+            "action": segment.action,
+        },
     }
     assert (
         execute_project_read(document, "project.locate_story", {"location": "场景 1"})["target_id"]
@@ -58,7 +58,9 @@ async def _story_location(tmp_path):
         == shot.id
     )
     with pytest.raises(ValueError, match="location"):
-        execute_project_read(document, "project.locate_story", {"location": "场景 1－片段 1"})
+        execute_project_read(
+            document, "project.locate_story", {"location": "场景 1－镜头 1－片段 1"}
+        )
     with pytest.raises(ValueError, match="不存在"):
         execute_project_read(document, "project.locate_story", {"location": "场景 99"})
     assert store.path.read_bytes() == before
@@ -176,11 +178,8 @@ async def _large_context(tmp_path):
     assert [s["id"] for s in all_text["scenes"]] == [s.id for s in scenes]
     for actual, expected in zip(all_text["scenes"], scenes, strict=True):
         assert actual["summary"] == expected.summary
-        for shot, source_shot in zip(actual["shots"], expected.shots, strict=True):
-            assert shot["id"] == source_shot.id
-            assert [s["action"] for s in shot["segments"]] == [
-                s.action for s in shot_segments(expected, source_shot.id)
-            ]
+        assert [shot["id"] for shot in actual["shots"]] == [shot.id for shot in expected.shots]
+        assert [s["action"] for s in actual["segments"]] == [s.action for s in expected.segments]
     with pytest.raises(ValueError, match="scope"):
         build_semantic_tree(large, ())
     assert store.path.read_bytes() == before

@@ -30,11 +30,12 @@ SHOT_FIELDS = SHOT_CONTENT_FIELDS | {"segments"}
 SCENE_EDITOR_FIELDS = _names(EditableSceneProposal) | {"location_id", "state_id"}
 SEGMENT_EDITOR_FIELDS = SEGMENT_FIELDS | {"id"}
 SHOT_EDITOR_FIELDS = SHOT_FIELDS | {"id", "view_id"}
-# 旁白固定中英双语：Cue 级字段只有 Shot 范围，正文与合成参数在 zh / en 两条轨道里。
+# Cue 覆盖整个 Scene，没有 Cue 级字段；正文与合成参数在 zh / en 两条轨道里。
 NARRATION_LANGUAGE_KEYS = frozenset({"zh", "en"})
 NARRATION_TRACK_EDIT_FIELDS = frozenset({"text", "recipe_params", "seed"})
 NARRATION_TRACK_EDITOR_FIELDS = NARRATION_TRACK_EDIT_FIELDS | {"selected_audio_asset_id"}
-NARRATION_CUE_EDIT_FIELDS = frozenset({"start_shot_id", "end_shot_id"}) | NARRATION_LANGUAGE_KEYS
-NARRATION_CUE_EDITOR_FIELDS = NARRATION_CUE_EDIT_FIELDS | {"id"}
+NARRATION_CUE_EDIT_FIELDS = NARRATION_LANGUAGE_KEYS
+# 脚本整卡手工保存仍按 Shot 锚点回传 Cue（脚本写入面翻转后删除）。
+NARRATION_CUE_EDITOR_FIELDS = NARRATION_CUE_EDIT_FIELDS | {"id", "start_shot_id", "end_shot_id"}
 # 人类整卡保存的造型字段：id 为 null 表示新造型，由 Core 分配 ID；造型图只经选择入口改变。
 CHARACTER_LOOK_EDITOR_FIELDS = frozenset({"id", "name", "appearance", "usage"})

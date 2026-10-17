@@ -24,6 +24,7 @@ import { FinalAssemblyWorkspace } from "./final";
 import { SceneMedia } from "./SceneMedia";
 import { copyText } from "./clipboard";
 import { newSceneDraft } from "./script_draft";
+import { segmentShotLabel, segmentShots, shotSegments } from "./script_index";
 import "./story_reader.css";
 const noop = () => undefined;
 
@@ -61,20 +62,25 @@ export function StoryReader(props: WorkspaceFlatProps) {
   const [deleteScene, setDeleteScene] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const liveScene = scenes.find((s) => s.id === target?.sceneId);
-  const liveShot = liveScene?.shots.find(
-    (s) => s.id === target?.id || s.segments.some((g) => g.id === target?.id),
-  );
-  const liveSegment = liveShot?.segments.find((s) => s.id === target?.id);
+  const liveShot =
+    target?.level === "shot"
+      ? liveScene?.shots.find((s) => s.id === target.id)
+      : undefined;
+  const liveSegment =
+    target?.level === "segment"
+      ? liveScene?.segments.find((s) => s.id === target.id)
+      : undefined;
   const previous = useRef<{
     scene?: Scene;
     shot?: Shot;
     segment?: ShotSegment;
   }>({});
-  if (
+  const liveTarget =
     liveScene &&
     (target?.level === "scene" ||
-      (liveShot && (target?.level === "shot" || liveSegment)))
-  )
+      (target?.level === "shot" && liveShot) ||
+      (target?.level === "segment" && liveSegment));
+  if (liveTarget)
     previous.current = {
       scene: liveScene,
       shot: liveShot,
@@ -83,7 +89,6 @@ export function StoryReader(props: WorkspaceFlatProps) {
   const scene = liveScene ?? (dirty ? previous.current.scene : undefined);
   const shot = liveShot ?? (dirty ? previous.current.shot : undefined);
   const segment = liveSegment ?? (dirty ? previous.current.segment : undefined);
-  const [lastParent, setLastParent] = useState<StoryTarget | null>(null);
   const choose = (next: StoryTarget | null) => {
     if (next?.id === target?.id) return;
     if (dirty && !window.confirm("当前内容有未保存的修改，是否放弃并切换？"))
@@ -97,34 +102,15 @@ export function StoryReader(props: WorkspaceFlatProps) {
     else sessionStorage.removeItem(key);
   }, [key, target]);
   useEffect(() => {
-    if (target?.level === "segment" && shot)
-      setLastParent({ level: "shot", id: shot.id, sceneId: target.sceneId });
-    else if (target?.level === "shot" && scene)
-      setLastParent({ level: "scene", id: scene.id, sceneId: scene.id });
-  }, [target, shot?.id, scene?.id]);
-  useEffect(() => {
-    if (
-      !target ||
-      (liveScene &&
-        (target.level === "scene" ||
-          (liveShot && (target.level === "shot" || liveSegment))))
-    )
-      return;
+    if (!target || liveTarget) return;
     // Keep dirty input mounted after deletion until the user explicitly leaves it.
     if (dirty) {
       setNotice("当前节点已被删除，未保存输入仍保留。");
       return;
     }
-    const parent =
-      lastParent?.level === "shot" &&
-      scene?.shots.some((s) => s.id === lastParent.id)
-        ? lastParent
-        : scene
-          ? { level: "scene" as const, id: scene.id, sceneId: scene.id }
-          : null;
-    setTarget(parent);
+    setTarget(scene ? { level: "scene", id: scene.id, sceneId: scene.id } : null);
     setNotice("当前节点已被删除，已返回仍存在的上级。");
-  }, [target, scene, shot, segment, dirty, lastParent]);
+  }, [target, scene, liveTarget, dirty]);
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
       if (dirty) {
@@ -147,7 +133,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
       ? scenes
       : target.level === "shot"
         ? (scene?.shots ?? [])
-        : (shot?.segments ?? []);
+        : (scene?.segments ?? []);
   const index = siblings.findIndex((s) => s.id === target?.id);
   const character = (id: string) =>
     snapshot.reference_library.characters.find((c) => c.id === id)?.name ??
@@ -234,12 +220,12 @@ export function StoryReader(props: WorkspaceFlatProps) {
                     : "片段"}
               </button>
               <button
-                disabled={!liveScene || (target.level !== "scene" && !liveShot) || (target.level === "segment" && !liveSegment)}
+                disabled={!liveTarget}
                 onClick={async () => {
                   const location = [
                     `场景 ${sceneIndex + 1}`,
                     ...(shot ? [`镜头 ${scene.shots.indexOf(shot) + 1}`] : []),
-                    ...(segment ? [`片段 ${shot!.segments.indexOf(segment) + 1}`] : []),
+                    ...(segment ? [`片段 ${scene.segments.indexOf(segment) + 1}`] : []),
                   ].join("－");
                   const copied = await copyText(
                     location,
@@ -253,7 +239,9 @@ export function StoryReader(props: WorkspaceFlatProps) {
             <p className="eyebrow">
               {scene.title}
               {shot ? ` / 镜头 ${scene.shots.indexOf(shot) + 1}` : ""}
-              {segment ? ` / 片段 ${shot!.segments.indexOf(segment) + 1}` : ""}
+              {segment
+                ? ` / 片段 ${scene.segments.indexOf(segment) + 1}（${segmentShotLabel(scene, segment)}）`
+                : ""}
             </p>
             <h1>
               {target.level === "scene"
@@ -333,7 +321,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
                     ) : null}
                   </section>
                 ))}
-                <h2>完整场景内容</h2>
+                <h2>镜头设计</h2>
                 {scene.shots.map((s, i) => (
                   <section key={s.id}>
                     <button
@@ -344,7 +332,25 @@ export function StoryReader(props: WorkspaceFlatProps) {
                     >
                       镜头 {i + 1}
                     </button>
-                    <ShotText shot={s} character={character} timingWarnings={snapshot.dialogue_timing_warnings} />
+                    <ShotText shot={s} character={character} />
+                  </section>
+                ))}
+                {scene.segments.length ? <h2>生成片段</h2> : null}
+                {scene.segments.map((g, i) => (
+                  <section key={g.id}>
+                    <button
+                      className="text-button"
+                      onClick={() =>
+                        choose({ level: "segment", sceneId: scene.id, id: g.id })
+                      }
+                    >
+                      片段 {i + 1} · {segmentShotLabel(scene, g)}
+                    </button>
+                    <SegmentText
+                      segment={g}
+                      character={character}
+                      timingWarnings={snapshot.dialogue_timing_warnings}
+                    />
                   </section>
                 ))}
                 {!scene.shots.length ? (
@@ -382,8 +388,8 @@ export function StoryReader(props: WorkspaceFlatProps) {
             ) : target.level === "shot" && shot ? (
               <>
                 <LocationBinding key={`view-${shot.id}`} {...props} scene={scene} shot={shot} />
-                <ShotText shot={shot} character={character} timingWarnings={snapshot.dialogue_timing_warnings} />
-                {shot.segments.map((s, i) => {
+                <ShotText shot={shot} character={character} />
+                {shotSegments(scene, shot.id).map((s) => {
                   const plan = snapshot.video_plan?.segments.find(
                     (v) => v.segment_id === s.id,
                   );
@@ -404,7 +410,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
                           })
                         }
                       >
-                        打开片段 {i + 1}
+                        打开片段 {scene.segments.indexOf(s) + 1} · {segmentShotLabel(scene, s)}
                       </button>
                       {asset ? (
                         <video
@@ -417,8 +423,14 @@ export function StoryReader(props: WorkspaceFlatProps) {
                   );
                 })}
               </>
-            ) : segment && shot ? (
+            ) : segment ? (
               <>
+                <p className="muted-copy">
+                  覆盖{" "}
+                  {segmentShots(scene, segment)
+                    .map((item) => `镜头 ${scene.shots.indexOf(item) + 1}`)
+                    .join("、")}
+                </p>
                 <SegmentText
                   segment={segment}
                   character={character}
@@ -438,9 +450,12 @@ export function StoryReader(props: WorkspaceFlatProps) {
                       snapshot={snapshot}
                       segmentId={segment.id}
                       sceneIndex={sceneIndex}
-                      shotIndex={scene.shots.indexOf(shot)}
-                      segmentIndex={shot.segments.indexOf(segment)}
-                      segmentCount={shot.segments.length}
+                      segmentIndex={scene.segments.indexOf(segment)}
+                      continuesPrevious={segment.boundary_from_previous !== null}
+                      continuesNext={
+                        scene.segments[scene.segments.indexOf(segment) + 1]
+                          ?.boundary_from_previous != null
+                      }
                       busy={busy}
                       videoDependenciesEditable={can("edit_segment_video_plan")}
                       onSaveVideoInputs={props.onSaveSegmentVideoInputs}
@@ -562,8 +577,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
                 <button
                   onClick={() => {
                     for (const s of scenes)
-                      for (const h of s.shots)
-                        for (const g of h.segments)
+                      for (const g of s.segments)
                           if (
                             !snapshot.video_plan?.segments.find(
                               (v) => v.segment_id === g.id,
@@ -658,11 +672,9 @@ function SegmentText({
 function ShotText({
   shot,
   character,
-  timingWarnings,
 }: {
   shot: Shot;
   character: (id: string) => string;
-  timingWarnings: DialogueTimingWarning[];
 }) {
   return (
     <>
@@ -674,12 +686,6 @@ function ShotText({
       </p>
       {shot.audio_direction ? <p>声音：{shot.audio_direction}</p> : null}
       {shot.transition_in ? <p>入镜转场：{shot.transition_in}</p> : null}
-      {shot.segments.map((s, i) => (
-        <section key={s.id}>
-          <h3>片段 {i + 1}</h3>
-          <SegmentText segment={s} character={character} timingWarnings={timingWarnings} />
-        </section>
-      ))}
     </>
   );
 }

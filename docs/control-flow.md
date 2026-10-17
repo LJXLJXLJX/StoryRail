@@ -330,7 +330,7 @@ stateDiagram-v2
 | --- | --- | --- |
 | Web 快照（GET structured-director） | 人类导演台 | 完整快照 + `allowed_actions` + Asset 使用状态 + 内存进度 |
 | `project.get_projection` / `read_story` | 故事语义投影 | 显式 scope；outline/scene/shot/segment 分层；默认长文本截至 240 字符（`text_mode=preview`），`extensions=["text"]` 取完整正文；`limit` 默认 30、最大 100 |
-| `project.locate_story` | 把“场景 N－镜头 N－片段 N”解析为稳定 ID | 只读 |
+| `project.locate_story` | 把“场景 N－镜头 N”或“场景 N－片段 N”解析为稳定 ID | 只读 |
 | `project.get_contract` / `get_workset` | 专业 Skill 与工作集 | 超过 64 KiB 自动切成 ≤ 24 KiB UTF-8 chunk；cursor 绑定 project/revision/capability/scope/targets/page size/内容 SHA-256，拼接后校验摘要 |
 | `project.get_workflow_state` / `get_handoff` | 主流程与人类交接 | 见 [外部 Agent 接入](external-agents.md#主流程读取) |
 | `project.get_request` / `run.get_status` | 恢复 | 只返回紧凑状态与恢复入口，不重复展开大型工作集 |

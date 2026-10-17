@@ -6,26 +6,23 @@ import { parseStoryProjection } from "../api/projection";
 import fixture from "../test/story_reader_fixture.json";
 const scenes = fixture.continuity.production_snapshot.director_script.scenes as Scene[];
 afterEach(() => { sessionStorage.clear(); vi.restoreAllMocks(); });
-it("三级导航始终展开并保留真实身份与键盘定位", () => {
+it("场景与片段导航始终展开并保留真实身份与键盘定位", () => {
   const onChoose = vi.fn();
-  const s=scenes[1], h=s.shots[1], g=h.segments[0];
+  const s=scenes[1], g=s.segments.find((item)=>item.shot_ids[0]===s.shots[1].id)!;
   render(<StoryNavigation title="潮汐" scenes={scenes} target={{level:'segment',sceneId:s.id,id:g.id}} timingConfirmed onChoose={onChoose}><p>当前片段正文</p></StoryNavigation>);
   const nav=screen.getByRole('navigation',{name:'故事层级'});
-  const tree=within(nav).getByRole('region',{name:'场景、镜头与片段树'});
+  const tree=within(nav).getByRole('region',{name:'场景与片段树'});
   expect(within(tree).getByRole('button',{current:'page'})).toHaveTextContent('连续推进的前半程');
   expect(within(tree).getAllByRole('button',{name:/场景 \d/})).toHaveLength(scenes.length);
-  expect(within(tree).getAllByRole('button',{name:/镜头 \d/})).toHaveLength(scenes.flatMap((item)=>item.shots).length);
-  expect(within(tree).getAllByRole('button',{name:/片段 \d/})).toHaveLength(scenes.flatMap((item)=>item.shots).flatMap((item)=>item.segments).length);
+  expect(within(tree).getAllByRole('button',{name:/片段 \d/})).toHaveLength(scenes.flatMap((item)=>item.segments).length);
   expect(within(tree).getByRole('button',{name:/场景 2.*22 秒/})).toBeVisible();
-  expect(within(tree).getByRole('button',{name:/镜头 2.*16 秒/})).toBeVisible();
   expect(within(tree).getAllByText('8 秒').length).toBeGreaterThan(0);
-  const otherShotSegments=within(tree).getByRole('list',{name:'场景 2－镜头 1 的生成片段'});
-  expect(within(otherShotSegments).getByRole('button',{name:/小满抬头看向站牌/})).toBeVisible();
-  fireEvent.click(within(otherShotSegments).getByRole('button',{name:/小满抬头看向站牌/}));
-  expect(onChoose).toHaveBeenLastCalledWith({level:'segment',sceneId:s.id,id:s.shots[0].segments[0].id});
+  const sceneTwoSegments=within(tree).getByRole('list',{name:'场景 2 的生成片段'});
+  expect(within(sceneTwoSegments).getByRole('button',{name:/小满抬头看向站牌/})).toBeVisible();
+  fireEvent.click(within(sceneTwoSegments).getByRole('button',{name:/小满抬头看向站牌/}));
+  expect(onChoose).toHaveBeenLastCalledWith({level:'segment',sceneId:s.id,id:s.segments[0].id});
   expect(screen.queryByRole('button',{name:/返回上一级/})).not.toBeInTheDocument();
-  const sceneTwoShots=within(tree).getByRole('list',{name:'场景 2 的连续镜头'});
-  const row=within(sceneTwoShots).getByRole('button',{name:/镜头 1/});row.focus();fireEvent.keyDown(row,{key:'End'});
+  const row=within(sceneTwoSegments).getAllByRole('button')[0];row.focus();fireEvent.keyDown(row,{key:'End'});
   expect(within(tree).getAllByRole('button').at(-1)).toHaveFocus();
   const sceneButton=within(tree).getByRole('button',{name:new RegExp(`场景 2.*${s.title}`)});
   fireEvent.click(sceneButton);
@@ -35,14 +32,28 @@ it("拒绝非法 DTO，移动端导航开关不复制内容",()=>{
   expect(()=>parseStoryProjection({items:[]})).toThrow();
   const onChoose=vi.fn();
   render(<StoryNavigation title="潮汐" scenes={scenes} target={null} timingConfirmed={false} onChoose={onChoose}><p>唯一正文</p></StoryNavigation>);
-  const tree=screen.getByRole('region',{name:'场景、镜头与片段树'});
-  expect(within(tree).getAllByRole('button',{name:/镜头 \d/})).toHaveLength(scenes.flatMap((item)=>item.shots).length);
-  const sceneTwoShots=within(tree).getByRole('list',{name:'场景 2 的连续镜头'});
-  fireEvent.click(within(sceneTwoShots).getByRole('button',{name:/同一镜头连续观察环境/}));
-  expect(onChoose).toHaveBeenLastCalledWith({level:'shot',sceneId:scenes[1].id,id:scenes[1].shots[1].id});
+  const tree=screen.getByRole('region',{name:'场景与片段树'});
   expect(within(tree).getAllByText('N/A')).toHaveLength(
-    scenes.length + scenes.flatMap((item)=>item.shots).length + scenes.flatMap((item)=>item.shots).flatMap((item)=>item.segments).length,
+    scenes.length + scenes.flatMap((item)=>item.segments).length,
   );
   fireEvent.click(screen.getByRole('button',{name:'故事位置'}));
   expect(screen.getAllByText('唯一正文')).toHaveLength(1);
+});
+it("片段标签显示段内切镜与长镜头续段",()=>{
+  const base=scenes[1];
+  const shots=[0,1,2].map((i)=>({...base.shots[0],id:String(i).repeat(32),action:`镜头动作 ${i+1}`}));
+  const segment=(id:string,shotIds:string[],action:string,continues:boolean)=>({
+    ...base.segments[0],id:id.repeat(32),shot_ids:shotIds,action,
+    boundary_from_previous:continues?{reason:'continuity_anchor' as const,continuity_instruction:'延续。'}:null,
+  });
+  const scene:Scene={...base,shots,segments:[
+    segment('a',[shots[0].id,shots[1].id],'正反打',false),
+    segment('b',[shots[2].id],'长镜头前段',false),
+    segment('c',[shots[2].id],'长镜头后段',true),
+  ]};
+  render(<StoryNavigation title="潮汐" scenes={[scene]} target={null} timingConfirmed onChoose={vi.fn()}><p>正文</p></StoryNavigation>);
+  const list=screen.getByRole('list',{name:'场景 1 的生成片段'});
+  expect(within(list).getByRole('button',{name:/片段 1 · 镜头 1–2.*正反打/})).toBeVisible();
+  expect(within(list).getByRole('button',{name:/片段 2 · 镜头 3 .*长镜头前段|片段 2 · 镜头 3长镜头前段/})).toBeVisible();
+  expect(within(list).getByRole('button',{name:/片段 3 · 镜头 3（续）.*长镜头后段/})).toBeVisible();
 });

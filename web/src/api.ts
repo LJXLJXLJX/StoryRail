@@ -249,8 +249,6 @@ export const structuredDirectorApi = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           expected_revision: revision,
-          start_shot_id: cue.start_shot_id,
-          end_shot_id: cue.end_shot_id,
           zh: editableNarrationTrack(cue.zh),
           en: editableNarrationTrack(cue.en),
         }),

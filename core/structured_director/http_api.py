@@ -18,13 +18,11 @@ from core.director_proposals import (
     CharacterCardProposal,
     StructuredDirectorScriptRevisionProposal,
 )
+from core.director_proposals.wire_fields import NARRATION_CUE_EDIT_FIELDS
 from core.model_providers.recipe import RecipeInputs, RecipeParams
 from storyrail_contracts.http_edge import query_is_allowed as _query_is_allowed
 
 from .errors import InvalidArgumentsError
-from .http_requests import (
-    _NARRATION_CUE_FIELDS as _NARRATION_CUE_FIELDS,
-)
 from .http_requests import (
     JsonResponse as JsonResponse,
 )
@@ -128,7 +126,6 @@ from .service import (
     StructuredDirectorService,
 )
 from .store import RevisionConflictError, StructuredDirectorStore
-from .v32_projection import require_v32_cue_anchors
 
 _CARD_RESOURCE = re.compile(r"/(?P<kind>characters)(?:/(?P<card_id>[0-9a-f]{32}))?(?P<action>/.*)?")
 _GENERATION_RESOURCE = re.compile(
@@ -190,7 +187,7 @@ _CHARACTER_UPDATE_FIELDS = {
     "voice_reference_transcript",
     "looks",
 }
-_NARRATION_CUE_UPDATE_FIELDS = _NARRATION_CUE_FIELDS - {"id"}
+_NARRATION_CUE_UPDATE_FIELDS = NARRATION_CUE_EDIT_FIELDS
 
 
 def _narration_track(value: object, label: str) -> NarrationTrack | None:
@@ -433,10 +430,6 @@ class StructuredDirectorHttpApi:
             if isinstance(request, JsonResponse):
                 return request
             try:
-                shot_anchors = (
-                    _optional_id(request["start_shot_id"], "start_shot_id"),
-                    _optional_id(request["end_shot_id"], "end_shot_id"),
-                )
                 cue = NarrationCue(
                     id=cue_id,
                     zh=_narration_track(request["zh"], "zh"),
@@ -444,12 +437,6 @@ class StructuredDirectorHttpApi:
                 )
             except ValueError as exc:
                 return _error(400, "invalid_request", str(exc))
-            script = self._service.snapshot_required().director_script
-            scene = next(
-                (item for item in script.scenes if item.id == scene_id) if script else (), None
-            )
-            if scene is not None:
-                require_v32_cue_anchors([shot.id for shot in scene.shots], *shot_anchors)
             result = await self._service.save_narration_cue(
                 scene_id=scene_id,
                 cue=cue,

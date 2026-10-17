@@ -290,8 +290,8 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
     drama, narration = journey.snapshot()["director_script"]["scenes"]
     drama_shot = drama["shots"][0]
     narration_shot = narration["shots"][0]
-    first_segment, second_segment = (item["id"] for item in drama_shot["segments"])
-    narration_segment = narration_shot["segments"][0]["id"]
+    first_segment, second_segment = (item["id"] for item in drama["segments"])
+    narration_segment = narration["segments"][0]["id"]
 
     journey.step("location.install")
     station_image = journey.upload_image("upload:空旷站台视图.png", "location_view")

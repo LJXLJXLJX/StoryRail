@@ -62,7 +62,7 @@ class Read(ReadRequest):
     cursor: str | None = None
     parent_id: ID | None = Field(
         default=None,
-        description="只用于 segment level，值必须是 scene_ids scope 内的 Shot ID。",
+        description="只用于 segment level，值必须是 scene_ids scope 内的 Scene ID。",
     )
     limit: Annotated[int, Field(ge=1, le=100)] = 20
 
@@ -84,7 +84,7 @@ class Read(ReadRequest):
             if self.level == "scene" and self.ids:
                 raise ValueError("scene level 只使用 scene_ids，不接受 ids。")
             if self.level != "segment" and self.parent_id is not None:
-                raise ValueError("parent_id 只接受 Segment 的 Shot 父节点。")
+                raise ValueError("parent_id 只接受 Segment 的 Scene 父节点。")
         if self.level != "segment" and set(self.extensions) & {"video_prompt", "keyframe"}:
             raise ValueError("专业 Prompt 扩展只接受 segment level。")
         return self
@@ -96,7 +96,9 @@ class StoryLocationRead(ReadRequest):
         Field(
             min_length=1,
             max_length=120,
-            description="人类可读定位，如“场景 3－镜头 1－片段 1”；支持场景/镜头的部分路径。",
+            description=(
+                "人类可读定位：“场景 3”“场景 3－镜头 2”或“场景 3－片段 4”（片段在场景内编号）。"
+            ),
         ),
     ]
 
@@ -643,12 +645,13 @@ def create_server(bridge: CoreBridge):
         ),
         "read_story": (
             "按 level 的公开 oneOf 契约读取故事；outline 使用项目 scope，"
-            "scene/shot/segment 必须给 scene_ids，parent_id 只是 segment 的 Shot 父节点，"
+            "scene/shot/segment 必须给 scene_ids；Shot 与 Segment 都直接属于 Scene，"
+            "shot 层给出覆盖它的 segment_ids，segment 层给出 shot_ids；"
             "h3/keyframe 扩展只用于 segment。"
         ),
         "locate_story": (
-            "按“场景 N－镜头 N－片段 N”一键解析当前脚本的稳定 ID；"
-            "只读，不修改项目。可省略镜头或片段以定位 Scene/Shot。"
+            "按“场景 N”“场景 N－镜头 N”或“场景 N－片段 N”（片段在场景内编号）"
+            "解析当前脚本的稳定 ID；只读，不修改项目。"
         ),
         "script_proposal": (
             "请求后由当前 Agent 编写并提交首次脚本草稿；支持读取/拒绝/取消，不替代人类审核。"

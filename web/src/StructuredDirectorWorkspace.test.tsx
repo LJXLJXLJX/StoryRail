@@ -147,11 +147,9 @@ describe("StructuredDirectorWorkspace", () => {
     expect(screen.getByLabelText("故事工作台")).toBeVisible();
     const nav=screen.getByRole("navigation",{name:"故事层级"});
     fireEvent.click(within(nav).getByRole("button",{name:/场景 2.*戏剧/}));
-    const sceneTwoShots=within(nav).getByRole("list",{name:"场景 2 的连续镜头"});
-    fireEvent.click(within(sceneTwoShots).getByRole("button",{name:/镜头 2.*同一/}));
-    const shotTwoSegments=within(nav).getByRole("list",{name:"场景 2－镜头 2 的生成片段"});
-    fireEvent.click(within(shotTwoSegments).getByRole("button",{name:/片段 1.*连续推进/}));
-    expect(screen.getByRole("heading",{name:/片段 1 · 连续推进/})).toBeVisible();
+    const sceneTwoSegments=within(nav).getByRole("list",{name:"场景 2 的生成片段"});
+    fireEvent.click(within(sceneTwoSegments).getByRole("button",{name:/片段 2 · 镜头 2.*连续推进/}));
+    expect(screen.getByRole("heading",{name:/片段 2 · 连续推进/})).toBeVisible();
     expect(screen.getByLabelText("当前 视频提示词")).toBeInTheDocument();
     expect(screen.getAllByRole("navigation",{name:"故事层级"})).toHaveLength(1);
     expect(screen.queryByLabelText("Agent 消息输入")).not.toBeInTheDocument();
@@ -224,8 +222,8 @@ describe("StructuredDirectorWorkspace", () => {
                 audio_direction: "风声",
                 transition_in: null,
                 view_id: null,
-                segments: [
-                  {
+              }],
+            segments: [{ shot_ids: ["d".repeat(32)],
                     id: "f".repeat(32),
                     duration_estimate_seconds: 3,
                     action: "Comi 回答。",
@@ -238,10 +236,7 @@ describe("StructuredDirectorWorkspace", () => {
                       },
                     ],
                     boundary_from_previous: null,
-                  },
-                ],
-              },
-            ],
+                  }],
           },
         ],
       },
@@ -250,7 +245,6 @@ describe("StructuredDirectorWorkspace", () => {
     current.director_script!.scenes[0].shots.push({
       ...structuredClone(current.director_script!.scenes[0].shots[0]),
       id: "e".repeat(32),
-      segments: [],
     });
     const view = renderWorkspace({ onSaveScript }, current);
     expect(screen.queryByLabelText("场景摘要 *")).not.toBeInTheDocument();
@@ -1802,8 +1796,8 @@ describe("StructuredDirectorWorkspace", () => {
                 audio_direction: "风声。",
                 transition_in: null,
                 view_id: null,
-                segments: [
-                  {
+              }],
+            segments: [{ shot_ids: ["d".repeat(32)],
                     id: "e".repeat(32),
                     duration_estimate_seconds: 6,
                     action: "小满抬头。",
@@ -1816,10 +1810,7 @@ describe("StructuredDirectorWorkspace", () => {
                       },
                     ],
                     boundary_from_previous: null,
-                  },
-                ],
-              },
-            ],
+                  }],
           },
         ],
       },
@@ -1827,13 +1818,12 @@ describe("StructuredDirectorWorkspace", () => {
     renderWorkspace({ onSaveScript, onConfirmScript }, scriptSnapshot);
     expect(screen.queryByLabelText("场景摘要 *")).not.toBeInTheDocument();
     const nav=screen.getByRole("navigation",{name:"故事层级"});
-    fireEvent.click(within(nav).getByRole("button",{name:/镜头 1/}));
     fireEvent.click(within(nav).getByRole("button",{name:/片段 1/}));
-    expect(screen.getByText("还会来吗？")).toBeInTheDocument();
+    expect(screen.getAllByText("还会来吗？").length).toBeGreaterThan(0);
     const writeText=vi.fn().mockResolvedValue(undefined);vi.stubGlobal("navigator",{clipboard:{writeText}});
     fireEvent.click(screen.getByRole("button",{name:"复制定位"}));
     await waitFor(()=>expect(writeText).toHaveBeenCalledWith(
-      "场景 1－镜头 1－片段 1",
+      "场景 1－片段 1",
     ));
     fireEvent.click(within(nav).getByRole("button",{name:/场景 1 ·/}));
     fireEvent.click(screen.getByRole("button",{name:"编辑这一段"}));
@@ -1887,13 +1877,6 @@ describe("StructuredDirectorWorkspace", () => {
           audio_direction: "室内声。",
           transition_in: null,
           view_id: null,
-          segments: [
-            makeSegment("e".repeat(32)),
-            makeSegment("7".repeat(32), {
-              reason: "continuity_anchor",
-              continuity_instruction: "承接上一段动作。",
-            }),
-          ],
         },
         {
           id: "8".repeat(32),
@@ -1904,9 +1887,11 @@ describe("StructuredDirectorWorkspace", () => {
           audio_direction: "室内声连续。",
           transition_in: null,
           view_id: null,
-          segments: [makeSegment("9".repeat(32))],
-        },
-      ],
+        }],
+      segments: [{ ...makeSegment("e".repeat(32)), shot_ids: ["d".repeat(32)] }, { ...makeSegment("7".repeat(32), {
+              reason: "continuity_anchor",
+              continuity_instruction: "承接上一段动作。",
+            }), shot_ids: ["d".repeat(32)] }, { ...makeSegment("9".repeat(32)), shot_ids: ["8".repeat(32)] }],
     };
     renderWorkspace(
       { onSaveKeyframe, onSaveSegmentKeyframeActivation, onSaveSegmentKeyframeBoundary },
@@ -2145,16 +2130,14 @@ describe("StructuredDirectorWorkspace", () => {
     expect(screen.queryByRole("button", { name: "从上一 seg 抽取" })).not.toBeInTheDocument();
     fireEvent.click(shareToggle);
     expect(onSaveSegmentKeyframeBoundary).toHaveBeenCalledWith("7".repeat(32), false);
-    fireEvent.click(within(screen.getByRole("navigation",{name:"故事层级"})).getByRole("button",{name:/镜头 2/}));
-    fireEvent.click(within(within(screen.getByRole("navigation",{name:"故事层级"})).getByRole("list",{name:"场景 1－镜头 2 的生成片段"})).getByRole("button",{name:/片段 1/}));
+    fireEvent.click(within(within(screen.getByRole("navigation",{name:"故事层级"})).getByRole("list",{name:"场景 1 的生成片段"})).getByRole("button",{name:/片段 3 · 镜头 2/}));
     expect(
       screen.getAllByText(/与上一 Shot 末段尾帧共享/).length,
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/首帧与上一段尾帧是同一 Keyframe/)).toBeInTheDocument();
-    fireEvent.click(within(screen.getByRole("navigation",{name:"故事层级"})).getByRole("button",{name:/镜头 1/}));
-    fireEvent.click(within(within(screen.getByRole("navigation",{name:"故事层级"})).getByRole("list",{name:"场景 1－镜头 1 的生成片段"})).getByRole("button",{name:/片段 1/}));
+    fireEvent.click(within(within(screen.getByRole("navigation",{name:"故事层级"})).getByRole("list",{name:"场景 1 的生成片段"})).getByRole("button",{name:/片段 1/}));
     const frameSummary = screen.getByLabelText(
-      "Scene 1 Shot 1 Segment 1 画面输入",
+      "Scene 1 Segment 1 画面输入",
     );
     const frameDetails = frameSummary.closest("details");
     expect(frameDetails).toHaveAttribute("open");
@@ -2252,8 +2235,6 @@ describe("StructuredDirectorWorkspace", () => {
             narration_cues: [
               {
                 id: cueId,
-                start_shot_id: shotId,
-                end_shot_id: shotId,
                 zh: {
                   text: "搜索范围正在远离答案。",
                   seed: 42,
@@ -2282,17 +2263,14 @@ describe("StructuredDirectorWorkspace", () => {
                 audio_direction: "室内底声。",
                 transition_in: null,
                 view_id: null,
-                segments: [
-                  {
+              }],
+            segments: [{ shot_ids: [shotId],
                     id: "e".repeat(32),
                     duration_estimate_seconds: 2,
                     action: "哥哥低头翻找。",
                     dialogue_lines: [],
                     boundary_from_previous: null,
-                  },
-                ],
-              },
-            ],
+                  }],
           },
         ],
       },
@@ -2435,17 +2413,14 @@ describe("StructuredDirectorWorkspace", () => {
           audio_direction: "环境声。",
           transition_in: null,
           view_id: null,
-          segments: [
-            {
+        }],
+      segments: [{ shot_ids: ["d".repeat(32)],
               id: segmentId,
               duration_estimate_seconds: 3,
               action: "角色走出画面。",
               dialogue_lines: [],
               boundary_from_previous: null,
-            },
-          ],
-        },
-      ],
+            }],
     };
     renderWorkspace(
       { onApproveFinalVideo },
@@ -2597,8 +2572,8 @@ describe("StructuredDirectorWorkspace", () => {
           audio_direction: "脚步声。",
           transition_in: null,
           view_id: null,
-          segments: [
-            {
+        }],
+      segments: [{ shot_ids: ["d".repeat(32)],
               id: segmentId,
               duration_estimate_seconds: 4,
               action: "角色走到门边。",
@@ -2611,10 +2586,7 @@ describe("StructuredDirectorWorkspace", () => {
                 },
               ],
               boundary_from_previous: null,
-            },
-          ],
-        },
-      ],
+            }],
     };
     renderWorkspace(
       {
@@ -2850,7 +2822,6 @@ describe("StructuredDirectorWorkspace", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "生成中英 Scene 成片" }));
     expect(onGenerateSceneFinal).toHaveBeenCalledWith(scene.id, 0.5, 0);
-    fireEvent.click(within(screen.getByRole("navigation",{name:"故事层级"})).getByRole("button",{name:/镜头 1/}));
     fireEvent.click(within(screen.getByRole("navigation",{name:"故事层级"})).getByRole("button",{name:/片段 1/}));
     fireEvent.click(screen.getByText("查看或编辑 视频提示词"));
     expect(screen.getByText(/生成总用时 65.2 秒/)).toBeInTheDocument();
@@ -3157,8 +3128,8 @@ describe("StructuredDirectorWorkspace", () => {
           audio_direction: "安静室内。",
           transition_in: null,
           view_id: null,
-          segments: [
-            {
+        }],
+      segments: [{ shot_ids: [shotId],
               id: segmentId,
               duration_estimate_seconds: 5,
               action: "Comi 回应，锦鲤追问。",
@@ -3177,10 +3148,7 @@ describe("StructuredDirectorWorkspace", () => {
                 },
               ],
               boundary_from_previous: null,
-            },
-          ],
-        },
-      ],
+            }],
     };
     renderWorkspace(
       {
@@ -3364,17 +3332,14 @@ describe("StructuredDirectorWorkspace", () => {
           audio_direction: "环境声。",
           transition_in: null,
           view_id: null,
-          segments: [
-            {
+        }],
+      segments: [{ shot_ids: ["d".repeat(32)],
               id: segmentId,
               duration_estimate_seconds: 3,
               action: "画面停下。",
               dialogue_lines: [],
               boundary_from_previous: null,
-            },
-          ],
-        },
-      ],
+            }],
     };
     renderWorkspace(
       { onGenerateFinalVideo },
@@ -3483,17 +3448,14 @@ describe("StructuredDirectorWorkspace", () => {
           audio_direction: "环境声。",
           transition_in: null,
           view_id: null,
-          segments: [
-            {
+        }],
+      segments: [{ shot_ids: ["d".repeat(32)],
               id: segmentId,
               duration_estimate_seconds: 5,
               action: "角色停下。",
               dialogue_lines: [],
               boundary_from_previous: null,
-            },
-          ],
-        },
-      ],
+            }],
     };
     renderWorkspace(
       {},
@@ -3550,17 +3512,14 @@ describe("StructuredDirectorWorkspace", () => {
           audio_direction: "脚步声。",
           transition_in: null,
           view_id: null,
-          segments: [
-            {
+        }],
+      segments: [{ shot_ids: [shotId],
               id: segmentId,
               duration_estimate_seconds: 4,
               action: "角色走到门边。",
               dialogue_lines: [],
               boundary_from_previous: null,
-            },
-          ],
-        },
-      ],
+            }],
     };
     const first: StructuredDirectorSnapshot = {
       ...snapshot,
@@ -3723,17 +3682,14 @@ describe("StructuredDirectorWorkspace", () => {
           audio_direction: "海浪。",
           transition_in: null,
           view_id: null,
-          segments: [
-            {
+        }],
+      segments: [{ shot_ids: ["d".repeat(32)],
               id: segmentId,
               duration_estimate_seconds: 3,
               action: "观察海面。",
               dialogue_lines: [],
               boundary_from_previous: null,
-            },
-          ],
-        },
-      ],
+            }],
     };
     renderWorkspace(
       { onGenerateSceneAnimatic },
@@ -3989,14 +3945,9 @@ function renderWorkspace(
     fireEvent.click(screen.getByRole("button", { name: /场景 1 ·/ }));
     if (currentSnapshot.workspace_layers.videos_unlocked || currentSnapshot.workspace_layers.keyframes_unlocked) {
       const nav=screen.getByRole("navigation",{name:"故事层级"});
-      const shotGroup=within(nav).queryByRole("list",{name:"场景 1 的连续镜头"});
-      const shot=shotGroup ? within(shotGroup).queryByRole("button",{name:/镜头 1/}) : null;
-      if(shot) {
-        fireEvent.click(shot);
-        const segmentGroup=within(nav).queryByRole("list",{name:"场景 1－镜头 1 的生成片段"});
-        const segment=segmentGroup ? within(segmentGroup).queryByRole("button",{name:/片段 1/}) : null;
-        if(segment) { fireEvent.click(segment); const prompt=screen.queryByText("查看或编辑 视频提示词"); if(prompt) fireEvent.click(prompt); }
-      }
+      const segmentGroup=within(nav).queryByRole("list",{name:"场景 1 的生成片段"});
+      const segment=segmentGroup ? within(segmentGroup).queryByRole("button",{name:/片段 1/}) : null;
+      if(segment) { fireEvent.click(segment); const prompt=screen.queryByText("查看或编辑 视频提示词"); if(prompt) fireEvent.click(prompt); }
     }
   }
   return {
@@ -4052,7 +4003,7 @@ it('Scene 正文覆盖全部镜头对白；旁白未规划 Shot 时保持可读�
  expect(screen.getByText(/完成旁白音频选择后由外部 Agent 按 Core 提供的目标画面时长规划/)).toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:/场景 2 ·/}));
  const second=value.director_script!.scenes[1];
- for(const h of second.shots)for(const g of h.segments) {
+ for(const g of second.segments) {
    expect(screen.getAllByText(g.action).length).toBeGreaterThan(0);
    for(const line of g.dialogue_lines) expect(screen.getByText(line.text)).toBeInTheDocument();
  }
@@ -4082,19 +4033,19 @@ it('已解锁成片层在上游回改后没有装配计划时，仍能使用 Cor
  const generate=vi.fn();renderWorkspace({onGenerateFinalVideo:generate},value);
  fireEvent.click(screen.getByRole('button',{name:'一键生成成片'}));expect(generate).toHaveBeenCalledOnce();
 });
-it('删除当前 Segment 后回到仍存在的 Shot；脏稿保留到用户确认离开',()=>{
+it('删除当前 Segment 后回到所在 Scene；脏稿保留到用户确认离开',()=>{
  const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;
  value.allowed_actions.push('edit_script');
  const view=renderWorkspace({},value);
- const first=value.director_script!.scenes[0];const h=first.shots[0];
+ const first=value.director_script!.scenes[0];
  fireEvent.click(screen.getByRole('button',{name:'编辑这一段'}));
  fireEvent.change(screen.getByLabelText('本段动作 *'),{target:{value:'删除后仍保留的输入'}});
- const updated=structuredClone(value);updated.revision+=1;updated.director_script!.scenes[0].shots[0].segments.shift();
+ const updated=structuredClone(value);updated.revision+=1;updated.director_script!.scenes[0].segments.shift();
  view.rerenderSnapshot(updated);
  expect(screen.getByLabelText('本段动作 *')).toHaveValue('删除后仍保留的输入');
  expect(screen.getByRole('button',{name:'保存脚本修改'})).toBeDisabled();
  fireEvent.click(screen.getByRole('button',{name:'取消编辑'}));
- expect(screen.getByRole('heading',{name:new RegExp('镜头 1 · '+h.action)})).toBeInTheDocument();
+ expect(screen.getByRole('heading',{name:first.title})).toBeInTheDocument();
  expect(screen.getByText(/已返回仍存在的上级/)).toBeInTheDocument();
 });
 it('普通导航不确认；有草稿时拒绝丢弃就保持原节点',()=>{
@@ -4133,7 +4084,7 @@ it("discards only the departed segment draft and mounts one media pair", async (
 
 it("当前视频任务取消使用精确 Generation，权限收回后不再提供取消", async () => {
   const value = structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;
-  const segment = value.director_script!.scenes[0].shots[0].segments[0];
+  const segment = value.director_script!.scenes[0].segments[0];
   const generation = {...value.generations[0], id: "f".repeat(32), kind: "segment_video" as const, target_id: segment.id, phase: "running" as const, seed: "42", allowed_actions: ["cancel" as const], output_asset_id: null};
   value.generations.push(generation);
   const cancel=vi.fn(); const view=renderWorkspace({onCancelGeneration:cancel}, value);
@@ -4276,4 +4227,18 @@ it('导演台顶部提示条只展示服务端推荐动作，无可建议时不�
  empty.workflow={...value.workflow,recommended_next_actions:[]};
  view.rerenderSnapshot(empty);
  expect(screen.queryByRole("region",{name:"可选建议"})).not.toBeInTheDocument();
+});
+it('阅读视图按 shot_ids 展示段内切镜的覆盖镜头',()=>{
+ const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;
+ const scene=value.director_script!.scenes[1];
+ scene.segments[0].shot_ids=[scene.shots[0].id,scene.shots[1].id];
+ renderWorkspace({},value,false);
+ const nav=screen.getByRole("navigation",{name:"故事层级"});
+ fireEvent.click(within(nav).getByRole("button",{name:/场景 2.*戏剧/}));
+ // 导航树与 Scene 页的片段列表都按覆盖关系给出同一标签。
+ expect(screen.getAllByRole("button",{name:/片段 1 · 镜头 1–2/})).toHaveLength(2);
+ const list=within(nav).getByRole("list",{name:"场景 2 的生成片段"});
+ fireEvent.click(within(list).getByRole("button",{name:/片段 1 · 镜头 1–2/}));
+ expect(screen.getByText("覆盖 镜头 1、镜头 2")).toBeInTheDocument();
+ expect(screen.getByText(/片段 1（镜头 1–2）/)).toBeInTheDocument();
 });

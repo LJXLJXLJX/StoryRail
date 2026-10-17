@@ -15,11 +15,10 @@ _ID = re.compile(r"[0-9a-f]{32}")
 
 @dataclass(frozen=True, slots=True)
 class NarrationCueUpdate:
-    """Cue 级 Shot 范围字段，加上按语言（zh / en）分组的轨道字段。"""
+    """按语言（zh / en）分组的轨道字段。"""
 
     scope_scene_ids: tuple[str, ...]
     cue_id: str
-    fields: dict[str, object]
     track_fields: dict[str, dict[str, object]]
 
 
@@ -38,14 +37,10 @@ def parse_narration_cue_update(value: object) -> NarrationCueUpdate:
         raise ValueError("narration.update_cue.fields 必须是非空 object。")
     if not set(raw_fields) <= NARRATION_CUE_EDIT_FIELDS:
         raise ValueError("narration.update_cue.fields 包含未声明字段。")
-    fields: dict[str, object] = {}
-    track_fields: dict[str, dict[str, object]] = {}
-    for name, item in raw_fields.items():
-        if name in NARRATION_LANGUAGE_KEYS:
-            track_fields[name] = _track_fields(item, f"fields.{name}")
-        else:
-            fields[name] = None if item is None else _id(item, name)
-    return NarrationCueUpdate(scene_ids, _id(root["cue_id"], "cue_id"), fields, track_fields)
+    track_fields = {
+        name: _track_fields(item, f"fields.{name}") for name, item in raw_fields.items()
+    }
+    return NarrationCueUpdate(scene_ids, _id(root["cue_id"], "cue_id"), track_fields)
 
 
 def _track_fields(value: object, label: str) -> dict[str, object]:

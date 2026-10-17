@@ -44,7 +44,6 @@ from core.structured_director.models import (
 from core.structured_director.production_context import _script_json
 from core.structured_director.reads.snapshot_view import _allowed_actions
 from core.structured_director.reads.workflow_state import workflow_state
-from core.structured_director.v32_projection import v32_cue_anchors
 
 
 class TwoNarrationFirstProposer(NarrationScriptProposer):
@@ -175,14 +174,14 @@ async def _test_tts_first_then_one_sixteen_second_shot_and_invalidation(tmp_path
     store, service, _provider, document = await narration_project(tmp_path)
     scene = document.director_script.scenes[0]
     assert scene.driver == "narration" and scene.shots == ()
-    assert v32_cue_anchors(scene) == (None, None)
+    assert scene.segments == ()
     registry = DirectorCommandRegistry(store)
     before = store.path.read_bytes()
     with pytest.raises(ValueError, match="必须先选择项目所选语言的 TTS"):
         registry.execute(insert_shot(document))
     assert store.path.read_bytes() == before
 
-    # The manual UI submits nullable Shot anchors before narration-driven Shot planning.
+    # The manual UI saves the cue before narration-driven Shot planning.
     cue = scene.narration_cues[0]
     api = StructuredDirectorHttpApi(service, resource_path="/structured-director")
     saved = await api.handle(
@@ -191,8 +190,6 @@ async def _test_tts_first_then_one_sixteen_second_shot_and_invalidation(tmp_path
         json.dumps(
             {
                 "expected_revision": document.revision,
-                "start_shot_id": None,
-                "end_shot_id": None,
                 **{
                     language.value: {
                         "text": track.text,

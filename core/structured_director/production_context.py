@@ -20,7 +20,6 @@ from .narration_timing import (
 )
 from .reads.read_tools import _json_value
 from .reads.semantic_projection import PROJECTION_VERSION, build_semantic_tree
-from .v32_projection import v32_cue_anchors, v32_shot_segments
 
 _TERMINAL_PHASES = {
     ReferenceGenerationPhase.SUCCEEDED,
@@ -36,22 +35,18 @@ def _script_json(scenes: tuple[Scene, ...], document: StructuredDirectorDocument
     all_scenes = document.director_script.scenes if document.director_script is not None else ()
     for scene in tree["scenes"]:
         source = by_id[scene["id"]]
-        positions = {shot.id: index for index, shot in enumerate(source.shots)}
         visual_tail_seconds = narration_visual_tail_seconds(all_scenes, source.id)
         scene["narration_timing"] = [
             _narration_timing(cue, all_scenes, source, visual_tail_seconds)
             for cue in scene["narration_cues"]
         ]
         cues = {cue.id: cue for cue in source.narration_cues}
-        start_shot_id, end_shot_id = v32_cue_anchors(source)
         for cue in scene["narration_cues"]:
             original = cues[cue["id"]]
             cue.clear()
             cue.update(zh=None, en=None)
             cue.update(
                 id=original.id,
-                start_shot_index=positions.get(start_shot_id),
-                end_shot_index=positions.get(end_shot_id),
                 **{
                     language.value: {
                         "text": track.text,
@@ -72,6 +67,7 @@ def _script_json(scenes: tuple[Scene, ...], document: StructuredDirectorDocument
         "narration_cues",
         "narration_timing",
         "shots",
+        "segments",
     }
     shot_fields = {
         "id",
@@ -81,23 +77,23 @@ def _script_json(scenes: tuple[Scene, ...], document: StructuredDirectorDocument
         "action",
         "audio_direction",
         "transition_in",
-        "segments",
     }
     segment_fields = {
         "id",
+        "shot_ids",
         "duration_estimate_seconds",
         "action",
         "dialogue_lines",
         "boundary_from_previous",
     }
-    cue_fields = {"id", "start_shot_index", "end_shot_index", "zh", "en"}
+    cue_fields = {"id", "zh", "en"}
     for scene in tree["scenes"]:
         for shot in scene["shots"]:
-            for segment in shot["segments"]:
-                for key in set(segment) - segment_fields:
-                    del segment[key]
             for key in set(shot) - shot_fields:
                 del shot[key]
+        for segment in scene["segments"]:
+            for key in set(segment) - segment_fields:
+                del segment[key]
         for cue in scene["narration_cues"]:
             for key in set(cue) - cue_fields:
                 del cue[key]
@@ -208,28 +204,23 @@ def _director_state_json(
         {
             "id": scene.id,
             "title": scene.title,
-            "shots": [
+            "shots": [{"id": shot.id} for shot in scene.shots],
+            "segments": [
                 {
-                    "id": shot.id,
-                    "segments": [
-                        {
-                            "id": segment.id,
-                            "frames": [
-                                {"id": frame_id}
-                                for frame_id in (
-                                    (
-                                        bindings[segment.id].start_keyframe_id,
-                                        bindings[segment.id].end_keyframe_id,
-                                    )
-                                    if segment.id in bindings
-                                    else ()
-                                )
-                            ],
-                        }
-                        for segment in v32_shot_segments(scene, shot.id)
+                    "id": segment.id,
+                    "frames": [
+                        {"id": frame_id}
+                        for frame_id in (
+                            (
+                                bindings[segment.id].start_keyframe_id,
+                                bindings[segment.id].end_keyframe_id,
+                            )
+                            if segment.id in bindings
+                            else ()
+                        )
                     ],
                 }
-                for shot in scene.shots
+                for segment in scene.segments
             ],
             "cues": [{"id": cue.id} for cue in scene.narration_cues],
         }
@@ -278,6 +269,7 @@ def _director_state_json(
                     "driver": scene.driver,
                     "ordinal": ordinal,
                     "shots": index[ordinal - 1]["shots"],
+                    "segments": index[ordinal - 1]["segments"],
                     "shot_count": len(scene.shots),
                 }
             )
@@ -308,30 +300,29 @@ def _director_state_json(
                 **({"description": location.description} if include_text else {}),
             }
         )
-        for shot in item["shots"]:
-            relevant_targets.add(shot["id"])
-            for segment in shot["segments"]:
-                segment_id = segment["id"]
-                relevant_targets.add(segment_id)
-                if segment_id in bindings:
-                    binding = bindings[segment_id]
-                    state = _production_keyframe_state(binding, frames)
-                    for slot in ("start", "end"):
-                        if state[slot] is None:
-                            continue
-                        relevant_targets.add(state[slot]["id"])
-                        if not include_text:
-                            state[slot].pop("prompt_text", None)
-                    segment["keyframes"] = state
-                video = videos.get(segment_id)
-                if video is not None:
-                    segment["video"] = {
-                        "active_recipe": video.active_recipe,
-                        "recipes": video.recipes.to_json(),
-                        "selected_asset_id": video.selected_asset_id,
-                        "upscaled_asset_id": video.upscaled_asset_id,
-                        **({"prompt_text": video.prompt_text} if include_text else {}),
-                    }
+        relevant_targets.update(shot["id"] for shot in item["shots"])
+        for segment in item["segments"]:
+            segment_id = segment["id"]
+            relevant_targets.add(segment_id)
+            if segment_id in bindings:
+                binding = bindings[segment_id]
+                state = _production_keyframe_state(binding, frames)
+                for slot in ("start", "end"):
+                    if state[slot] is None:
+                        continue
+                    relevant_targets.add(state[slot]["id"])
+                    if not include_text:
+                        state[slot].pop("prompt_text", None)
+                segment["keyframes"] = state
+            video = videos.get(segment_id)
+            if video is not None:
+                segment["video"] = {
+                    "active_recipe": video.active_recipe,
+                    "recipes": video.recipes.to_json(),
+                    "selected_asset_id": video.selected_asset_id,
+                    "upscaled_asset_id": video.upscaled_asset_id,
+                    **({"prompt_text": video.prompt_text} if include_text else {}),
+                }
         result_scenes.append(item)
     run = document.active_director_run
     waiting_ids = set(() if run is None else run.cursor.waiting_generation_ids)

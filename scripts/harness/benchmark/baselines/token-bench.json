@@ -11,7 +11,7 @@
   },
   "environment": {
     "date": "2026-10-17",
-    "git_sha": "776cf11aa4e60ea855c634bc3d0741566295b0e9",
+    "git_sha": "4c33134c165c3cadc8d5a3f0940e6592c18ddff8",
     "python_version": "3.12.12",
     "platform": "macOS-26.6.2-arm64-arm-64bit",
     "driver": "scripts/harness/benchmark/fake_agent_driver.py"
@@ -20,7 +20,7 @@
     "scenario_total_multiplier": 1.0
   },
   "frozen": {
-    "tools_list_bytes": 31461,
+    "tools_list_bytes": 31358,
     "scenarios": {
       "h3": {
         "total_wire_bytes": 80050
@@ -47,7 +47,7 @@
       "capability": "video_prompt",
       "bootstrap": "keyframes",
       "summary": {
-        "tools_list_bytes": 31461,
+        "tools_list_bytes": 31358,
         "tool_count": 24,
         "requests": 6,
         "input_bytes": 1182,
@@ -132,7 +132,7 @@
       "capability": "keyframe",
       "bootstrap": "unlocked",
       "summary": {
-        "tools_list_bytes": 31461,
+        "tools_list_bytes": 31358,
         "tool_count": 24,
         "requests": 8,
         "input_bytes": 2232,
@@ -239,7 +239,7 @@
       "capability": "location",
       "bootstrap": "timing",
       "summary": {
-        "tools_list_bytes": 31461,
+        "tools_list_bytes": 31358,
         "tool_count": 24,
         "requests": 6,
         "input_bytes": 1897,
@@ -324,7 +324,7 @@
       "capability": "video_prompt",
       "bootstrap": "keyframes",
       "summary": {
-        "tools_list_bytes": 31461,
+        "tools_list_bytes": 31358,
         "tool_count": 24,
         "requests": 7,
         "input_bytes": 1436,
@@ -420,7 +420,7 @@
       "capability": "reference_library",
       "bootstrap": "empty",
       "summary": {
-        "tools_list_bytes": 31461,
+        "tools_list_bytes": 31358,
         "tool_count": 24,
         "requests": 5,
         "input_bytes": 1382,
@@ -494,7 +494,7 @@
       "capability": "script",
       "bootstrap": "ready",
       "summary": {
-        "tools_list_bytes": 31461,
+        "tools_list_bytes": 31358,
         "tool_count": 24,
         "requests": 5,
         "input_bytes": 1643,

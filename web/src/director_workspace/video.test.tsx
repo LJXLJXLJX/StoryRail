@@ -19,8 +19,7 @@ it("导演台上移其他图片后视频卡不重复渲染 reference_image 槽�
   )!;
   plan.recipe_state = videoState(plan.active_recipe!);
   const segment = snapshot.director_script!.scenes
-    .flatMap((scene) => scene.shots)
-    .flatMap((shot) => shot.segments)
+    .flatMap((scene) => scene.segments)
     .find((item) => item.id === plan.segment_id) as ShotSegment;
 
   render(
@@ -60,8 +59,7 @@ it("Ref2VA 在首尾帧右侧纵向编辑小尺寸附加图及必填描述", asy
   plan.recipes["minimax_h3.ref2va"] ??= { bindings: {}, params: {} };
   plan.recipes["minimax_h3.ref2va"].bindings.reference_audios = [];
   const segment = snapshot.director_script!.scenes
-    .flatMap((scene) => scene.shots)
-    .flatMap((shot) => shot.segments)
+    .flatMap((scene) => scene.segments)
     .find((item) => item.id === plan.segment_id) as ShotSegment;
   const binding = snapshot.keyframe_plan!.segments.find(
     (item) => item.segment_id === segment.id,
@@ -253,8 +251,7 @@ function ref2vaVideoSnapshot() {
   plan.recipes["minimax_h3.ref2va"].bindings.reference_audios = [];
   plan.recipes["minimax_h3.ref2va"].bindings.reference_videos = [];
   const segment = snapshot.director_script!.scenes
-    .flatMap((scene) => scene.shots)
-    .flatMap((shot) => shot.segments)
+    .flatMap((scene) => scene.segments)
     .find((item) => item.id === plan.segment_id) as ShotSegment;
   snapshot.assets.push(
     videoAsset("b".repeat(32), "运镜参考", 4),
@@ -389,8 +386,7 @@ it("已选视频卡片可以按帧号从当前视频抽帧", async () => {
   ) as unknown as StructuredDirectorSnapshot;
   const plan = snapshot.video_plan!.segments[0];
   const segment = snapshot.director_script!.scenes
-    .flatMap((scene) => scene.shots)
-    .flatMap((shot) => shot.segments)
+    .flatMap((scene) => scene.segments)
     .find((item) => item.id === plan.segment_id) as ShotSegment;
   const videoId = "f".repeat(32);
   plan.selected_asset_id = videoId;
@@ -464,8 +460,7 @@ it("输入已变化的视频候选仍可选择，只给出软提示", () => {
   const plan = snapshot.video_plan!.segments[0];
   plan.selected_asset_id = null;
   const segment = snapshot.director_script!.scenes
-    .flatMap((scene) => scene.shots)
-    .flatMap((shot) => shot.segments)
+    .flatMap((scene) => scene.segments)
     .find((item) => item.id === plan.segment_id) as ShotSegment;
   const freshAsset = "1".repeat(32);
   const staleAsset = "2".repeat(32);

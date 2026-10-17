@@ -1,6 +1,7 @@
 import type { Scene } from "../api";
 export function newSceneDraft(): Scene {
   const token = () => `new:${crypto.randomUUID()}`;
+  const shotId = token();
   return {
     id: token(),
     title: "新场景",
@@ -12,7 +13,7 @@ export function newSceneDraft(): Scene {
     narration_cues: [],
     shots: [
       {
-        id: token(),
+        id: shotId,
         visible_character_ids: [],
         composition: "请补充画面构图。",
         camera_movement: "固定机位。",
@@ -20,15 +21,16 @@ export function newSceneDraft(): Scene {
         audio_direction: "",
         transition_in: null,
         view_id: null,
-        segments: [
-          {
-            id: token(),
-            duration_estimate_seconds: 3,
-            action: "请补充这一段的连续动作。",
-            dialogue_lines: [],
-            boundary_from_previous: null,
-          },
-        ],
+      },
+    ],
+    segments: [
+      {
+        id: token(),
+        shot_ids: [shotId],
+        duration_estimate_seconds: 3,
+        action: "请补充这一段的连续动作。",
+        dialogue_lines: [],
+        boundary_from_previous: null,
       },
     ],
   };

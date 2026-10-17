@@ -251,7 +251,7 @@ def test_prompt_scope_and_no_generation(tmp_path):
                     "level": "segment",
                     "scene_ids": [scene.id],
                     "ids": [segment.id],
-                    "parent_id": scene.shots[0].id,
+                    "parent_id": scene.id,
                     "extensions": ["text", "selection", "dependencies"],
                 },
             )
@@ -264,7 +264,7 @@ def test_prompt_scope_and_no_generation(tmp_path):
                     "level": "segment",
                     "scope": {"scene_ids": [scene.id]},
                     "ids": [segment.id],
-                    "parent_id": scene.shots[0].id,
+                    "parent_id": scene.id,
                     "extensions": ["text", "selection", "dependencies"],
                     "limit": 20,
                 },
@@ -321,7 +321,7 @@ def test_mcp_locate_story_resolves_readable_path(tmp_path):
                     "project_id": document.project_id,
                     "expected_revision": document.revision,
                     "idempotency_key": "locate",
-                    "location": "场景 1－镜头 1－片段 1",
+                    "location": "场景 1－片段 1",
                 },
             )
             assert not located.is_error
@@ -329,7 +329,7 @@ def test_mcp_locate_story_resolves_readable_path(tmp_path):
             segment = document.director_script.scenes[0].segments[0]
             assert data["target_type"] == "segment"
             assert data["target_id"] == segment.id
-            assert data["location"] == "场景 1－镜头 1－片段 1"
+            assert data["location"] == "场景 1－片段 1"
             assert store.read().revision == document.revision
 
     with endpoint(tmp_path, store, service, caller) as (params, _):

@@ -7,8 +7,8 @@ export type StoryNode = {
   composition?: string; camera_movement?: string; audio_direction?: string;
   transition_in?: string | null; duration_estimate_seconds?: number;
   shot_count?: number; segment_count?: number; visible_character_ids?: string[];
-  narration?: { id: string; zh: StoryNarrationTrack; en: StoryNarrationTrack; timing: string;
-    start_shot_id: string | null; end_shot_id: string | null }[];
+  segment_ids?: string[]; shot_ids?: string[];
+  narration?: { id: string; zh: StoryNarrationTrack; en: StoryNarrationTrack; timing: string }[];
   dialogue_lines?: {
     character_id: string | null; speaker_label: string | null; text: string; delivery: string;
   }[];
@@ -47,7 +47,6 @@ const narrationTrack = shape({
 });
 const narration = shape({
   id: text, zh: narrationTrack, en: narrationTrack, timing: text,
-  start_shot_id: nullable(text), end_shot_id: nullable(text),
 });
 const dialogue = shape({
   character_id: nullable(text), speaker_label: nullable(text), text, delivery: text,
@@ -62,17 +61,20 @@ const boundary = nullable(shape({
 const nodeFields: Record<string, Check> = {
   id: text, kind: oneOf("scene", "shot", "segment"), scene_id: text,
   driver: oneOf("narration", "drama"),
-  parent: shape({ kind: oneOf("project", "scene", "shot"), id: text }),
+  parent: shape({ kind: oneOf("project", "scene"), id: text }),
   provenance: shape({ source: oneOf("project.json"), field: text }),
 };
 const detailFields: Record<string, Record<string, Check>> = {
-  scene: { title: text, summary: text, shot_count: integer, narration: array(narration) },
+  scene: {
+    title: text, summary: text, shot_count: integer, segment_count: integer,
+    narration: array(narration),
+  },
   shot: {
     action: text, composition: text, camera_movement: text, audio_direction: text,
-    visible_character_ids: array(text), transition_in: nullable(text), segment_count: integer,
+    visible_character_ids: array(text), transition_in: nullable(text), segment_ids: array(text),
   },
   segment: {
-    action: text, duration_estimate_seconds: positive, dialogue_lines: array(dialogue),
+    shot_ids: array(text), action: text, duration_estimate_seconds: positive, dialogue_lines: array(dialogue),
     boundary_from_previous: boundary, dialogue_timing: dialogueTiming,
   },
 };
@@ -103,10 +105,10 @@ export function parseStoryProjection(value: unknown): StoryProjection {
     const kind = level === "outline" ? "scene" : level;
     if (node.kind !== kind || !shape({ ...nodeFields, ...detailFields[kind],
       ...(level === "scene" ? { setting: text } : {}),
-    })(node) || node.parent.kind !== (kind === "scene" ? "project" : kind === "shot" ? "scene" : "shot") ||
+    })(node) || node.parent.kind !== (kind === "scene" ? "project" : "scene") ||
       (level !== "outline" && !scope.scene_ids!.includes(node.scene_id)) ||
       (kind === "scene" && (node.id !== node.scene_id || node.parent.id !== result.project_id)) ||
-      (kind === "shot" && node.parent.id !== node.scene_id)) {
+      (kind !== "scene" && node.parent.id !== node.scene_id)) {
       throw new Error("故事节点格式不正确。");
     }
   }

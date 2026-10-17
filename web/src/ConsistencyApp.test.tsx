@@ -42,12 +42,12 @@ it(
             },
             500,
           );
-        // 编辑器只回传可编辑字段；旁白时长与时间基准是 Core 的只读投影，这里沿用原值。
+        // 本用例只改 Scene 字段：结构与旁白投影沿用 Core 当前值，只取回传的 Scene 文本字段。
         const previousScenes = current.director_script.scenes;
-        const scenes = (JSON.parse(String(init.body)).scenes as typeof previousScenes).map((scene) => ({
-          ...scene,
-          narration_cues: previousScenes.find((item) => item.id === scene.id)?.narration_cues ?? [],
-        })) as typeof previousScenes;
+        const scenes = (JSON.parse(String(init.body)).scenes as typeof previousScenes).map((scene) => {
+          const previous = previousScenes.find((item) => item.id === scene.id)!;
+          return { ...previous, title: scene.title, summary: scene.summary, setting: scene.setting };
+        });
         current = { ...current, revision: current.revision + 1, director_script: { ...current.director_script, scenes } };
       }
       return response(current);

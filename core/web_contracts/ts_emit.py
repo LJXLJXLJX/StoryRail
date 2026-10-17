@@ -228,7 +228,6 @@ def _render_validation(catalog: dict[str, dict]) -> str:
         "  refineFinalAssembly,\n"
         "  refineGeneration,\n"
         "  refineScene,\n"
-        "  refineShot,\n"
         "  refineWorkflow,\n"
         "  refineWorkspaceLayers,\n"
         "  serializeEditableScene,\n"

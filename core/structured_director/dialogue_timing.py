@@ -6,7 +6,6 @@ import re
 from collections.abc import Iterable
 
 from .models import DialogueLine, ShotSegment, StructuredDirectorDocument
-from .script_index import shot_segments
 
 _CJK = re.compile(r"[぀-ヿ㐀-䶿一-鿿豈-﫿]")
 _WORD = re.compile(r"[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*")
@@ -45,15 +44,14 @@ def dialogue_timing_warnings(document: StructuredDirectorDocument) -> list[dict[
     """脚本中对白装不进预估时长的 Segment，按脚本顺序。"""
     warnings: list[dict[str, object]] = []
     for scene in document.director_script.scenes if document.director_script else ():
-        for shot in scene.shots:
-            for segment in shot_segments(scene, shot.id):
-                timing = dialogue_timing(segment)
-                if timing is not None and timing["exceeds_duration"]:
-                    warnings.append(
-                        {
-                            "segment_id": segment.id,
-                            "estimated_seconds": timing["estimated_seconds"],
-                            "duration_seconds": segment.duration_estimate_seconds,
-                        }
-                    )
+        for segment in scene.segments:
+            timing = dialogue_timing(segment)
+            if timing is not None and timing["exceeds_duration"]:
+                warnings.append(
+                    {
+                        "segment_id": segment.id,
+                        "estimated_seconds": timing["estimated_seconds"],
+                        "duration_seconds": segment.duration_estimate_seconds,
+                    }
+                )
     return warnings

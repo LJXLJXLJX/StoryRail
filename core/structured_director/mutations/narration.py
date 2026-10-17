@@ -35,7 +35,6 @@ from ..script_mutations import (
     _finish_director_run,
     _invalidate_production_after_script_revision,
 )
-from ..v32_projection import require_v32_cue_anchors, v32_cue_anchors
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,13 +133,7 @@ def update_narration_cue(
     target_scene, current = containing[0]
     if target_scene.id not in update.scope_scene_ids:
         raise ValueError("旁白 update 超出已授权 Scene scope。")
-    fields = dict(update.fields)
-    require_v32_cue_anchors(
-        [shot.id for shot in target_scene.shots],
-        fields.pop("start_shot_id", v32_cue_anchors(target_scene)[0]),
-        fields.pop("end_shot_id", v32_cue_anchors(target_scene)[1]),
-    )
-    candidate = replace(current, **fields)
+    candidate = current
     for key, changes in update.track_fields.items():
         language = NarrationLanguage(key)
         track = candidate.track(language)
@@ -190,8 +183,7 @@ def update_narration_cue(
             preserved=("asset_history", "generation_history"),
             decision_summary="已保存旁白 Cue 精确字段；旧候选选择按内容变化失效。",
             applied_summary={
-                "fields": len(update.fields)
-                + sum(len(changes) for changes in update.track_fields.values())
+                "fields": sum(len(changes) for changes in update.track_fields.values())
             },
             next_allowed_actions=("narration.generate",),
         ),

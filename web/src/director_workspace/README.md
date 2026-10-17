@@ -1,12 +1,14 @@
 # 故事工作台
 
 `StructuredDirectorWorkspace.tsx` 组合准备区、引用库、地点库与唯一故事工作台。
-`StoryNavigation.tsx` 管理左侧层级呈现；`StoryReader.tsx` 只挂载当前目标正文与媒体。
+`StoryNavigation.tsx` 管理左侧 Scene → Segment 导航，Segment 标签按 `shot_ids` 显示覆盖的镜头（“镜头 1–2”，
+与上一段共享边界 Shot 时附“（续）”）；Shot 在 Scene 页的“镜头设计”中列出。`StoryReader.tsx` 只挂载当前目标正文与媒体。
+`script_index.ts` 是 Segment↔Shot 覆盖关系的只读查找，不复制 Core 的覆盖校验。
 `NodeEditor.tsx` 暂存当前节点编辑输入，携带起点 project revision 保存，冲突保留草稿。
 `SceneMedia.tsx` 展示 Scene Animatic/成片与版本；其余媒体卡复用原有专业回调。
 `script_draft.ts` 只提供新 Scene 的暂存输入，正式 ID 仍由 Core 分配。
 `keyframe.tsx` 的手动关键帧计划弹窗与 Keyframe Planner 读写同一组地点视图字段：
-视图选择器只列所属 Segment → Shot → Scene 绑定地点的视图（名称、purpose、状态、Shot 绑定、未选图提示），
+视图选择器只列所属 Segment 的 Scene 绑定地点的视图（名称、purpose、状态、Shot 绑定、未选图提示），
 帧当前引用其它地点的视图时作为“当前值”保留并标明来源，Scene 未绑定地点时只能选择不使用并给出提示；
 从不使用选回视图默认 `reference`，选择 `none` 时理由可选（最多 500 字，空白按 null 保存）。“当前实际图片输入”逐图展示 Core 预览给出的
 底图/参考位置、`input_roles` 与 `purpose`，Web 不推断映射。

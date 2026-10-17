@@ -16,3 +16,27 @@ def segments_of_shot(document, shot) -> tuple[ShotSegment, ...]:
         if any(item.id == shot.id for item in scene.shots):
             return shot_segments(scene, shot.id)
     raise AssertionError("Shot 不在当前脚本中。")
+
+
+def v32_scene_payload(scene: dict) -> dict:
+    """把 v33 snapshot Scene 转成仍为 v32 形状的整卡手工保存请求（脚本写入面翻转后删除）。"""
+    shots = [
+        {
+            **shot,
+            "segments": [
+                {key: value for key, value in segment.items() if key != "shot_ids"}
+                for segment in scene["segments"]
+                if segment["shot_ids"][0] == shot["id"]
+            ],
+        }
+        for shot in scene["shots"]
+    ]
+    anchors = (shots[0]["id"], shots[-1]["id"]) if shots else (None, None)
+    return {
+        **{key: value for key, value in scene.items() if key != "segments"},
+        "shots": shots,
+        "narration_cues": [
+            {**cue, "start_shot_id": anchors[0], "end_shot_id": anchors[1]}
+            for cue in scene["narration_cues"]
+        ],
+    }

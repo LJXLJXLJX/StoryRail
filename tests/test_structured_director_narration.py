@@ -51,7 +51,6 @@ from core.structured_director.service import (
     _align_duration_ranges,
     _clip_starts,
 )
-from core.structured_director.v32_projection import v32_cue_anchors
 
 
 class StructuredDirectorNarrationTests(unittest.IsolatedAsyncioTestCase):
@@ -309,7 +308,7 @@ class StructuredDirectorNarrationTests(unittest.IsolatedAsyncioTestCase):
             scripted = await service.prepare_script(expected_revision=references.revision)
             assert scripted.director_script is not None
             cue = scripted.director_script.scenes[0].narration_cues[0]
-            self.assertEqual(v32_cue_anchors(scripted.director_script.scenes[0]), (None, None))
+            self.assertEqual(scripted.director_script.scenes[0].segments, ())
             review = await service.confirm_script(expected_revision=scripted.revision)
             self.assertIs(review.status, StructuredDirectorStatus.REVIEWING_NARRATION)
             completed, generation_id = await synthesize_narration(
@@ -403,8 +402,6 @@ class StructuredDirectorNarrationTests(unittest.IsolatedAsyncioTestCase):
                 cue = scene["narration_cues"][0]
                 text = f"用户手动保存的旁白正文：{narration_review}。"
                 payload = {
-                    "start_shot_id": cue["start_shot_id"],
-                    "end_shot_id": cue["end_shot_id"],
                     **{
                         language: {
                             key: cue[language][key] for key in ("text", "seed", "recipe_params")

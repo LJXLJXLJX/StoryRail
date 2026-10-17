@@ -19,7 +19,7 @@ from .narration_timing import (
     narration_timing_seconds,
     narration_visual_duration_seconds,
 )
-from .script_index import scene_segments, shot_segments
+from .script_index import scene_segments
 from .video_inputs import effective_video
 
 
@@ -57,46 +57,45 @@ def _build_scene_animatic_spec(
     segment_first_clip: dict[str, int] = {}
     segment_clip_counts: dict[str, int] = {}
     previous_end_keyframe_id: str | None = None
-    for shot_number, shot in enumerate(scene.shots, start=1):
-        for segment_number, segment in enumerate(shot_segments(scene, shot.id), start=1):
-            location = f"Shot {shot_number} Segment {segment_number}"
-            binding = bindings.get(segment.id)
-            if binding is None:
-                raise ValueError(f"{location} 缺少关键帧绑定。")
-            start_keyframe = keyframes[binding.start_keyframe_id]
-            end_keyframe = keyframes[binding.end_keyframe_id]
-            start_asset_id = start_keyframe.selected_asset_id if binding.start_enabled else None
-            end_asset_id = end_keyframe.selected_asset_id if binding.end_enabled else None
-            if (binding.start_enabled and start_asset_id is None) or (
-                binding.end_enabled and end_asset_id is None
-            ):
-                raise ValueError(f"{location} 启用的边界关键帧尚未全部选择图片。")
-            if start_asset_id is None and end_asset_id is None:
-                raise ValueError(f"{location} 尚未选择已激活的关键帧图片。")
-            duration = segment.duration_estimate_seconds
-            transition = (
-                None
-                if previous_end_keyframe_id is None or not binding.start_enabled
-                else _final_transition(previous_end_keyframe_id, binding.start_keyframe_id)
+    for segment_number, segment in enumerate(scene.segments, start=1):
+        location = f"Segment {segment_number}"
+        binding = bindings.get(segment.id)
+        if binding is None:
+            raise ValueError(f"{location} 缺少关键帧绑定。")
+        start_keyframe = keyframes[binding.start_keyframe_id]
+        end_keyframe = keyframes[binding.end_keyframe_id]
+        start_asset_id = start_keyframe.selected_asset_id if binding.start_enabled else None
+        end_asset_id = end_keyframe.selected_asset_id if binding.end_enabled else None
+        if (binding.start_enabled and start_asset_id is None) or (
+            binding.end_enabled and end_asset_id is None
+        ):
+            raise ValueError(f"{location} 启用的边界关键帧尚未全部选择图片。")
+        if start_asset_id is None and end_asset_id is None:
+            raise ValueError(f"{location} 尚未选择已激活的关键帧图片。")
+        duration = segment.duration_estimate_seconds
+        transition = (
+            None
+            if previous_end_keyframe_id is None or not binding.start_enabled
+            else _final_transition(previous_end_keyframe_id, binding.start_keyframe_id)
+        )
+        if start_asset_id is not None and end_asset_id is not None:
+            # FL2VA 画面输入：首尾帧平分该段时长，段内硬切。
+            frames = (
+                (start_asset_id, duration / 2),
+                (end_asset_id, duration / 2),
             )
-            if start_asset_id is not None and end_asset_id is not None:
-                # FL2VA 画面输入：首尾帧平分该段时长，段内硬切。
-                frames = (
-                    (start_asset_id, duration / 2),
-                    (end_asset_id, duration / 2),
-                )
-            elif start_asset_id is not None:
-                frames = ((start_asset_id, duration),)
-            else:
-                assert end_asset_id is not None
-                frames = ((end_asset_id, duration),)
-            segment_first_clip[segment.id] = len(clip_asset_ids)
-            segment_clip_counts[segment.id] = len(frames)
-            for frame_index, (asset_id, frame_duration) in enumerate(frames):
-                clip_asset_ids.append(asset_id)
-                clip_transitions.append(transition if frame_index == 0 else None)
-                clip_durations.append(frame_duration)
-            previous_end_keyframe_id = binding.end_keyframe_id if binding.end_enabled else None
+        elif start_asset_id is not None:
+            frames = ((start_asset_id, duration),)
+        else:
+            assert end_asset_id is not None
+            frames = ((end_asset_id, duration),)
+        segment_first_clip[segment.id] = len(clip_asset_ids)
+        segment_clip_counts[segment.id] = len(frames)
+        for frame_index, (asset_id, frame_duration) in enumerate(frames):
+            clip_asset_ids.append(asset_id)
+            clip_transitions.append(transition if frame_index == 0 else None)
+            clip_durations.append(frame_duration)
+        previous_end_keyframe_id = binding.end_keyframe_id if binding.end_enabled else None
 
     narration_asset_ids: list[str] = []
     narration_starts: list[int] = []

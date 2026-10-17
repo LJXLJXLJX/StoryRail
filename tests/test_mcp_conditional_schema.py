@@ -73,7 +73,7 @@ def test_every_public_tool_schema_is_draft_2020_12_valid_and_conditionals_are_ex
             "level": "segment",
             "scene_ids": [SCENE_ID],
             "ids": [SEGMENT_ID],
-            "parent_id": SHOT_ID,
+            "parent_id": SCENE_ID,
             "extensions": ["text", "selection", "dependencies", "video_prompt", "keyframe"],
         },
     ],
@@ -117,7 +117,7 @@ def test_read_story_illegal_combinations_fail_schema_and_runtime(arguments):
 
 def test_read_story_schema_documents_parent_identity_and_professional_level():
     schema = tool_schema("read_story", Read)
-    assert "Shot ID" in schema["properties"]["parent_id"]["description"]
+    assert "Scene ID" in schema["properties"]["parent_id"]["description"]
     assert "segment" in schema["properties"]["extensions"]["description"]
     Draft202012Validator.check_schema(schema)
 
@@ -148,7 +148,7 @@ def test_read_story_known_invalid_combinations_stop_at_mcp_before_core():
                     **READ_BASE,
                     "level": "segment",
                     "scene_ids": [SCENE_ID],
-                    "parent_id": SHOT_ID,
+                    "parent_id": SCENE_ID,
                     "extensions": ["keyframe"],
                 },
             )
@@ -162,7 +162,7 @@ def test_read_story_known_invalid_combinations_stop_at_mcp_before_core():
                     "scope": {"scene_ids": [SCENE_ID]},
                     "extensions": ["keyframe"],
                     "limit": 20,
-                    "parent_id": SHOT_ID,
+                    "parent_id": SCENE_ID,
                 },
             )
 

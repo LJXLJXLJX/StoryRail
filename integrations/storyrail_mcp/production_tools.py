@@ -326,8 +326,6 @@ NarrationTrackFields = object_model(
     "NarrationTrackFields", narration_track_fields, narration_track_fields
 )
 narration_fields = {
-    "start_shot_id": ID | None,
-    "end_shot_id": ID | None,
     "zh": NarrationTrackFields,
     "en": NarrationTrackFields,
     "clear_selected_audio": Annotated[

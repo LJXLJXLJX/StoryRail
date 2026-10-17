@@ -1,7 +1,7 @@
-"""v33 存储与仍为 v32 形状的对外接口之间的临时投影（L1）。
+"""仍为 v32 形状的写入接口与 v33 存储之间的临时投影（L1）。
 
-对外的 proposal、edit_script、Web snapshot、read_story 与工作集暂时保持 Shot 下挂 Segment、
-旁白 Cue 带 Shot 锚点的形状；读取面与写入面逐个翻转为 v33 后删除本模块。
+脚本 proposal、edit_script 与 Web 整卡手工保存仍按 Shot 下挂 Segment、旁白 Cue 带 Shot 锚点提交；
+Keyframe Planner 的输入与 proposal 仍按 Shot 分组 Segment。写入面与 Keyframe 规划翻转后删除本模块。
 """
 
 from __future__ import annotations
@@ -14,13 +14,6 @@ from .models import Scene, ShotSegment
 def v32_shot_segments(scene: Scene, shot_id: str) -> tuple[ShotSegment, ...]:
     """v32 形状下挂在该 Shot 下的 Segment：每个 Segment 挂到其第一个覆盖 Shot。"""
     return tuple(segment for segment in scene.segments if segment.shot_ids[0] == shot_id)
-
-
-def v32_cue_anchors(scene: Scene) -> tuple[str | None, str | None]:
-    """旁白 Cue 覆盖整个 Scene：锚点为首个与末个 Shot；尚未规划 Shot 时均为 None。"""
-    if not scene.shots:
-        return None, None
-    return scene.shots[0].id, scene.shots[-1].id
 
 
 def require_v32_cue_anchors(

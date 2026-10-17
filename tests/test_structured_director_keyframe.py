@@ -7,6 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from proposal_fixture_service import ProposalFixtureService as StructuredDirectorService
+from script_helpers import v32_scene_payload
 from structured_director_fixtures import (
     RecordingProposer,
     RecordingProvider,
@@ -259,7 +260,9 @@ class StructuredDirectorKeyframeTests(unittest.IsolatedAsyncioTestCase):
 
             api = StructuredDirectorHttpApi(service, resource_path="/structured-director")
             snapshot = await api.handle("GET", "/structured-director")
-            scenes = snapshot.body["director_script"]["scenes"]
+            scenes = [
+                v32_scene_payload(item) for item in snapshot.body["director_script"]["scenes"]
+            ]
             split_source = dict(scenes[0]["shots"][0]["segments"][0])
             split_source["action"] = "前半段动作。"
             split_source["duration_estimate_seconds"] = 1.0
@@ -294,8 +297,7 @@ class StructuredDirectorKeyframeTests(unittest.IsolatedAsyncioTestCase):
             live_segment_ids = {
                 item["id"]
                 for scene in edited.body["director_script"]["scenes"]
-                for shot in scene["shots"]
-                for item in shot["segments"]
+                for item in scene["segments"]
             }
             self.assertEqual(set(bindings), live_segment_ids)
             retained_binding = bindings[original_segment_id]

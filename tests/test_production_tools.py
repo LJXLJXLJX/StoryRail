@@ -62,7 +62,7 @@ CASES = [
         {
             "scene_ids": [TARGET],
             "cue_id": TARGET,
-            "fields": {"start_shot_id": None, "end_shot_id": None},
+            "fields": {"zh": {"seed": 7}},
         },
         "narration.update_cue",
     ),
@@ -144,7 +144,7 @@ def test_production_tool_schema_and_fixed_mapping(name, args, command):
     actual, values = translate(name, parsed)
     assert actual == command
     if name == "edit_narration":
-        assert values["fields"] == {"start_shot_id": None, "end_shot_id": None}
+        assert values["fields"] == {"zh": {"seed": 7}}
     with pytest.raises(ValueError):
         MODELS[name].model_validate({**BASE, **args, "command": "final.approve"})
     schema = MODELS[name].model_json_schema()

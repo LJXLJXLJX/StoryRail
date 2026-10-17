@@ -29,14 +29,15 @@ import {
   recipeInputsError,
   useSegmentVideoDraft,
 } from "./RecipeInputsControl";
+import { findSegmentScene } from "./script_index";
 export function SegmentKeyframeInputs({
   projectId,
   snapshot,
   segmentId,
   sceneIndex,
-  shotIndex,
   segmentIndex,
-  segmentCount,
+  continuesPrevious,
+  continuesNext,
   busy,
   videoDependenciesEditable = false,
   onSaveVideoInputs,
@@ -55,9 +56,11 @@ export function SegmentKeyframeInputs({
   snapshot: StructuredDirectorSnapshot;
   segmentId: string;
   sceneIndex: number;
-  shotIndex: number;
+  /** Segment 在本 Scene 内的序号（从 0 起）。 */
   segmentIndex: number;
-  segmentCount: number;
+  /** 与上一 / 下一 Segment 延续同一镜头（共享边界 Shot）。 */
+  continuesPrevious: boolean;
+  continuesNext: boolean;
   busy: boolean;
   videoDependenciesEditable?: boolean;
   onSaveVideoInputs?: (
@@ -110,19 +113,19 @@ export function SegmentKeyframeInputs({
     (item) => item.segment_id !== segmentId && item.start_keyframe_id === end.id,
   );
   const startRelation = sharesPrevious
-    ? segmentIndex > 0
+    ? continuesPrevious
       ? "与上一 Segment 尾帧共享"
       : "与上一 Shot 末段尾帧共享"
-    : segmentIndex > 0 || shotIndex > 0
+    : segmentIndex > 0
       ? "独立首帧"
       : "当前 Shot 的起始时间边界";
   const endRelation = sharesNext
     ? "与下一 Segment 首帧共享"
-    : segmentIndex < segmentCount - 1
+    : continuesNext
       ? "独立尾帧"
       : "当前 Shot 的结束时间边界";
   const extraction = binding.start_frame_extraction;
-  const hasPreviousInScene = segmentIndex > 0 || shotIndex > 0;
+  const hasPreviousInScene = segmentIndex > 0;
   const sourceVideo =
     extraction.source_video_asset_id === null
       ? null
@@ -146,7 +149,7 @@ export function SegmentKeyframeInputs({
     <DirectorDisclosure initiallyOpen className="segment-keyframe-inputs">
       <summary
         className="segment-layer-summary"
-        aria-label={`Scene ${sceneIndex + 1} Shot ${shotIndex + 1} Segment ${segmentIndex + 1} 画面输入`}
+        aria-label={`Scene ${sceneIndex + 1} Segment ${segmentIndex + 1} 画面输入`}
       >
         <div>
           <strong>Segment 画面输入</strong>
@@ -1394,14 +1397,9 @@ export function keyframeViewOptions(
   ownerSegmentId: string,
   currentViewId: string | null,
 ) {
-  const scene = snapshot.director_script?.scenes.find((item) =>
-    item.shots.some((shot) =>
-      shot.segments.some((segment) => segment.id === ownerSegmentId),
-    ),
-  );
-  const shot = scene?.shots.find((item) =>
-    item.segments.some((segment) => segment.id === ownerSegmentId),
-  );
+  const scene = findSegmentScene(snapshot.director_script?.scenes ?? [], ownerSegmentId);
+  const owner = scene?.segments.find((segment) => segment.id === ownerSegmentId);
+  const shot = scene?.shots.find((item) => item.id === owner?.shot_ids[0]);
   const locations = snapshot.location_library.locations;
   const location =
     scene?.location_id == null

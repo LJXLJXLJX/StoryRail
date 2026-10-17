@@ -55,10 +55,10 @@ describe("人工内容修改事件", () => {
   });
   it("删除子节点以仍存在的父级结构定位，不要求读取已删除目标", () => {
     const before = snapshot(), after = snapshot(); after.revision++;
-    const scene = after.director_script!.scenes[0]; scene.shots[0].segments.pop();
+    const scene = after.director_script!.scenes[0]; scene.segments.pop();
     const changes = savedContentChanges(captureContentSave(before, { kind: "script", scenes: after.director_script!.scenes }), before.revision, after);
     expect(changes).toHaveLength(1);
-    expect(changes[0]).toMatchObject({ kind: "shot", id: scene.shots[0].id, field: "structure" });
+    expect(changes[0]).toMatchObject({ kind: "scene", id: scene.id, field: "structure" });
   });
   it("旁白身份与 Keyframe 正文均返回精确字段", () => {
     const before = snapshot(), after = snapshot(); after.revision++;

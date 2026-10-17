@@ -14,7 +14,6 @@ from ..models import (
     StructuredDirectorDocument,
 )
 from ..script_index import scene_segments, script_segments
-from ..v32_projection import v32_shot_segments
 from .batch_observation import batch_observation, owned_batch_id_for_run
 from .common import ReadResultTooLarge as ReadResultTooLarge
 from .common import (
@@ -116,8 +115,7 @@ def _get_projection(document, arguments):
 
 _STORY_LOCATION = re.compile(
     r"^\s*场景\s*(?P<scene>\d+)"
-    r"(?:\s*[－—–-]\s*镜头\s*(?P<shot>\d+)"
-    r"(?:\s*[－—–-]\s*片段\s*(?P<segment>\d+))?)?\s*$"
+    r"(?:\s*[－—–-]\s*(?P<kind>镜头|片段)\s*(?P<index>\d+))?\s*$"
 )
 
 
@@ -127,61 +125,57 @@ def _locate_story(
     """Resolve a human-readable one-based story path from the current Core revision."""
     _exact_arguments(arguments, required={"location"})
     location = arguments["location"]
+    message = "location 必须是“场景 N”、“场景 N－镜头 N”或“场景 N－片段 N”。"
     if not isinstance(location, str) or not location.strip():
-        raise ValueError("location 必须是“场景 N”或“场景 N－镜头 N－片段 N”。")
+        raise ValueError(message)
     match = _STORY_LOCATION.fullmatch(location)
     if match is None:
-        raise ValueError("location 必须是“场景 N”、 “场景 N－镜头 N”或“场景 N－镜头 N－片段 N”。")
-    indexes = {
-        key: (None if value is None else int(value)) for key, value in match.groupdict().items()
-    }
-    if any(value is not None and value < 1 for value in indexes.values()):
+        raise ValueError(message)
+    scene_index = int(match["scene"])
+    index = None if match["index"] is None else int(match["index"])
+    if scene_index < 1 or (index is not None and index < 1):
         raise ValueError("场景、镜头和片段序号必须从 1 开始。")
     script = document.director_script
     if script is None:
         raise ValueError("当前项目尚无结构化脚本，无法定位故事节点。")
-    scene_index = indexes["scene"]
-    assert scene_index is not None
     if scene_index > len(script.scenes):
         raise ValueError(f"场景 {scene_index} 不存在。")
     scene = script.scenes[scene_index - 1]
-    shot_index = indexes["shot"]
-    segment_index = indexes["segment"]
-    shot = None
-    segment = None
-    if shot_index is not None:
-        if shot_index > len(scene.shots):
-            raise ValueError(f"场景 {scene_index}－镜头 {shot_index} 不存在。")
-        shot = scene.shots[shot_index - 1]
-    if segment_index is not None:
-        assert shot is not None
-        if segment_index > len(v32_shot_segments(scene, shot.id)):
-            raise ValueError(
-                f"场景 {scene_index}－镜头 {shot_index}－片段 {segment_index} 不存在。"
-            )
-        segment = v32_shot_segments(scene, shot.id)[segment_index - 1]
-    kind = "segment" if segment is not None else "shot" if shot is not None else "scene"
-    canonical = f"场景 {scene_index}"
-    if shot_index is not None:
-        canonical += f"－镜头 {shot_index}"
-    if segment_index is not None:
-        canonical += f"－片段 {segment_index}"
-    target = segment if segment is not None else shot if shot is not None else scene
     result: dict[str, object] = {
         "revision": document.revision,
-        "location": canonical,
-        "target_type": kind,
-        "target_id": target.id,
+        "location": f"场景 {scene_index}",
+        "target_type": "scene",
+        "target_id": scene.id,
         "scene": {"id": scene.id, "index": scene_index, "title": scene.title},
     }
-    if shot is not None:
-        result["shot"] = {"id": shot.id, "index": shot_index, "action": shot.action}
-    if segment is not None:
-        result["segment"] = {
+    if index is None:
+        return result
+    canonical = f"场景 {scene_index}－{match['kind']} {index}"
+    if match["kind"] == "镜头":
+        if index > len(scene.shots):
+            raise ValueError(f"{canonical} 不存在。")
+        shot = scene.shots[index - 1]
+        result.update(
+            location=canonical,
+            target_type="shot",
+            target_id=shot.id,
+            shot={"id": shot.id, "index": index, "action": shot.action},
+        )
+        return result
+    if index > len(scene.segments):
+        raise ValueError(f"{canonical} 不存在。")
+    segment = scene.segments[index - 1]
+    result.update(
+        location=canonical,
+        target_type="segment",
+        target_id=segment.id,
+        segment={
             "id": segment.id,
-            "index": segment_index,
+            "index": index,
+            "shot_ids": list(segment.shot_ids),
             "action": segment.action,
-        }
+        },
+    )
     return result
 
 
@@ -203,8 +197,7 @@ def _get_outline(document, arguments):
         result["items"] = tree["scenes"]
         if depth == "shot":
             for scene in result["items"]:
-                for shot in scene["shots"]:
-                    shot.pop("segments")
+                scene.pop("segments")
     return result
 
 
@@ -320,32 +313,28 @@ def _get_target(
                     return _semantic_target(
                         document, "shot", shot.id, scene.id, {"scene_id": scene.id}
                     )
-                for segment in v32_shot_segments(scene, shot.id):
-                    if segment.id == target_id:
-                        index = next(
-                            index for index, item in enumerate(timeline) if item.id == target_id
-                        )
-                        return _semantic_target(
-                            document,
-                            "segment",
-                            segment.id,
-                            scene.id,
-                            {
-                                "scene_id": scene.id,
-                                "shot_id": shot.id,
-                                "previous_segment_id": (
-                                    timeline[index - 1].id if index > 0 else None
-                                ),
-                                "next_segment_id": (
-                                    timeline[index + 1].id if index + 1 < len(timeline) else None
-                                ),
-                            },
-                        )
-                for cue in scene.narration_cues:
-                    if cue.id == target_id:
-                        return _target_result(
-                            document, "narration_cue", cue, {"scene_id": scene.id}
-                        )
+            for segment in scene.segments:
+                if segment.id == target_id:
+                    index = next(
+                        index for index, item in enumerate(timeline) if item.id == target_id
+                    )
+                    return _semantic_target(
+                        document,
+                        "segment",
+                        segment.id,
+                        scene.id,
+                        {
+                            "scene_id": scene.id,
+                            "shot_ids": list(segment.shot_ids),
+                            "previous_segment_id": (timeline[index - 1].id if index > 0 else None),
+                            "next_segment_id": (
+                                timeline[index + 1].id if index + 1 < len(timeline) else None
+                            ),
+                        },
+                    )
+            for cue in scene.narration_cues:
+                if cue.id == target_id:
+                    return _target_result(document, "narration_cue", cue, {"scene_id": scene.id})
     if document.keyframe_plan is not None:
         for keyframe in document.keyframe_plan.keyframes:
             if keyframe.id == target_id:

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import type { Scene } from "../api";
 import type { StoryTarget } from "../api/projection";
+import { segmentShotLabel } from "./script_index";
 
 export function StoryNavigation({
   scenes,
@@ -20,10 +21,6 @@ export function StoryNavigation({
 }) {
   const [open, setOpen] = useState(false);
   const scene = scenes.find((item) => item.id === target?.sceneId);
-  const shot = scene?.shots.find(
-    (item) =>
-      item.id === target?.id || item.segments.some((s) => s.id === target?.id),
-  );
   const choose = (value: StoryTarget | null) => {
     onChoose(value);
     setOpen(false);
@@ -89,12 +86,11 @@ export function StoryNavigation({
         </button>
         <div className="story-reader-columns is-expanded">
           <section
-            className="story-reader-tree is-three-level"
-            aria-label="场景、镜头与片段树"
+            className="story-reader-tree is-two-level"
+            aria-label="场景与片段树"
           >
             <div className="story-reader-tree-head">
               <h2>场景</h2>
-              <h2>连续镜头</h2>
               <h2>生成片段</h2>
             </div>
             <ol
@@ -109,7 +105,7 @@ export function StoryNavigation({
                   <div className="story-reader-tree-parent story-reader-scene-node">
                     <button
                       aria-current={
-                        target?.level === "scene" && scene?.id === s.id
+                        target?.level !== "segment" && scene?.id === s.id
                           ? "page"
                           : undefined
                       }
@@ -119,101 +115,48 @@ export function StoryNavigation({
                     >
                       <small>
                         场景 {sceneIndex + 1} ·{" "}
-                        {s.driver === "narration" ? "旁白" : "戏剧"}
+                        {s.driver === "narration" ? "旁白" : "戏剧"} · {s.shots.length} 个镜头
                       </small>
                       <span>{s.title}</span>
                       <b aria-hidden="true">›</b>
                       <small className="story-reader-duration">
                         {duration(
                           totalDuration(
-                            s.shots.flatMap((item) =>
-                              item.segments.map(
-                                (segment) => segment.duration_estimate_seconds,
-                              ),
-                            ),
+                            s.segments.map((segment) => segment.duration_estimate_seconds),
                           ),
                         )}
                       </small>
                     </button>
                   </div>
                   <ol
-                    className="story-reader-shot-branches"
-                    aria-label={`场景 ${sceneIndex + 1} 的连续镜头`}
+                    className="story-reader-tree-children"
+                    aria-label={`场景 ${sceneIndex + 1} 的生成片段`}
                   >
-                    {s.shots.map((sceneShot, shotIndex) => (
-                      <li
-                        className={`story-reader-shot-branch ${shot?.id === sceneShot.id ? "is-current-path" : ""}`}
-                        key={sceneShot.id}
-                      >
-                        <div className="story-reader-tree-parent story-reader-shot-node">
-                          <button
-                            aria-current={
-                              target?.level === "shot" && shot?.id === sceneShot.id
-                                ? "page"
-                                : undefined
-                            }
-                            onClick={() =>
-                              choose({
-                                level: "shot",
-                                sceneId: s.id,
-                                id: sceneShot.id,
-                              })
-                            }
-                          >
-                            <small>
-                              镜头 {shotIndex + 1} · {sceneShot.segments.length} 个片段
-                            </small>
-                            <span>{sceneShot.action}</span>
-                            <b aria-hidden="true">›</b>
-                            <small className="story-reader-duration">
-                              {duration(
-                                totalDuration(
-                                  sceneShot.segments.map(
-                                    (segment) => segment.duration_estimate_seconds,
-                                  ),
-                                ),
-                              )}
-                            </small>
-                          </button>
-                        </div>
-                        <ol
-                          className="story-reader-tree-children"
-                          aria-label={`场景 ${sceneIndex + 1}－镜头 ${shotIndex + 1} 的生成片段`}
+                    {s.segments.map((segment, segmentIndex) => (
+                      <li key={segment.id}>
+                        <button
+                          aria-current={target?.id === segment.id ? "page" : undefined}
+                          onClick={() =>
+                            choose({
+                              level: "segment",
+                              sceneId: s.id,
+                              id: segment.id,
+                            })
+                          }
                         >
-                          {sceneShot.segments.map((segment, segmentIndex) => (
-                            <li key={segment.id}>
-                              <button
-                                aria-current={
-                                  target?.id === segment.id ? "page" : undefined
-                                }
-                                onClick={() =>
-                                  choose({
-                                    level: "segment",
-                                    sceneId: s.id,
-                                    id: segment.id,
-                                  })
-                                }
-                              >
-                                <small>片段 {segmentIndex + 1}</small>
-                                <span>{segment.action}</span>
-                                <small className="story-reader-duration">
-                                  {duration(segment.duration_estimate_seconds)}
-                                </small>
-                              </button>
-                            </li>
-                          ))}
-                          {!sceneShot.segments.length ? (
-                            <li className="story-reader-tree-empty">
-                              <p>片段尚未规划</p>
-                            </li>
-                          ) : null}
-                        </ol>
+                          <small>
+                            片段 {segmentIndex + 1} · {segmentShotLabel(s, segment)}
+                          </small>
+                          <span>{segment.action}</span>
+                          <small className="story-reader-duration">
+                            {duration(segment.duration_estimate_seconds)}
+                          </small>
+                        </button>
                       </li>
                     ))}
-                    {!s.shots.length ? (
-                      <li className="story-reader-shot-branch story-reader-tree-empty">
-                        <p>镜头尚未规划</p>
-                        <p>片段尚未规划</p>
+                    {!s.segments.length ? (
+                      <li className="story-reader-tree-empty">
+                        <p>镜头与片段尚未规划</p>
                       </li>
                     ) : null}
                   </ol>
@@ -222,7 +165,6 @@ export function StoryNavigation({
               {!scenes.length ? (
                 <li className="story-reader-scene-branch story-reader-tree-empty">
                   <p>场景尚未规划</p>
-                  <p>镜头尚未规划</p>
                   <p>片段尚未规划</p>
                 </li>
               ) : null}

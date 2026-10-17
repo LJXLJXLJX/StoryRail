@@ -27,7 +27,7 @@ class NarrationTrackContext:
 class NarrationCueContext:
     id: str
     scene_title: str
-    shot_range: str
+    coverage: str
     tracks: tuple[NarrationTrackContext, ...]
 
 

@@ -474,6 +474,7 @@ def snapshot_schemas() -> dict[str, dict]:
             "ShotSegment": _obj(
                 {
                     "id": ID,
+                    "shot_ids": _array(ID, minItems=1, uniqueItems=True),
                     "duration_estimate_seconds": {
                         "type": "number",
                         "minimum": 0.2,
@@ -485,6 +486,7 @@ def snapshot_schemas() -> dict[str, dict]:
                 },
                 [
                     "id",
+                    "shot_ids",
                     "duration_estimate_seconds",
                     "action",
                     "dialogue_lines",
@@ -501,7 +503,6 @@ def snapshot_schemas() -> dict[str, dict]:
                     "action": TEXT,
                     "audio_direction": {"type": "string"},
                     "transition_in": _nullable(TEXT),
-                    "segments": _array(_ref("ShotSegment"), minItems=1),
                     "view_id": NULL_ID,
                 },
                 [
@@ -512,10 +513,9 @@ def snapshot_schemas() -> dict[str, dict]:
                     "action",
                     "audio_direction",
                     "transition_in",
-                    "segments",
                     "view_id",
                 ],
-                **{"x-ts-name": "Shot", "x-guard": "isShot", "x-refine": "refineShot"},
+                **{"x-ts-name": "Shot", "x-guard": "isShot"},
             ),
             "SceneAnimaticState": _obj(
                 {
@@ -570,6 +570,7 @@ def snapshot_schemas() -> dict[str, dict]:
                     "summary": TEXT,
                     "setting": TEXT,
                     "shots": _array(_ref("Shot")),
+                    "segments": _array(_ref("ShotSegment")),
                     "narration_cues": _array(_ref("NarrationCue")),
                     "animatic": _ref("SceneAnimaticState"),
                     "scene_final": _ref("SceneFinalState"),
@@ -583,6 +584,7 @@ def snapshot_schemas() -> dict[str, dict]:
                     "summary",
                     "setting",
                     "shots",
+                    "segments",
                     "narration_cues",
                 ],
                 **{"x-ts-name": "Scene", "x-guard": "isScene", "x-refine": "refineScene"},
@@ -610,8 +612,6 @@ def snapshot_schemas() -> dict[str, dict]:
             "NarrationCue": _obj(
                 {
                     "id": ID,
-                    "start_shot_id": NULL_ID,
-                    "end_shot_id": NULL_ID,
                     "zh": _nullable(_ref("NarrationTrack")),
                     "en": _nullable(_ref("NarrationTrack")),
                     "timing_language": _nullable(_ref("NarrationLanguage")),
@@ -619,8 +619,6 @@ def snapshot_schemas() -> dict[str, dict]:
                 },
                 [
                     "id",
-                    "start_shot_id",
-                    "end_shot_id",
                     "zh",
                     "en",
                     "timing_language",

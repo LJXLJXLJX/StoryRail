@@ -191,13 +191,13 @@ def test_update_and_clear_scope_guards():
     )
     update = __import__(
         "core.director_commands", fromlist=["NarrationCueUpdate"]
-    ).NarrationCueUpdate((ID_B,), ID_C, {}, {"zh": {"text": "新文本"}})
+    ).NarrationCueUpdate((ID_B,), ID_C, {"zh": {"text": "新文本"}})
     _expect(
         lambda **kw: _narration.update_narration_cue(document, **kw),
         "旁白 Cue 不存在或不唯一。",
         update=__import__(
             "core.director_commands", fromlist=["NarrationCueUpdate"]
-        ).NarrationCueUpdate((ID_B,), "3" * 32, {}, {"zh": {"text": "x"}}),
+        ).NarrationCueUpdate((ID_B,), "3" * 32, {"zh": {"text": "x"}}),
         command_id="cmd",
     )
     _expect(
@@ -205,7 +205,7 @@ def test_update_and_clear_scope_guards():
         "旁白 update 超出已授权 Scene scope。",
         update=__import__(
             "core.director_commands", fromlist=["NarrationCueUpdate"]
-        ).NarrationCueUpdate(("2" * 32,), ID_C, {}, {"zh": {"text": "x"}}),
+        ).NarrationCueUpdate(("2" * 32,), ID_C, {"zh": {"text": "x"}}),
         command_id="cmd",
     )
     clear = __import__(
@@ -387,7 +387,7 @@ def test_bilingual_selection_and_edits_are_per_language():
 
     edited = _narration.update_narration_cue(
         selected,
-        NarrationCueUpdate((ID_B,), ID_C, {}, {"en": {"text": "Different English."}}),
+        NarrationCueUpdate((ID_B,), ID_C, {"en": {"text": "Different English."}}),
         "cmd",
     ).document
     cue = edited.director_script.scenes[0].narration_cues[0]

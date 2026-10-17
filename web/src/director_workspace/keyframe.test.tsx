@@ -102,9 +102,9 @@ it("Ref2VA 其他图片在首尾帧下方分别从关键帧与资产库选择并
         snapshot={snapshot}
         segmentId={video.segment_id}
         sceneIndex={0}
-        shotIndex={0}
         segmentIndex={0}
-        segmentCount={1}
+        continuesPrevious={false}
+        continuesNext={false}
         busy={false}
         videoDependenciesEditable
         onSaveVideoInputs={onSaveVideoInputs}
@@ -229,9 +229,9 @@ it("独立首帧可以按帧号从上一 Segment 已采用视频抽取候选", a
       snapshot={snapshot}
       segmentId={binding.segment_id}
       sceneIndex={0}
-      shotIndex={0}
       segmentIndex={1}
-      segmentCount={2}
+      continuesPrevious
+      continuesNext={false}
       busy={false}
       onSaveKeyframe={vi.fn()}
       onGenerate={vi.fn()}
@@ -303,9 +303,9 @@ it("多套造型须为本帧显式选择，保存只提交选中的那一套", (
       snapshot={snapshot}
       segmentId={binding.segment_id}
       sceneIndex={0}
-      shotIndex={0}
       segmentIndex={0}
-      segmentCount={1}
+      continuesPrevious={false}
+      continuesNext={false}
       busy={false}
       onSaveKeyframe={onSaveKeyframe}
       onGenerate={vi.fn()}
@@ -386,7 +386,7 @@ function locationSnapshot(environment: {
   const plan = snapshot.keyframe_plan!;
   const binding = plan.segments.find((item) => item.end_enabled)!;
   const scene = snapshot.director_script!.scenes.find((item) =>
-    item.shots.some((shot) => shot.segments.some((segment) => segment.id === binding.segment_id)),
+    item.segments.some((segment) => segment.id === binding.segment_id),
   )!;
   const [livingId, hallId] = ["3".repeat(32), "4".repeat(32)];
   snapshot.location_library.locations = [
@@ -423,9 +423,9 @@ function openEndDialog(
       snapshot={snapshot}
       segmentId={segmentId}
       sceneIndex={1}
-      shotIndex={1}
-      segmentIndex={1}
-      segmentCount={2}
+      segmentIndex={2}
+      continuesPrevious
+      continuesNext={false}
       busy={false}
       onSaveKeyframe={onSaveKeyframe}
       onGenerate={vi.fn()}

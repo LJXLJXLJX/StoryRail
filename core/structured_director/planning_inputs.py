@@ -20,7 +20,7 @@ from .director_steps import (
     _validate_required_keyframe_boundary_scope,
 )
 from .models import ReferenceGenerationKind, ReferenceGenerationPhase
-from .v32_projection import v32_cue_anchors, v32_shot_segments
+from .v32_projection import v32_shot_segments
 
 
 def keyframe_inputs(document, target_ids=(), user_message=""):
@@ -226,12 +226,10 @@ def reference_characters(document):
     )
 
 
-def cue_shot_range(scene, cue):
-    start_shot_id, end_shot_id = v32_cue_anchors(scene)
-    if start_shot_id is None and end_shot_id is None:
-        return "尚未规划 Shot；先选择真实旁白音频。"
-    positions = {shot.id: index + 1 for index, shot in enumerate(scene.shots)}
-    return f"Shot {positions[start_shot_id]}–{positions[end_shot_id]}"
+def cue_coverage(scene):
+    if not scene.segments:
+        return "尚未规划 Shot / Segment；先选择真实旁白音频。"
+    return f"覆盖本 Scene 全部 {len(scene.segments)} 个 Segment"
 
 
 def narration_inputs(document):
@@ -241,7 +239,7 @@ def narration_inputs(document):
         NarrationCueContext(
             id=cue.id,
             scene_title=scene.title,
-            shot_range=cue_shot_range(scene, cue),
+            coverage=cue_coverage(scene),
             tracks=tuple(
                 NarrationTrackContext(
                     language=language.value,

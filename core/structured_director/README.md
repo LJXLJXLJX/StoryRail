@@ -65,8 +65,8 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 - `production_context.py`：从快照构造只读生产上下文。
 - `script_index.py`：脚本访问层：Scene 的 Segment 序列、Segment 覆盖的 Shot、派生可见角色与首尾视图；
   只读遍历经它读取，不直接访问 Scene 的存储形状。
-- `v32_projection.py`：临时投影：对外接口仍为 Shot 下挂 Segment、旁白 Cue 带 Shot 锚点时，出站按每个 Segment 的
-  首个覆盖 Shot 分组、Cue 锚点取首末 Shot；入站校验锚点覆盖全部 Shot、Shot 内首段无边界后续段有边界。
+- `v32_projection.py`：临时投影：脚本写入面仍为 Shot 下挂 Segment、Cue 带 Shot 锚点时，入站校验锚点覆盖全部 Shot、
+  Shot 内首段无边界后续段有边界；Keyframe Planner 仍按每个 Segment 的首个覆盖 Shot 分组。
 - `provider_ports.py`：各媒体能力的 Core 侧窄 Protocol。
 - `asset_metadata.py`：媒体字节校验、时长读取与可读文件名（封装 `core/media_assets`）。
 

@@ -27,7 +27,6 @@ from ..models import (
     asset_usage_reasons,
 )
 from ..narration_timing import narration_timing_language, narration_timing_seconds
-from ..v32_projection import v32_cue_anchors, v32_shot_segments
 from ..video_inputs import start_frame_extraction_source, video_inputs_unchanged
 from .location_view import location_library_projection
 from .video_recipes import video_recipe_state
@@ -347,38 +346,39 @@ def _serialize_scene(
                 "audio_direction": shot.audio_direction,
                 "transition_in": shot.transition_in,
                 "view_id": shot.view_id,
-                "segments": [
-                    {
-                        "id": segment.id,
-                        "duration_estimate_seconds": segment.duration_estimate_seconds,
-                        "action": segment.action,
-                        "dialogue_lines": [
-                            {
-                                "character_id": line.character_id,
-                                "speaker_label": line.speaker_label,
-                                "text": line.text,
-                                "delivery": line.delivery,
-                            }
-                            for line in segment.dialogue_lines
-                        ],
-                        "boundary_from_previous": (
-                            None
-                            if segment.boundary_from_previous is None
-                            else {
-                                "reason": segment.boundary_from_previous.reason.value,
-                                "continuity_instruction": (
-                                    segment.boundary_from_previous.continuity_instruction
-                                ),
-                            }
-                        ),
-                    }
-                    for segment in v32_shot_segments(scene, shot.id)
-                ],
             }
             for shot in scene.shots
         ],
+        "segments": [
+            {
+                "id": segment.id,
+                "shot_ids": list(segment.shot_ids),
+                "duration_estimate_seconds": segment.duration_estimate_seconds,
+                "action": segment.action,
+                "dialogue_lines": [
+                    {
+                        "character_id": line.character_id,
+                        "speaker_label": line.speaker_label,
+                        "text": line.text,
+                        "delivery": line.delivery,
+                    }
+                    for line in segment.dialogue_lines
+                ],
+                "boundary_from_previous": (
+                    None
+                    if segment.boundary_from_previous is None
+                    else {
+                        "reason": segment.boundary_from_previous.reason.value,
+                        "continuity_instruction": (
+                            segment.boundary_from_previous.continuity_instruction
+                        ),
+                    }
+                ),
+            }
+            for segment in scene.segments
+        ],
         "narration_cues": [
-            _serialize_narration_cue(scene, cue, asset_by_id) for cue in scene.narration_cues
+            _serialize_narration_cue(cue, asset_by_id) for cue in scene.narration_cues
         ],
     }
     if animatic is not None:
@@ -388,10 +388,7 @@ def _serialize_scene(
     return serialized
 
 
-def _serialize_narration_cue(
-    scene: Scene, cue: NarrationCue, asset_by_id: dict[str, Asset]
-) -> dict[str, Any]:
-    start_shot_id, end_shot_id = v32_cue_anchors(scene)
+def _serialize_narration_cue(cue: NarrationCue, asset_by_id: dict[str, Asset]) -> dict[str, Any]:
     """旁白 Cue：所选语言各自的正文、参数与已选音频时长，以及时间基准语言。"""
     tracks: dict[str, Any] = {"zh": None, "en": None}
     for language, track in cue.tracks:
@@ -414,8 +411,6 @@ def _serialize_narration_cue(
         timing_language, timing_seconds = None, None
     return {
         "id": cue.id,
-        "start_shot_id": start_shot_id,
-        "end_shot_id": end_shot_id,
         **tracks,
         "timing_language": timing_language,
         "timing_seconds": timing_seconds,

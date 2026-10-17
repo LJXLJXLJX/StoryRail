@@ -69,7 +69,6 @@ from core.structured_director.service import (
 from core.structured_director.store.domains.keyframe import (
     _translate_keyframe_plan_to_operations,
 )
-from core.structured_director.v32_projection import v32_cue_anchors
 
 
 def _wav_bytes() -> bytes:
@@ -1911,7 +1910,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             (cue,) = inserted.narration_cues
             self.assertEqual(cue.zh.text, "很多年以后，他仍记得那晚的海。")
             self.assertEqual(cue.en.text, "Years later, he still remembered the sea.")
-            self.assertEqual(v32_cue_anchors(inserted), (None, None))
+            self.assertEqual(inserted.segments, ())
             self.assertEqual(cue.selected_audio_asset_ids, ())
             self.assertEqual(execution.document.director_script.scenes[1].id, scene.id)
 

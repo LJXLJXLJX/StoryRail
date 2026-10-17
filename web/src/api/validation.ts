@@ -14,7 +14,6 @@ import {
   refineFinalAssembly,
   refineGeneration,
   refineScene,
-  refineShot,
   refineWorkflow,
   refineWorkspaceLayers,
   serializeEditableScene,
@@ -1311,6 +1310,15 @@ const schemas: Record<string, JsonSchema> = {
         "type": "string",
         "pattern": "^[0-9a-f]{32}$"
       },
+      "shot_ids": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      },
       "duration_estimate_seconds": {
         "type": "number",
         "minimum": 0.2,
@@ -1340,6 +1348,7 @@ const schemas: Record<string, JsonSchema> = {
     },
     "required": [
       "id",
+      "shot_ids",
       "duration_estimate_seconds",
       "action",
       "dialogue_lines",
@@ -1392,13 +1401,6 @@ const schemas: Record<string, JsonSchema> = {
           }
         ]
       },
-      "segments": {
-        "type": "array",
-        "items": {
-          "$ref": "ShotSegment"
-        },
-        "minItems": 1
-      },
       "view_id": {
         "anyOf": [
           {
@@ -1419,7 +1421,6 @@ const schemas: Record<string, JsonSchema> = {
       "action",
       "audio_direction",
       "transition_in",
-      "segments",
       "view_id"
     ],
     "additionalProperties": false
@@ -1614,6 +1615,12 @@ const schemas: Record<string, JsonSchema> = {
           "$ref": "Shot"
         }
       },
+      "segments": {
+        "type": "array",
+        "items": {
+          "$ref": "ShotSegment"
+        }
+      },
       "narration_cues": {
         "type": "array",
         "items": {
@@ -1636,6 +1643,7 @@ const schemas: Record<string, JsonSchema> = {
       "summary",
       "setting",
       "shots",
+      "segments",
       "narration_cues"
     ],
     "additionalProperties": false
@@ -1694,28 +1702,6 @@ const schemas: Record<string, JsonSchema> = {
         "type": "string",
         "pattern": "^[0-9a-f]{32}$"
       },
-      "start_shot_id": {
-        "anyOf": [
-          {
-            "type": "string",
-            "pattern": "^[0-9a-f]{32}$"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "end_shot_id": {
-        "anyOf": [
-          {
-            "type": "string",
-            "pattern": "^[0-9a-f]{32}$"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
       "zh": {
         "anyOf": [
           {
@@ -1759,8 +1745,6 @@ const schemas: Record<string, JsonSchema> = {
     },
     "required": [
       "id",
-      "start_shot_id",
-      "end_shot_id",
       "zh",
       "en",
       "timing_language",
@@ -6545,7 +6529,7 @@ export function isShotSegment(value: unknown): value is ShotSegment {
   return checkSchema(schemas.ShotSegment, value, schemas);
 }
 export function isShot(value: unknown): value is Shot {
-  return checkSchema(schemas.Shot, value, schemas) && refineShot(value);
+  return checkSchema(schemas.Shot, value, schemas);
 }
 export function isSceneAnimaticState(value: unknown): value is SceneAnimaticState {
   return checkSchema(schemas.SceneAnimaticState, value, schemas);

@@ -41,25 +41,17 @@ export function refineWorkflow(value: unknown): boolean {
   return value.activity_summary.has_active_generations === count > 0;
 }
 
-/** 来源：Shot 首段没有前置边界，后续段必须说明边界。 */
-export function refineShot(value: unknown): boolean {
-  if (!isRecord(value) || !Array.isArray(value.segments) || value.segments.length === 0) {
-    return false;
-  }
-  const [first, ...rest] = value.segments;
-  if (!isRecord(first) || first.boundary_from_previous !== null) return false;
-  return rest.every(
-    (segment) => isRecord(segment) && segment.boundary_from_previous !== null,
-  );
-}
-
-/** 来源：narration Scene 可以暂无 Shot；drama Scene 至少一段。 */
+/** 来源：narration Scene 可以暂无 Shot；drama Scene 至少一个。覆盖关系只由 Core 校验。 */
 export function refineScene(value: unknown): boolean {
-  if (!isRecord(value) || !Array.isArray(value.shots) || !Array.isArray(value.narration_cues)) {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.shots) ||
+    !Array.isArray(value.segments) ||
+    !Array.isArray(value.narration_cues)
+  ) {
     return false;
   }
-  if (value.shots.length === 0 && value.driver !== "narration") return false;
-  return value.shots.every(refineShot);
+  return value.shots.length > 0 || value.driver === "narration";
 }
 
 /**
@@ -187,25 +179,32 @@ function editableTrack(track: Scene["narration_cues"][number]["zh"]) {
   };
 }
 
+// 整卡手工保存的请求仍是 Shot 下挂 Segment、Cue 带 Shot 锚点的形状（脚本写入面翻转后改为直接回传）：
+// 每个 Segment 挂到它覆盖的第一个 Shot 下，Cue 覆盖整个 Scene。
 export function serializeEditableScene(scene: Scene) {
+  const { segments, ...fields } = scene;
+  const anchor = (shot: Scene["shots"][number] | undefined) =>
+    shot === undefined || shot.id.startsWith("new:") ? null : shot.id;
   return {
-    ...scene,
+    ...fields,
     id: scene.id.startsWith("new:") ? null : scene.id,
     // 只回传编辑器字段；时长与时间基准是 Core 派生的只读投影。
     narration_cues: scene.narration_cues.map((cue) => ({
       id: cue.id,
-      start_shot_id: cue.start_shot_id,
-      end_shot_id: cue.end_shot_id,
+      start_shot_id: anchor(scene.shots[0]),
+      end_shot_id: anchor(scene.shots.at(-1)),
       zh: editableTrack(cue.zh),
       en: editableTrack(cue.en),
     })),
     shots: scene.shots.map((shot) => ({
       ...shot,
       id: shot.id.startsWith("new:") ? null : shot.id,
-      segments: shot.segments.map((segment) => ({
-        ...segment,
-        id: segment.id.startsWith("new:") ? null : segment.id,
-      })),
+      segments: segments
+        .filter((segment) => segment.shot_ids[0] === shot.id)
+        .map(({ shot_ids: _shotIds, ...segment }) => ({
+          ...segment,
+          id: segment.id.startsWith("new:") ? null : segment.id,
+        })),
     })),
   };
 }

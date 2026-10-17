@@ -190,8 +190,8 @@ describe("StoryRail App", () => {
           audio_direction: "环境声",
           transition_in: null,
           view_id: null,
-          segments: [
-            {
+        }],
+      segments: [{ shot_ids: ["2".repeat(32)],
               id: segmentId,
               duration_estimate_seconds: 4,
               action: "人物回答",
@@ -204,10 +204,7 @@ describe("StoryRail App", () => {
                 },
               ],
               boundary_from_previous: null,
-            },
-          ],
-        },
-      ],
+            }],
     };
     const current = {
       ...reviewingSnapshot,
@@ -250,7 +247,7 @@ describe("StoryRail App", () => {
     const updated = structuredClone(current);
     updated.revision += 1;
     updated.director_script.revision += 1;
-    updated.director_script.scenes[0].shots[0].segments[0].dialogue_lines[0].text =
+    updated.director_script.scenes[0].segments[0].dialogue_lines[0].text =
       "新对白";
     updated.video_plan.source_script_revision += 1;
     updated.video_plan.segments[0].prompt_text = "";
@@ -263,8 +260,7 @@ describe("StoryRail App", () => {
     fireEvent.click(await screen.findByRole("button", { name: "打开" }));
     fireEvent.click(await screen.findByRole("button", { name: /场景 1 ·/ }));
     const navigation=screen.getByRole("navigation",{name:"故事层级"});
-    fireEvent.click(within(navigation).getByRole("button",{name:/镜头 1/}));
-    fireEvent.click(within(within(navigation).getByRole("list",{name:"场景 1－镜头 1 的生成片段"})).getByRole("button",{name:/片段 1/}));
+    fireEvent.click(within(within(navigation).getByRole("list",{name:"场景 1 的生成片段"})).getByRole("button",{name:/片段 1/}));
     const h3Prompt = await screen.findByLabelText("当前 视频提示词");
     expect(h3Prompt).toHaveAttribute("readonly");
     fireEvent.click(screen.getByRole("button", { name: "编辑这一段" }));
@@ -275,7 +271,7 @@ describe("StoryRail App", () => {
     const notice = await screen.findByRole("complementary", { name: "内容修改提醒" });
     expect(notice).toHaveTextContent("可能造成相关上下层内容不一致");
     expect(notice).toHaveTextContent("请同步手动修改或使用“优化视频提示词”");
-    expect(notice).toHaveTextContent("scene01-shot01-seg01");
+    expect(notice).toHaveTextContent("scene01-seg01");
     expect(fetchMock).toHaveBeenCalledTimes(3);
     fireEvent.click(screen.getByRole("button", { name: "关闭提醒" }));
     expect(screen.queryByText(/请同步手动修改/)).not.toBeInTheDocument();
@@ -508,17 +504,14 @@ describe("StoryRail App", () => {
                 audio_direction: "环境声。",
                 transition_in: null,
                 view_id: null,
-                segments: [
-                  {
+              }],
+            segments: [{ shot_ids: [shotId],
                     id: segmentId,
                     duration_estimate_seconds: 5,
                     action: "测试动作。",
                     dialogue_lines: [],
                     boundary_from_previous: null,
-                  },
-                ],
-              },
-            ],
+                  }],
           },
         ],
       },
@@ -649,17 +642,14 @@ describe("StoryRail App", () => {
           audio_direction: "环境声",
           transition_in: null,
           view_id: null,
-          segments: [
-            {
+        }],
+      segments: [{ shot_ids: ["2".repeat(32)],
               id: "3".repeat(32),
               duration_estimate_seconds: 4,
               action: "人物停下",
               dialogue_lines: [],
               boundary_from_previous: null,
-            },
-          ],
-        },
-      ],
+            }],
     };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       response({
@@ -710,17 +700,14 @@ describe("StoryRail App", () => {
           audio_direction: "环境声",
           transition_in: null,
           view_id: null,
-          segments: [
-            {
+        }],
+      segments: [{ shot_ids: ["2".repeat(32)],
               id: "3".repeat(32),
               duration_estimate_seconds: 4,
               action: "人物停下",
               dialogue_lines: [],
               boundary_from_previous: null,
-            },
-          ],
-        },
-      ],
+            }],
     };
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       response({
@@ -1150,17 +1137,14 @@ function productionSnapshot(overrides: Record<string, unknown> = {}) {
         audio_direction: "环境声",
         transition_in: null,
         view_id: null,
-        segments: [
-          {
+      }],
+    segments: [{ shot_ids: [shotId],
             id: segmentId,
             duration_estimate_seconds: 4,
             action: "人物停下",
             dialogue_lines: [],
             boundary_from_previous: null,
-          },
-        ],
-      },
-    ],
+          }],
   };
   return {
     ...snapshot("reviewing_videos", ["edit_script"]),

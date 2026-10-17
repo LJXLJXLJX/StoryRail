@@ -221,6 +221,7 @@ export interface SegmentBoundary {
 
 export interface ShotSegment {
   id: string;
+  shot_ids: string[];
   duration_estimate_seconds: number;
   action: string;
   dialogue_lines: DialogueLine[];
@@ -235,7 +236,6 @@ export interface Shot {
   action: string;
   audio_direction: string;
   transition_in: string | null;
-  segments: ShotSegment[];
   view_id: string | null;
 }
 
@@ -271,6 +271,7 @@ export interface Scene {
   summary: string;
   setting: string;
   shots: Shot[];
+  segments: ShotSegment[];
   narration_cues: NarrationCue[];
   animatic?: SceneAnimaticState;
   scene_final?: SceneFinalState;
@@ -286,8 +287,6 @@ export interface NarrationTrack {
 
 export interface NarrationCue {
   id: string;
-  start_shot_id: string | null;
-  end_shot_id: string | null;
   zh: NarrationTrack | null;
   en: NarrationTrack | null;
   timing_language: NarrationLanguage | null;
