@@ -44,7 +44,7 @@ it("接纳 Core 扩展错误诊断字段并保留用户可读消息", () => {
     expect(parseError({
         error: {
             code: "invalid_request",
-            message: "start_shot_id 不合法。",
+            message: "cue_id 不合法。",
             recoverable: false,
             origin: "core_parser",
             state_changed: false,
@@ -54,7 +54,7 @@ it("接纳 Core 扩展错误诊断字段并保留用户可读消息", () => {
     })).toEqual({
         error: {
             code: "invalid_request",
-            message: "start_shot_id 不合法。",
+            message: "cue_id 不合法。",
             recoverable: false,
             origin: "core_parser",
             state_changed: false,

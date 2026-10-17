@@ -112,7 +112,7 @@ flowchart TB
     l4["L4 reads/ · prompt_worksets · keyframe_requests · location_requests · image_inputs<br/>只读投影与输入编译"]
     l3["L3 store/<br/>唯一持久化入口：CAS · 完整校验 · fsync · 原子替换"]
     l2["L2 mutations/ · *_mutations.py · assembly_timeline · narration_timing<br/>纯函数领域变换、失效传播、时间线"]
-    l1["L1 codec/ · schema · video_contracts · video_inputs<br/>严格 JSON 与共享值对象"]
+    l1["L1 codec/ · schema · video_contracts · video_inputs · script_index<br/>严格 JSON、共享值对象与脚本访问层"]
     l0["L0 models/<br/>值对象与不变量"]
     l7 --> l6 --> l5 --> l4 --> l3 --> l2 --> l1 --> l0
 ```
@@ -216,7 +216,8 @@ Provider 插件（见 [媒体 Provider 与部署](providers-and-deployment.md)�
 **Web**：`api/types.ts`（类型）、`api/validation.ts`（运行时严格校验）、`api.ts`（请求）分离；
 `director_workspace/` 按业务编辑边界拆组件；`playground/` 独立。上传直接发送媒体字节，不把媒体编码进 JSON。
 有活动任务时页面轮询 `POST .../generations/refresh` 推进 Provider 观察；局部保存携带编辑起点 revision，
-冲突时保留草稿。
+冲突时保留草稿。导演台的导航是 Scene → Segment：Segment 标签显示覆盖的 Shot 区间与是否承接上一段；Shot 在 Scene 页
+的“镜头设计”列表中编辑，并显示被哪些 Segment 覆盖。
 
 **MCP adapter**：固定工具集，每个工具有严格嵌套 schema 与固定翻译；没有任意 command、shell、路径或 URL 工具。
 详见 [外部 Agent 接入](external-agents.md)。

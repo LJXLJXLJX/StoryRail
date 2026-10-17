@@ -6,7 +6,7 @@
 - `director_commands/`：稳定 Core command 契约、严格参数、影响预览与短执行回执；
 - `audio_effects/`：不持有项目状态的确定性 WAV 截取、后处理 API、preset、DSP 与事件时间线；
 - `media_assets/`：与项目和 Playground 都无关的媒体字节校验、时长读取、可读文件名与 MP4 帧数读取；
-- `playground/`：与项目平行、全局唯一的媒体实验工作区（`playground.json` schema v1）；
+- `playground/`：与项目平行、全局唯一的媒体实验工作区（`playground.json` schema v2）；
 - `project_workspaces/`：`.stories/` 项目容器、受控 ID 和可恢复删除；
 - `structured_director/`：`project.json`、引用库、结构化脚本、参考媒体和原子写入边界；
 - `model_providers/`：Core 接入具体媒体模型 API 的插件；

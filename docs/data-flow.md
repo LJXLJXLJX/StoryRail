@@ -17,7 +17,7 @@ flowchart LR
     script -.->|Scene 地点/状态 · Shot 视图| loclib[地点库]
     loclib --> master[(主图)] --> crop[PANO_VIEW 裁切<br/>仅室内] --> viewimg[(视图图片)]
     master -->|室外转向| viewimg
-    baseline --> kfplan[Keyframe 计划<br/>建帧时继承 Shot 视图]
+    baseline --> kfplan[Keyframe 计划<br/>按 Segment 建帧<br/>默认取首/末覆盖 Shot 的视图]
     viewimg -->|edit 底图 / reference| kfgen[生图 Provider]
     refs -->|可见角色本帧所选造型的造型图| kfgen
     kfplan --> kfgen --> kfimg[(Keyframe 图)]
@@ -50,7 +50,7 @@ flowchart LR
     plus & zero --> target[Cue 覆盖区间的目标画面时长]
 ```
 
-- 0.4 秒缓冲只加在前一个 Scene 最后一个 Shot 的结尾，不按 Segment 重复累加；它让下一段旁白开始前形成确定性的呼吸间隔。
+- 0.4 秒缓冲只加在前一个 Scene 最后一个 Segment 的结尾，不按 Segment 重复累加；它让下一段旁白开始前形成确定性的呼吸间隔。
 - 规划 Shot/Segment 时，Core 把真实时长、缓冲值与目标画面时长一起提供给 Agent。
 - 旁白层解锁后的每次脚本/旁白写入，Core 都按同一规则把 Cue 覆盖范围内的 Segment 时长等比校准到目标值（余数落在最后一个
   Segment），并在同一次写入里写入生产基线；覆盖区间已对齐（误差 ≤ 1e-6 秒）时保持原值，重算不改写时长。
@@ -60,9 +60,9 @@ flowchart LR
 
 装配时 Core 用**已选视频的真实时长**（不是脚本预估）重新计算时间轴：
 
-- **Narration Scene**：从 Cue 起始 Shot 的第一个 clip 到结束 Shot 的最后一个 clip，考虑接缝重叠后，画面区间必须
-  精确等于目标画面时长。Core 迭代调整该区间**最后一个 clip** 的时长（裁切或补足，最多 24 轮收敛）；需要的调整使该
-  clip 短于 0.05 秒时拒绝，提示缩短前序视频或调整 Cue 的 Shot 范围。
+- **Narration Scene**：Cue 覆盖整个 Scene 的全部 Segment。从第一个 Segment 的起始 clip 到最后一个 Segment 的结尾 clip，
+  考虑接缝重叠后，画面区间必须精确等于目标画面时长。Core 迭代调整该区间**最后一个 clip** 的时长（裁切或补足，最多 24 轮
+  收敛）；需要的调整使该 clip 短于 0.05 秒时拒绝，提示缩短前序视频或合并过短的 Segment。
 - **Drama Scene** 没有旁白，不参与对轨，按已选视频真实时长拼接。
 - 不用延长整部成片来掩盖局部时长不足。
 
@@ -79,9 +79,9 @@ flowchart TB
     env -- reference（默认） --> e2[视图已选图：空间参考<br/>只参考陈设方位、布局、材质与主光，不照搬机位与构图]
     env -- none --> e3[不提交地点视图]
     e1 & e2 & e3 --> chars{每个可见角色}
-    chars -- 有本帧选择 --> c1[角色参考 = 选中的角色卡图<br/>用途带该图 note；空选择不提交]
-    chars -- 未选择且卡片仅 1 张图 --> c2[角色参考 = 该图]
-    chars -- 未选择且卡片多张图 --> creject[拒绝：要求为本帧选图]
+    chars -- 有本帧选择 --> c1[角色参考 = 所选造型的造型图<br/>用途带该造型说明；look_id 为 null 表示不提交]
+    chars -- 未选择且角色仅一套造型 --> c2[角色参考 = 该造型的造型图]
+    chars -- 未选择且角色多套造型 --> creject[拒绝：要求为本帧选择造型]
     c1 & c2 --> pred{有前置帧且本 Segment 首帧启用?}
     pred -- 前置帧无可用图 --> wait[返回“前置未就绪”，本轮不提交]
     pred -- 有图 --> p1[前置帧图；没有 edit 视图时它是编辑底图]
@@ -174,6 +174,9 @@ flowchart LR
   工作集另给出已保存的 `recipe_inputs`（`video.update_recipe_inputs` 的整体替换形状）与 `bindable_assets`：当前 recipe 显式槽位
   按媒体类型与时长可接受的项目 Asset（ID、名称、媒体类型、时长、可进入的槽位）。列表只含导入素材、引用库与地点库的已选资源，
   以及本 Scene 已选的关键帧、旁白与视频；未被选择的生成候选不列出，Core 校验仍接受任意本项目 Asset。FL2VA 没有显式槽位时为空。
+- H3 工作集的 `context.shots` 按覆盖顺序给出 Segment 的每个 Shot（构图、运镜、动作、声音、可见角色名与视图建议名）；
+  `continues_from_previous_segment` / `continues_into_next_segment` 标出与相邻 Segment 共享边界 Shot 的延续关系，
+  段内切镜写成软约束。
 - 视频卡通过只读 `inputs-preview` 请求预览未保存输入。Core 返回切换选项与原因，Web 不推导厂商模式规则或标签。
 - Generation 保存有序去重输入 Asset ID、recipe 机制参数和 `provider_snapshot`。H3 完整引用最多 17 个 Asset：2 张边界图、4 张附加图、8 条音频、3 条视频。
 - H3 插件自行将分辨率设置与画幅换算成 32 像素网格画布；Core 不解释它的采样参数。
@@ -194,7 +197,7 @@ flowchart TB
     trans -- 是 --> blend[transition = seam_blend（0.1 秒接缝融合）]
     trans -- 否 --> cut[硬切]
     blend & cut --> clips[SceneAssemblyPlan.clips]
-    cue[该语言已选旁白 + 时间基准（所选语言最长音频）] --> place[旁白从 Cue 起始 Shot 的首个 Segment 开始]
+    cue[该语言已选旁白 + 时间基准（所选语言最长音频）] --> place[Cue 覆盖 Scene 全部 Segment<br/>旁白从首个 Segment 开始]
     clips & place --> align[按真实时长精确对轨（见上）]
     align --> render[FFmpeg 渲染该语言 Scene 成片]
 ```

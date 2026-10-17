@@ -43,10 +43,10 @@ flowchart LR
 | --- | --- |
 | Core | 进程内业务核心，所有业务事实的唯一 authority |
 | Project / `project.json` | 一个视频项目及其唯一权威结构化状态（schema v33） |
-| Scene / Shot / Segment | 叙事块 / 连续镜头 / 单次视频生成切片 |
+| Scene / Shot / Segment | 叙事块 / 创作层连续镜头 / 生产层单次视频生成切片；一个 Segment 可覆盖多个 Shot，一个 Shot 可跨多个相邻 Segment |
 | Cue | Scene 旁白，按项目所选中文或英文语言建立轨道 |
 | Location / State / View | 跨 Scene 共享的固定空间 / 同一空间的可见状态变体 / 供 Keyframe 参考的机位视图（Shot 绑定只是建议） |
-| Keyframe | Segment 首帧或尾帧的静态时间锚点；默认采用所属 Shot 的视图建议，也可自由改选或不用 |
+| Keyframe | Segment 首帧或尾帧的静态时间锚点；建帧默认取首个/末个覆盖 Shot 的视图作空间参考，也可自由改选或不用 |
 | Asset | 内容不可变的媒体字节（SHA-256 校验） |
 | Generation | 一次媒体生成或处理尝试，记录输入、参数、状态与产物 |
 | Candidate / Selection | 成功 Generation 的产物 / 用户显式采用其中一个 |

@@ -5,11 +5,11 @@ L0 领域模型：不可变 dataclass，构造即校验不变量。`__init__.py`
 
 ## 域文件
 
-- `reference.py`：角色卡（含非出镜声音）、旁白身份、参考图、引用库。
+- `reference.py`：角色卡（含非出镜声音与造型）、旁白身份与引用库。
 - `script.py`：结构化脚本（Scene/Shot/Segment/对白/边界）、`PendingScriptEdit`、`CapabilityGap` 一族、生产基线场景校验。
 - `narration.py`：项目所选语言旁白 Cue 与 `NarrationTrack`、`PendingNarrationEdit`。
 - `location.py`：Location（地点）、固定陈设、状态变体、机位视图与地点库（视图依赖无环校验）。
-- `keyframe.py`：Keyframe、Segment 绑定、`KeyframePlan`（前置图无环校验）；`blank_keyframe` 按所属 Shot 视图写入建帧时的环境默认值。
+- `keyframe.py`：Keyframe、Segment 绑定、`KeyframePlan`（前置图无环校验）；`blank_keyframe` 按 Segment 首/末覆盖 Shot 的视图写入建帧时的环境默认值。
 - `video.py`：Segment 视频计划（模式、附加图片/参考音频/参考视频、`VideoPlan`）。
 - `final.py`：Scene 成片（临时计划）、最终成片计划与 `FinalApproval`（按项目语言）。
 - `generation.py`：`ReferenceGeneration` 与唯一状态迁移函数 `transition_generation`。

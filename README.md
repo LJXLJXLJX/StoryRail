@@ -71,7 +71,8 @@ AI 视频做叙事，最难的是让同一个人、同一个房间在几十个�
 → 生成 Scene 成片与全片，由你 Approval
 ```
 
-脚本生成后，旁白、地点库、关键帧、视频和成片都在同一个导演台里，按 Scene → Shot → Segment 层级累加显示。
+脚本生成后，旁白、地点库、关键帧、视频和成片都在同一个导演台里累加显示：左侧导航是 Scene → Segment，
+Scene 页另有镜头设计列表。
 还没有方案时，导入页提供「创作搭档提示词」，复制给你常用的 AI，从一个想法聊到完整方案；已有分镜表的，
 用「方案整理提示词」整理成可导入的格式。
 
@@ -105,7 +106,7 @@ Docker Desktop 或 OrbStack。之后可以直接问 Agent“现在该做什么�
   更早版本不迁移，需新建项目。删除项目只移入 `.stories/.trash/`。
 - Core 是 ID、revision、scope、授权、失效、血缘、幂等和状态迁移的唯一 authority；Web 只消费 Core 返回的
   状态与 `allowed_actions`，不复制状态机。
-- Agent 通过 HTTP/MCP（23 个固定工具）读取有界投影和专业 Skill，只能提交类型化 proposal 或精确授权命令。
+- Agent 通过 HTTP/MCP（24 个固定工具）读取有界投影和专业 Skill，只能提交类型化 proposal 或精确授权命令。
   StoryRail 不内置 Agent、不持有厂商会话，也没有隐藏 fallback。
 - 模型 Provider 只由 Core 调用，只接收完成媒体任务所需的受控输入。
 

@@ -23,8 +23,7 @@ human 权限；明确撤回旁白音频可由 Agent 经窄命令解除引用。
 
 项目只需 `project.json` 与不可变 `assets/`。领域 run/cursor/回执在业务 authority 内；外部会话、工作区与
 历史 `.runtime/` 不参与恢复事实读取。没有数据库、双写或旧 schema 迁移；当前 schema 为 v33
-（Scene 下并列 Shot 与 Segment、Segment 以 `shot_ids` 记录覆盖、旁白 Cue 不带 Shot 锚点、造型为角色图唯一单位与造型设定图、地点库与 Scene/Shot/Keyframe 视图绑定、创建时选择旁白语言、每种启用语言一套旁白音色、Keyframe 按帧选择角色造型、
-Generation 记录提交时的 Provider 快照），更早版本一律拒绝读取，需新建项目。
+（Scene 下并列 Shot 与 Segment、Segment 以 `shot_ids` 记录覆盖的 Shot、一个 Segment 可覆盖多个相邻 Shot 且一个 Shot 可跨多个相邻 Segment、旁白 Cue 不带 Shot 锚点、造型为角色图唯一单位与造型设定图、地点库与 Scene/Shot/Keyframe 视图绑定（Shot 视图为软参考）、`workspace_layers` 持久化内容层、创建时选择旁白语言、每种启用语言一套旁白音色、Keyframe 按 Segment 建首尾槽位并按帧选择角色造型、视频保存 `active_recipe` 与按 recipe 隔离的输入簿、Generation 记录提交时的 Provider 快照），更早版本一律拒绝读取，需新建项目。
 
 Core 不包含厂商 Agent adapter、会话、Director loop 或 Agent SDK 依赖；执行由外部成熟 Agent 承担。
 Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent runtime。产品说明书见 [docs/](docs/README.md)。
@@ -147,7 +146,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
   - `whisper_asr/`：whisper.cpp 参考音频转写。
   - `qwen_image/`：Qwen Image 2.1（NoctQ V4）备选生图/改图，`skills/qwen-image-prompt-writing/` 随插件发布（含官方提示词模板）。
   - `minimax_h3/`：MiniMax H3 插件；`manifest.py`、`plugin.py`、`requests.py`、`contracts.py`、`render.py`，以及 `fl2va/`、`ref2va/` HTTP 实现。
-    `prompt_contract.py`、`prompt_codec.py`、`prompt_payload.py`、`prompt_context.py` 负责插件专业格式，`skills/h3-prompt-writing/` 随插件发布。
+    `prompt_contract.py`、`prompt_codec.py`、`prompt_payload.py`、`prompt_context.py` 负责插件专业格式（`context.shots` 按 Segment 覆盖顺序写入段内切镜软约束），`skills/h3-prompt-writing/` 随插件发布。
   - `seedvr2_7b_sharp_fp8/`：SeedVR2 视频超分。
   - `demucs_audio/`：Demucs 人声/背景分离。
   - `stable_audio_3/`：Stable Audio 3 Medium 文生音频，目前只供 Playground。
@@ -367,7 +366,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `agent_launcher/clipboard_input.py`：容器内临时图片校验与剪贴板发布。
 - `storyrail_mcp/README.md`：MCP adapter 说明。
 - `storyrail_mcp/__main__.py`：stdio adapter 启动。
-- `storyrail_mcp/app.py`：公开 23 个受控工具（外加旧别名），另有 Playground scope 的 5 个工具。
+- `storyrail_mcp/app.py`：公开 24 个受控工具（外加旧别名），另有 Playground scope 的 5 个工具。
 - `storyrail_mcp/playground_tools.py`：Playground scope 的 5 个工具输入模型与命令翻译。
 - `storyrail_mcp/bridge.py`：固定地址的无状态 HTTP 翻译。
 - `storyrail_mcp/production_tools.py`：生产工具输入 schema 与固定命令翻译。

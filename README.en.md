@@ -89,8 +89,8 @@ Write a director's plan (the import page offers prompts to draft one with any AI
 → Render scene cuts and the full film; you approve
 ```
 
-After the script exists, narration, locations, keyframes, videos and final cuts all appear in one director's desk,
-nested under the Scene → Shot → Segment hierarchy. A separate Playground, isolated from projects, uses the same
+After the script exists, narration, locations, keyframes, videos and final cuts all appear in one director's desk:
+the left navigation is Scene → Segment, and each Scene page also lists its shot design. A separate Playground, isolated from projects, uses the same
 model plugins to test image generation and editing, TTS, video, upscaling and audio processing on their own.
 
 ## Quick start

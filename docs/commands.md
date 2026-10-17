@@ -48,7 +48,7 @@
 | `reference.request_proposal` | A | `raw_user_instruction`；仅当引用库尚未建立 |
 | `script.request_proposal` | A | `raw_user_instruction`；要求引用已确认、尚无脚本 |
 | `location.request_proposal` | A | `raw_user_instruction`；项目 scope，要求已有结构化脚本；增补地点库与 Scene/Shot 绑定，未列出的项不删除 |
-| `keyframe.request_proposal` | A | `scene_ids`（上下文）+ 非空 `target_ids`（可写 Shot） |
+| `keyframe.request_proposal` | A | `scene_ids`（上下文）+ 非空 `target_ids`（可写 Segment；也可给 Scene 表示其全部 Segment） |
 | `*.submit_proposal` | P | `request_id`、`proposal`；草稿不含业务 ID，Core 分配 |
 | `*.reject_proposal` | P | `request_id`、`reason` |
 | `*.cancel_proposal` | P | `request_id` |
@@ -59,7 +59,7 @@
 | --- | --- | --- |
 | `reference.confirm_review` | H | 回执记录完整引用库 SHA-256；不生成脚本 |
 | `script.confirm` | H | `narration_unlocked = true`，并尝试建立生产基线；已解锁时为 noop |
-| `visual_production.unlock` | A | 生产基线就绪后解锁视觉生产（建立 Keyframe 与视频空卡，Keyframe 环境字段默认采用 Shot 的空间参考建议）；回执附 `location_advisory`，列出未绑定地点的 Scene 与未绑定视图的 Shot；解锁本身就是跳过地点规划 |
+| `visual_production.unlock` | A | 生产基线就绪后解锁视觉生产（建立 Keyframe 与视频空卡，首帧默认取 Segment 首个覆盖 Shot 的视图、尾帧取末个覆盖 Shot 的视图）；回执附 `location_advisory`，列出未绑定地点的 Scene 与未绑定视图的 Shot；解锁本身就是跳过地点规划 |
 
 生产基线没有单独的确认命令：旁白层解锁后，每个改动脚本或旁白的命令都由 Core 在同一次写入里按真实音频校准并写入基线，
 无法校准时基线保持失效，主流程返回 `reason = narration_timing_conflict` 的 `script.apply_operations`。
@@ -70,16 +70,20 @@
 
 | 操作 | 要点 |
 | --- | --- |
-| `update_scene_fields` | 只接受 `title`、`summary`、`setting` 的非空子集；保留 `driver`、Shot 与地点绑定；`setting` 变化按视觉上下文失效该 Scene 视频选择 |
-| `insert_scene` | 必填 `title/summary/setting`；可选 `driver`（默认 drama）、新 `shots`、`move_shot_ids`（从已授权 Scene 迁入已有 Shot，保留其 Keyframe 绑定）、`narration_cue`；Narration Scene 必须带 Cue 且不能同时带 Shot，Drama Scene 不能带 Cue；新 Scene 在同一 patch 内视为已授权，ID 写入回执 |
-| `move_scene` / `delete_scene` | 锚点必须在 scope 内；只能删除没有 Shot、旁白未选音频的 Scene |
-| `update_shot_fields` / `insert_shot` / `move_shot` / `delete_shot` | `move_shot.target_scene_id` 可跨 Scene 迁移；Drama Scene 在 patch 结束时至少一个 Shot，拆合应在同一 patch 内完成迁移与删除 |
-| `update_segment_fields` / `insert_segment` / `move_segment` / `delete_segment` | Segment 预计时长不短于 0.2 秒，不设上限 |
-| `split_segment` | 调用方提供完整 `first`、`second` 内容并指定 `preserve_id`（first / second）；Core 不替用户补写正文 |
-| `merge_adjacent_segments` | 只接受同一 Shot 中真实相邻的左右 Segment，提供完整 `merged` 并指定保留哪一侧 ID |
+| `update_scene_fields` | 只接受 `title`、`summary`、`setting` 的非空子集；保留 `driver`、Shot、Segment 与地点绑定；`setting` 变化按视觉上下文失效该 Scene 视频选择 |
+| `insert_scene` | 必填 `title/summary/setting`；可选 `driver`（默认 drama）、本 Scene 的新 `shots` 与 `segments`（Segment 用 `shot_indexes` 覆盖新 Shot）、`narration_cue`；Narration Scene 必须带 Cue 且不能同时带 Shot/Segment，Drama Scene 不能带 Cue；新 Scene 在同一 patch 内视为已授权，ID 写入回执 |
+| `move_scene` / `delete_scene` | 锚点必须在 scope 内且不能自引用；Scene 旁白已选音频时拒绝删除，需先解除音频选择 |
+| `update_shot_fields` | 只改创作字段（可见角色、构图、运镜、动作、声音、转场意图）；视图建议走地点操作 |
+| `insert_shot` | 只插入 Shot；必须且只能给出 `attach_to_segment_id`（并入已有 Segment 的覆盖）或 `new_segment`（新建只覆盖它的 Segment）之一，插入位置必须与所并入/新建的覆盖区间相容 |
+| `delete_shot` | 同一 patch 内从覆盖它的全部 Segment 移除；任一 Segment 因此失去全部 Shot 时整批拒绝 |
+| `update_segment_fields` | 可改 `shot_ids`、时长、`action`、对白与 `boundary_from_previous`；时长不短于 0.2 秒，不设上限 |
+| `insert_segment` / `move_segment` / `delete_segment` | 以 `scene_id` 为容器；覆盖用 `shot_ids`，移动用 `after_segment_id` |
+| `split_segment` | 提供完整 `first`、`second` 并指定 `preserve_id`（first / second）；两段各自给 `shot_ids`，在某个 Shot 内部拆分时两段共享该 Shot，第二段必须带 `boundary_from_previous` |
+| `merge_adjacent_segments` | 只接受同一 Scene 中真实相邻的左右 Segment，提供完整 `merged` 并指定保留哪一侧 ID；合并后的 `shot_ids` 必须是两段覆盖的并集 |
 
 插入与移动用显式 `after_*_id`，`null` 表示移到容器首位；锚点必须存在于合法容器且不能自引用。新增 Shot/Segment 的 ID 由
-Core 分配。操作完成后 Core 校验层级、非空 Shot、角色引用、旁白覆盖、Segment 边界与生产对象图，并重建 Keyframe/视频绑定。
+Core 分配。不支持单独移动 Shot：重排或跨 Scene 迁移 Shot 时，用脚本 proposal 的 `replace_scene` 整卡替换，或在同一 patch 内
+删除并重新插入、同时补足覆盖。整批操作结束后 Core 做一次完整覆盖校验，并校验角色引用、旁白互斥与生产对象图，失败整批拒绝；成功时同一次写入重建 Keyframe/视频绑定与生产基线。
 
 `project.apply_repair_patch`（H）：缺少正式能力时的安全阀，不是通用写接口。只接受用户已授权、目标唯一、Scene scope 明确的
 白名单字段（`set_fields`），每次真实修改写一条 `CapabilityGapAlert`（含反向 operation）。只涉及 Shot/Segment 字段时，Core 把它
@@ -99,7 +103,7 @@ Core 分配。操作完成后 Core 校验层级、非空 Shot、角色引用、�
 
 | 命令 | 调用方 | 要点 |
 | --- | --- | --- |
-| `narration.update_cue` | A | 修改 `zh` / `en` 子对象里的正文、`recipe_params`（按当前 speech recipe 声明校验、逐 recipe 合并）、seed，以及起止 Shot；只有实际变化才清除该语言音频选择与装配依赖 |
+| `narration.update_cue` | A | 修改 `zh` / `en` 子对象里的正文、`recipe_params`（按当前 speech recipe 声明校验、逐 recipe 合并）与 seed；Cue 覆盖整个 Scene，没有起止 Shot 字段。只有实际变化才清除该语言音频选择与装配依赖 |
 | `narration.generate` | A | `cue_id` + `language`（zh / en）；当前 `speech.synthesize` recipe 合成候选 |
 | `narration.select_candidate` | H | 采用某语言候选 |
 | `narration.clear_selection` | A | 解除某语言当前音频引用；Agent 只能在用户明确要求时调用，不授予采用其它候选的能力 |
@@ -116,11 +120,11 @@ Core 分配。操作完成后 Core 校验层级、非空 Shot、角色引用、�
 | --- | --- |
 | `create_location` | `key`、`name`、`kind`（interior / exterior）、`description` |
 | `update_location` | `fields` 是 `name`、`kind`、`description`、`master_prompt_text`、`master_reference_asset_ids`、`key_light`（`{description, azimuth_deg}` 或 null）的非空子集 |
-| `delete_location` | Scene 仍绑定该地点时拒绝；其全部视图按 `delete_view` 规则处理，同时清空这些视图对 Shot 的软引用 |
+| `delete_location` | Scene 仍绑定该地点时拒绝；其全部视图按 `delete_view` 规则处理，同时清空这些视图对 Shot 的软引用；被 Scene 引用的状态与陈设仍拒绝删除 |
 | `upsert_fixture` / `delete_fixture` | `fixture` 为已有 ID（整体替换）或 key（新建）；`name`、`description`、`azimuth_deg` |
 | `upsert_state` / `delete_state` | `state` 为已有 ID 或 key；`name`、`description` |
 | `create_view` / `update_view` | `fields`：`name`、`purpose`、`azimuth_deg` 或 `look_at_fixture_id` + `yaw_offset_deg`、`pitch_deg`、`hfov_deg`、`state_id`、`refine_prompt_text`、`reference_view_ids`；create 必含 name、purpose 与一种朝向 |
-| `delete_view` | 只被 Shot 软引用时允许删除，同一操作清空这些 Shot 的 `view_id`；被 Keyframe 或其它视图引用时拒绝并列出引用者 |
+| `delete_view` | 只被 Shot 软引用时允许删除，同一操作清空当前脚本与生产基线中这些 Shot 的 `view_id`；被 Keyframe `environment_view_id` 或其它视图 `reference_view_ids` 引用时拒绝并列出引用者；影响预览在 `soft_reference_clears` 列出被清空的 Shot |
 | `calibrate` | `fixture_azimuths`（陈设 ID → 方位）与 `key_light_azimuth_deg`；记录基于当前已选主图，不触发裁切 |
 | `bind_scene` | `scene_id`、`location_id`、`state_id`（可空）；换地点时清空该 Scene 所有 Shot 的 `view_id` |
 | `bind_shot` | `shot_id`、`view_id`（可空）；只记录给 Keyframe Planner 的空间参考建议，视图必须属于 Shot 所在 Scene 的地点，不改写已规划 Keyframe |
@@ -155,7 +159,7 @@ Core 分配。操作完成后 Core 校验层级、非空 Shot、角色引用、�
 | 命令 | 调用方 | 要点 |
 | --- | --- | --- |
 | `keyframe.generate` | A | 单个 `keyframe_id`；只提交该帧 |
-| `keyframe.generate_batch` | A | 显式 Scene/Shot/Segment 范围；本轮只提交依赖已满足的帧 |
+| `keyframe.generate_batch` | A | `target_ids` 为显式、不重复、已启用的 Keyframe 集合；本轮只提交依赖已满足的帧 |
 | `keyframe.continue_batch` | A | `batch_id` 或任一关联 `run_id`；不能带新范围 |
 | `keyframe.select_candidate` | H | 采用候选 |
 
@@ -167,7 +171,7 @@ Core 分配。操作完成后 Core 校验层级、非空 Shot、角色引用、�
 | 命令 | 调用方 | 要点 |
 | --- | --- | --- |
 | `video.set_prompt` | A | 保存单 Segment 视频正文（≤ 20,000） |
-| `video.update_recipe_inputs` | A | 原子保存 `prompt_text`、当前 recipe 的 `bindings`（槽位 → 有序 `{asset_id, description}`）与机制 `params`，整体替换当前 recipe 的输入簿；按 manifest 校验槽位、数量、媒体类型、时长、说明与唯一性，只接受本项目 Asset；人类与 Agent 同一路径 |
+| `video.update_recipe_inputs` | A | 原子保存 `prompt_text`、当前 recipe 的 `bindings`（槽位 → 有序 `{asset_id, description}`）与机制 `params`，整体替换当前 recipe 的输入簿；按 manifest 校验槽位、数量、媒体类型、时长、说明与唯一性，只接受本项目 Asset；人类与 Agent 同一路径。多 Shot Segment 的正文按覆盖顺序读取工作集 `context.shots` |
 | `video.set_recipe` | A | 保存 `recipe_id`；Core 校验目标可用性及输入兼容性，保留各 recipe 的 book |
 | `video.generate` | A | `segment_id`；纯程序动作，原样提交已保存正文 |
 | `video.select_candidate` | H | 采用候选 |

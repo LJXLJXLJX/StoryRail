@@ -15,9 +15,9 @@ Agent 启动提示、MCP instructions 和 Web 校对任务里的一致性说明�
 不在这三处各自改写新的规则。`read_professional_contract` 默认只返回专业 Skill 与参考；
 需要共享校对原则时必须显式传 `include=["consistency-review"]`。
 
-Keyframe 入口 `storyrail-keyframe-planner` 的「地点视图的使用」规定：视图是软参考，环境三项写 null 即继承 Shot 视图作为空间参考提交，
+Keyframe 入口 `storyrail-keyframe-planner` 的「地点视图的使用」规定：视图是软参考，环境三项写 null 即继承 Segment 首/末覆盖 Shot 的视图作为空间参考提交，
 也可按本帧朝向自由改选本 Scene 地点的视图或用 `none`（理由可选），改写不需理由；`edit` 只在用户明确要求严格贴合时使用；
 正文不重述视图已有的陈设。
 `references/cinematic-keyframe-design.md` 讲机位与视图的对应和正反打背景，`references/cinematic-frame-prompting.md` 讲各使用方式下的正文分工。
 
-视频入口 `storyrail-video-prompt` 读取当前 recipe 工作集；H3 专业 Skill 位于 `core/model_providers/minimax_h3/skills/`，随插件通过工作集交付。
+视频入口 `storyrail-video-prompt` 读取当前 recipe 工作集与 `context.shots`（多 Shot Segment 的段内切镜按顺序写成软约束，首尾 Picture 只锚定首末 Shot）；H3 专业 Skill 位于 `core/model_providers/minimax_h3/skills/`，随插件通过工作集交付。

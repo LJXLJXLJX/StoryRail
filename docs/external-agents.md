@@ -125,8 +125,8 @@ flowchart LR
 | | `read_workflow` | 主流程 + handoff + contract hashes |
 | | `read_media_input` | 受控 Asset 内容（见下文） |
 | | `list_candidates` / `read_run` / `read_request` | 对应读取命令 |
-| 规划 | `submit_proposal` | 统一入口：`capability` + `payload`；schema 按 capability 与 `payload.action` 公开完整字段：request（`raw_user_instruction`，keyframe 另需 `scene_ids`、`target_ids`）/ get、cancel（`request_id`）/ submit（`request_id`、`proposal`）/ reject（`request_id`、`reason`） |
-| 编辑 | `edit_script` / `edit_narration` / `edit_locations` / `edit_keyframes` / `edit_looks` | 各自的 `*.apply_operations` / `narration.update_cue` / `reference.apply_look_operations`（`add_look` / `update_look`，字段形状随 `reference_library` 契约下发）；`edit_narration.fields.clear_selected_audio = "zh"\|"en"` 独占一次调用并翻译为 `narration.clear_selection`；`edit_locations` 的 scope 是 `location_ids` / `scene_ids` / `shot_ids`，紧凑 schema 只列操作字段名，字段形状随 `location` 契约下发 |
+| 规划 | `submit_proposal` | 统一入口：`capability` + `payload`；schema 按 capability 与 `payload.action` 公开完整字段：request（`raw_user_instruction`；keyframe 另需 `scene_ids` 与 Segment `target_ids`）/ get、cancel（`request_id`）/ submit（`request_id`、`proposal`）/ reject（`request_id`、`reason`） |
+| 编辑 | `edit_script` / `edit_narration` / `edit_locations` / `edit_keyframes` / `edit_looks` | 各自的 `*.apply_operations` / `narration.update_cue` / `reference.apply_look_operations`（`add_look` / `update_look`，字段形状随 `reference_library` 契约下发）；`edit_narration.fields.clear_selected_audio = "zh"\|"en"` 独占一次调用并翻译为 `narration.clear_selection`；`edit_locations` 的 scope 是 `location_ids` / `scene_ids` / `shot_ids`，紧凑 schema 只列操作字段名，字段形状随 `location` 契约下发；`edit_script` 的 `insert_shot` 必须给出 `attach_to_segment_id` 或 `new_segment`，Segment 操作以 `scene_id` 为容器 |
 | | `save_video_prompt` / `save_keyframe_prompt` | 不带 `recipe_inputs` 时 `video.set_prompt`；带 `recipe_inputs: {bindings, params}` 时 `video.update_recipe_inputs`（正文、当前 recipe 绑定与参数整体替换）/ 单项 `update_frame_fields` |
 | | `set_video_recipe` | `video.set_recipe` |
 | | `unlock_production` | `visual_production.unlock` |
@@ -157,24 +157,28 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
 | capability | Skill | 工作集 scope | 产出 |
 | --- | --- | --- | --- |
 | `reference_library` | `storyrail-reference-library` | 项目 | 角色卡与旁白身份 proposal |
-| `script` | `storyrail-structured-director-script` | 项目 | 结构化脚本 proposal；含模型无关的 cinematic director intent 契约 |
+| `script` | `storyrail-structured-director-script` | 项目 | 结构化脚本 proposal：先设计 Shot 列表再打包 Segment；含模型无关的 cinematic director intent 契约 |
 | `narration` | `storyrail-narration-review` | `scene_ids`，可指定 Cue | 中英旁白正文、seed 与 recipe_params（经 `edit_narration` 保存） |
 | `location` | `storyrail-location-planner`（参考 `location-bible.md`、`view-coverage.md`） | 项目（要求已有脚本） | 地点、陈设、主光、状态、视图，以及 Scene 绑定与 Shot 空间参考建议的增补 proposal |
-| `keyframe` | `storyrail-keyframe-planner` | `scene_ids` + 可写 Shot `target_ids` | Keyframe 计划 proposal（含地点视图使用方式） |
+| `keyframe` | `storyrail-keyframe-planner` | `scene_ids` + 可写 Segment `target_ids` | Keyframe 计划 proposal：`segments[]` 首尾计划、承接关系与地点视图使用方式 |
 | `video_prompt` | `storyrail-video-prompt` + 当前插件的专业 Skill | 恰好一个 Segment | 视频正文，以及用户要求时的 recipe 参考素材与机制参数（经 `save_video_prompt` 保存） |
 
 - 六个契约共同附带 `storyrail-consistency-review`：修改前预检授权范围内的上下层联动，提交后重读核对；只读校对不修改；
   需要越出授权范围时先说明。它是共享工作原则，不是第七个生产阶段。
 - 工作集返回当前 revision 的事实、输出 schema 与 provenance：
-  - Keyframe 工作集读取目标 Shot 所属完整 Scene 作上下文，并明确 `context_shot_ids` / `writable_shot_ids`、锁定节点、辅助图映射，
-    以及按 Scene 裁剪的 `saved_keyframe_plan`（未建立时为 `not_established`）；每个可见角色的造型条目给出
-    `look_id`、名称、使用场合、已选造型图 `selected_asset_id` 和派生的 `has_image`，Agent 可将该 Asset ID 直接交给
-    `read_media_input` 查看受控原图。
+  - Keyframe 工作集读取目标 Segment 所属完整 Scene 作上下文，并明确 `context_segment_ids` / `writable_segment_ids`
+    （`target_segment_ids` 与后者相同）、锁定节点、辅助图映射，以及按 Scene 裁剪的 `saved_keyframe_plan`（未建立时为
+    `not_established`）。`scenes[].segments[]` 按顺序给出覆盖的 `shots[]`、派生可见角色、`start_view_id` / `end_view_id`
+    与 `continues_from_previous`；proposal 只写 `segments[]`，每个 Segment 给 `start` / `end` 计划与
+    `continues_from_previous`。每个可见角色的造型条目给出 `look_id`、名称、使用场合、已选造型图 `selected_asset_id` 和派生的
+    `has_image`，Agent 可将该 Asset ID 直接交给 `read_media_input` 查看受控原图。
   - 地点工作集给出完整导演方案、画幅、每个 Scene 的标题/梗概/设定与当前地点/状态，全部 Shot 的构图、运镜、动作、可见角色与
     当前视图，完整地点库（派生 `master_selected`、`calibrated`，视图 `has_crop`、`has_selected_image`），以及图片插件的
     `image_prompt` 约定。request 回执内嵌的冻结工作集不带 `image_prompt`，以 `read_professional_workset` 为准。
   - Keyframe 工作集另给出扁平 `location_views`（视图 ID、名称、purpose、所属地点与类型、状态、已选图）；Shot 带 `view_id`。
   - 视频工作集给出当前 `video_recipe`（槽位与参数声明、`editable_params`）、`context`（含 `scene.driver`，决定无对白时是否声明预留旁白通道；
+    `context.shots` 按覆盖顺序列出 Segment 的每个 Shot（构图、运镜、动作、声音、可见角色名与视图建议名）；
+    `segment.continues_from_previous_segment` / `continues_into_next_segment` 表示相邻 Segment 共享边界 Shot 的延续关系；
     `segment.dialogue[]` 的 `on_screen` 为 null 表示引用库外的临时说话者）、`dialogue_timing`（对白时长软提示）、`asset_inputs`、`plugin_skills`（随插件发布的
     Skill 与参考正文），以及 `recipe_inputs`（已保存的 `{bindings, params}`，即 `save_video_prompt.recipe_inputs` 的整体替换形状）与
     `bindable_assets`（当前 recipe 显式槽位可接受的项目 Asset：`asset_id`、`name`、`media_type`、`duration_seconds`、`slots`；
@@ -202,8 +206,8 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
 
 - 候选数只统计当前可审核的候选：成功、未隐藏、产物仍存在且类型正确、目标仍在当前计划中并满足选择约束。
   Agent 必须在同一 revision 用 `list_candidates` 复核，不能根据卡片存在、历史成功或 `allowed_actions` 推断。
-- Narration Scene 选齐 TTS 但仍无 Shot 时，主流程返回 `script.apply_operations`（`reason = narration_shot_plan_required`，目标为缺 Shot
-  的 Scene）。规划 Shot 的那次写入由 Core 自动校准时序并建立生产基线，没有人工确认时序步骤；无法校准时返回
+- Narration Scene 选齐 TTS 但仍无 Shot 与 Segment 时，主流程返回 `script.apply_operations`（`reason = narration_shot_plan_required`，目标为缺
+  Shot/Segment 的 Scene）。规划 Shot 与 Segment 的那次写入由 Core 自动校准时序并建立生产基线，没有人工确认时序步骤；无法校准时返回
   `reason = narration_timing_conflict` 的 `script.apply_operations`，`message` 给出具体原因。
 - `active_task = null` 不代表项目没有任务；并行 Generation 与 run 由 `task_discovery` 单独列出。
 - 专业工作集在非当前阶段仍可读，附 `not_current_stage`（只表示相关性）与 `mutation_blocked`（已知写入阻塞）。

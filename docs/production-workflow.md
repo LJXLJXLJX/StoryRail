@@ -137,10 +137,10 @@ flowchart LR
     Segment 不含对白；
   - `drama` Scene 先设计 Shot，不预设 Scene 总时长；不含旁白，对白可有可无；
   - 同一内容既需要旁白又需要对白时拆成相邻的 narration 与 drama Scene，Core 拒绝在同一 Scene 混用；
-  - 打包成 Segment：Shot 列表来自剪辑决定；打包时一个 Segment 可覆盖多个相邻
-    Shot（段内切镜，只用于同空间、同节拍的紧密镜头组，实验前不超过 3 个），一个 Shot 可跨多个相邻 Segment
-    （长镜头拆段，边界落在可截帧续拍的稳定状态）；相邻 Segment 共享边界 Shot 即延续同一镜头并填写
-    `boundary_from_previous`，不共享即剪辑；
+  - 脚本 Skill 分两步：先设计 Shot 列表（镜头功能、构图、运镜、动作、声音与剪辑决定），再按打包规则把 Shot 装进
+    Segment。Shot 列表来自剪辑决定；一个 Segment 可覆盖多个相邻 Shot（段内切镜，只用于同空间、同节拍的紧密镜头组，
+    当前不超过 3 个），一个 Shot 可跨多个相邻 Segment（长镜头拆段，边界落在可截帧续拍的稳定状态）；相邻 Segment
+    共享边界 Shot 即延续同一镜头并填写 `boundary_from_previous`，不共享即剪辑；
   - 每个 Segment 预计不超过 15 秒；需要精确构图控制的镜头（建立镜头、关键揭示、全场最重的镜头、严格首尾状态）
     独占 Segment；仍超过软约束的 Segment 留给生成视频前提醒，不压缩动作或台词凑时长；
   - 已有 Segment 只在用户明确要求时拆分或合并，拆分、合并或插入后覆盖仍完整连续（打包偏好与段内切镜上限是
@@ -184,12 +184,12 @@ sequenceDiagram
 - 每条 Cue 的所选语言的轨道各自保存正文、seed、`recipe_params` 与已选音频，**分别合成、分别选择**。英文是适合朗读的意译；对白不做双语。
   机制参数以 `recipe_params[recipe_id]` 保存。快照 `provider_recipes` 与专业工作集 `speech_recipe` 给出当前绑定的
   `editable_params`，Web 按声明渲染，Agent 按同一声明调整。正文、语言、seed 与同语言的参考音色由 Core 填充。
-- 修改某语言正文或合成参数只清除该语言的音频选择，并使时序与装配失效；既有视觉 Shot 保留。纯结构锚点重建不重做 TTS。
+- 修改某语言正文或合成参数只清除该语言的音频选择，并使时序与装配失效；既有视觉设计保留。纯结构锚点重建不重做 TTS。
 - 用户明确要求时，Agent 可用 `narration.clear_selection` 解除某语言当前音频引用；这不授予采用其它候选的能力。
 - 旁白层解锁后，每次脚本或旁白写入（含选择音频、规划 Shot）都由 Core 在同一次写入里自动校准时序，没有人工确认步骤。
-  校准要求每条 Cue 已选语言的音频都已选择、存在旁白身份、所有 Scene 已有可校准的 Shot；成功时按真实音频校准 Narration Scene
+  校准要求每条 Cue 已选语言的音频都已选择、存在旁白身份、所有 Narration Scene 已有可校准的 Shot 与 Segment；成功时按真实音频校准 Narration Scene
   的画面覆盖，并把校准后的脚本写为**生产基线**。已对齐的时长逐位保留，重算不会让无关 Segment 的视频选择失效。
-- 无法校准（缺音频或 Shot、缩放后 Segment 短于 0.2 秒）时生产基线保持失效，主流程返回
+- 无法校准（缺音频、Shot 或 Segment，或缩放后 Segment 短于 0.2 秒）时生产基线保持失效，主流程返回
   `script.apply_operations`（`reason = narration_timing_conflict`，`message` 为 Core 的具体原因，`target_ids` 为无法校准的 Scene），
   Web 在项目概览显示该原因；修正脚本的那次写入即重新建立基线。
 - Drama Scene 没有旁白，不参与校准，表演时长保持脚本设计。
@@ -352,6 +352,13 @@ Segment 当前生效视频（有超分取超分）的一帧。产物只作为该
 
 默认规则、可用槽位和参数由当前绑定插件的 manifest 声明。视频卡按 recipe 渲染，切换前由 Core 校验；每个 recipe 的机制参数与显式输入独立保存。H3 用户可手动切换两个 recipe；切回 FL2VA 前必须先清空全部其他图片、音频与视频引用。参考音频的用途完全由用户描述决定
 （音色参考、原样对白、音乐、音效……），Core 不从角色卡推导。参考视频只作视觉参考（运镜、节奏、续写），其音轨不会自动成为音频参考。
+
+**多 Shot Segment**：一个 Segment 覆盖多个 Shot 时，`video_prompt` 工作集的 `context.shots` 按覆盖顺序给出每个 Shot 的
+构图、运镜、动作、声音、可见角色名与视图建议名；`segment.continues_from_previous_segment` /
+`continues_into_next_segment` 表示相邻 Segment 共享边界 Shot、延续同一镜头。提示词用 `[Shot N] At MM:SS.mmm`
+写段内切镜，切点只是软约束：Core 不按 Shot 切视频、不记录段内切点，生成后切点漂移仍是合格候选。首尾 Picture
+只锚定第一个 Shot 的开头与最后一个 Shot 的结尾；中间 Shot 的人物与空间靠参考图维持。同空间、同节拍的段内切镜
+当前不超过 3 个，需要更多切镜时拆成多个 Segment。
 
 **Agent 保存 recipe 输入**：外部 Agent 与人类走同一条 `video.update_recipe_inputs`，原子保存正文、当前 recipe 的 `bindings`
 与机制 `params`（MCP `save_video_prompt` 带 `recipe_inputs`）。校验完全相同：manifest 槽位、数量、媒体类型、视频时长、说明必填、

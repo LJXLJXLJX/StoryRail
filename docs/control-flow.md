@@ -131,6 +131,26 @@ sequenceDiagram
 `command_id`、`status`（succeeded / noop）、`old_revision`、`new_revision`、`changed_ids`、`invalidated`、`preserved`、
 `decision_summary`、`applied_summary`、`assumptions`、`warnings`。最新主流程建议在响应顶层 `workflow`，而不是回执里。
 
+### 脚本原子操作与覆盖校验
+
+`script.apply_operations` 在一个显式 `scope.scene_ids` 内按顺序原子执行 1–100 项操作：`update_scene_fields`、
+`insert_scene`、`move_scene`、`delete_scene`、`update_shot_fields`、`insert_shot`、`delete_shot`、
+`update_segment_fields`、`insert_segment`、`move_segment`、`delete_segment`、`split_segment`、
+`merge_adjacent_segments`。不支持单独移动 Shot；需要重排或跨 Scene 迁移 Shot 时走脚本 proposal 的 `replace_scene`
+整卡替换，或在同一 patch 内删除并重新插入、同时补足覆盖。
+
+- Segment 以 `scene_id` 为容器；已有 Scene 的 Segment 用 `shot_ids` 表达覆盖，新 Scene 的 Segment 用本 Scene
+  新 `shots` 数组的 `shot_indexes`。
+- `insert_shot` 必须且只能给出 `attach_to_segment_id`（并入已有 Segment 的覆盖）或 `new_segment`（新建一个只覆盖
+  新 Shot 的 Segment）之一。
+- `split_segment` 的 `first` / `second` 各自给出完整 `shot_ids`；在某个 Shot 内部拆分时两段共享该 Shot，第二段必须带
+  `boundary_from_previous`。`merge_adjacent_segments` 只接受同一 Scene 中真实相邻的左右 Segment，合并后的 `shot_ids`
+  必须是两段覆盖的并集。
+
+整批操作先应用在内存草稿上，结束后构造完整 `DirectorScript` 做一次覆盖校验：每个 Segment 连续覆盖、按顺序拼接后
+恰好覆盖全部 Shot，不跳过、不倒序、不重复，只允许相邻 Segment 共享边界 Shot；失败则整批拒绝并指出 Scene 与原因。
+成功时同一次写入重建 Keyframe/视频绑定与生产基线。
+
 ## 5. 生成命令与 Generation 生命周期
 
 ### 提交
@@ -239,8 +259,11 @@ stateDiagram-v2
 - 地点 request 是项目级 scope，要求已有结构化脚本（否则 409）；规划期间 `location_plan` run 锁住其它业务写入。submit 把 proposal
   编译为与 `location.apply_operations` 相同的操作（新建项用局部 `key` 互引，视图按被参考者先落库排序），在同一次提交里落库、
   按地点失效规则级联并结束 run；当前事实不允许的归属、成环或已选主图地点的方位修改整体拒绝为 `invalid_proposal`。
-- Keyframe 请求可读目标 Shot 所属完整 Scene 作上下文，但 proposal 只能覆盖原请求的可写 Shot；触及跨范围共享边界时拒绝，
-  并给出最小扩展范围让用户重新授权。
+- Keyframe 请求可读目标 Segment 所属完整 Scene 作上下文，但 proposal 只能覆盖原请求的 `target_ids`（Segment；给 Scene
+  表示其全部 Segment）；触及跨范围共享边界时拒绝，并给出最小扩展范围让用户重新授权。
+- 地点删除按引用类型区分：Shot 的 `view_id` 是软参考，删除视图或地点时允许删除，并在同一事务清空当前脚本与生产基线里
+  引用它的 Shot `view_id`；Keyframe `environment_view_id`、其它视图 `reference_view_ids` 与 Scene 的地点绑定是硬引用，
+  仍拒绝并列出引用者。影响预览把被清空的 Shot 放在 `soft_reference_clears`，不混入 `invalidated`。
 - 观察投影 `proposal_observation` 同时给出 `source_revision` 与本次 `observation_revision`，以及同一 request_id 的精确工具动作。
 
 ## 7. Keyframe 批次

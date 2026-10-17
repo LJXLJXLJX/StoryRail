@@ -128,6 +128,7 @@ WAV 截取与后处理不是 Provider，而是 Core 内的 `core/audio_effects` 
 - Web 顶栏“Provider 设置”按 manifest 的 widget 渲染设置字段与能力绑定。
 
 视频生成通过 `video.generate` 能力绑定解析 recipe。项目保存 `active_recipe` 与按 recipe 隔离的输入、机制参数；Core 提供提示词、时长、seed、画幅及首尾帧的语义角色。
+视频专业工作集的 `context.shots` 按覆盖顺序给出 Segment 的每个 Shot；H3 Skill 据此写段内切镜软约束，首尾 Picture 只锚定首末 Shot。
 H3 插件的请求 DTO、画布与采样换算、FL2VA/Ref2VA HTTP 实现和 `h3-prompt-writing` Skill 都位于 `core/model_providers/minimax_h3/`。
 Web 视频卡按 manifest 渲染，专业工作集按当前插件交付 Skill；安装其它视频插件不增加厂商模式字段。
 

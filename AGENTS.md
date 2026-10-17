@@ -47,7 +47,7 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
 
 ## 事实来源
 
-1. `.stories/<项目名>-<project_id>/project.json` 是唯一权威结构化状态，当前 schema 为 v33（Scene 下并列 `shots` 与 `segments`、Segment 以 `shot_ids` 记录覆盖的 Shot、旁白 Cue 不带 Shot 锚点、角色造型 `looks` 为角色图唯一单位、地点库与 Scene/Shot/Keyframe 的地点视图绑定、创建时选择中英文旁白语言、各启用语言一套音色、Keyframe 按帧选择角色参考图、视频保存 `active_recipe` 与 `recipes` 输入簿，旁白保存 `recipe_params`，Generation 记录提交时的 `provider_snapshot`）。
+1. `.stories/<项目名>-<project_id>/project.json` 是唯一权威结构化状态，当前 schema 为 v33（Scene 下并列 `shots` 与 `segments`、Segment 以 `shot_ids` 记录覆盖的 Shot、旁白 Cue 不带 Shot 锚点、角色造型 `looks` 为角色图唯一单位、地点库与 Scene/Shot/Keyframe 的地点视图绑定（Shot `view_id` 是软参考，Keyframe `environment_view_id` 是硬引用）、创建时选择中英文旁白语言、各启用语言一套音色、Keyframe 按帧选择角色造型、视频保存 `active_recipe` 与 `recipes` 输入簿，旁白保存 `recipe_params`，Generation 记录提交时的 `provider_snapshot`）。
    更早版本的 Segment 挂在 Shot 下，或没有英文旁白、只有一套旁白音色，无法无损转换，一律拒绝读取并提示新建项目。
    `workspace_layers` 持久化旁白、Keyframe、视频和成片内容层是否已经解锁；这些事实不由 Web
    根据全局状态猜测。
@@ -64,15 +64,18 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
 
 - `POST /api/projects` 只持久化项目，不能等待 Agent。Web 进入新页面后等待外部 Agent 通过正式入口提交引用库 proposal。
 - Director 的引用库能力只读取完整 `director_plan_markdown`，提出需要跨镜头一致的角色卡和独立旁白身份；Core 分配 ID。
-- 用户审核引用卡后显式生成结构化脚本。脚本 Agent 只读取原始导演方案、当前引用卡和必要的当前脚本。
+- 用户审核引用卡后显式生成结构化脚本。脚本 Agent 只读取原始导演方案、当前引用卡和必要的当前脚本。写脚本分两步：
+  先设计 Shot 列表（镜头功能、构图、运镜、动作、声音与剪辑决定），再按打包规则把 Shot 装进 Segment；一个 Segment
+  可覆盖多个连续 Shot（段内切镜），一个 Shot 可跨多个相邻 Segment（长镜头拆段），打包理由写入 `reply_markdown`。
 - 创建项目必须选择 `narration_languages`：仅 `zh`、`en`，至少一个、不重复，创建后不可修改。
   每条 Cue 与旁白身份只建立所选语言的轨道、音色；未选语言字段为 null。各语言独立保存正文、seed、
   `recipe_params`、参考 WAV 与完整文字稿，并分别合成、审核、选择；英文是适合朗读的意译。
   只用同语言参考音色克隆。单语言以该音频的真实时长为基准；双语言以较长音频为基准，短的一条同起点提前结束。
   Scene 成片和最终成片只输出所选语言；双语言画面一致只换旁白，一次 Approval 批准所选语言全部版本。对白不做双语。
 - Scene 显式声明 `driver`：`narration` 初稿只有一个语义原子的 Cue（不按标点数量判断），先完成 TTS 并选择真实音频，再规划 Shot / Segment；`drama` 先设计 Shot，不预设 Scene 总时长。旁白与对白按 Scene 互斥：Narration Scene 必须有旁白且不含对白，Drama Scene 不含旁白、对白可有可无，由 Core 的 Scene 模型强制；同一内容需要两者时拆成相邻 Scene。二者可在项目中混合。旁白回改清除音频选择、失效时序和装配，保留已有视觉设计。旁白层解锁后，Core 在每次脚本或旁白写入里自动按真实音频校准 Narration Scene 并建立生产基线，没有人工确认时序步骤；无法校准时基线保持失效并返回原因。
-- 结构化脚本生成后始终使用同一个导演台页面；后续内容层嵌入原 Scene/Shot/Segment 层级，不再切换到
-  旁白、地点、Keyframe、视频或成片专用页面；地点库是导演台内的浮层。
+- 结构化脚本生成后始终使用同一个导演台页面；左侧导航为 Scene → Segment，Scene 页以“镜头设计”列表编辑 Shot，
+  Segment 页显示覆盖区间与延续说明；后续内容层嵌在原层级，不再切换到旁白、地点、Keyframe、视频或成片专用页面；
+  地点库是导演台内的浮层。
 - 每个出镜角色有 1–8 套造型（`looks`：名称、外观、使用场合自由文本），引用库 proposal 一并提出，Core 分配 ID；
   Agent 经 `reference.apply_look_operations` 新增或修改造型，删除只由人类完成。造型是角色图的唯一单位：每套造型
   至多一张人类选定的造型图（`selected_asset_id`，来自设定图候选或资产库已有图片），角色卡不再有游离参考图。
@@ -104,7 +107,7 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
   按帧号（默认最后一帧，范围 `0-(N-1)` 由 Core 从 MP4 读出）抽取上一段当前生效视频的一帧，产物只作为该首帧候选，
   不自动选择；需要后期处理时用户导入处理后的图片再选择。所有抽帧入口都按帧号工作，Core 不再维护“尾帧续接”状态。关键帧辅助参考图只用于关键帧生图，不会自动进入视频输入；视频卡按当前 recipe 的槽位声明显式保存参考。H3 Ref2VA 声明最多 4 张附加图片、每张必填描述；Core 按槽位顺序与标签 namespace 计算映射，专业工作集与实际 Provider 提交共用该映射。生产期脚本回改（合并、拆分、增删 Segment）后，Core 必须立即按当前脚本重建关键帧绑定：保留仍在的 Segment 原绑定与已选关键帧，新 Segment 立即获得独立的空首尾槽位，已删除 Segment 的槽位随之移除；显式共享的边界只在两侧仍紧邻时保留，否则复制为独立首帧；关键帧计划必须完整对应每个当前 Segment，由 Core 校验强制，不允许缺卡。
 - 每个 Keyframe 显式保存地点视图的使用方式：`reference`（默认）只作空间参考、`edit` 作为编辑底图（只加入人物与动作）、`none` 完全不提交且视图为 null；
-  `edit` 只在用户明确要求画面严格贴合视图时使用。`none` 理由可选（最多 500 字，空白存为 null）。建帧时（解锁视觉生产、脚本回改给新 Segment 建帧）默认继承 Shot 视图：有视图 → `reference`，无视图 → `none`；
+  `edit` 只在用户明确要求画面严格贴合视图时使用。`none` 理由可选（最多 500 字，空白存为 null）。建帧时（解锁视觉生产、脚本回改给新 Segment 建帧）首帧取首个覆盖 Shot 的视图、尾帧取末个覆盖 Shot 的视图：有视图 → `reference`，无视图 → `none`；
   之后改绑不回写已有帧。视图是软参考，Shot 的视图只是建议：Planner 环境字段写 null 即继承，也可按本帧朝向在本 Scene 地点的全部视图中
   自由改选或不用，改写不需要理由。输入名额顺序为视图 → 可见角色参考 → 前置帧 → 辅助图，
   合计 ≤ 5 张，超额拒绝并列出被挤掉的输入；编辑底图提交时排第一。视图未选图时单帧生成拒绝、批次作为等待依赖。
@@ -121,15 +124,16 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
 - Keyframe 卡片的单图生成按钮只提交该 Keyframe，成功回调只保存结果，不调用 Agent、不扫描或生成任何
   其它 Keyframe。批量按钮或 Director Agent 的显式批量动作每轮也只提交其授权范围内当前依赖已满足的
   Keyframe；前置完成后需要新的显式继续动作，不能用全项目自动补齐代替持久化批次范围。
-- Keyframe 规划默认遵守用户指定范围；Planner 可读取目标 Shot 所属完整 Scene 作为连续性上下文，但 Core
-  只能合并目标 Shot 的 Keyframe 子图，同 Scene 其他 Shot 也必须保留。只有明确要求全部规划时才遍历和
+- Keyframe 规划默认遵守用户指定范围；Planner 可读取目标 Segment 所属完整 Scene 作为连续性上下文，但 Core
+  只能合并目标 Segment 的 Keyframe 子图，同 Scene 其他 Segment 也必须保留。只有明确要求全部规划时才遍历和
   合并完整项目；局部规划恢复时若目标范围丢失，必须无修改结束并要求用户重试，不能扩大为全量规划。
 - 已有未隐藏成功候选或已选择候选的 Keyframe 是规划锁定节点；局部或全量重新规划都必须保留该 Segment
   的现有首尾绑定、提示词、候选和辅助参考。规划只能重建没有生成候选的 Segment，不得让历史 Generation
   因 Keyframe ID 被替换而从当前卡片解绑。
 - Core 校验 Segment 视频时长为不短于 0.2 秒的有限值；插件可以声明自己的输入约束与软提示。当前 H3 插件以
   `hints.soft_duration_limit_seconds = 15` 提示默认本地部署的 OOM 风险，`video_prompt` 工作集给出
-  `exceeds_soft_duration_limit`，不是 Core 时长上限。脚本初次规划时一个 Shot 只对应一个 Segment，不按时长预先拆分；
+  `exceeds_soft_duration_limit`，不是 Core 时长上限。脚本阶段先设计 Shot 列表、再打包成 Segment：一个 Segment 可覆盖多个
+  相邻 Shot（段内切镜），一个 Shot 也可跨多个相邻 Segment（长镜头拆段），不按固定 Shot 数或时长预先绑定。
   生成视频前 Agent 对超过软约束的 Segment 主动提醒风险并建议拆分点（自然动作状态、控制方式或连续性锚点），
   用户同意后再拆，坚持不拆则照常生成。这只是提示词约束，Core 不校验 Shot 的 Segment 数量。
 - Segment 的 `active_recipe` 来自当前视频插件的 `defaults` 与 `segment.has_dialogue` 谓词；H3 默认无对白 FL2VA、
@@ -137,6 +141,9 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
   H3 Ref2VA 声明 0–4 张附加图片、0–8 条 WAV 参考音频、0–3 条 2–15 秒 MP4 参考视频；首尾帧都可为空且可完全不使用图片，但所有媒体槽位合计至少有一项，有引用时均不重复且必填说明；音频引用不会从角色卡
   自动推导，视频只作视觉参考、不引入其音轨。Core 按稳定顺序生成 Picture/Audio/Video 各自独立从 1 起的标签，
   并与 Provider 输入保持一致。切回 FL2VA 前必须清空其不支持的图片、音频和视频参考槽位。
+  一个 Segment 覆盖多个 Shot 时，`video_prompt` 工作集给出 `context.shots`（按覆盖顺序，含构图、运镜、动作、声音、
+  可见角色名与视图建议名）以及 `continues_from_previous_segment` / `continues_into_next_segment`；提示词用
+  `[Shot N] At MM:SS.mmm` 写段内切镜，切点只是软约束，首尾 Picture 只锚定首末 Shot。
 - 语义角色参数由 Core 根据领域事实填写；没有角色的机制参数按 recipe 保存。旁白使用 `recipe_params[recipe_id]`，
   视频使用 `recipes[recipe_id].params`；Web 按声明渲染控件，Agent 按 `speech_recipe` 或 `video_prompt` 工作集填写。
   Agent 与人类经同一 `video.update_recipe_inputs` 原子保存视频正文、当前 recipe 的参考素材绑定与机制参数，校验相同；
@@ -153,7 +160,7 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
   也不阻止超分、Scene 成片和最终装配使用它；不因此把已生成候选降级为不可选历史。
 - 每个项目在外部 Agent 中使用 Director 职责；Core 不持有厂商会话。引用库、脚本、旁白、地点、Keyframe、视频提示词和生产检查都是它按需使用的 Skill/类型化能力，不拥有独立 Thread、对话、阶段或权限。Director 可以提出类型化的脚本回改、地点、Keyframe、Segment 视频或超分动作，但不能绕过 Core 校验、候选选择和审核。
 - 阶段能力按 `workspace_layers` 累加；后续阶段继承前面已解锁能力。上游回改只失效相关产物和生产基线，不退回阶段、不重锁入口；历史 Asset/Generation 保留。Agent 工作期间仍锁定冲突写入，Approval 后仍须显式重新开放生产。
-- 相邻 Segment（无论是否同 Shot）默认硬切，仅边界 Keyframe identity 相同且两侧都启用才做 0.1 秒系统接缝融合（`seam_blend`），不是导演 dissolve；跨 Scene 使用同一规则。用户选择成片后仍需单独 Approval。
+- 相邻 Segment（无论是否共享边界 Shot）默认硬切，仅边界 Keyframe identity 相同且两侧都启用才做 0.1 秒系统接缝融合（`seam_blend`），不是导演 dissolve；跨 Scene 使用同一规则。用户选择成片后仍需单独 Approval。
 - Scene 成片是 Scene 内已审核 Segment 视频加旁白的确定性渲染结果；最终成片装配只按脚本顺序拼接各 Scene 成片的字节，不再读取原始 Segment 或重新混入旁白。每个 Scene 都必须存在基于当前 Segment 视频与旁白选择生成的 Scene 成片，缺失或过期的 Scene 阻止最终装配并一次列出；重新生成或删除 Scene 成片会作废已建立的装配计划。
 - Scene Animatic 预览是旁白与关键帧就绪后由用户在 Scene 卡片手动触发的 Scene 级动态分镜：
   按脚本顺序展示所选关键帧图，首尾帧齐备的 Segment 内平分时长硬切，段间转场复用最终装配规则，

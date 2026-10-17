@@ -97,7 +97,9 @@ flowchart LR
 - 改名、purpose、地点描述、陈设名称/描述、主光描述与方位、主图计划文本都不失效。
 - Scene/Shot 改绑只改绑定（换地点时清空该 Scene 的 Shot 视图），不改写已建立的 Keyframe；生产基线同 ID 的绑定一起同步。
   Keyframe 的继承值在建帧时已写成显式 `environment_view_id`，级联只看这个字段，没有“隐式继承帧”。
-- 删除仍被 Scene、Shot、Keyframe 或其它视图引用的地点/视图/状态/陈设时拒绝，错误列出全部引用者。
+- 删除视图或地点时，只被 Shot 软引用的允许删除，同一事务清空当前脚本与生产基线中这些 Shot 的 `view_id`，影响预览放在
+  `soft_reference_clears`；被 Keyframe `environment_view_id`、其它视图 `reference_view_ids` 或 Scene 地点绑定硬引用时拒绝，
+  错误列出全部引用者。状态与陈设仍被 Scene 或视图引用时拒绝。
 - 失效目标（地点、视图、Keyframe、Segment、Scene、项目）有进行中或结果不确定的 Generation 时拒绝整笔修改。
 - 历史 Asset 与 Generation 永不改动。
 

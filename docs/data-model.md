@@ -1,6 +1,6 @@
 # 数据模型
 
-`.stories/<项目名>-<project_id>/project.json` 是项目唯一权威结构化状态，当前 `schema_version = 32`。
+`.stories/<项目名>-<project_id>/project.json` 是项目唯一权威结构化状态，当前 `schema_version = 33`。
 更早版本按开发期规则不迁移，一律拒绝读取，需要新建项目。代码位置：
 `core/structured_director/models/`（值对象与不变量）、`codec/`（严格 JSON）、`schema.py`（版本号）。
 
@@ -63,7 +63,7 @@ erDiagram
 
 | 字段 | 类型 | 语义 |
 | --- | --- | --- |
-| `schema_version` | int | 固定 32 |
+| `schema_version` | int | 固定 33 |
 | `project_id` | id | 项目 ID |
 | `revision` | int ≥ 1 | 项目 revision；每次持久写入恰好 +1，是全部 CAS 的基准 |
 | `title` / `aspect_ratio` / `director_plan_markdown` | 创建时固化 | 没有修改 API；导演方案最多 50,000 字符 |
@@ -180,6 +180,13 @@ classDiagram
 - 相邻 Segment 共享边界 Shot（前一段最后一个 = 后一段第一个）即延续同一镜头，后一段必须带 `boundary_from_previous`，
   说明为什么在此切开与如何保持连续；不共享即剪辑，`boundary_from_previous` 必须为 null；Scene 第一个 Segment 为 null。
 - `shots` 与 `segments` 同时为空或同时非空。
+
+```mermaid
+flowchart LR
+    s1[Shot 1] --- s2[Shot 2] --- s3[Shot 3] --- s4[Shot 4]
+    g1["Segment 1<br/>shot_ids: [s1, s2]<br/>段内切镜"] --> g2["Segment 2<br/>shot_ids: [s3]<br/>剪辑边界"]
+    g2 --> g3["Segment 3<br/>shot_ids: [s3, s4]<br/>共享边界 s3，续接同镜头"]
+```
 - `driver = narration`：必须恰好一条 Cue，覆盖整个 Scene 的全部 Segment；所有 Segment 的 `dialogue_lines` 必须为空；
   在真实 TTS 之前可以没有 Shot 与 Segment。
 - `driver = drama`：至少一个 Shot；`narration_cues` 必须为空，对白可有可无。
@@ -267,7 +274,8 @@ erDiagram
 | Shot | `view_id?` | 空间参考建议：必须属于所在 Scene 的 Location；Scene 没有 Location 时必须为空；删除该视图或地点时清空为 null，已规划 Keyframe 不因此改写 |
 | Keyframe | `environment_view_id?`、`environment_mode`、`environment_none_reason?` | `none` ⇔ 视图为 null；`none` 时理由可选（null 或 1–500 字，空白归一为 null），`edit`/`reference` 时理由必须为空；视图必须存在于地点库 |
 
-Keyframe 的环境字段只在建帧时按所属 Shot 的视图写成显式值：Shot 有视图 → `reference`，无视图 → `none`（无理由）
+Keyframe 的环境字段只在建帧时按 Segment 首帧/尾帧的默认视图写成显式值：首帧取首个覆盖 Shot 的视图、尾帧取末个覆盖 Shot 的视图，
+有视图 → `reference`，无视图 → `none`（无理由）
 （规则见 [生产工作流](production-workflow.md#keyframe-使用地点视图)）；之后 Scene/Shot 改绑不回写已有帧。
 
 ### 失效规则
@@ -301,6 +309,8 @@ Keyframe 的环境字段只在建帧时按所属 Shot 的视图写成显式值�
 | `Keyframe` | `id`；`owner_segment_id`；`predecessor_keyframe_id`（时间上前一个边界帧，图必须无环）；`prompt_text` ≤ 18,000；`visible_character_ids`；`character_references`（`[{character_id, look_id}]`：只针对本帧可见角色、每角色一项，`look_id` 必须是该角色当前造型；`look_id = null` = 不提交该角色图；未列出时只有一套造型默认使用它，多套造型必须显式选择才能生成；所选造型没有造型图时不能生成）；`environment_mode` ∈ `edit` / `reference` / `none`、`environment_view_id` 与 `environment_none_reason`（见[地点库](#脚本与-keyframe-的绑定)）；`selected_asset_id` |
 | `SegmentKeyframes` | `segment_id`；`start_keyframe_id` ≠ `end_keyframe_id`；`start_enabled` / `end_enabled`（默认都关闭）；`reference_asset_ids` 手工辅助图 ≤ 4 张 |
 
+- Keyframe 计划以 Segment 为单位：当前脚本的每个 Segment 恰好一条 `SegmentKeyframes`，脚本回改后 Core 立即重建，
+  不允许缺卡或多卡。
 - 每个 Segment 都有概念上的首尾槽位；实际视频只需启用并选择其中至少一个。
 - 相邻 Segment 的边界默认是两个独立 Keyframe。**显式共享**表示左段 `end_keyframe_id` 与右段 `start_keyframe_id`
   指向同一个 Keyframe 对象（同一条 Asset/Generation 血缘），两侧启用状态各自独立。
