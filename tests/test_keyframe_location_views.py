@@ -29,7 +29,6 @@ from core.director_proposals import (
     KeyframeShotProposal,
 )
 from core.director_proposals.keyframe_codec import compile_keyframe_proposal, parse_keyframe_plan
-from core.director_proposals.schema_gen import ProposalError
 from core.model_providers.boundary import GenerationPhase
 from core.model_providers.qwen_image import MANIFEST as QWEN_MANIFEST
 from core.structured_director import StructuredDirectorStore
@@ -41,7 +40,6 @@ from core.structured_director.keyframe_requests import (
     _keyframe_generation_inputs,
 )
 from core.structured_director.models import (
-    DEFAULT_ENVIRONMENT_NONE_REASON,
     MAX_IMAGE_INPUTS,
     CharacterCard,
     CharacterLook,
@@ -129,7 +127,7 @@ def test_unlock_inherits_shot_view_as_explicit_reference(tmp_path):
                     assert frame.environment_none_reason is None
 
 
-def test_unlock_without_shot_view_writes_none_with_default_reason(tmp_path):
+def test_unlock_without_shot_view_writes_none_without_reason(tmp_path):
     async def run():
         store, service, document, _route = await _location_project(tmp_path)
         shot = document.director_script.scenes[0].shots[0]
@@ -144,7 +142,7 @@ def test_unlock_without_shot_view_writes_none_with_default_reason(tmp_path):
         frame = _frames(document)[frame_id]
         assert frame.environment_mode is KeyframeEnvironmentMode.NONE
         assert frame.environment_view_id is None
-        assert frame.environment_none_reason == DEFAULT_ENVIRONMENT_NONE_REASON
+        assert frame.environment_none_reason is None
 
 
 def test_rebinding_keeps_frames_and_rebuild_gives_new_segments_current_default(tmp_path):
@@ -184,12 +182,11 @@ def test_rebinding_keeps_frames_and_rebuild_gives_new_segments_current_default(t
                 view_id,
             )
     assert (
-        frames[_binding(document, unbound_new.id).start_keyframe_id].environment_none_reason
-        == DEFAULT_ENVIRONMENT_NONE_REASON
+        frames[_binding(document, unbound_new.id).start_keyframe_id].environment_none_reason is None
     )
 
 
-# --- Planner proposal：未声明继承、none 必写理由、锁定节点不改写 ---
+# --- Planner proposal：未声明继承、none 理由可选、锁定节点不改写 ---
 
 
 def _scene(view_id, *, locked=False):
@@ -250,12 +247,12 @@ def _field_updates(operations):
     ("shot_view", "expected"),
     [
         (VIEW, ("reference", VIEW, None)),
-        (None, ("none", None, DEFAULT_ENVIRONMENT_NONE_REASON)),
+        (None, ("none", None, None)),
     ],
 )
 def test_planner_omitted_environment_inherits_shot_view(shot_view, expected):
     _proposal_out, operations = compile_keyframe_proposal(_proposal(), (_scene(shot_view),))
-    # 继承与 blank_keyframe 同一规则：Shot 无视图时 none + 默认理由。
+    # 继承与 blank_keyframe 同一规则：Shot 无视图时 none、无理由。
     assert _field_updates(operations) == {"3" * 32: expected, "4" * 32: expected}
 
 
@@ -270,9 +267,13 @@ def test_planner_explicit_environment_overrides_inheritance():
     assert updates["3" * 32] == ("reference", VIEW, None)
 
 
-def test_planner_explicit_none_requires_reason():
-    with pytest.raises(ValueError, match="必须写 1–500 字的理由"):
-        _proposal(end_environment_mode="none")
+def test_planner_explicit_none_reason_is_optional():
+    for reason in (None, "", "   "):
+        proposal = _proposal(end_environment_mode="none", end_environment_none_reason=reason)
+        _out, operations = compile_keyframe_proposal(proposal, (_scene(VIEW),))
+        assert _field_updates(operations)["4" * 32] == ("none", None, None)
+    with pytest.raises(ValueError, match="不能超过 500 字符"):
+        _proposal(end_environment_mode="none", end_environment_none_reason="理" * 501)
     with pytest.raises(ValueError, match="不能单独给出视图 ID"):
         _proposal(end_environment_view_id=VIEW)
     proposal = _proposal(end_environment_mode="none", end_environment_none_reason="特写只拍手部")
@@ -280,7 +281,7 @@ def test_planner_explicit_none_requires_reason():
     assert _field_updates(operations)["4" * 32] == ("none", None, "特写只拍手部")
 
 
-def test_planner_wire_schema_accepts_null_and_rejects_none_without_reason():
+def test_planner_wire_schema_accepts_none_without_reason():
     def raw(mode, reason):
         return (
             '{"shots":[{"shot_id":"' + "1" * 32 + '","continues_from_previous_shot":false,'
@@ -296,8 +297,9 @@ def test_planner_wire_schema_accepts_null_and_rejects_none_without_reason():
     parsed = parse_keyframe_plan(raw("null", "null"))
     assert parsed.shots[0].segments[0].end_environment_mode is None
     assert parse_keyframe_plan(raw('"none"', '"空镜"')).shots[0].segments[0].end_environment_mode
-    with pytest.raises(ProposalError, match="必须写 1–500 字的理由"):
-        parse_keyframe_plan(raw('"none"', "null"))
+    for reason in ("null", '""'):
+        segment = parse_keyframe_plan(raw('"none"', reason)).shots[0].segments[0]
+        assert (segment.end_environment_mode, segment.end_environment_none_reason) == ("none", None)
 
 
 def test_planner_keeps_environment_of_locked_frames():
@@ -308,7 +310,7 @@ def test_planner_keeps_environment_of_locked_frames():
     assert _field_updates(operations) == {}
 
 
-def test_planner_proposal_end_to_end_fills_default_reason(tmp_path):
+def test_planner_proposal_end_to_end_inherits_none_without_reason(tmp_path):
     async def run():
         store, service, document = await _unlocked(tmp_path)
         shot = document.director_script.scenes[0].shots[0]
@@ -334,7 +336,7 @@ def test_planner_proposal_end_to_end_fills_default_reason(tmp_path):
     for frame_id in (binding.start_keyframe_id, binding.end_keyframe_id):
         frame = _frames(execution)[frame_id]
         assert frame.environment_mode is KeyframeEnvironmentMode.NONE
-        assert frame.environment_none_reason == DEFAULT_ENVIRONMENT_NONE_REASON
+        assert frame.environment_none_reason is None
 
 
 # --- 生成：未选图拒绝、名额优先级与超额拒绝、提示词文案 ---
@@ -494,7 +496,7 @@ def test_unselected_view_allows_planning_but_rejects_generation(tmp_path):
         )
         .document
     )
-    with pytest.raises(ValueError, match="请先选择视图图片，或把本帧改为 none 并写理由"):
+    with pytest.raises(ValueError, match="请先选择视图图片，或把本帧改为 none"):
         _keyframe_generation_inputs(document, binding.start_keyframe_id)
 
 
@@ -616,7 +618,7 @@ def test_batch_defers_frame_with_unselected_view_and_continues_after_selection(t
             patch, expected_revision=store.read().revision, command_id=uuid4().hex
         )
         # 单帧入口与批次共用同一判定：单帧直接拒绝。
-        with pytest.raises(ValueError, match="请先选择视图图片，或把本帧改为 none 并写理由"):
+        with pytest.raises(ValueError, match="请先选择视图图片，或把本帧改为 none"):
             _keyframe_generation_inputs(store.read(), waiting_frame)
 
         provider = RecordingProvider(media_type="image/png", content=b"\x89PNG\r\n\x1a\nkf")
@@ -689,7 +691,7 @@ def test_batch_defers_frame_with_unselected_view_and_continues_after_selection(t
     asyncio.run(run())
 
 
-# --- 人工入口与 keyframe.apply_operations：显式 none 必须写理由；预览附件带角色与用途 ---
+# --- 人工入口与 keyframe.apply_operations：显式 none 理由可选；预览附件带角色与用途 ---
 
 
 def _activate_start(store, segment_id):
@@ -728,7 +730,7 @@ def _http_body(document, keyframe_id, segment_id, *, mode, view_id, reason):
     }
 
 
-def test_apply_operations_explicit_none_requires_reason(tmp_path):
+def test_apply_operations_explicit_none_reason_is_optional(tmp_path):
     store, _service, document = asyncio.run(_unlocked(tmp_path))
     segment = document.director_script.scenes[0].shots[0].segments[0]
     frame_id = _binding(document, segment.id).start_keyframe_id
@@ -755,17 +757,19 @@ def test_apply_operations_explicit_none_requires_reason(tmp_path):
             )
         )
 
+    for key, reason in (("none-without-reason", None), ("none-blank-reason", "  ")):
+        frame = _frames(update(key, reason).document)[frame_id]
+        assert frame.environment_mode is KeyframeEnvironmentMode.NONE
+        assert frame.environment_none_reason is None
     before = store.path.read_bytes()
-    with pytest.raises(ValueError, match="不使用地点视图（none）时必须写明理由"):
-        update("none-without-reason", None)
+    with pytest.raises(ValueError, match="不能超过 500 字符"):
+        update("none-long-reason", "理" * 501)
     assert store.path.read_bytes() == before
-    updated = update("none-with-reason", "黑场过渡").document
-    frame = _frames(updated)[frame_id]
-    assert frame.environment_mode is KeyframeEnvironmentMode.NONE
-    assert frame.environment_none_reason == "黑场过渡"
+    updated = update("none-with-reason", " 黑场过渡 ").document
+    assert _frames(updated)[frame_id].environment_none_reason == "黑场过渡"
 
 
-def test_http_save_rejects_none_without_reason_while_preview_allows_it(tmp_path):
+def test_http_save_and_preview_accept_none_without_reason(tmp_path):
     async def run():
         store, service, document = await _unlocked(tmp_path)
         api = StructuredDirectorHttpApi(service, resource_path="/structured-director")
@@ -779,18 +783,16 @@ def test_http_save_rejects_none_without_reason_while_preview_allows_it(tmp_path)
                 _http_body(store.read(), frame_id, segment.id, **environment)
             ).encode()
 
-        before = store.path.read_bytes()
-        rejected = await api.handle("PUT", path, body(mode="none", view_id=None, reason=None))
-        assert rejected.status == 400
-        assert "不使用地点视图（none）时必须写明理由" in json.dumps(
-            rejected.body, ensure_ascii=False
-        )
-        assert store.path.read_bytes() == before
-        # 理由不进入提交，编辑过程中的预览不要求理由。
         preview = await api.handle(
             "POST", f"{path}/preview", body(mode="none", view_id=None, reason=None)
         )
         assert preview.status == 200, preview.body
+        for reason in (None, ""):
+            saved = await api.handle("PUT", path, body(mode="none", view_id=None, reason=reason))
+            assert saved.status == 200, saved.body
+            frame = _frames(store.read())[frame_id]
+            assert frame.environment_mode is KeyframeEnvironmentMode.NONE
+            assert frame.environment_none_reason is None
         saved = await api.handle("PUT", path, body(mode="none", view_id=None, reason="天空空镜"))
         assert saved.status == 200, saved.body
         frame = _frames(store.read())[frame_id]

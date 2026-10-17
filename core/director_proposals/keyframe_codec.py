@@ -20,7 +20,6 @@ from core.director_proposals.keyframe import (
     KeyframeShotProposal,
 )
 from core.director_proposals.schema_gen import ProposalError, generate_schema, parse_proposal
-from core.structured_director.models import DEFAULT_ENVIRONMENT_NONE_REASON
 
 _OPTIONAL_ID_SCHEMA = {
     "anyOf": [
@@ -29,7 +28,7 @@ _OPTIONAL_ID_SCHEMA = {
     ]
 }
 # 三个环境字段 wire 必填但可为 null：使用方式为 null 表示未声明，由 Core 继承 Shot 视图；
-# 声明 none 时必须写理由，使用视图时理由必须为 null（交叉约束由 proposal dataclass 校验）。
+# 声明 none 时理由可选，使用视图时理由必须为 null（交叉约束由 proposal dataclass 校验）。
 _ENVIRONMENT_MODE_SCHEMA = {
     "anyOf": [
         {"type": "string", "enum": ["edit", "reference", "none"]},
@@ -39,7 +38,7 @@ _ENVIRONMENT_MODE_SCHEMA = {
 }
 _OPTIONAL_REASON_SCHEMA = {
     "anyOf": [
-        {"type": "string", "minLength": 1, "maxLength": 500},
+        {"type": "string", "maxLength": 500},
         {"type": "null"},
     ],
     "__required__": True,
@@ -299,16 +298,16 @@ def _compile_operations(
 def resolve_keyframe_environment(
     mode: str | None, view_id: str | None, none_reason: str | None, shot_view_id: str | None
 ) -> tuple[str, str | None, str | None]:
-    """Planner 未声明（mode 为 null）时继承 Shot 视图：有视图 reference，否则 none + 默认理由。
+    """Planner 未声明（mode 为 null）时继承 Shot 视图：有视图 reference，否则 none、无理由。
 
     与 `blank_keyframe` 同一规则；视图只作空间参考，`edit` 只在显式声明时使用。
-    显式 none 的理由已由 proposal 校验为必填。
+    显式 none 的理由可选，已由 proposal 归一（空白为 null）。
     """
     if mode is not None:
         return mode, view_id, none_reason
     if shot_view_id is not None:
         return "reference", shot_view_id, None
-    return "none", None, DEFAULT_ENVIRONMENT_NONE_REASON
+    return "none", None, None
 
 
 def _environment_fields(

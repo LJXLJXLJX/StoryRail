@@ -29,6 +29,14 @@ def test_keyframe_contract_carries_view_usage_and_user_boundary():
     assert "默认不使用环境参考" not in text
 
 
+def test_keyframe_contract_treats_views_as_soft_reference():
+    """机位图是软参考：可自由改选或不用，改写不需理由，edit 只在用户明确要求时使用。"""
+    skill = read_contract("keyframe")["resources"][0]["text"]
+    for required in ("软参考", "自由选择", "改写继承值不需要说明理由", "`edit` 只在用户明确要求"):
+        assert required in skill
+    assert "只在以下情况改写" not in skill
+
+
 def test_initial_planning_keeps_one_segment_per_shot_and_defers_split_to_video_reminder():
     script = "\n".join(item["text"] for item in read_contract("script")["resources"])
     assert "初次规划一个 Shot 只对应一个 Segment" in script

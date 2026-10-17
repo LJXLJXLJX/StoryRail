@@ -8,7 +8,7 @@
 `keyframe.tsx` 的手动关键帧计划弹窗与 Keyframe Planner 读写同一组地点视图字段：
 视图选择器只列所属 Segment → Shot → Scene 绑定地点的视图（名称、purpose、状态、Shot 绑定、未选图提示），
 帧当前引用其它地点的视图时作为“当前值”保留并标明来源，Scene 未绑定地点时只能选择不使用并给出提示；
-从不使用选回视图默认 `reference`，选择 `none` 时理由必填（1–500 字）。“当前实际图片输入”逐图展示 Core 预览给出的
+从不使用选回视图默认 `reference`，选择 `none` 时理由可选（最多 500 字，空白按 null 保存）。“当前实际图片输入”逐图展示 Core 预览给出的
 底图/参考位置、`input_roles` 与 `purpose`，Web 不推断映射。
 同一文件在首尾帧下方展示 Ref2VA“其他图片”：来源分为已选关键帧与资产库参考图，排除当前已启用边界，每张必填用途说明；它只写当前
 recipe 的 `additional_images`，不进入 KeyframePlan，也不获得时间位置。`RecipeInputsControl.tsx` 的共享草稿 Provider

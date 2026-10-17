@@ -142,7 +142,7 @@ def _keyframe_location_views(document):
     """Keyframe 规划可引用的全部地点视图（Keyframe 可覆盖 Shot 绑定）。
 
     每项带所属地点名与状态、purpose 和已选图；`selected_asset_id` 为 null 时可以规划，
-    但生成前必须先选图或把帧改为 none 并写理由。
+    但生成前必须先选图或把帧改为 none。
     """
     result = []
     for location in document.location_library.locations:

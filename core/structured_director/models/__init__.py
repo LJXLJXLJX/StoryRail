@@ -29,14 +29,15 @@ from .final import SceneAssemblyClip as SceneAssemblyClip
 from .final import SceneAssemblyPlan as SceneAssemblyPlan
 from .generation import ReferenceGeneration as ReferenceGeneration
 from .generation import transition_generation as transition_generation
-from .keyframe import DEFAULT_ENVIRONMENT_NONE_REASON as DEFAULT_ENVIRONMENT_NONE_REASON
-from .keyframe import ENVIRONMENT_NONE_REASON_REQUIRED as ENVIRONMENT_NONE_REASON_REQUIRED
 from .keyframe import Keyframe as Keyframe
 from .keyframe import KeyframeCharacterReference as KeyframeCharacterReference
 from .keyframe import KeyframeEnvironmentMode as KeyframeEnvironmentMode
 from .keyframe import KeyframePlan as KeyframePlan
 from .keyframe import SegmentKeyframes as SegmentKeyframes
 from .keyframe import blank_keyframe as blank_keyframe
+from .keyframe import (
+    normalize_environment_none_reason as normalize_environment_none_reason,
+)
 from .keyframe import prune_character_references as prune_character_references
 from .location import Location as Location
 from .location import LocationCropRequest as LocationCropRequest
@@ -109,8 +110,6 @@ __all__ = [
     "FinalTransition",
     "GenerationOperation",
     "ImageAssetCategory",
-    "DEFAULT_ENVIRONMENT_NONE_REASON",
-    "ENVIRONMENT_NONE_REASON_REQUIRED",
     "blank_keyframe",
     "Keyframe",
     "KeyframeCharacterReference",
@@ -158,6 +157,7 @@ __all__ = [
     "discarded_asset_deletion_closure",
     "transition_generation",
     "prune_character_references",
+    "normalize_environment_none_reason",
 ]
 
 # 校验函数注入（P2-C1）：validation 需要 models 的类做 isinstance，models 的

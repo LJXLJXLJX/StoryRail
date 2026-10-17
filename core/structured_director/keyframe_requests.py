@@ -199,7 +199,7 @@ def keyframe_pending_view(
         else document.location_library.view_owner(keyframe.environment_view_id)
     )
     if owner is None:
-        raise ValueError("当前 Keyframe 指定的地点视图已不存在；请改选视图，或改为 none 并写理由。")
+        raise ValueError("当前 Keyframe 指定的地点视图已不存在；请改选视图，或改为 none。")
     return None if owner[1].selected_asset_id is not None else owner
 
 
@@ -245,7 +245,7 @@ def _keyframe_generation_inputs(
         location, view = pending_view
         raise ValueError(
             f"地点「{location.name}」的视图「{view.name}」尚未选择图片；"
-            "请先选择视图图片，或把本帧改为 none 并写理由。"
+            "请先选择视图图片，或把本帧改为 none。"
         )
     if keyframe.environment_mode is not KeyframeEnvironmentMode.NONE:
         assert keyframe.environment_view_id is not None

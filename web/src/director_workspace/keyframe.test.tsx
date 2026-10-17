@@ -331,13 +331,13 @@ it("多套造型须为本帧显式选择，保存只提交选中的那一套", (
     [character.id],
     [{ character_id: character.id, look_id: crownLook }],
     [],
-    expect.any(String),
+    "none",
     null,
-    expect.anything(),
+    null,
   );
 });
 
-// --- 地点视图：选择器过滤、跨地点当前值、none 理由必填、实际提交映射 ---
+// --- 地点视图：选择器过滤、跨地点当前值、none 理由可选、实际提交映射 ---
 
 const [VIEW_MAIN, VIEW_UNSELECTED, VIEW_OTHER] = ["5".repeat(32), "6".repeat(32), "7".repeat(32)];
 
@@ -515,7 +515,7 @@ it("从不使用选回视图时默认作为空间参考；Scene 未绑定地点�
   expect(within(unboundDialog).getByText(/本 Scene 尚未绑定地点，没有可选视图/)).toBeInTheDocument();
 });
 
-it("选择不使用地点视图时理由必填，写明理由后才可保存", () => {
+it("选择不使用地点视图时理由可选，空白理由按 null 保存", () => {
   mockPreview();
   const { snapshot, binding } = locationSnapshot({
     mode: "edit",
@@ -530,15 +530,28 @@ it("选择不使用地点视图时理由必填，写明理由后才可保存", (
   expect(within(dialog).getByLabelText("地点视图")).toHaveValue("");
   const reason = within(dialog).getByLabelText("不使用地点视图的理由");
   expect(reason).toHaveValue("");
-  expect(within(dialog).getByRole("alert")).toHaveTextContent("请写明不使用地点视图的理由");
+  expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
   const save = within(dialog).getByRole("button", { name: "保存关键帧计划" });
-  expect(save).toBeDisabled();
   fireEvent.change(reason, { target: { value: "   " } });
-  expect(save).toBeDisabled();
-  fireEvent.change(reason, { target: { value: " 纯黑场过渡，没有环境信息 " } });
   expect(save).toBeEnabled();
   fireEvent.click(save);
-  expect(onSaveKeyframe).toHaveBeenCalledWith(
+  expect(onSaveKeyframe).toHaveBeenLastCalledWith(
+    binding.end_keyframe_id,
+    binding.segment_id,
+    "两人坐下。",
+    [],
+    [],
+    [],
+    "none",
+    null,
+    null,
+  );
+  fireEvent.change(reason, { target: { value: "理".repeat(501) } });
+  expect(within(dialog).getByRole("alert")).toHaveTextContent("理由最多 500 字");
+  expect(save).toBeDisabled();
+  fireEvent.change(reason, { target: { value: " 纯黑场过渡，没有环境信息 " } });
+  fireEvent.click(save);
+  expect(onSaveKeyframe).toHaveBeenLastCalledWith(
     binding.end_keyframe_id,
     binding.segment_id,
     "两人坐下。",

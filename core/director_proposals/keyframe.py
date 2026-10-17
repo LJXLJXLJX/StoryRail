@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass, field
 
 from core.director_commands import KeyframeOperation
+from core.structured_director.models import normalize_environment_none_reason
 
 _ID = re.compile(r"[0-9a-f]{32}")
 
@@ -121,10 +122,14 @@ class KeyframeSegmentProposal:
         _validate_character_references(
             self.end_character_references, self.end_visible_character_ids
         )
-        _validate_environment(
-            self.end_environment_mode,
-            self.end_environment_view_id,
-            self.end_environment_none_reason,
+        object.__setattr__(
+            self,
+            "end_environment_none_reason",
+            _validate_environment(
+                self.end_environment_mode,
+                self.end_environment_view_id,
+                self.end_environment_none_reason,
+            ),
         )
 
 
@@ -148,10 +153,14 @@ class KeyframeShotProposal:
         _validate_character_references(
             self.start_character_references, self.start_visible_character_ids
         )
-        _validate_environment(
-            self.start_environment_mode,
-            self.start_environment_view_id,
-            self.start_environment_none_reason,
+        object.__setattr__(
+            self,
+            "start_environment_none_reason",
+            _validate_environment(
+                self.start_environment_mode,
+                self.start_environment_view_id,
+                self.start_environment_none_reason,
+            ),
         )
         if not self.segments:
             raise ValueError("每个 Shot 必须包含 Segment 尾帧计划。")
@@ -201,26 +210,26 @@ def _validate_character_references(
         raise ValueError("关键帧角色造型选择只能针对该帧可见角色。")
 
 
-def _validate_environment(mode: str | None, view_id: str | None, none_reason: str | None) -> None:
-    """三项均为 null 表示未声明，由 Core 继承 Shot 视图。
+def _validate_environment(
+    mode: str | None, view_id: str | None, none_reason: str | None
+) -> str | None:
+    """校验地点视图三项并返回归一后的 none 理由；三项均为 null 表示未声明，由 Core 继承 Shot 视图。
 
-    none 必须写理由且不指定视图；edit/reference 必须指定视图且不写理由。
+    none 不指定视图、理由可选（空白归一为 null）；edit/reference 必须指定视图且不写理由。
     """
     if mode is None:
         if view_id is not None or none_reason is not None:
             raise ValueError(
                 "未声明地点视图使用方式时由 Core 继承 Shot 视图，不能单独给出视图 ID 或 none 理由。"
             )
-        return
+        return None
     if mode not in {"edit", "reference", "none"}:
         raise ValueError("地点视图使用方式必须是 edit、reference 或 none。")
     if (mode == "none") != (view_id is None):
         raise ValueError("地点视图使用方式与视图 ID 不一致。")
     if view_id is not None and not _ID.fullmatch(view_id):
         raise ValueError("地点视图 ID 不合法。")
+    none_reason = normalize_environment_none_reason(none_reason)
     if mode != "none" and none_reason is not None:
         raise ValueError("使用地点视图时不能填写 none 理由。")
-    if mode == "none" and (
-        none_reason is None or not none_reason.strip() or len(none_reason) > 500
-    ):
-        raise ValueError("不使用地点视图（none）时必须写 1–500 字的理由。")
+    return none_reason

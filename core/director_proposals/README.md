@@ -6,7 +6,7 @@
 - `script.py`：首次脚本、局部脚本回改和 Scene/Shot/Segment 输入；
 - `narration.py`：旁白审核上下文与参数更新 proposal；
 - `keyframe.py`：Keyframe 规划上下文、完整计划和 command operations proposal；环境字段三项均为 null 表示未声明，
-  由 `keyframe_codec.resolve_keyframe_environment` 按所属 Shot 视图继承（有视图 edit，无视图 none），显式 none 必须写理由；
+  由 `keyframe_codec.resolve_keyframe_environment` 按所属 Shot 视图继承（有视图 reference，无视图 none），显式 none 理由可选（空白归一为 null）；
 - `location.py`：地点规划输入（每个 Scene 的全部 Shot 与可见角色名、已有地点归属与方位）和增补式 proposal：
   `locations[]`（每项给已有 `id` 或新建 `key`，含陈设、状态、视图）、`scene_bindings[]`、`shot_bindings[]`。
   未列出的项不删除；列出的已有项整体替换；新建项用局部 key 互引，key 规则与 `location.apply_operations` 相同；

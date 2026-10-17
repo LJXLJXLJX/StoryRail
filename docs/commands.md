@@ -145,7 +145,7 @@ Core 分配。操作完成后 Core 校验层级、非空 Shot、角色引用、�
 | 操作 | 要点 |
 | --- | --- |
 | `set_activation` | 同时设置 Segment 首尾槽位是否启用 |
-| `update_frame_fields` | 画面正文、可见角色、每个可见角色本帧使用的造型（`character_references`，`look_id` 或 null）、地点视图 `environment_view_id` 与 `environment_mode`（`edit/reference/none`）；显式 `none` 必须写 `environment_none_reason`（1–500 字） |
+| `update_frame_fields` | 画面正文、可见角色、每个可见角色本帧使用的造型（`character_references`，`look_id` 或 null）、地点视图 `environment_view_id` 与 `environment_mode`（`edit/reference/none`）；`none` 的 `environment_none_reason` 可选（null 或最多 500 字，空白归一为 null） |
 | `set_aux_references` | 替换 Segment 手工辅助图集合（≤4） |
 | `bind_slot` | 把已有 Keyframe 绑定到某首帧或尾帧槽位 |
 | `share_boundary` | 让真实相邻 Segment 的左尾与右首共享一个 Keyframe；可给 `source_keyframe_id` 复用现有对象及其血缘，否则 Core 从边界事实中挑选可复用对象，没有时才新建 |

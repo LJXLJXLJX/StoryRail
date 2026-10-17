@@ -17,12 +17,13 @@ class KeyframeEnvironmentMode(StrEnum):
     NONE = "none"
 
 
-# Shot 没有地点视图时的默认退出理由；只用于 Core 建立的空白帧与 Planner 未声明时的继承。
-DEFAULT_ENVIRONMENT_NONE_REASON = "Shot 未绑定地点视图"
-# 人工入口与 keyframe.apply_operations 显式设为 none 却没有理由时的拒绝信息。
-ENVIRONMENT_NONE_REASON_REQUIRED = (
-    "不使用地点视图（none）时必须写明理由（environment_none_reason，1–500 字）。"
-)
+def normalize_environment_none_reason(value: str | None) -> str | None:
+    """none 理由可选：空白归一为 None，其余去掉首尾空白，超过 500 字拒绝。"""
+    if value is None or not value.strip():
+        return None
+    if len(value.strip()) > 500:
+        raise ValueError("keyframe.environment_none_reason 不能超过 500 字符。")
+    return value.strip()
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,8 +49,8 @@ class Keyframe:
     selected_asset_id: str | None = None
     environment_mode: KeyframeEnvironmentMode = KeyframeEnvironmentMode.NONE
     environment_view_id: str | None = None
-    # none 时必填（1–500 字），edit/reference 时必须为 None。
-    environment_none_reason: str | None = DEFAULT_ENVIRONMENT_NONE_REASON
+    # none 时可选（1–500 字或 None），edit/reference 时必须为 None。
+    environment_none_reason: str | None = None
     # 未列出的可见角色按默认规则：角色只有一套造型时使用它，多套造型必须显式选择。
     character_references: tuple[KeyframeCharacterReference, ...] = ()
 
@@ -62,9 +63,8 @@ class Keyframe:
         ):
             raise ValueError("Keyframe none 必须不指定地点视图；edit/reference 必须显式指定视图。")
         if self.environment_mode is KeyframeEnvironmentMode.NONE:
-            if self.environment_none_reason is None:
-                raise ValueError("Keyframe 不使用地点视图时必须说明理由。")
-            _require_text(self.environment_none_reason, "keyframe.environment_none_reason", 500)
+            if self.environment_none_reason is not None:
+                _require_text(self.environment_none_reason, "keyframe.environment_none_reason", 500)
         elif self.environment_none_reason is not None:
             raise ValueError("Keyframe 使用地点视图时不能保存 none 理由。")
         _require_id(self.owner_segment_id, "keyframe.owner_segment_id")
@@ -96,7 +96,7 @@ def blank_keyframe(
 ) -> Keyframe:
     """新建空 Keyframe，环境字段按所属 Shot 的视图写成显式值。
 
-    Shot 有视图 → `reference` + 该视图；无视图 → `none` + 默认理由。视图只作空间参考，
+    Shot 有视图 → `reference` + 该视图；无视图 → `none`、无理由。视图只作空间参考，
     `edit` 只在用户明确要求画面严格贴合视图时使用。只在建立和重建帧时调用；
     之后 Shot 改绑不回写已有帧，失效级联因此只需看帧上显式的 `environment_view_id`。
     """

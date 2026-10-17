@@ -464,12 +464,10 @@ def _keyframe(keyframe_id: str = KEYFRAME_START_ID, **overrides) -> Keyframe:
     return Keyframe(**fields)
 
 
-def test_keyframe_none_requires_reason_and_no_view():
-    assert _keyframe().environment_mode is KeyframeEnvironmentMode.NONE
-    _raises(
-        "Keyframe 不使用地点视图时必须说明理由。",
-        lambda: _keyframe(environment_none_reason=None),
-    )
+def test_keyframe_none_reason_is_optional():
+    keyframe = _keyframe()
+    assert keyframe.environment_mode is KeyframeEnvironmentMode.NONE
+    assert keyframe.environment_none_reason is None
     _raises(
         "keyframe.environment_none_reason 不能为空或超过 500 字符。",
         lambda: _keyframe(environment_none_reason=""),

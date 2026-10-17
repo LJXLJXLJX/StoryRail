@@ -6013,7 +6013,6 @@ const schemas: Record<string, JsonSchema> = {
                     "anyOf": [
                       {
                         "type": "string",
-                        "minLength": 1,
                         "maxLength": 500
                       },
                       {
@@ -6094,7 +6093,6 @@ const schemas: Record<string, JsonSchema> = {
               "anyOf": [
                 {
                   "type": "string",
-                  "minLength": 1,
                   "maxLength": 500
                 },
                 {

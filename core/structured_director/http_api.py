@@ -103,8 +103,6 @@ from .manual_commands import (
     location_selection_command,
 )
 from .models import (
-    DEFAULT_ENVIRONMENT_NONE_REASON,
-    ENVIRONMENT_NONE_REASON_REQUIRED,
     CharacterCard,
     DirectorRunKind,
     DirectorRunStatus,
@@ -118,6 +116,7 @@ from .models import (
     NarratorProfile,
     NarratorVoice,
     StructuredDirectorDocument,
+    normalize_environment_none_reason,
 )
 from .reads.proposal_observation import proposal_observation
 from .reads.read_tools import ReadResultTooLarge
@@ -760,7 +759,7 @@ class StructuredDirectorHttpApi:
                     request["character_references"]
                 ),
                 reference_asset_ids=_id_list(request["reference_asset_ids"]),
-                **_keyframe_environment(request, preview=True),
+                **_keyframe_environment(request),
                 expected_revision=_required_revision(request),
             )
             return JsonResponse(
@@ -1766,19 +1765,12 @@ def _director_run_yielded(active_run: object) -> bool:
     return status in {DirectorRunStatus.WAITING_USER, DirectorRunStatus.WAITING_JOBS}
 
 
-def _keyframe_environment(request: dict[str, Any], *, preview: bool = False) -> dict[str, object]:
-    """Keyframe 地点视图三项；保存时显式 none 必须写理由。
-
-    理由只解释退出原因、不进入提交，预览允许理由暂缺（用默认理由构造预览帧）。
-    """
+def _keyframe_environment(request: dict[str, Any]) -> dict[str, object]:
+    """Keyframe 地点视图三项；none 理由可选，只解释退出原因、不进入提交，空白归一为 null。"""
     mode = KeyframeEnvironmentMode(_string(request, "environment_mode"))
     reason = request["environment_none_reason"]
     if reason is not None:
-        reason = _plain_string(reason, "environment_none_reason")
-    elif mode is KeyframeEnvironmentMode.NONE:
-        if not preview:
-            raise ValueError(ENVIRONMENT_NONE_REASON_REQUIRED)
-        reason = DEFAULT_ENVIRONMENT_NONE_REASON
+        reason = normalize_environment_none_reason(_plain_string(reason, "environment_none_reason"))
     return {
         "environment_mode": mode,
         "environment_view_id": _optional_id(request["environment_view_id"], "environment_view_id"),

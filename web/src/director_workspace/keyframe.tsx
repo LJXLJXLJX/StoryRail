@@ -676,12 +676,10 @@ export function KeyframeSlot({
     environmentViewId,
     environmentNoneReason,
   } = protectedPlan.value;
-  // none 理由只在 none 时提交；其它模式回传 null。
+  // none 理由可选，只在 none 时提交；空白与其它模式回传 null。
   const submittedNoneReason =
-    environmentMode === "none" ? environmentNoneReason.trim() : null;
-  const noneReasonInvalid =
-    environmentMode === "none" &&
-    (submittedNoneReason === "" || (submittedNoneReason?.length ?? 0) > 500);
+    environmentMode === "none" ? environmentNoneReason.trim() || null : null;
+  const noneReasonInvalid = (submittedNoneReason?.length ?? 0) > 500;
   const setPromptText = (promptText: string) =>
     protectedPlan.setValue((v) => ({ ...v, promptText }));
   const setVisibleCharacterIds = (
@@ -762,7 +760,7 @@ export function KeyframeSlot({
           referenceAssetIds,
           environmentMode,
           environmentViewId,
-          submittedNoneReason || null,
+          submittedNoneReason,
         )
         .then((data) => {
           if (activePreview)
@@ -1517,7 +1515,7 @@ function KeyframeEnvironmentFields({
         </select>
         <small>
           {location === null
-            ? "本 Scene 尚未绑定地点，没有可选视图；可先在地点库绑定，或选择不使用并写明理由。"
+            ? "本 Scene 尚未绑定地点，没有可选视图；可先在地点库绑定，或选择不使用。"
             : `只列出本 Scene 地点「${location.name}」的视图。`}
           {current !== null && !current.selected
             ? ` 视图「${current.name}」未选图，生成前需要选图。`
@@ -1552,17 +1550,16 @@ function KeyframeEnvironmentFields({
         </select>
         <small>
           默认 reference：视图只作空间参考，只参考固定陈设的方位关系、空间布局、材质与主光方向，
-          不照搬该图的机位与构图；需要画面严格贴合视图时选编辑底图（edit）；画面没有环境信息时选
-          不使用并写明理由。
+          不照搬该图的机位与构图；可按本帧朝向改选本地点的其它视图；需要画面严格贴合视图时选编辑底图（edit）；
+          没有合适视图或画面没有环境信息时选不使用（理由可选）。
         </small>
       </label>
       {mode === "none" ? (
         <label className="card-field">
-          不使用地点视图的理由（必填）
+          不使用地点视图的理由（可选）
           <textarea
             aria-label="不使用地点视图的理由"
             aria-invalid={noneReasonInvalid}
-            required
             maxLength={500}
             rows={2}
             value={noneReason}
@@ -1572,7 +1569,7 @@ function KeyframeEnvironmentFields({
             }
           />
           {noneReasonInvalid ? (
-            <small role="alert">请写明不使用地点视图的理由（1–500 字）。</small>
+            <small role="alert">理由最多 500 字。</small>
           ) : null}
         </label>
       ) : null}

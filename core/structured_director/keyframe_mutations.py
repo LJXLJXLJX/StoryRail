@@ -16,7 +16,6 @@ from core.director_commands import (
 )
 
 from .models import (
-    ENVIRONMENT_NONE_REASON_REQUIRED,
     Keyframe,
     KeyframeCharacterReference,
     KeyframeEnvironmentMode,
@@ -25,6 +24,7 @@ from .models import (
     ReferenceGenerationPhase,
     SegmentKeyframes,
     StructuredDirectorDocument,
+    normalize_environment_none_reason,
 )
 
 
@@ -241,13 +241,9 @@ def _apply_keyframe_operations(
             if operation.environment_changed:
                 environment_mode = KeyframeEnvironmentMode(operation.environment_mode)
                 environment_view_id = operation.environment_view_id
-                environment_none_reason = operation.environment_none_reason
-                # 默认理由只属于 Core 建立的空白帧；显式设为 none 必须写理由。
-                if (
-                    environment_mode is KeyframeEnvironmentMode.NONE
-                    and environment_none_reason is None
-                ):
-                    raise ValueError(ENVIRONMENT_NONE_REASON_REQUIRED)
+                environment_none_reason = normalize_environment_none_reason(
+                    operation.environment_none_reason
+                )
             else:
                 environment_mode = keyframe.environment_mode
                 environment_view_id = keyframe.environment_view_id

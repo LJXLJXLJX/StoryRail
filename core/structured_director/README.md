@@ -137,8 +137,8 @@ flowchart TD
 flowchart LR
   U[解锁视觉生产] --> B[blank_keyframe]
   R[脚本回改给新 Segment 建帧] --> B
-  B -->|Shot 有视图| E[edit + 该视图]
-  B -->|Shot 无视图| N[none + 默认理由]
+  B -->|Shot 有视图| E[reference + 该视图]
+  B -->|Shot 无视图| N[none，无理由]
   P[Planner 环境字段为 null] -->|按所属 Shot 视图| E & N
   X[已有帧 / 规划锁定节点] -.保持原值.- B
 ```
@@ -146,15 +146,15 @@ flowchart LR
 - 继承只在建帧时发生（`models/keyframe.py::blank_keyframe`，解锁与 `script_mutations._rebase_keyframe_plan` 共用），
   之后 Shot 改绑不回写；重建时仍在的 Segment 沿用原帧。
 - Keyframe Planner proposal 的 `*_environment_mode/view_id/none_reason` wire 必填可为 null：三者都为 null 由 Core 按所属
-  Shot 视图填值（`keyframe_codec.resolve_keyframe_environment`，与 `blank_keyframe` 同一规则，Shot 无视图时 none + 默认理由；
-  承接上一 Shot 的共享首帧随左侧 Shot）；显式 `none` 必须写理由，
+  Shot 视图填值（`keyframe_codec.resolve_keyframe_environment`，与 `blank_keyframe` 同一规则，Shot 无视图时 none、无理由；
+  承接上一 Shot 的共享首帧随左侧 Shot）；显式 `none` 理由可选，
   edit/reference 必须给视图。规划锁定节点不产生字段修改。共享边界是同一个 Keyframe，两侧天然同视图同模式；
   `continues_from_previous_shot` 要求两侧原始环境字段完全一致。
-- 默认理由只属于 Core 建立的空白帧与 Planner 继承。手工保存（HTTP PUT）与 `keyframe.apply_operations` 显式设为 `none`
-  却没有理由时拒绝（`ENVIRONMENT_NONE_REASON_REQUIRED`）；Keyframe 预览不要求理由，因为理由不进入提交。
+- `none` 理由只解释退出原因、不进入提交，所有入口都可选：Planner proposal、手工保存与预览（HTTP）和
+  `keyframe.apply_operations` 统一经 `normalize_environment_none_reason` 把空白归一为 null、超过 500 字拒绝。
 - 预览（`KeyframeSubmissionPreview`）逐图带 `input_roles`（地点视图、角色参考、前置帧、辅助参考）与 `purpose`（用途说明），
   取自实际输入编译 `ImageInputs.roles/mapping`；Web 弹窗据此展示底图或参考位置，不解析提示词文本。
-- 视图未选图时允许规划；单帧生成拒绝：“请先选择视图图片，或把本帧改为 none 并写理由”。Keyframe 批次把它当作未满足依赖：
+- 视图未选图时允许规划；单帧生成拒绝：“请先选择视图图片，或把本帧改为 none”。Keyframe 批次把它当作未满足依赖：
   该帧不提交、留作等待项（“等待地点「X」视图「Y」选图”），批次观察标为 `dependency_blocked` /
   `location_view_unselected`，选图后需要显式继续。三处共用 `keyframe_pending_view` 判定。
 - 输入名额：视图 → 可见角色参考 → 前置帧 → 辅助图，超额拒绝并按此顺序列出被挤掉的输入；提交顺序中编辑底图
