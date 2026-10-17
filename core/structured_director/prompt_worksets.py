@@ -74,7 +74,11 @@ def video_prompt_workset(
             "recipe_id": recipe.id,
             "duration_seconds": segment.duration_estimate_seconds,
             "aspect_ratio": document.aspect_ratio.value,
-            "scene": {"title": scene.title, "setting": scene.setting},
+            "scene": {
+                "title": scene.title,
+                "setting": scene.setting,
+                "driver": scene.driver,
+            },
             "shot": {
                 "composition": shot.composition,
                 "camera_movement": shot.camera_movement,
@@ -92,10 +96,19 @@ def video_prompt_workset(
                 ),
                 "dialogue": [
                     {
-                        "character_name": characters.get(item.character_id, item.character_id),
+                        "character_name": (
+                            item.speaker_label
+                            if item.character_id is None
+                            else characters.get(item.character_id, item.character_id)
+                        ),
                         "text": item.text,
                         "delivery": item.delivery,
-                        "on_screen": item.character_id in shot.visible_character_ids,
+                        # 引用库外说话者没有可见性登记，是否入画以 Segment action 为准。
+                        "on_screen": (
+                            None
+                            if item.character_id is None
+                            else item.character_id in shot.visible_character_ids
+                        ),
                     }
                     for item in segment.dialogue_lines
                 ],

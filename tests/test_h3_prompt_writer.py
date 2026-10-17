@@ -38,11 +38,27 @@ class H3PromptWriterTests(unittest.IsolatedAsyncioTestCase):
         ):
             self.assertIn(required, instructions)
 
+    def test_voice_declaration_is_scoped_to_dialogue_and_scene_driver(self) -> None:
+        # drama Scene 的对白段不能再被要求声明“全片无人类语音”或预留旁白通道。
+        instructions = "\n".join(r["text"] for r in skill_resources())
+        for required in (
+            "除 `<d>` 中的台词外无其它人类语音",
+            "只有 `scene.driver` 为 `narration` 时再加“预留后期主旁白音频叠加通道”",
+            "drama Scene 不写这句",
+            "逐字照抄 `dialogue[].text`",
+            "`on_screen=null` 是引用库外的临时说话者",
+        ):
+            self.assertIn(required, instructions)
+        self.assertNotIn(
+            '末尾明确声明："全片无人类语音，保持纯净环境音，预留后期主旁白', instructions
+        )
+
     def test_sound_policy_requires_effects_and_disables_bgm_by_default(self) -> None:
         instructions = "\n".join(r["text"] for r in skill_resources())
         for required in (
             "默认禁止生成非画内背景音乐",
             "non_diegetic_music` 必须为 `N/A`",
+            "只有 `user_direction` 或 Shot `audio_direction` 明确写出配乐或音乐入点时",
             "必须根据画面动作和环境写出具体音效",
             "只有画内角色演奏、收音机、电视或手机播放的音乐",
         ):

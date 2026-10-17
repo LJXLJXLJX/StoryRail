@@ -1225,8 +1225,27 @@ const schemas: Record<string, JsonSchema> = {
     "type": "object",
     "properties": {
       "character_id": {
-        "type": "string",
-        "pattern": "^[0-9a-f]{32}$"
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "speaker_label": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "x-trimmed-nonempty": true
+          },
+          {
+            "type": "null"
+          }
+        ]
       },
       "text": {
         "type": "string",
@@ -1239,6 +1258,7 @@ const schemas: Record<string, JsonSchema> = {
     },
     "required": [
       "character_id",
+      "speaker_label",
       "text",
       "delivery"
     ],
@@ -4960,8 +4980,15 @@ const schemas: Record<string, JsonSchema> = {
                             "type": "object",
                             "properties": {
                               "character_id": {
-                                "type": "string",
-                                "pattern": "^[0-9a-f]{32}$"
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{32}$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               },
                               "text": {
                                 "type": "string",
@@ -4971,6 +4998,18 @@ const schemas: Record<string, JsonSchema> = {
                               "delivery": {
                                 "type": "string",
                                 "maxLength": 1000
+                              },
+                              "speaker_label": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 60
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               }
                             },
                             "required": [
@@ -5361,8 +5400,15 @@ const schemas: Record<string, JsonSchema> = {
                                     "type": "object",
                                     "properties": {
                                       "character_id": {
-                                        "type": "string",
-                                        "pattern": "^[0-9a-f]{32}$"
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "pattern": "^[0-9a-f]{32}$"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
                                       },
                                       "text": {
                                         "type": "string",
@@ -5372,6 +5418,18 @@ const schemas: Record<string, JsonSchema> = {
                                       "delivery": {
                                         "type": "string",
                                         "maxLength": 1000
+                                      },
+                                      "speaker_label": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 60
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
                                       }
                                     },
                                     "required": [
@@ -5657,8 +5715,15 @@ const schemas: Record<string, JsonSchema> = {
                         "type": "object",
                         "properties": {
                           "character_id": {
-                            "type": "string",
-                            "pattern": "^[0-9a-f]{32}$"
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{32}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           },
                           "text": {
                             "type": "string",
@@ -5668,6 +5733,18 @@ const schemas: Record<string, JsonSchema> = {
                           "delivery": {
                             "type": "string",
                             "maxLength": 1000
+                          },
+                          "speaker_label": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 60
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [

@@ -55,10 +55,13 @@ StoryRail 的 Scene 旁白由独立 TTS 音频资产承载，并在 Scene/Final 
 
 - 绝不把剧本旁白、解说词或 narrator 文本写入 `<d>...</d>`，也不要写成 `says in an off-screen voiceover`、"解说员以画外音叙述" 或任何其它画外音指令。
 - `<d>...</d>` 只允许承载当前 Segment 明确指定、确实由画面角色表演的剧情对白或演唱；不要把 Scene 旁白伪装成角色对白。
-- 当前 Segment `dialogue` 中 `on_screen=false` 的台词是同一空间内画外角色的剧情对白，不是旁白；按 `references/cinematic-video-prompting.md` 第 5 节写成画外说话者，画面中的听者双唇闭合。
+- 当前 Segment `dialogue` 中 `on_screen=false` 的台词是同一空间内画外角色的剧情对白，不是旁白；按 `references/cinematic-video-prompting.md` 第 5 节写成画外说话者，画面中的听者双唇闭合。`on_screen=null` 是引用库外的临时说话者（`character_name` 是称呼），是否入画以 Segment `action` 为准。
+- `<d>` 中的台词逐字照抄 `dialogue[].text`，不改写、不纠错、不增删。
 - 没有明确剧情对白时，必须明确写出人物双唇全程闭合、全片无开口、无对白、无画外音配音；这不等于禁止呼吸、喘息或其它非语言拟音。
-- `overall_soundscape` 只描述环境声、动作拟音和非语言人声（例如呼吸、喘息、喊叫的非词语声）；必须根据画面动作和环境写出具体音效，除非用户明确要求全片完全静音，不得写成 `N/A` 或省略音效。末尾明确声明："全片无人类语音，保持纯净环境音，预留后期主旁白音频叠加通道。"
-- 默认禁止生成非画内背景音乐（BGM、score、audience-only music）：除非 `user_direction` 明确要求背景音乐或配乐，否则 `non_diegetic_music` 必须为 `N/A`，不得从“电影感”、情绪或风格描述推断音乐需求。只有画内角色演奏、收音机、电视或手机播放的音乐才作为画内事件写入 `integrated_multimodal_description`，不等同于 BGM。
+- `overall_soundscape` 只描述环境声、动作拟音和非语言人声（例如呼吸、喘息、喊叫的非词语声）；必须根据画面动作和环境写出具体音效，除非用户明确要求全片完全静音，不得写成 `N/A` 或省略音效。末尾的人声声明按 Segment 区分：
+  - `dialogue` 非空：声明“除 `<d>` 中的台词外无其它人类语音”，不写“全片无人类语音”；
+  - `dialogue` 为空：声明“全片无人类语音，保持纯净环境音”；只有 `scene.driver` 为 `narration` 时再加“预留后期主旁白音频叠加通道”，drama Scene 不写这句。
+- 默认禁止生成非画内背景音乐（BGM、score、audience-only music）：只有 `user_direction` 或 Shot `audio_direction` 明确写出配乐或音乐入点时，才按其写入 `non_diegetic_music`（脚本的 `audio_direction` 来自导演方案或用户的明确要求）；否则 `non_diegetic_music` 必须为 `N/A`，不得从“电影感”、情绪或风格描述推断音乐需求。只有画内角色演奏、收音机、电视或手机播放的音乐才作为画内事件写入 `integrated_multimodal_description`，不等同于 BGM。
 - 不因历史提示词中已有旁白而保留它；历史正文与当前独立旁白架构冲突时，删除视频模型旁白并保留视觉动作和环境声。
 
 ## StoryRail 画面与调度规范

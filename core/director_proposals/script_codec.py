@@ -20,6 +20,11 @@ _ID_SCHEMA = {
         {"type": "null"},
     ]
 }
+# 对白说话者二选一：引用库角色 ID，或 character_id=null 加引用库外说话者称呼。
+_DIALOGUE_CHARACTER_SCHEMA = _ID_SCHEMA
+_DIALOGUE_SPEAKER_SCHEMA = {
+    "anyOf": [{"type": "string", "minLength": 1, "maxLength": 60}, {"type": "null"}]
+}
 _BOUNDARY_REASONS = [
     "model_constraint",
     "continuity_anchor",
@@ -47,7 +52,8 @@ def _content_overrides(prefix: str) -> dict[str, dict[str, object]]:
         f"{p}shots[].segments": {"minItems": 1},
         f"{segment}.duration_estimate_seconds": {"minimum": 0.2},
         f"{segment}.action": {"minLength": 1, "maxLength": 4_000},
-        f"{segment}.dialogue_lines[].character_id": {"pattern": "^[0-9a-f]{32}$"},
+        f"{segment}.dialogue_lines[].character_id": _DIALOGUE_CHARACTER_SCHEMA,
+        f"{segment}.dialogue_lines[].speaker_label": _DIALOGUE_SPEAKER_SCHEMA,
         f"{segment}.dialogue_lines[].text": {"minLength": 1, "maxLength": 2_000},
         f"{segment}.dialogue_lines[].delivery": {"maxLength": 1_000},
         f"{segment}.boundary_from_previous.reason": {"enum": _BOUNDARY_REASONS},
@@ -103,7 +109,8 @@ _REVISION_OVERRIDES.update(
     {
         "operations[].segment.duration_estimate_seconds": {"minimum": 0.2},
         "operations[].segment.action": {"minLength": 1, "maxLength": 4_000},
-        "operations[].segment.dialogue_lines[].character_id": {"pattern": "^[0-9a-f]{32}$"},
+        "operations[].segment.dialogue_lines[].character_id": _DIALOGUE_CHARACTER_SCHEMA,
+        "operations[].segment.dialogue_lines[].speaker_label": _DIALOGUE_SPEAKER_SCHEMA,
         "operations[].segment.dialogue_lines[].text": {"minLength": 1, "maxLength": 2_000},
         "operations[].segment.dialogue_lines[].delivery": {"maxLength": 1_000},
         "operations[].segment.boundary_from_previous.reason": {"enum": _BOUNDARY_REASONS},

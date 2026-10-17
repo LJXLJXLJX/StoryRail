@@ -31,14 +31,27 @@ class CapabilityGapResult(StrEnum):
     NOOP = "noop"
 
 
+DIALOGUE_SPEAKER_LABEL_MAX = 60
+
+
 @dataclass(frozen=True, slots=True)
 class DialogueLine:
-    character_id: str
+    # 说话者二选一：引用库角色（character_id），或引用库外的临时/画外说话者（speaker_label，
+    # 只有称呼，没有造型和音色）。
+    character_id: str | None
     text: str
     delivery: str
+    speaker_label: str | None = None
 
     def __post_init__(self) -> None:
-        _require_id(self.character_id, "dialogue_line.character_id")
+        if (self.character_id is None) == (self.speaker_label is None):
+            raise ValueError("dialogue_line 必须且只能提供 character_id 或 speaker_label 之一。")
+        if self.character_id is not None:
+            _require_id(self.character_id, "dialogue_line.character_id")
+        else:
+            _require_text(
+                self.speaker_label or "", "dialogue_line.speaker_label", DIALOGUE_SPEAKER_LABEL_MAX
+            )
         _require_text(self.text, "dialogue_line.text", 2_000)
         if len(self.delivery) > 1_000:
             raise ValueError("dialogue_line.delivery 过长。")

@@ -109,7 +109,11 @@ def keyframe_inputs(document, target_ids=(), user_message=""):
                             item.action,
                             tuple(
                                 (
-                                    character_by_id.get(line.character_id, "角色")
+                                    (
+                                        line.speaker_label
+                                        if line.character_id is None
+                                        else character_by_id.get(line.character_id, "角色")
+                                    )
                                     + "："
                                     + line.text
                                     + (f"（{line.delivery}）" if line.delivery else "")

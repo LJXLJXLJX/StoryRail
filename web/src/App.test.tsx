@@ -198,6 +198,7 @@ describe("StoryRail App", () => {
               dialogue_lines: [
                 {
                   character_id: "b".repeat(32),
+                  speaker_label: null,
                   text: "原对白",
                   delivery: "平静",
                 },

@@ -1,9 +1,8 @@
-"""PG5-T4：Playground 提示词与项目提示词的逐字一致性与工具覆盖。"""
+"""Playground 提示词的人声/配乐规则与工具覆盖。"""
 
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PROMPT = ROOT / "integrations/agent_launcher/PROMPT.md"
 PLAYGROUND_PROMPT = ROOT / "integrations/agent_launcher/PLAYGROUND_PROMPT.md"
 
 TOOLS = (
@@ -15,13 +14,14 @@ TOOLS = (
 )
 
 
-def _dialogue_rule_paragraph() -> str:
-    paragraphs = [item.strip() for item in PROMPT.read_text(encoding="utf-8").split("\n\n")]
-    return next(item for item in paragraphs if item.startswith("StoryRail 的旁白是独立 TTS 音频"))
-
-
-def test_playground_prompt_copies_dialogue_rule_verbatim() -> None:
-    assert _dialogue_rule_paragraph() in PLAYGROUND_PROMPT.read_text(encoding="utf-8")
+def test_playground_voice_rule_has_no_narration_channel() -> None:
+    # Playground 没有旁白和 Scene，不能沿用项目的“预留旁白通道”声明。
+    text = PLAYGROUND_PROMPT.read_text(encoding="utf-8")
+    assert "Playground 没有旁白和 Scene" in text
+    assert "预留后期主旁白音频叠加通道" not in text
+    assert "除 `<d>` 台词外无其它人类语音" in text
+    assert "全片无人类语音，保持纯净环境音" in text
+    assert "`non_diegetic_music` 默认写 `N/A`" in text
 
 
 def test_playground_prompt_mentions_all_tools() -> None:

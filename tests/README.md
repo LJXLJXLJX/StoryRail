@@ -23,7 +23,7 @@ Provider；不读写真实作品、不调用真实模型或媒体服务。合成
 | 领域 | 主要测试 |
 | --- | --- |
 | 持久化与分层 | `test_document_persistence_contract.py`（严格编解码、CAS、原子失败）、`test_layer_rules.py`、`test_domain_module_boundaries.py`、`test_core_structure.py`、`test_models_validation.py` |
-| 结构化导演工作流 | `test_structured_director*.py`（项目/HTTP 基础、脚本、旁白、地点、Keyframe、Generation、恢复）、`test_scene_driver_invariants.py`、`test_narration_review.py`、`test_keyframe_rebase.py`、`test_unlock_visual_revision.py` |
+| 结构化导演工作流 | `test_structured_director*.py`（项目/HTTP 基础、脚本、旁白、地点、Keyframe、Generation、恢复）、`test_scene_driver_invariants.py`、`test_dialogue_speaker_label.py`（对白说话者二选一）、`test_narration_review.py`、`test_keyframe_rebase.py`、`test_unlock_visual_revision.py` |
 | 命令与失效 | `test_director_commands.py`、`test_command_registry_table.py`、`test_impact_preview.py`、`test_*_mutations.py`、`test_manual_command_paths.py` |
 | 成片 | `test_final_scene_assembly.py`、`test_scene_final_overwrite.py`、`test_ffmpeg_*.py`、`test_video_candidate_duration.py` |
 | 应用层与授权 | `test_application_access.py`（真实 loopback HTTP 的 caller gate、撤权、旧路由拒绝、第二 writer 租约）、`test_application_requests.py`（原子回执、重放、提交不确定不重发）、`test_project_execution_delegation.py`、`test_workflow_gates.py` |

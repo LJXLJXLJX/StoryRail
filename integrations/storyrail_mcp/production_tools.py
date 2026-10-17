@@ -58,7 +58,17 @@ def operation(name, fields):
     return object_model(name, {"op": Literal[name], **fields})
 
 
-Dialogue = object_model("Dialogue", {"character_id": ID, "text": Text, "delivery": Text})
+# 说话者二选一：引用库角色 character_id，或 character_id=null 加引用库外说话者 speaker_label。
+Dialogue = object_model(
+    "Dialogue",
+    {
+        "character_id": ID | None,
+        "speaker_label": Annotated[str, Field(min_length=1, max_length=60, pattern=r"\S")] | None,
+        "text": Text,
+        "delivery": Text,
+    },
+    optional=("speaker_label",),
+)
 Boundary = object_model("Boundary", {"reason": str, "continuity_instruction": Text})
 segment_fields = {
     # 只要求不短于 0.2 秒；15 秒是 Agent 侧软约束（超过可能 OOM），Core 与适配层都不设上限。

@@ -9,7 +9,9 @@ export type StoryNode = {
   shot_count?: number; segment_count?: number; visible_character_ids?: string[];
   narration?: { id: string; zh: StoryNarrationTrack; en: StoryNarrationTrack; timing: string;
     start_shot_id: string | null; end_shot_id: string | null }[];
-  dialogue_lines?: { character_id: string; text: string; delivery: string }[];
+  dialogue_lines?: {
+    character_id: string | null; speaker_label: string | null; text: string; delivery: string;
+  }[];
   boundary_from_previous?: { reason: string; continuity_instruction: string } | null;
 };
 export type StoryNarrationTrack = {
@@ -46,7 +48,9 @@ const narration = shape({
   id: text, zh: narrationTrack, en: narrationTrack, timing: text,
   start_shot_id: nullable(text), end_shot_id: nullable(text),
 });
-const dialogue = shape({ character_id: text, text, delivery: text });
+const dialogue = shape({
+  character_id: nullable(text), speaker_label: nullable(text), text, delivery: text,
+});
 const boundary = nullable(shape({
   reason: oneOf("model_constraint", "continuity_anchor", "control_boundary", "failure_cost"),
   continuity_instruction: text,

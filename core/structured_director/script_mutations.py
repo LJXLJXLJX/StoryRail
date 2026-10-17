@@ -335,10 +335,7 @@ def _materialize_segment(segment: Any) -> ShotSegment:
         id=segment.id,
         duration_estimate_seconds=segment.duration_estimate_seconds,
         action=segment.action.strip(),
-        dialogue_lines=tuple(
-            DialogueLine(line.character_id, line.text.strip(), line.delivery.strip())
-            for line in segment.dialogue_lines
-        ),
+        dialogue_lines=tuple(_dialogue_line(line) for line in segment.dialogue_lines),
         boundary_from_previous=(
             None
             if segment.boundary_from_previous is None
@@ -514,13 +511,17 @@ def _validate_script_references(
         for shot in scene.shots:
             character_ids.update(shot.visible_character_ids)
             for segment in shot.segments:
-                character_ids.update(line.character_id for line in segment.dialogue_lines)
+                character_ids.update(
+                    line.character_id
+                    for line in segment.dialogue_lines
+                    if line.character_id is not None
+                )
     for scene in scenes:
         for shot in scene.shots:
             if any(item not in character_ids for item in shot.visible_character_ids):
                 raise ValueError("Shot 引用了未声明的角色卡。")
             if any(
-                line.character_id not in character_ids
+                line.character_id is not None and line.character_id not in character_ids
                 for segment in shot.segments
                 for line in segment.dialogue_lines
             ):
@@ -892,7 +893,17 @@ def _script_segment_draft(
 
 
 def _script_dialogue(value: ScriptDialogueInput) -> DialogueLine:
-    return DialogueLine(value.character_id, value.text, value.delivery)
+    return DialogueLine(value.character_id, value.text, value.delivery, value.speaker_label)
+
+
+def _dialogue_line(line: Any) -> DialogueLine:
+    label = line.speaker_label
+    return DialogueLine(
+        line.character_id,
+        line.text.strip(),
+        line.delivery.strip(),
+        None if label is None else label.strip(),
+    )
 
 
 def _script_boundary(value: ScriptBoundaryInput | None) -> SegmentBoundary | None:
@@ -1153,10 +1164,7 @@ def _materialize_shot(shot: Any, shot_id: Callable[[], str], segment_id=None) ->
                 id=segment_id(getattr(segment, "id", None)),
                 duration_estimate_seconds=segment.duration_estimate_seconds,
                 action=segment.action.strip(),
-                dialogue_lines=tuple(
-                    DialogueLine(line.character_id, line.text.strip(), line.delivery.strip())
-                    for line in segment.dialogue_lines
-                ),
+                dialogue_lines=tuple(_dialogue_line(line) for line in segment.dialogue_lines),
                 boundary_from_previous=(
                     None
                     if segment.boundary_from_previous is None

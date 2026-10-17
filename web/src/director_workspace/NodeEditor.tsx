@@ -10,6 +10,9 @@ import type { StoryTarget } from "../api/projection";
 import { stableStringify } from "./draft_protection";
 import { TextArea, TextField, toggleId } from "./shared";
 
+// 对白说话者下拉框里“引用库外说话者”的哨兵值；提交时写 character_id=null 与 speaker_label。
+const EXTERNAL_SPEAKER = "__external_speaker__";
+
 type Draft = { scene: Scene; shot?: Shot; segment?: ShotSegment };
 export function NodeEditor({
   snapshot,
@@ -259,15 +262,17 @@ export function NodeEditor({
                 <label className="card-field">
                   <span>对白角色</span>
                   <select
-                    value={line.character_id}
+                    value={line.character_id ?? EXTERNAL_SPEAKER}
                     onChange={(e) =>
                       setSegment({
                         ...value.segment!,
                         dialogue_lines: value.segment!.dialogue_lines.map(
                           (l, j) =>
-                            j === i
-                              ? { ...l, character_id: e.target.value }
-                              : l,
+                            j !== i
+                              ? l
+                              : e.target.value === EXTERNAL_SPEAKER
+                                ? { ...l, character_id: null, speaker_label: l.speaker_label ?? "" }
+                                : { ...l, character_id: e.target.value, speaker_label: null },
                         ),
                       })
                     }
@@ -277,15 +282,31 @@ export function NodeEditor({
                         {c.name}
                       </option>
                     ))}
-                    {!snapshot.reference_library.characters.some(
+                    {line.character_id !== null &&
+                    !snapshot.reference_library.characters.some(
                       (c) => c.id === line.character_id,
                     ) ? (
                       <option value={line.character_id}>
                         已移出 @{line.character_id.slice(0, 6)}
                       </option>
                     ) : null}
+                    <option value={EXTERNAL_SPEAKER}>引用库外说话者</option>
                   </select>
                 </label>
+                {line.character_id === null ? (
+                  <TextField
+                    label="说话者称呼"
+                    value={line.speaker_label ?? ""}
+                    onChange={(speaker_label) =>
+                      setSegment({
+                        ...value.segment!,
+                        dialogue_lines: value.segment!.dialogue_lines.map(
+                          (l, j) => (j === i ? { ...l, speaker_label } : l),
+                        ),
+                      })
+                    }
+                  />
+                ) : null}
                 <TextArea
                   label="对白"
                   value={line.text}

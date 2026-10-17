@@ -627,7 +627,7 @@ function SegmentText({
       {segment.dialogue_lines.map((l, i) => (
         <blockquote key={i}>
           <small>
-            {character(l.character_id)} · {l.delivery}
+            {l.character_id === null ? l.speaker_label : character(l.character_id)} · {l.delivery}
           </small>
           <p>{l.text}</p>
         </blockquote>

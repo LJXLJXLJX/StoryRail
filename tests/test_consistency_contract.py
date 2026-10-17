@@ -34,6 +34,9 @@ def test_shared_rule_reaches_launcher_and_generic_mcp_without_copy_button():
     assert "独立 TTS 音频" in launcher
     assert "绝不能把剧本旁白、解说词或 narrator 文本写入" in launcher
     assert "预留后期主旁白音频叠加通道" in launcher
+    assert "只有 `scene.driver` 为 `narration` 时再加" in launcher
+    assert "除 `<d>` 台词外无其它人类语音" in launcher
+    assert "导演方案写明的配乐与音乐入点就是明确要求" in launcher
     assert set(CONTRACTS) == {
         "reference_library",
         "script",

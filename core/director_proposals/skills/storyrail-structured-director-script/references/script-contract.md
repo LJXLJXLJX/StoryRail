@@ -50,7 +50,7 @@ Shot 是一个中间不存在剪辑的连续镜头。切镜必须创建新 Shot�
 - `composition`：景别、角度、主体位置和构图关系；
 - `camera_movement`：摄影机运动，固定机位也要明确；
 - `action`：整个连续镜头中的可见动作和表演；
-- `audio_direction`：环境声和音效提示，不写角色对白或旁白；除非用户明确要求 BGM/配乐，否则不要添加背景音乐意图。角色演奏、收音机、电视或手机播放的音乐属于画内声音，应写成可见事件；
+- `audio_direction`：环境声和音效提示，不写角色对白或旁白。导演方案或用户明确写出的配乐、音乐入点就是明确要求，必须写进对应 Shot，注明“非画内配乐”与入点（例如“大提琴第一个长音在达里奥僵住时切入”）；方案没写时不要自行添加背景音乐意图，也不要写“无背景音乐”去否定方案。角色演奏、收音机、电视或手机播放的音乐属于画内声音，应写成可见事件；
 - `transition_in`：V1 保留导演文字意图字段，不执行影视转场；默认返回 null。
 
 `visible_character_ids` 只列画面中实际可见的引用库角色。
@@ -65,7 +65,9 @@ Shot、改稿中新建 Shot），一律只返回一个 Segment，`boundary_from_
 
 `duration_estimate_seconds` 只是节奏预估。Segment 的 `action` 写该分段负责的动作区间。角色对白写入
 `dialogue_lines`，每句引用说话角色，`delivery` 写本句的潜台词（嘴上说的与真正想要的）和语气；
-说话者可以在画外，此时不列入该 Shot 的 `visible_character_ids`；一个 Segment 至多一个开口说话的可见角色；
+说话者可以在画外，此时不列入该 Shot 的 `visible_character_ids`。导演方案里不在引用库的说话者
+（研究员、门外路人、广播等）写 `character_id: null` 与 `speaker_label`（≤ 60 字称呼），台词照常保留，
+不要删掉，也不要挪进 `audio_direction`；是否入画在 Segment `action` 里写明。一个 Segment 至多一个开口说话的可见角色；
 没有对白时返回空数组。旁白不是角色对白，不写入这里。
 只有 drama Scene 的 Segment 可以有对白；narration Scene 的 Segment 一律返回空数组。
 

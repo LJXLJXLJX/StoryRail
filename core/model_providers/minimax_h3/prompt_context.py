@@ -42,6 +42,7 @@ def context_from_workset(value):
         descriptions("reference_image"),
         descriptions("reference_audio"),
         descriptions("reference_video"),
+        scene["driver"],
     )
     return context
 

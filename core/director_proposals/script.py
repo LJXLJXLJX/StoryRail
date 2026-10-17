@@ -25,12 +25,19 @@ class StructuredReferenceCharacter:
 
 @dataclass(frozen=True, slots=True)
 class DialogueLineProposal:
-    character_id: str
+    # 引用库角色写 character_id；引用库外的临时/画外说话者写 character_id=null 与 speaker_label。
+    character_id: str | None
     text: str
     delivery: str
+    speaker_label: str | None = None
 
     def __post_init__(self) -> None:
-        _require_text(self.character_id, "dialogue_line.character_id", 32)
+        if (self.character_id is None) == (self.speaker_label is None):
+            raise ValueError("dialogue_line 必须且只能提供 character_id 或 speaker_label 之一。")
+        if self.character_id is not None:
+            _require_text(self.character_id, "dialogue_line.character_id", 32)
+        else:
+            _require_text(self.speaker_label or "", "dialogue_line.speaker_label", 60)
         _require_text(self.text, "dialogue_line.text", 2_000)
         if len(self.delivery) > 1_000:
             raise ValueError("dialogue_line.delivery 过长。")

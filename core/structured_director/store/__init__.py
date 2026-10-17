@@ -876,7 +876,10 @@ def _validate_proposal_references(
             if any(item not in character_ids for item in shot.visible_character_ids):
                 raise ValueError("Shot 引用了不存在的可见角色卡。")
             for segment in shot.segments:
-                if any(line.character_id not in character_ids for line in segment.dialogue_lines):
+                if any(
+                    line.character_id is not None and line.character_id not in character_ids
+                    for line in segment.dialogue_lines
+                ):
                     raise ValueError("角色对白引用了不存在的角色卡。")
 
 

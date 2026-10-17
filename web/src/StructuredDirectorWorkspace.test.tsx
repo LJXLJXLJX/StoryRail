@@ -232,6 +232,7 @@ describe("StructuredDirectorWorkspace", () => {
                     dialogue_lines: [
                       {
                         character_id: "b".repeat(32),
+                        speaker_label: null,
                         text: "她猜的。",
                         delivery: "平静",
                       },
@@ -1809,6 +1810,7 @@ describe("StructuredDirectorWorkspace", () => {
                     dialogue_lines: [
                       {
                         character_id: "b".repeat(32),
+                        speaker_label: null,
                         text: "还会来吗？",
                         delivery: "轻声",
                       },
@@ -2603,6 +2605,7 @@ describe("StructuredDirectorWorkspace", () => {
               dialogue_lines: [
                 {
                   character_id: "b".repeat(32),
+                  speaker_label: null,
                   text: "到了。",
                   delivery: "低声",
                 },
@@ -3162,11 +3165,13 @@ describe("StructuredDirectorWorkspace", () => {
               dialogue_lines: [
                 {
                   character_id: firstCharacterId,
+                  speaker_label: null,
                   text: "嗯？",
                   delivery: "懒散",
                 },
                 {
                   character_id: secondCharacterId,
+                  speaker_label: null,
                   text: "为什么？",
                   delivery: "严肃",
                 },

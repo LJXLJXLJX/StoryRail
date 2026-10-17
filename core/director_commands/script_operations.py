@@ -19,9 +19,10 @@ _ID = re.compile(r"[0-9a-f]{32}")
 
 @dataclass(frozen=True, slots=True)
 class ScriptDialogueInput:
-    character_id: str
+    character_id: str | None
     text: str
     delivery: str
+    speaker_label: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -386,12 +387,18 @@ def _dialogues(value: object) -> tuple[ScriptDialogueInput, ...]:
         raise ValueError("dialogue_lines 必须是数组。")
     result = []
     for value_item in value:
+        if isinstance(value_item, dict) and "speaker_label" not in value_item:
+            value_item = {**value_item, "speaker_label": None}
         item = _exact(value_item, DIALOGUE_FIELDS, "dialogue_line")
+        character_id, label = item["character_id"], item["speaker_label"]
+        if (character_id is None) == (label is None):
+            raise ValueError("dialogue_line 必须且只能提供 character_id 或 speaker_label 之一。")
         result.append(
             ScriptDialogueInput(
-                _id(item["character_id"], "character_id"),
+                None if character_id is None else _id(character_id, "character_id"),
                 _string(item["text"], "text"),
                 _string(item["delivery"], "delivery", allow_empty=True),
+                None if label is None else _string(label, "speaker_label"),
             )
         )
     return tuple(result)

@@ -202,7 +202,8 @@ export interface CharacterLook {
 }
 
 export interface DialogueLine {
-  character_id: string;
+  character_id: string | null;
+  speaker_label: string | null;
   text: string;
   delivery: string;
 }
@@ -924,9 +925,10 @@ export interface ShotSegmentProposal {
 }
 
 export interface DialogueLineProposal {
-  character_id: string;
+  character_id: string | null;
   text: string;
   delivery: string;
+  speaker_label?: string | null;
 }
 
 export interface SegmentBoundaryProposal {

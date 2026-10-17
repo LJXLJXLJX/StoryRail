@@ -43,6 +43,7 @@ async def _mixed(tmp_path):
     assert segment["dialogue_lines"] == [
         {
             "character_id": line.character_id,
+            "speaker_label": line.speaker_label,
             "text": line.text,
             "delivery": line.delivery,
         }

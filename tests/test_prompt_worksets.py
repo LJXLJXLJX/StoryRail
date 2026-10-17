@@ -928,3 +928,51 @@ def test_video_workset_marks_off_screen_dialogue_speakers(tmp_path):
         ]
 
     asyncio.run(run())
+
+
+def test_video_workset_carries_external_speakers_and_scene_driver(tmp_path):
+    """引用库外说话者原样进入视频工作集；Scene driver 决定无对白时是否预留旁白通道。"""
+    from core.structured_director import DialogueLine
+
+    async def run():
+        store, service, document, _ = await fixture(tmp_path)
+        scene = document.director_script.scenes[0]
+        shot = scene.shots[0]
+        segment = shot.segments[0]
+        external = DialogueLine(None, "实验编号 0x04，开始宣读。", "平板", speaker_label="研究员")
+        document = await service.save_script(
+            (
+                replace(
+                    scene,
+                    shots=(
+                        replace(
+                            shot,
+                            segments=(
+                                replace(
+                                    segment, dialogue_lines=(*segment.dialogue_lines, external)
+                                ),
+                                *shot.segments[1:],
+                            ),
+                        ),
+                        *scene.shots[1:],
+                    ),
+                ),
+                *document.director_script.scenes[1:],
+            ),
+            expected_revision=document.revision,
+        )
+        # 持久化往返保留 speaker_label。
+        stored = store.read().director_script.scenes[0].shots[0].segments[0]
+        assert stored.dialogue_lines[-1] == external
+
+        # H3 插件已把工作集格式化为 prompt payload。
+        context = video_prompt_workset(document, segment.id)["context"]
+        assert context["scene"]["driver"] == scene.driver
+        assert context["segment"]["dialogue"][-1] == {
+            "character_name": "研究员",
+            "text": "实验编号 0x04，开始宣读。",
+            "delivery": "平板",
+            "on_screen": None,
+        }
+
+    asyncio.run(run())

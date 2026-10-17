@@ -17,8 +17,9 @@ class H3DialogueInput:
     character_name: str
     text: str
     delivery: str | None
-    # 说话者是否在本 Shot 可见；False 表示画外台词，落在可见听者的镜头上。
-    on_screen: bool
+    # 说话者是否在本 Shot 可见；False 表示画外台词，落在可见听者的镜头上；
+    # None 表示引用库外的临时说话者，是否入画以 Segment action 为准。
+    on_screen: bool | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +42,9 @@ class H3PromptContext:
     additional_image_descriptions: tuple[str, ...] = ()
     audio_reference_descriptions: tuple[str, ...] = ()
     video_reference_descriptions: tuple[str, ...] = ()
+    # Scene 的 driver（narration / drama）决定无对白时是否声明预留旁白通道；
+    # Playground 没有 Scene，为 None。
+    scene_driver: str | None = None
 
     def __post_init__(self) -> None:
         if self.aspect_ratio not in {"16:9", "9:16", "2:1"}:
@@ -62,6 +66,8 @@ class H3PromptContext:
             raise ValueError("H3 历史提示词不合法或过长。")
         if not isinstance(self.user_direction, str) or len(self.user_direction) > 10_000:
             raise ValueError("H3 prompt 用户创作方向不合法或过长。")
+        if self.scene_driver not in {None, "narration", "drama"}:
+            raise ValueError("H3 prompt Scene driver 不合法。")
         if self.mode is H3PromptMode.I2VA and self.start_frame_description is None:
             raise ValueError("I2VA 必须提供首帧描述。")
         if self.mode is H3PromptMode.L2VA and self.end_frame_description is None:

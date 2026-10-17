@@ -259,13 +259,19 @@ def build_h3_context(
         dialogue=tuple(
             H3DialogueInput(
                 character_name=(
-                    characters[item.character_id].name
+                    item.speaker_label
+                    if item.character_id is None
+                    else characters[item.character_id].name
                     if item.character_id in characters
                     else item.character_id
                 ),
                 text=item.text,
                 delivery=item.delivery,
-                on_screen=item.character_id in shot.visible_character_ids,
+                on_screen=(
+                    None
+                    if item.character_id is None
+                    else item.character_id in shot.visible_character_ids
+                ),
             )
             for item in segment.dialogue_lines
         ),
@@ -278,6 +284,7 @@ def build_h3_context(
         video_reference_descriptions=tuple(
             reference.description for reference in plan_item.recipe_inputs.slot("reference_videos")
         ),
+        scene_driver=scene.driver,
     )
     return context
 

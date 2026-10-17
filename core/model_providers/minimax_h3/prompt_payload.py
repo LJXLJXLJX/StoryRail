@@ -45,7 +45,11 @@ def h3_prompt_payload(context: H3PromptContext, input_labels=None) -> dict[str, 
         "mode": context.mode.value,
         "duration_seconds": context.duration_seconds,
         "aspect_ratio": context.aspect_ratio,
-        "scene": {"title": context.scene_title, "setting": context.scene_setting},
+        "scene": {
+            "title": context.scene_title,
+            "setting": context.scene_setting,
+            "driver": context.scene_driver,
+        },
         "shot": {
             "composition": context.shot_composition,
             "camera_movement": context.camera_movement,

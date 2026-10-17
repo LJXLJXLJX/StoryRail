@@ -445,8 +445,13 @@ def snapshot_schemas() -> dict[str, dict]:
                 **{"x-ts-name": "CharacterLook"},
             ),
             "DialogueLine": _obj(
-                {"character_id": ID, "text": TEXT, "delivery": {"type": "string"}},
-                ["character_id", "text", "delivery"],
+                {
+                    "character_id": NULL_ID,
+                    "speaker_label": _nullable(TEXT),
+                    "text": TEXT,
+                    "delivery": {"type": "string"},
+                },
+                ["character_id", "speaker_label", "text", "delivery"],
                 **{"x-ts-name": "DialogueLine", "x-guard": "isDialogueLine"},
             ),
             "SegmentBoundary": _obj(

@@ -192,6 +192,7 @@ def build_semantic_projection(
                 dialogue_lines=[
                     {
                         "character_id": line.character_id,
+                        "speaker_label": line.speaker_label,
                         "text": text(line.text),
                         "delivery": text(line.delivery),
                     }

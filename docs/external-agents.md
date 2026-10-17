@@ -174,7 +174,8 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
     当前视图，完整地点库（派生 `master_selected`、`calibrated`，视图 `has_crop`、`has_selected_image`），以及图片插件的
     `image_prompt` 约定。request 回执内嵌的冻结工作集不带 `image_prompt`，以 `read_professional_workset` 为准。
   - Keyframe 工作集另给出扁平 `location_views`（视图 ID、名称、purpose、所属地点与类型、状态、已选图）；Shot 带 `view_id`。
-  - 视频工作集给出当前 `video_recipe`（槽位与参数声明、`editable_params`）、`context`、`asset_inputs`、`plugin_skills`（随插件发布的
+  - 视频工作集给出当前 `video_recipe`（槽位与参数声明、`editable_params`）、`context`（含 `scene.driver`，决定无对白时是否声明预留旁白通道；
+    `segment.dialogue[]` 的 `on_screen` 为 null 表示引用库外的临时说话者）、`asset_inputs`、`plugin_skills`（随插件发布的
     Skill 与参考正文），以及 `recipe_inputs`（已保存的 `{bindings, params}`，即 `save_video_prompt.recipe_inputs` 的整体替换形状）与
     `bindable_assets`（当前 recipe 显式槽位可接受的项目 Asset：`asset_id`、`name`、`media_type`、`duration_seconds`、`slots`；
     只列导入素材、引用库与地点库已选资源、本 Scene 已选的关键帧/旁白/视频）。标签按 manifest namespace 由 Core 计算，绑定变化后重读

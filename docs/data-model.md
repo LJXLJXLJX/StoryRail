@@ -118,8 +118,9 @@ Store 拒绝任何让某层从 true 变回 false 的写入。上游回改只清�
 | `NarratorProfile` | 独立旁白身份，ID 不得与角色卡重复；`name` + 所选语言各一套 `NarratorVoice`（`zh` / `en`，未选语言为 null）；无旁白时为 null |
 | `NarratorVoice` | 单一语言的旁白音色：`voice_description` 必填（≤ 500）；`voice_reference_asset_id`（WAV）+ `voice_reference_transcript`（克隆所需完整文字稿）。中文 Cue 只用 `zh` 克隆、英文 Cue 只用 `en` 克隆，缺哪种语言的参考音色或文字稿就不能合成该语言 |
 
-对白的 `character_id` 可以指向非出镜声音（广播、电话等），但 Ref2VA 视频的音频输入只来自 Segment 视频卡上显式
-添加的参考音频，不会从角色卡自动推导。
+对白说话者二选一：`character_id` 指向引用库角色（可以是非出镜声音，如广播、电话），或 `character_id = null` 加
+`speaker_label`（≤ 60 字称呼），表示引用库外的临时或画外说话者，没有造型和音色，视频工作集里 `on_screen = null`、
+是否入画以 Segment `action` 为准。Ref2VA 视频的音频输入只来自 Segment 视频卡上显式添加的参考音频，不会从角色卡自动推导。
 
 ## 结构化脚本
 

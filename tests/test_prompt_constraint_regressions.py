@@ -131,3 +131,15 @@ def test_script_contract_carries_drama_scene_craft():
 
     h3 = "\n".join(r["text"] for r in skill_resources())
     assert "on_screen=false" in h3
+
+
+def test_script_contract_keeps_external_speakers_and_planned_music():
+    """龙套台词不能因没有引用卡而丢失；导演方案写明的配乐不能被当成未经要求的 BGM。"""
+    resources = read_contract("script")["resources"]
+    contract = next(i["text"] for i in resources if i["name"] == "references/script-contract.md")
+    assert "写 `character_id: null` 与 `speaker_label`" in contract
+    assert "不要删掉，也不要挪进 `audio_direction`" in contract
+    assert "导演方案或用户明确写出的配乐、音乐入点就是明确要求" in contract
+    assert "也不要写“无背景音乐”去否定方案" in contract
+    script = next(i["text"] for i in resources if i["name"] == "SKILL.md")
+    assert "对白写 `character_id: null` 加 `speaker_label`" in script
