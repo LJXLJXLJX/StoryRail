@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import pytest
 from mcp import Client
+from script_helpers import shot_segments_at
 from test_director_commands import _visual_project
 from test_external_reference_proposals import restart
 from test_external_script_proposals import agent, http
@@ -13,6 +14,7 @@ from test_prompt_worksets import fixture
 from test_storyrail_mcp import endpoint
 
 from core.director_commands import DirectorCommand
+from core.structured_director.script_index import shot_segments
 
 
 def request(document, kind, target_ids=None):
@@ -50,7 +52,7 @@ def proposal_for(document, kind, target_ids=None):
                         "end_environment_mode": None,
                         "end_environment_none_reason": None,
                     }
-                    for seg in shot.segments
+                    for seg in shot_segments(scene, shot.id)
                 ],
             }
             for scene in scenes
@@ -138,7 +140,7 @@ def test_planning_restart_scope_atomic_submit_and_no_builtin(tmp_path):
         completed = await http(restart(store), caller, completed_get)
         assert completed.body["data"]["proposal_observation"]["phase"] == "completed"
         # Same-Scene context Shot is not writable; original slots and empty fields stay intact.
-        untouched = doc.director_script.scenes[0].shots[1].segments[0].id
+        untouched = shot_segments_at(doc.director_script.scenes[0], 1)[0].id
         before_binding = next(b for b in doc.keyframe_plan.segments if b.segment_id == untouched)
         assert before_binding in finished.keyframe_plan.segments
         ids = {before_binding.start_keyframe_id, before_binding.end_keyframe_id}
@@ -173,7 +175,7 @@ def test_keyframe_partial_scope_schema_and_second_shot_submit(tmp_path):
         ] == [target]
 
         before = store.read()
-        untouched_segment = scene.shots[0].segments[0].id
+        untouched_segment = scene.segments[0].id
         before_binding = next(
             item for item in before.keyframe_plan.segments if item.segment_id == untouched_segment
         )
@@ -239,7 +241,7 @@ def test_keyframe_non_contiguous_targets_keep_context_shots_unchanged(tmp_path):
             segment.id
             for shot in scene.shots
             if shot.id not in target_ids
-            for segment in shot.segments
+            for segment in shot_segments(scene, shot.id)
         }
         assert [
             item

@@ -4,7 +4,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import replace
 
 from .models import Asset, NarrationCue, NarrationLanguage, Scene
-from .script_index import shot_segments
 
 NARRATION_BOUNDARY_VISUAL_TAIL_SECONDS = 0.4
 
@@ -78,19 +77,11 @@ def conform_scene_narration(
     """让 Narration Scene 画面覆盖真实音频及相邻旁白边界的固定尾部缓冲。"""
     if not scene.shots:
         raise ValueError("请基于已选 TTS 真实时长规划 Shot / Segment。")
-    shots = list(scene.shots)
-    shot_positions = {shot.id: index for index, shot in enumerate(shots)}
+    segments = scene.segments
     for cue in scene.narration_cues:
-        # 双语旁白以中英较长的一条为时间基准，短的一条同起点提前结束。
+        # 唯一 Cue 覆盖整个 Scene；双语旁白以中英较长的一条为时间基准，短的一条同起点提前结束。
         timing_seconds = narration_timing_seconds(cue, assets)
-        start = shot_positions[cue.start_shot_id]
-        end = shot_positions[cue.end_shot_id]
-        covered = shots[start : end + 1]
-        current_duration = sum(
-            segment.duration_estimate_seconds
-            for shot in covered
-            for segment in shot_segments(scene, shot.id)
-        )
+        current_duration = sum(segment.duration_estimate_seconds for segment in segments)
         required = narration_visual_duration_seconds(
             source_scenes,
             scene.id,
@@ -100,11 +91,7 @@ def conform_scene_narration(
             # 每次脚本写入都会重新校准；已对齐的画面保持原值，避免浮点重算改写时长。
             continue
         factor = required / current_duration
-        scaled_durations = [
-            segment.duration_estimate_seconds * factor
-            for shot in covered
-            for segment in shot_segments(scene, shot.id)
-        ]
+        scaled_durations = [segment.duration_estimate_seconds * factor for segment in segments]
         # Put the floating-point remainder on the final Segment so the serialized
         # script remains an exact timing contract instead of accumulating drift.
         scaled_durations[-1] = required - sum(scaled_durations[:-1])
@@ -112,20 +99,8 @@ def conform_scene_narration(
             raise ValueError(
                 "旁白真实时长无法在当前 Segment 结构内精确分配；请合并过短的 Segment。"
             )
-        duration_index = 0
-        for index in range(start, end + 1):
-            shot = shots[index]
-            segment_count = len(shot.segments)
-            shot_durations = scaled_durations[duration_index : duration_index + segment_count]
-            duration_index += segment_count
-            shots[index] = replace(
-                shot,
-                segments=tuple(
-                    replace(
-                        segment,
-                        duration_estimate_seconds=duration,
-                    )
-                    for segment, duration in zip(shot.segments, shot_durations, strict=True)
-                ),
-            )
-    return replace(scene, shots=tuple(shots))
+        segments = tuple(
+            replace(segment, duration_estimate_seconds=duration)
+            for segment, duration in zip(segments, scaled_durations, strict=True)
+        )
+    return replace(scene, segments=segments)

@@ -1,6 +1,6 @@
 # Structured Director
 
-本目录拥有 StoryRail schema v32 项目的结构化导演领域：模型、编解码、领域变换、Store、读取投影、媒体提交、Service 与
+本目录拥有 StoryRail schema v33 项目的结构化导演领域：模型、编解码、领域变换、Store、读取投影、媒体提交、Service 与
 HTTP contract。`project.json` 的创建、读取、校验、revision compare-and-swap 与原子替换都在这里完成，它是唯一的项目写者。
 
 行为说明在产品说明书中：[数据模型](../../docs/data-model.md)、[生产工作流](../../docs/production-workflow.md)、
@@ -13,7 +13,7 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 | 层 | 位置 | 职责 |
 | --- | --- | --- |
 | L0 | `models/` | 不可变值对象与不变量 |
-| L1 | `codec/`、`schema.py`、`errors.py`、`video_contracts.py`、`video_inputs.py`、`candidate_eligibility.py`、`script_index.py` | 严格 JSON 编解码、schema 版本、共享错误、视频输入与候选可选性判定、脚本访问层 |
+| L1 | `codec/`、`schema.py`、`errors.py`、`video_contracts.py`、`video_inputs.py`、`candidate_eligibility.py`、`script_index.py`、`v32_projection.py` | 严格 JSON 编解码、schema 版本、共享错误、视频输入与候选可选性判定、脚本访问层与临时 v32 投影 |
 | L2 | `mutations/`、`*_mutations.py`、`generation_lifecycle.py`、`assembly_timeline.py`、`narration_timing.py`、`dialogue_timing.py`、`production_context.py`、`run_state.py`、`asset_metadata.py`、`planning_inputs.py` | 纯函数领域变换、失效传播、时序与装配时间线 |
 | L3 | `store/` | 唯一持久化入口：CAS、完整校验、fsync、原子替换 |
 | L4 | `reads/`、`prompt_worksets.py`、`keyframe_requests.py`、`location_requests.py`、`director_steps.py`、`manual_commands.py` | 只读投影与输入编译 |
@@ -64,7 +64,9 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 - `run_state.py`：DirectorRun 开始、唤醒与默认授权的对象变换。
 - `production_context.py`：从快照构造只读生产上下文。
 - `script_index.py`：脚本访问层：Scene 的 Segment 序列、Segment 覆盖的 Shot、派生可见角色与首尾视图；
-  只读遍历经它读取，不直接展开 `shot.segments`。
+  只读遍历经它读取，不直接访问 Scene 的存储形状。
+- `v32_projection.py`：临时投影：对外接口仍为 Shot 下挂 Segment、旁白 Cue 带 Shot 锚点时，出站按每个 Segment 的
+  首个覆盖 Shot 分组、Cue 锚点取首末 Shot；入站校验锚点覆盖全部 Shot、Shot 内首段无边界后续段有边界。
 - `provider_ports.py`：各媒体能力的 Core 侧窄 Protocol。
 - `asset_metadata.py`：媒体字节校验、时长读取与可读文件名（封装 `core/media_assets`）。
 

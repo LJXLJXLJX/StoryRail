@@ -16,6 +16,7 @@ from core.structured_director.reads.semantic_projection import (
     build_semantic_projection,
     build_semantic_tree,
 )
+from core.structured_director.script_index import shot_segments
 
 
 def test_read_api_uses_same_projection_and_explicit_details(tmp_path):
@@ -30,7 +31,7 @@ async def _story_location(tmp_path):
     store, service, document, _ = await _visual_project(str(tmp_path))
     scene = document.director_script.scenes[0]
     shot = scene.shots[0]
-    segment = shot.segments[0]
+    segment = shot_segments(scene, shot.id)[0]
     before = store.path.read_bytes()
     result = execute_project_read(
         document,
@@ -99,7 +100,7 @@ async def _read_api(tmp_path):
     outline = execute_project_read(document, "project.get_outline", {})
     assert "shots" not in outline["items"][0]
     assert outline["items"][0]["driver"] == scene.driver
-    for level, node in (("shot", scene.shots[0]), ("segment", scene.shots[0].segments[0])):
+    for level, node in (("shot", scene.shots[0]), ("segment", scene.segments[0])):
         target = execute_project_read(document, "project.get_target", {"target_id": node.id})
         projection = build_semantic_projection(
             document,
@@ -122,31 +123,31 @@ def test_large_scoped_context_omits_unrelated_prose_and_keeps_full_compiler_text
 async def _large_context(tmp_path):
     store, _, document, _ = await _visual_project(str(tmp_path))
     source = document.director_script.scenes[0]
-    scenes = tuple(
-        replace(
+
+    def numbered(index):
+        shot_ids = {shot.id: f"{1000 + index * 10 + j:032x}" for j, shot in enumerate(source.shots)}
+        return replace(
             source,
             id=f"{index + 1:032x}",
             title=f"场次标题{index + 1}",
             summary=f"only-scene-{index + 1}-" + "情节" * 1500,
             shots=tuple(
+                replace(shot, id=shot_ids[shot.id], action="完整动作" * 300)
+                for shot in source.shots
+            ),
+            segments=tuple(
                 replace(
-                    shot,
-                    id=f"{1000 + index * 10 + j:032x}",
-                    action="完整动作" * 300,
-                    segments=tuple(
-                        replace(
-                            segment,
-                            id=f"{10000 + index * 100 + j * 10 + k:032x}",
-                            action=f"segment-{index + 1}-" + "动作" * 1000,
-                        )
-                        for k, segment in enumerate(shot.segments)
-                    ),
+                    segment,
+                    id=f"{10000 + index * 100 + j * 10 + k:032x}",
+                    shot_ids=tuple(shot_ids[item] for item in segment.shot_ids),
+                    action=f"segment-{index + 1}-" + "动作" * 1000,
                 )
                 for j, shot in enumerate(source.shots)
+                for k, segment in enumerate(shot_segments(source, shot.id))
             ),
         )
-        for index in range(60)
-    )
+
+    scenes = tuple(numbered(index) for index in range(60))
     large = replace(
         document,
         keyframe_plan=None,
@@ -178,7 +179,7 @@ async def _large_context(tmp_path):
         for shot, source_shot in zip(actual["shots"], expected.shots, strict=True):
             assert shot["id"] == source_shot.id
             assert [s["action"] for s in shot["segments"]] == [
-                s.action for s in source_shot.segments
+                s.action for s in shot_segments(expected, source_shot.id)
             ]
     with pytest.raises(ValueError, match="scope"):
         build_semantic_tree(large, ())

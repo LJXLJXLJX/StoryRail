@@ -11,6 +11,7 @@ from pathlib import Path
 
 from proposal_fixture_service import ProposalFixtureService as StructuredDirectorService
 from provider_factory import provider_registry
+from script_helpers import shot_segments_at
 from structured_director_fixtures import RecordingProvider, install_location
 from video_recipes import (
     SegmentVideoAudioReference,
@@ -61,12 +62,14 @@ from core.structured_director import (
     StructuredDirectorStore,
 )
 from core.structured_director.models import NarrationCue, NarrationLanguage, NarrationTrack, Scene
+from core.structured_director.script_index import shot_segments
 from core.structured_director.service import (
     _director_recent_scene_ids,
 )
 from core.structured_director.store.domains.keyframe import (
     _translate_keyframe_plan_to_operations,
 )
+from core.structured_director.v32_projection import v32_cue_anchors
 
 
 def _wav_bytes() -> bytes:
@@ -286,7 +289,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                             first.visible_character_ids,
                             (
                                 KeyframeSegmentProposal(
-                                    first.segments[0].id,
+                                    shot_segments(scene, first.id)[0].id,
                                     "both",
                                     "共享边界。" if continuous else "第一镜头尾帧。",
                                     first_end_characters,
@@ -300,7 +303,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                             second_start_characters,
                             (
                                 KeyframeSegmentProposal(
-                                    second.segments[0].id,
+                                    shot_segments(scene, second.id)[0].id,
                                     "both",
                                     "第二镜头尾帧。",
                                     second.visible_character_ids,
@@ -345,7 +348,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                                 f"{segment.id} 尾帧。",
                                 shot.visible_character_ids,
                             )
-                            for segment in shot.segments
+                            for segment in shot_segments(scene, shot.id)
                         ),
                     )
                     for scene in started.director_script.production_baseline_scenes
@@ -503,7 +506,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             _store, service, document, _route = await _location_project(directory)
             document = await service.unlock_visual_production(expected_revision=document.revision)
             scene = document.director_script.scenes[1]
-            left, right = (shot.segments[0].id for shot in scene.shots)
+            left, right = (shot_segments(scene, shot.id)[0].id for shot in scene.shots)
             document = _apply_keyframe_operations(
                 document,
                 (
@@ -761,7 +764,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             assert document.director_script is not None
             assert document.video_plan is not None
             scene = document.director_script.scenes[0]
-            segment = scene.shots[0].segments[0]
+            segment = scene.segments[0]
             character_id = segment.dialogue_lines[0].character_id
             document = await service.upload_reference_voice(
                 card_id=character_id,
@@ -987,8 +990,8 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             assert document.director_script is not None
             assert document.video_plan is not None
             scene = document.director_script.scenes[0]
-            first_segment = scene.shots[0].segments[0]
-            second_segment = scene.shots[1].segments[0]
+            first_segment = scene.segments[0]
+            second_segment = shot_segments_at(scene, 1)[0]
             character_id = first_segment.dialogue_lines[0].character_id
             document = await service.upload_reference_voice(
                 card_id=character_id,
@@ -1107,7 +1110,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             assert document.director_script is not None
             assert document.video_plan is not None
             scene = document.director_script.scenes[0]
-            segment = scene.shots[0].segments[0]
+            segment = scene.segments[0]
             reference_video = Asset(
                 "9" * 32,
                 "video/mp4",
@@ -1381,7 +1384,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             assert document.keyframe_plan is not None
             assert document.video_plan is not None
             scene = document.director_script.scenes[0]
-            segment = scene.shots[0].segments[0]
+            segment = scene.segments[0]
             original_binding = next(
                 item for item in document.keyframe_plan.segments if item.segment_id == segment.id
             )
@@ -1546,7 +1549,9 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(shots), 3)
             inserted_shot = shots[1]
             self.assertNotIn(inserted_shot.id, {first_shot.id, second_shot.id})
-            inserted_segment_id = inserted_shot.segments[0].id
+            inserted_segment_id = shot_segments(
+                inserted.document.director_script.scenes[0], inserted_shot.id
+            )[0].id
             assert inserted.document.keyframe_plan is not None
             assert inserted.document.video_plan is not None
             self.assertIn(
@@ -1906,7 +1911,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             (cue,) = inserted.narration_cues
             self.assertEqual(cue.zh.text, "很多年以后，他仍记得那晚的海。")
             self.assertEqual(cue.en.text, "Years later, he still remembered the sea.")
-            self.assertIsNone(cue.start_shot_id)
+            self.assertEqual(v32_cue_anchors(inserted), (None, None))
             self.assertEqual(cue.selected_audio_asset_ids, ())
             self.assertEqual(execution.document.director_script.scenes[1].id, scene.id)
 
@@ -1916,7 +1921,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             assert document.director_script is not None
             scene = document.director_script.scenes[0]
             shot = scene.shots[0]
-            original = shot.segments[0]
+            original = shot_segments(scene, shot.id)[0]
             registry = DirectorCommandRegistry(store)
             inserted = registry.execute(
                 DirectorCommand(
@@ -1941,7 +1946,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                 )
             )
             assert inserted.document.director_script is not None
-            segments = inserted.document.director_script.scenes[0].shots[0].segments
+            segments = shot_segments_at(inserted.document.director_script.scenes[0], 0)
             added = segments[1]
             moved = registry.execute(
                 DirectorCommand(
@@ -1975,7 +1980,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                 )
             )
             assert moved.document.director_script is not None
-            segments = moved.document.director_script.scenes[0].shots[0].segments
+            segments = shot_segments_at(moved.document.director_script.scenes[0], 0)
             self.assertEqual([item.id for item in segments], [added.id, original.id])
             self.assertEqual(segments[0].duration_estimate_seconds, 4)
             before = store.path.read_bytes()
@@ -2017,7 +2022,10 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             )
             assert deleted.document.director_script is not None
             self.assertEqual(
-                [item.id for item in deleted.document.director_script.scenes[0].shots[0].segments],
+                [
+                    item.id
+                    for item in shot_segments_at(deleted.document.director_script.scenes[0], 0)
+                ],
                 [added.id],
             )
 
@@ -2029,7 +2037,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             assert document.director_script is not None
             scene = document.director_script.scenes[0]
             shot = scene.shots[0]
-            original = shot.segments[0]
+            original = shot_segments(scene, shot.id)[0]
             character_id = document.reference_library.characters[0].id
             registry = DirectorCommandRegistry(store)
             repaired = registry.execute(
@@ -2101,7 +2109,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                 )
             )
             assert split.document.director_script is not None
-            split_segments = split.document.director_script.scenes[0].shots[0].segments
+            split_segments = shot_segments_at(split.document.director_script.scenes[0], 0)
             self.assertEqual(split_segments[0].id, original.id)
             self.assertNotEqual(split_segments[1].id, original.id)
             merged = registry.execute(
@@ -2128,7 +2136,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                 )
             )
             assert merged.document.director_script is not None
-            merged_segments = merged.document.director_script.scenes[0].shots[0].segments
+            merged_segments = shot_segments_at(merged.document.director_script.scenes[0], 0)
             self.assertEqual(len(merged_segments), 1)
             self.assertEqual(merged_segments[0].id, split_segments[1].id)
 
@@ -2241,7 +2249,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             assert document.director_script is not None
             assert document.keyframe_plan is not None
             scene = document.director_script.scenes[0]
-            segment = scene.shots[0].segments[0]
+            segment = scene.segments[0]
             frame_id = document.keyframe_plan.segments[0].start_keyframe_id
             before = store.path.read_bytes()
 
@@ -2329,14 +2337,12 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             assert document.keyframe_plan is not None
             scene = document.director_script.scenes[0]
             shot = scene.shots[0]
-            segment = shot.segments[0]
+            segment = shot_segments(scene, shot.id)[0]
             binding = document.keyframe_plan.segments[0]
             cue_id = "d" * 32
             # 旁白只属于 Narration Scene：另附一个尚未规划 Shot 的旁白场景。
             cue = NarrationCue(
                 cue_id,
-                None,
-                None,
                 NarrationTrack("夜色渐深，甲缓慢抬头望向窗外，随后乙转身离开房间。", 1),
                 NarrationTrack("Night deepens; A looks out as B leaves the room.", 1),
             )
@@ -2346,6 +2352,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                 summary="旁白交代夜色。",
                 setting="夜晚，窗外。",
                 shots=(),
+                segments=(),
                 narration_cues=(cue,),
                 driver="narration",
             )
@@ -2534,7 +2541,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             store, service, document, _route = await _visual_project(directory)
             assert document.director_script is not None
             scene = document.director_script.scenes[0]
-            segment = scene.shots[0].segments[0]
+            segment = scene.segments[0]
             command = DirectorCommand(
                 "script.apply_operations",
                 document.revision,

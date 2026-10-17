@@ -43,17 +43,11 @@ class NarrationTrack:
 @dataclass(frozen=True, slots=True)
 class NarrationCue:
     id: str
-    start_shot_id: str | None
-    end_shot_id: str | None
     zh: NarrationTrack | None
     en: NarrationTrack | None
 
     def __post_init__(self) -> None:
         _require_id(self.id, "narration_cue.id")
-        if self.start_shot_id is not None:
-            _require_id(self.start_shot_id, "narration_cue.start_shot_id")
-        if self.end_shot_id is not None:
-            _require_id(self.end_shot_id, "narration_cue.end_shot_id")
         if not self.tracks or any(
             track is not None and not isinstance(track, NarrationTrack)
             for track in (self.zh, self.en)

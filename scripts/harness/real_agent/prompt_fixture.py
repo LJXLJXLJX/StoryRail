@@ -76,7 +76,7 @@ async def prepare(store, value):
     doc = await service.confirm_script(expected_revision=doc.revision)
     doc = service.snapshot_required()
     scene = doc.director_script.scenes[0]
-    segment = scene.shots[0].segments[0]
+    segment = scene.segments[0]
     assets = {}
     for name, encoded in value["images"].items():
         doc = await service.import_image_asset(

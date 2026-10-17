@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import pytest
 from conftest import make_service
+from script_helpers import segments_of_shot, shot_segments_at
 from structured_director_fixtures import RecordingProvider, add_image_asset
 from test_director_commands import _location_project, _script_segment_payload
 from test_external_script_proposals import agent, http
@@ -48,6 +49,7 @@ from core.structured_director.models import (
 )
 from core.structured_director.planning_inputs import keyframe_inputs
 from core.structured_director.reads.read_tools import execute_project_read
+from core.structured_director.script_index import shot_segments
 
 VIEW = "7" * 32
 
@@ -96,7 +98,7 @@ def _insert_segment(store, document, shot, character_id):
                         {
                             "op": "insert_segment",
                             "shot_id": shot.id,
-                            "after_segment_id": shot.segments[-1].id,
+                            "after_segment_id": segments_of_shot(document, shot)[-1].id,
                             "segment": _script_segment_payload(
                                 character_id, "新增动作。", boundary=True
                             ),
@@ -118,7 +120,7 @@ def test_unlock_inherits_shot_view_as_explicit_reference(tmp_path):
     for scene in document.director_script.scenes:
         for shot in scene.shots:
             assert shot.view_id is not None
-            for segment in shot.segments:
+            for segment in shot_segments(scene, shot.id):
                 binding = _binding(document, segment.id)
                 for frame_id in (binding.start_keyframe_id, binding.end_keyframe_id):
                     frame = frames[frame_id]
@@ -137,7 +139,7 @@ def test_unlock_without_shot_view_writes_none_without_reason(tmp_path):
         return document, shot
 
     document, shot = asyncio.run(run())
-    binding = _binding(document, shot.segments[0].id)
+    binding = _binding(document, segments_of_shot(document, shot)[0].id)
     for frame_id in (binding.start_keyframe_id, binding.end_keyframe_id):
         frame = _frames(document)[frame_id]
         assert frame.environment_mode is KeyframeEnvironmentMode.NONE
@@ -151,7 +153,7 @@ def test_rebinding_keeps_frames_and_rebuild_gives_new_segments_current_default(t
     unbound, bound = first_scene.shots[0], second_scene.shots[0]
     old_view = unbound.view_id
     before = _frames(document)
-    old_binding = _binding(document, unbound.segments[0].id)
+    old_binding = _binding(document, shot_segments(first_scene, unbound.id)[0].id)
 
     # Shot 改绑不改写已建立的帧，级联因此只看帧上显式的视图 ID。
     document = _bind_shot(store, unbound.id, None)
@@ -168,8 +170,8 @@ def test_rebinding_keeps_frames_and_rebuild_gives_new_segments_current_default(t
     assert frames[old_binding.start_keyframe_id] == before[old_binding.start_keyframe_id]
     assert frames[old_binding.start_keyframe_id].environment_view_id == old_view
     # 新 Segment 按所属 Shot 当前绑定取默认值。
-    unbound_new = document.director_script.scenes[0].shots[0].segments[-1]
-    bound_new = document.director_script.scenes[1].shots[0].segments[-1]
+    unbound_new = shot_segments_at(document.director_script.scenes[0], 0)[-1]
+    bound_new = shot_segments_at(document.director_script.scenes[1], 0)[-1]
     for segment, mode, view_id in (
         (unbound_new, KeyframeEnvironmentMode.NONE, None),
         (bound_new, KeyframeEnvironmentMode.REFERENCE, bound.view_id),
@@ -325,14 +327,18 @@ def test_planner_proposal_end_to_end_inherits_none_without_reason(tmp_path):
                 False,
                 "甲抬头。",
                 (),
-                (KeyframeSegmentProposal(shot.segments[0].id, "both", "甲看向门口。", ()),),
+                (
+                    KeyframeSegmentProposal(
+                        segments_of_shot(document, shot)[0].id, "both", "甲看向门口。", ()
+                    ),
+                ),
             ),
         )
     )
     scenes, _targets, _ = keyframe_inputs(document, (shot.id,))
     _out, operations = compile_keyframe_proposal(proposal, scenes)
     execution = _apply_keyframe_operations(document, operations).document
-    binding = _binding(execution, shot.segments[0].id)
+    binding = _binding(execution, segments_of_shot(execution, shot)[0].id)
     for frame_id in (binding.start_keyframe_id, binding.end_keyframe_id):
         frame = _frames(execution)[frame_id]
         assert frame.environment_mode is KeyframeEnvironmentMode.NONE
@@ -345,7 +351,7 @@ def test_planner_proposal_end_to_end_inherits_none_without_reason(tmp_path):
 def _frame_with_inputs(store, document, *, mode, characters=1, aux=0, predecessor=True):
     """首帧已选图作为前置帧；尾帧按 mode 使用 Scene 1 的视图，并带角色参考与辅助图。"""
     shot = document.director_script.scenes[0].shots[0]
-    segment = shot.segments[0]
+    segment = segments_of_shot(document, shot)[0]
     binding = _binding(document, segment.id)
     image_ids = [add_image_asset(store, width=1600, height=900) for _ in range(characters)]
     aux_ids = [add_image_asset(store, width=1600, height=900) for _ in range(aux)]
@@ -463,7 +469,7 @@ def test_unselected_view_allows_planning_but_rejects_generation(tmp_path):
     store.apply_location_operations(patch, expected_revision=document.revision, command_id="c")
     document = store.read()
     shot = document.director_script.scenes[0].shots[0]
-    binding = _binding(document, shot.segments[0].id)
+    binding = _binding(document, segments_of_shot(document, shot)[0].id)
     # 规划（写入引用未选图视图的字段）允许。
     document = (
         DirectorCommandRegistry(store)
@@ -476,7 +482,7 @@ def test_unselected_view_allows_planning_but_rejects_generation(tmp_path):
                     "operations": [
                         {
                             "op": "set_activation",
-                            "segment_id": shot.segments[0].id,
+                            "segment_id": segments_of_shot(document, shot)[0].id,
                             "start_enabled": True,
                             "end_enabled": False,
                         },
@@ -581,7 +587,7 @@ def test_batch_defers_frame_with_unselected_view_and_continues_after_selection(t
         frame_ids = []
         operations = []
         for scene in (scene_a, scene_b):
-            segment = scene.shots[0].segments[0]
+            segment = scene.segments[0]
             frame_id = _binding(document, segment.id).start_keyframe_id
             frame_ids.append(frame_id)
             operations += [
@@ -732,7 +738,7 @@ def _http_body(document, keyframe_id, segment_id, *, mode, view_id, reason):
 
 def test_apply_operations_explicit_none_reason_is_optional(tmp_path):
     store, _service, document = asyncio.run(_unlocked(tmp_path))
-    segment = document.director_script.scenes[0].shots[0].segments[0]
+    segment = document.director_script.scenes[0].segments[0]
     frame_id = _binding(document, segment.id).start_keyframe_id
 
     def update(key, reason):
@@ -773,7 +779,7 @@ def test_http_save_and_preview_accept_none_without_reason(tmp_path):
     async def run():
         store, service, document = await _unlocked(tmp_path)
         api = StructuredDirectorHttpApi(service, resource_path="/structured-director")
-        segment = document.director_script.scenes[0].shots[0].segments[0]
+        segment = document.director_script.scenes[0].segments[0]
         frame_id = _binding(document, segment.id).start_keyframe_id
         _activate_start(store, segment.id)
         path = f"/structured-director/keyframes/{frame_id}"
@@ -806,7 +812,7 @@ def test_http_preview_attachments_carry_roles_and_purposes(tmp_path):
         store, service, document = await _unlocked(tmp_path)
         api = StructuredDirectorHttpApi(service, resource_path="/structured-director")
         shot = document.director_script.scenes[0].shots[0]
-        segment = shot.segments[0]
+        segment = segments_of_shot(document, shot)[0]
         frame_id = _binding(document, segment.id).start_keyframe_id
         document = _activate_start(store, segment.id)
         preview = await api.handle(

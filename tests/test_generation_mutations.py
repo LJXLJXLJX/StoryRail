@@ -54,8 +54,8 @@ ID_C = "c" * 32
 ID_D = "d" * 32
 NOW = "2024-06-01T00:00:00+00:00"
 
-CUE = NarrationCue(ID_C, None, None, NarrationTrack("旁白", 1), NarrationTrack("Narration.", 1))
-SCENE = Scene(ID_B, "场景", "摘要", "环境", (), (CUE,), "narration", None)
+CUE = NarrationCue(ID_C, NarrationTrack("旁白", 1), NarrationTrack("Narration.", 1))
+SCENE = Scene(ID_B, "场景", "摘要", "环境", (), (), (CUE,), "narration", None)
 SCRIPT = DirectorScript(1, 1, None, None, (SCENE,))
 KF = Keyframe(ID_C, ID_B, None, "帧", ())
 KF_END = Keyframe("e" * 32, ID_B, ID_C, "尾帧", ())
@@ -162,12 +162,12 @@ def test_validate_generation_target_guards():
             gen=gen,
         )
     segment = __import__("core.structured_director.models", fromlist=["ShotSegment"]).ShotSegment(
-        ID_B, 4.0, "动作", (), None
+        ID_B, ("5" * 32,), 4.0, "动作", (), None
     )
     shot = __import__("core.structured_director.models", fromlist=["Shot"]).Shot(
-        "5" * 32, (), "构图", "固定", "动作", "环境声", None, (segment,)
+        "5" * 32, (), "构图", "固定", "动作", "环境声", None
     )
-    plan_scene = Scene("6" * 32, "场景", "摘要", "环境", (shot,), (), "drama", None)
+    plan_scene = Scene("6" * 32, "场景", "摘要", "环境", (shot,), (segment,), (), "drama", None)
     baseline_script = DirectorScript(1, 1, 1, (plan_scene,), (plan_scene,))
     keyframe_doc = _document(
         status=StructuredDirectorStatus.REVIEWING_KEYFRAMES,

@@ -429,12 +429,7 @@ def _validate_keyframe_plan(document, asset_by_id) -> None:
         if document.keyframe_plan.source_script_revision != document.director_script.revision:
             raise ValueError("关键帧计划的脚本 revision 与当前脚本不一致。")
         script_scenes = document.director_script.scenes
-        segment_ids = {
-            segment.id
-            for scene in script_scenes
-            for shot in scene.shots
-            for segment in shot.segments
-        }
+        segment_ids = {segment.id for scene in script_scenes for segment in scene.segments}
         if {item.segment_id for item in document.keyframe_plan.segments} != segment_ids:
             raise ValueError("关键帧计划必须完整对应每个 Segment。")
         keyframe_by_id = {item.id: item for item in document.keyframe_plan.keyframes}
@@ -447,16 +442,14 @@ def _validate_keyframe_plan(document, asset_by_id) -> None:
         if referenced_keyframe_ids != set(keyframe_by_id):
             raise ValueError("关键帧计划不能包含未绑定到 Segment 的 Keyframe。")
         # Segment 边界默认是两个独立 Keyframe；共享边界是显式选择，两侧启用状态各自独立。
-        for scene in script_scenes:
-            for shot in scene.shots:
-                for segment in shot.segments:
-                    binding = binding_by_segment[segment.id]
-                    end_keyframe = keyframe_by_id[binding.end_keyframe_id]
-                    if (
-                        end_keyframe.owner_segment_id != segment.id
-                        or end_keyframe.predecessor_keyframe_id != binding.start_keyframe_id
-                    ):
-                        raise ValueError("Segment 尾帧必须从该 Segment 首帧直接承接。")
+        for segment_id in segment_ids:
+            binding = binding_by_segment[segment_id]
+            end_keyframe = keyframe_by_id[binding.end_keyframe_id]
+            if (
+                end_keyframe.owner_segment_id != segment_id
+                or end_keyframe.predecessor_keyframe_id != binding.start_keyframe_id
+            ):
+                raise ValueError("Segment 尾帧必须从该 Segment 首帧直接承接。")
         for keyframe in document.keyframe_plan.keyframes:
             if keyframe.owner_segment_id not in segment_ids:
                 raise ValueError("Keyframe owner Segment 不存在。")
@@ -482,10 +475,7 @@ def _validate_video_plan(document, asset_by_id) -> None:
         if document.video_plan.source_script_revision != document.director_script.revision:
             raise ValueError("视频计划脚本 revision 已失效。")
         segment_ids = {
-            segment.id
-            for scene in document.director_script.scenes
-            for shot in scene.shots
-            for segment in shot.segments
+            segment.id for scene in document.director_script.scenes for segment in scene.segments
         }
         if {item.segment_id for item in document.video_plan.segments} != segment_ids:
             raise ValueError("视频计划必须完整对应当前 Segment。")

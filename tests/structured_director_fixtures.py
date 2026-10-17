@@ -620,7 +620,6 @@ def plan_narration_shots(store: StructuredDirectorStore, document):
             action="小满握住行李箱拉杆，抬头看向站牌。",
             audio_direction="远处风声和站内电流声。",
             transition_in=None,
-            segments=(ShotSegment(uuid4().hex, 1.5, "小满抬头看向站牌。", (), None),),
         ),
         Shot(
             id=uuid4().hex,
@@ -630,12 +629,14 @@ def plan_narration_shots(store: StructuredDirectorStore, document):
             action="车灯从远处进入画面，小满仍在等待。",
             audio_direction="远处风声和站内电流声。",
             transition_in=None,
-            segments=(ShotSegment(uuid4().hex, 1.5, "远处车灯出现。", (), None),),
         ),
     )
-    cue = replace(scene.narration_cues[0], start_shot_id=shots[0].id, end_shot_id=shots[-1].id)
+    segments = (
+        ShotSegment(uuid4().hex, (shots[0].id,), 1.5, "小满抬头看向站牌。", (), None),
+        ShotSegment(uuid4().hex, (shots[1].id,), 1.5, "远处车灯出现。", (), None),
+    )
     return store.save_director_script(
-        (replace(scene, shots=shots, narration_cues=(cue,)), *scenes[1:]),
+        (replace(scene, shots=shots, segments=segments), *scenes[1:]),
         expected_revision=document.revision,
     )
 

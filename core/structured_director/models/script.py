@@ -73,6 +73,8 @@ class SegmentBoundary:
 @dataclass(frozen=True, slots=True)
 class ShotSegment:
     id: str
+    # 覆盖的 Shot（按顺序、非空）；与所在 Scene 的覆盖关系由 Scene 校验。
+    shot_ids: tuple[str, ...]
     duration_estimate_seconds: float
     action: str
     dialogue_lines: tuple[DialogueLine, ...]
@@ -80,6 +82,12 @@ class ShotSegment:
 
     def __post_init__(self) -> None:
         _require_id(self.id, "segment.id")
+        if not self.shot_ids:
+            raise ValueError("Segment 必须覆盖至少一个 Shot。")
+        for shot_id in self.shot_ids:
+            _require_id(shot_id, "segment.shot_ids")
+        if len(self.shot_ids) != len(set(self.shot_ids)):
+            raise ValueError("segment.shot_ids 不能重复。")
         if (
             isinstance(self.duration_estimate_seconds, bool)
             or not isfinite(self.duration_estimate_seconds)
@@ -98,8 +106,7 @@ class Shot:
     action: str
     audio_direction: str
     transition_in: str | None
-    segments: tuple[ShotSegment, ...]
-    # 绑定的地点视图；必须属于所在 Scene 的 Location。
+    # 地点视图建议（软参考）；必须属于所在 Scene 的 Location。
     view_id: str | None = None
 
     def __post_init__(self) -> None:
@@ -117,12 +124,6 @@ class Shot:
             raise ValueError("shot.audio_direction 过长。")
         if self.transition_in is not None:
             _require_text(self.transition_in, "shot.transition_in", 500)
-        if not self.segments:
-            raise ValueError("每个 Shot 至少需要一个 Segment。")
-        if self.segments[0].boundary_from_previous is not None:
-            raise ValueError("Shot 的第一个 Segment 不能包含前置边界。")
-        if any(segment.boundary_from_previous is None for segment in self.segments[1:]):
-            raise ValueError("Shot 的后续 Segment 必须说明前置边界。")
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,6 +133,7 @@ class Scene:
     summary: str
     setting: str
     shots: tuple[Shot, ...]
+    segments: tuple[ShotSegment, ...]
     narration_cues: tuple[NarrationCue, ...] = ()
     driver: str = "drama"
     location_id: str | None = None
@@ -156,30 +158,46 @@ class Scene:
         if self.driver == "narration":
             if len(self.narration_cues) != 1:
                 raise ValueError("Narration Scene 必须包含一个语义原子的旁白 Cue。")
-            if any(segment.dialogue_lines for shot in self.shots for segment in shot.segments):
+            if any(segment.dialogue_lines for segment in self.segments):
                 raise ValueError("Narration Scene 不能包含对白；需要对白的内容请使用 Drama Scene。")
         else:
             if self.narration_cues:
                 raise ValueError("Drama Scene 不能包含旁白；需要旁白的内容请使用 Narration Scene。")
             if not self.shots:
                 raise ValueError("Drama Scene 至少需要一个 Shot。")
-        shot_positions = {shot.id: index for index, shot in enumerate(self.shots)}
-        cue_ids = [cue.id for cue in self.narration_cues]
-        if len(cue_ids) != len(set(cue_ids)):
+        if len({cue.id for cue in self.narration_cues}) != len(self.narration_cues):
             raise ValueError("同一 Scene 的旁白 Cue ID 不能重复。")
         if len(self.narration_cues) > 1:
             raise ValueError("每个 Scene 最多只能有一段旁白。")
-        for cue in self.narration_cues:
-            if not self.shots:
-                if cue.start_shot_id is not None or cue.end_shot_id is not None:
-                    raise ValueError("尚未规划 Shot 的旁白不能包含 Shot 锚点。")
-                continue
-            if cue.start_shot_id not in shot_positions or cue.end_shot_id not in shot_positions:
-                raise ValueError("旁白 Cue 必须锚定本 Scene 的 Shot。")
-            start = shot_positions[cue.start_shot_id]
-            end = shot_positions[cue.end_shot_id]
-            if start != 0 or end != len(self.shots) - 1:
-                raise ValueError("Scene 旁白必须覆盖本 Scene 的全部 Shot。")
+        _validate_segment_coverage(self)
+
+
+def _validate_segment_coverage(scene: Scene) -> None:
+    """Segment 按顺序恰好覆盖全部 Shot；相邻 Segment 只允许共享边界 Shot，共享即延续。"""
+    label = f"Scene「{scene.title}」"
+    if bool(scene.shots) != bool(scene.segments):
+        raise ValueError(f"{label} 的 Shot 与 Segment 必须同时为空或同时非空。")
+    positions = {shot.id: index for index, shot in enumerate(scene.shots)}
+    previous_last: int | None = None
+    for segment in scene.segments:
+        if any(shot_id not in positions for shot_id in segment.shot_ids):
+            raise ValueError(f"{label} 的 Segment 覆盖了不属于本 Scene 的 Shot。")
+        indexes = [positions[shot_id] for shot_id in segment.shot_ids]
+        if indexes != list(range(indexes[0], indexes[0] + len(indexes))):
+            raise ValueError(f"{label} 的 Segment 必须覆盖按顺序连续的 Shot。")
+        expected_new = 0 if previous_last is None else previous_last + 1
+        shares = previous_last is not None and indexes[0] == previous_last
+        if not shares and indexes[0] != expected_new:
+            raise ValueError(
+                f"{label} 的 Segment 必须按顺序覆盖全部 Shot，不能跳过、倒序或重复覆盖。"
+            )
+        if shares and segment.boundary_from_previous is None:
+            raise ValueError(f"{label} 延续上一 Segment 镜头的 Segment 必须说明前置边界。")
+        if not shares and segment.boundary_from_previous is not None:
+            raise ValueError(f"{label} 不延续上一 Segment 镜头的 Segment 不能包含前置边界。")
+        previous_last = indexes[-1]
+    if previous_last is not None and previous_last != len(scene.shots) - 1:
+        raise ValueError(f"{label} 的 Segment 必须覆盖全部 Shot。")
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,10 +231,9 @@ class DirectorScript:
             ids.append(scene.id)
             ids.extend(cue.id for cue in scene.narration_cues)
             shot_count += len(scene.shots)
-            for shot in scene.shots:
-                ids.append(shot.id)
-                segment_count += len(shot.segments)
-                ids.extend(segment.id for segment in shot.segments)
+            segment_count += len(scene.segments)
+            ids.extend(shot.id for shot in scene.shots)
+            ids.extend(segment.id for segment in scene.segments)
         if shot_count > 1_000 or segment_count > 2_000:
             raise ValueError("结构化导演脚本规模过大。")
         if len(ids) != len(set(ids)):
@@ -352,8 +369,7 @@ def _validate_script_scenes(scenes: tuple[Scene, ...], label: str) -> None:
     ids: list[str] = []
     for scene in scenes:
         ids.append(scene.id)
-        for shot in scene.shots:
-            ids.append(shot.id)
-            ids.extend(segment.id for segment in shot.segments)
+        ids.extend(shot.id for shot in scene.shots)
+        ids.extend(segment.id for segment in scene.segments)
     if len(ids) != len(set(ids)):
         raise ValueError(f"{label}中的 Scene、Shot 和 Segment ID 不能重复。")

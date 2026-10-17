@@ -265,7 +265,7 @@ def test_mcp_save_video_prompt_translates_recipe_inputs(tmp_path):
     (tmp_path / "project").mkdir()
     store, service, document, _ = asyncio.run(_visual_project(str(tmp_path / "project")))
     scene = document.director_script.scenes[0]
-    segment = scene.shots[0].segments[0]
+    segment = scene.segments[0]
     caller = Caller(
         "recipe-inputs",
         "agent",

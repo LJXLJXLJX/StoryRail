@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from mcp import Client
+from script_helpers import shot_segments_at
 from test_director_commands import _location_project, _visual_project
 from test_external_script_proposals import agent, command, http
 from test_prompt_worksets import fixture
@@ -54,7 +55,7 @@ def test_all_contract_resources_are_the_published_sources():
 def test_worksets_current_facts_schema_scope_and_no_writes(tmp_path):
     store, service, document, aux = asyncio.run(fixture(tmp_path))
     scene = document.director_script.scenes[0]
-    segment = scene.shots[0].segments[0]
+    segment = scene.segments[0]
     before = store.path.read_bytes()
     for capability in CONTRACTS:
         project_scope = capability in {"reference_library", "script", "location"}
@@ -233,8 +234,8 @@ def test_saved_keyframe_plan_is_complete_scoped_and_independent_of_executable_in
         store, service, doc, _ = await _location_project(str(tmp_path))
         doc = await service.unlock_visual_production(expected_revision=doc.revision)
         scene = doc.director_script.scenes[0]
-        first_segment = scene.shots[0].segments[0]
-        second_segment = scene.shots[1].segments[0]
+        first_segment = scene.segments[0]
+        second_segment = shot_segments_at(scene, 1)[0]
         bindings = {item.segment_id: item for item in doc.keyframe_plan.segments}
         registry = DirectorCommandRegistry(store)
         doc = registry.execute(

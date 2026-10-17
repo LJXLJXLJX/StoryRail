@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 from conftest import make_service
+from script_helpers import shot_segments_at
 from test_director_commands import _ScriptCompiler, _visual_project
 
 from core.director_commands import DirectorCommand, DirectorCommandRegistry
@@ -180,7 +181,7 @@ def test_start_frame_extracted_from_previous_segment_is_candidate_not_guarantee(
         provider = FrameProvider(tmp_path)
         service = make_service(store, video_frame_provider=provider)
         scene = doc.director_script.scenes[0]
-        source, target = scene.shots[0].segments
+        source, target = shot_segments_at(scene, 0)
         # Shot 内边界是两个独立 Keyframe，默认都不启用。
         assert (
             _binding(doc, source.id).end_keyframe_id != _binding(doc, target.id).start_keyframe_id
@@ -307,7 +308,7 @@ def test_start_frame_extracted_from_previous_segment_is_candidate_not_guarantee(
 def test_shared_boundary_start_frame_cannot_extract_from_previous_segment(tmp_path):
     async def scenario():
         store, _, doc, _ = await _visual_project(str(tmp_path), script_proposer=ContinuousScript())
-        source, target = doc.director_script.scenes[0].shots[0].segments
+        source, target = shot_segments_at(doc.director_script.scenes[0], 0)
         doc = (
             DirectorCommandRegistry(store)
             .execute(
@@ -474,7 +475,7 @@ def test_start_frame_card_toggles_boundary_sharing_with_previous_segment(tmp_pat
             str(tmp_path), script_proposer=ContinuousScript()
         )
         api = StructuredDirectorHttpApi(service, resource_path="/structured-director")
-        source, target = doc.director_script.scenes[0].shots[0].segments
+        source, target = shot_segments_at(doc.director_script.scenes[0], 0)
         previous_end = _binding(doc, source.id).end_keyframe_id
 
         async def toggle(shared):

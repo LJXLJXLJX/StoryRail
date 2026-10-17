@@ -26,6 +26,7 @@ from core.structured_director import (
     StructuredDirectorStatus,
     StructuredDirectorStore,
 )
+from core.structured_director.script_index import shot_segments
 
 
 class StructuredDirectorScriptTests(unittest.IsolatedAsyncioTestCase):
@@ -108,7 +109,7 @@ class StructuredDirectorScriptTests(unittest.IsolatedAsyncioTestCase):
             assert scripted.director_script is not None
             original_scene = scripted.director_script.scenes[0]
             original_shot = original_scene.shots[0]
-            original_segment = original_shot.segments[0]
+            original_segment = shot_segments(original_scene, original_shot.id)[0]
             store.begin_script_edit("只改第一个 Segment。", expected_revision=scripted.revision)
             replacement = EditableShotSegmentProposal(
                 id=original_segment.id,
@@ -140,9 +141,9 @@ class StructuredDirectorScriptTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(revised_scene.id, original_scene.id)
             self.assertEqual(revised_scene.title, original_scene.title)
             self.assertEqual(revised_scene.shots[0].id, original_shot.id)
-            self.assertEqual(revised_scene.shots[0].segments[0].id, original_segment.id)
+            self.assertEqual(revised_scene.segments[0].id, original_segment.id)
             self.assertEqual(
-                revised_scene.shots[0].segments[0].action,
+                revised_scene.segments[0].action,
                 "小满抬头后又低头看向手机。",
             )
 
@@ -176,7 +177,7 @@ class StructuredDirectorScriptTests(unittest.IsolatedAsyncioTestCase):
             ids = {
                 script.scenes[0].id,
                 script.scenes[0].shots[0].id,
-                script.scenes[0].shots[0].segments[0].id,
+                script.scenes[0].segments[0].id,
             }
             self.assertEqual(len(ids), 3)
             self.assertTrue(all(len(item) == 32 for item in ids))

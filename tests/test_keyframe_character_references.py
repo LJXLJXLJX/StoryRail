@@ -80,7 +80,7 @@ async def _project_with_costumes(directory):
     document = await _give_looks(service, document, first, _NOTES, "a")
     document = await _give_looks(service, document, second, ("红外套",), "b")
     first = document.reference_library.characters[0]
-    segment = document.director_script.scenes[0].shots[0].segments[0]
+    segment = document.director_script.scenes[0].segments[0]
     binding = next(x for x in document.keyframe_plan.segments if x.segment_id == segment.id)
     document = _apply(
         store,
@@ -397,7 +397,7 @@ def test_manual_dialog_save_and_preview_use_the_same_selection(tmp_path):
     async def run():
         _store, service, document, keyframe_id = await _project_with_costumes(tmp_path)
         character = document.reference_library.characters[0]
-        segment = document.director_script.scenes[0].shots[0].segments[0]
+        segment = document.director_script.scenes[0].segments[0]
         chosen = (KeyframeCharacterReference(character.id, character.looks[1].id),)
         preview = await service.preview_keyframe(
             keyframe_id=keyframe_id,

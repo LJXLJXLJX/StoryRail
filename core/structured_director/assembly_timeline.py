@@ -105,8 +105,9 @@ def _build_scene_animatic_spec(
         # 预览节奏与成片一致：按中英较长的一条对轨并播放它。
         audio_duration = narration_timing_seconds(cue, asset_by_id)
         timing_track = cue.track(narration_timing_language(cue, asset_by_id))
-        start = segment_first_clip[shot_segments(scene, cue.start_shot_id)[0].id]
-        end_segment = shot_segments(scene, cue.end_shot_id)[-1].id
+        # 唯一 Cue 覆盖整个 Scene 的 Segment 序列。
+        start = segment_first_clip[scene.segments[0].id]
+        end_segment = scene.segments[-1].id
         end = segment_first_clip[end_segment] + segment_clip_counts[end_segment] - 1
         # 只有 Narration Scene 有旁白（模型不变量），画面按旁白加边界缓冲对齐。
         ranges.append(
@@ -228,8 +229,7 @@ def _build_scene_final_plan(
     for cue in scene.narration_cues:
         if not cue.fully_selected:
             raise ValueError("请先为全部旁白 Cue 选择审核通过的所选语言音频。")
-        start_segments = shot_segments(scene, cue.start_shot_id) if cue.start_shot_id else ()
-        if not start_segments:
+        if not scene.segments:
             raise ValueError("旁白 Cue 的起始 Shot 无法定位。")
         asset_id = cue.track(language).selected_audio_asset_id
         assert asset_id is not None
@@ -237,7 +237,7 @@ def _build_scene_final_plan(
             FinalNarrationPlacement(
                 cue.id,
                 asset_id,
-                start_segments[0].id,
+                scene.segments[0].id,
                 narration_timing_seconds(cue, asset_by_id),
             )
         )
@@ -339,12 +339,8 @@ def _build_final_assembly_plan(
             )
             missing.append(f"Scene {scene_number}《{scene.title}》（{absent}）")
             continue
-        first_segment = (
-            scene.shots[0].segments[0] if scene.shots and scene.shots[0].segments else None
-        )
-        last_segment = (
-            scene.shots[-1].segments[-1] if scene.shots and scene.shots[-1].segments else None
-        )
+        first_segment = scene.segments[0] if scene.segments else None
+        last_segment = scene.segments[-1] if scene.segments else None
         start_binding = None if first_segment is None else bindings.get(first_segment.id)
         end_binding = None if last_segment is None else bindings.get(last_segment.id)
         transition = None
@@ -390,8 +386,8 @@ def _align_clip_durations_to_narration(
             audio_duration = narration_durations.get(cue.id)
             if audio_duration is None or audio_duration <= 0:
                 raise ValueError("旁白 Cue 缺少真实音频时长。")
-            start = clip_index[shot_segments(scene, cue.start_shot_id)[0].id]
-            end = clip_index[shot_segments(scene, cue.end_shot_id)[-1].id]
+            start = clip_index[scene.segments[0].id]
+            end = clip_index[scene.segments[-1].id]
             ranges.append(
                 (
                     start,

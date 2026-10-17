@@ -127,8 +127,8 @@ async def build(path):
         )._plugins.values():
             service._registry.install(plugin)
         document = await service.unlock_visual_production(expected_revision=document.revision)
-        left_segment = document.director_script.scenes[1].shots[-1].segments[-1].id
-        right_segment = document.director_script.scenes[2].shots[0].segments[0].id
+        left_segment = document.director_script.scenes[1].segments[-1].id
+        right_segment = document.director_script.scenes[2].segments[0].id
         bindings = {item.segment_id: item for item in document.keyframe_plan.segments}
         document = (
             DirectorCommandRegistry(store)

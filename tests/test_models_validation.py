@@ -692,7 +692,7 @@ def test_reference_generation_rule_messages(case_id, base, mutation, message):
 # document 规则（最小 document 直接触发的子集）
 # ---------------------------------------------------------------------------
 
-SEGMENT = ShotSegment(ID_B, 4.0, "动作", (), None)
+SEGMENT = ShotSegment(ID_B, ("e" * 32,), 4.0, "动作", (), None)
 KF_START = Keyframe(ID_A, ID_B, None, "首帧", ())
 KF_END = Keyframe("c" * 32, ID_B, ID_A, "尾帧", ())
 KEYFRAME_PLAN = KeyframePlan(
@@ -700,12 +700,10 @@ KEYFRAME_PLAN = KeyframePlan(
     (KF_START, KF_END),
     (SegmentKeyframes(ID_B, ID_A, "c" * 32, True, True),),
 )
-SHOT = Shot("e" * 32, (), "构图", "固定", "动作", "环境声", None, (SEGMENT,))
-CUE_PLAIN = NarrationCue(
-    "5" * 32, None, None, NarrationTrack("旁白", 1), NarrationTrack("Narration.", 1)
-)
-SCENE_EMPTY = Scene("f" * 32, "场景", "摘要", "环境", (), (CUE_PLAIN,), "narration", None)
-SCENE_ONE_SHOT = Scene("f" * 32, "场景", "摘要", "环境", (SHOT,), (), "drama", None)
+SHOT = Shot("e" * 32, (), "构图", "固定", "动作", "环境声", None)
+CUE_PLAIN = NarrationCue("5" * 32, NarrationTrack("旁白", 1), NarrationTrack("Narration.", 1))
+SCENE_EMPTY = Scene("f" * 32, "场景", "摘要", "环境", (), (), (CUE_PLAIN,), "narration", None)
+SCENE_ONE_SHOT = Scene("f" * 32, "场景", "摘要", "环境", (SHOT,), (SEGMENT,), (), "drama", None)
 SCRIPT_EMPTY = DirectorScript(1, 1, None, None, (SCENE_EMPTY,))
 
 
@@ -784,8 +782,8 @@ def test_document_voice_only_identity_cannot_be_visible(store_factory):
     document = store.read()
     voice_only = CharacterCard(ID_C, "声音身份", None, (), "描述")
     library = ReferenceLibrary((voice_only,), None)
-    shot = Shot("e" * 32, (ID_C,), "构图", "固定", "动作", "环境声", None, (SEGMENT,))
-    scene = Scene("f" * 32, "场景", "摘要", "环境", (shot,), (), "drama", None)
+    shot = Shot("e" * 32, (ID_C,), "构图", "固定", "动作", "环境声", None)
+    scene = Scene("f" * 32, "场景", "摘要", "环境", (shot,), (SEGMENT,), (), "drama", None)
     script = DirectorScript(1, 1, None, None, (scene,))
     with pytest.raises(ValueError, match=re.escape("非出镜声音身份不能作为 Shot 可见角色。")):
         replace(
@@ -801,12 +799,10 @@ def test_document_cue_selection_requires_successful_generation(store_factory):
     document = store.read()
     cue = NarrationCue(
         "5" * 32,
-        None,
-        None,
         NarrationTrack("旁白", 1, _wav_asset().id),
         NarrationTrack("Narration.", 1),
     )
-    scene = Scene("f" * 32, "场景", "摘要", "环境", (), (cue,), "narration", None)
+    scene = Scene("f" * 32, "场景", "摘要", "环境", (), (), (cue,), "narration", None)
     script = DirectorScript(1, 1, None, None, (scene,))
     with pytest.raises(
         ValueError, match=re.escape("旁白 Cue 选择的音频没有对应的成功 Generation。")

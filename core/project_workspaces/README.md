@@ -2,7 +2,7 @@
 
 管理 `.stories/<项目名>-<project_id>/` 项目容器、项目列表和内部回收站。
 
-创建时直接建立 `PROJECT_SCHEMA_VERSION` 指定的唯一当前 schema（现为 v32）`project.json`，固化 Core 生成的
+创建时直接建立 `PROJECT_SCHEMA_VERSION` 指定的唯一当前 schema（现为 v33）`project.json`，固化 Core 生成的
 Project ID、标题、用户选择的画面比例和不可变完整导演方案。项目列表只读取 `project.json`，没有独立
 `stage`、shadow state 或双写文件。
 

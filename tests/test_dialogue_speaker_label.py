@@ -27,7 +27,7 @@ def test_model_requires_exactly_one_valid_speaker(character_id, speaker_label):
 
 def test_persistence_round_trips_speaker_label_and_accepts_omitted_key():
     line = DialogueLine(None, "开始宣读。", "平板", speaker_label="研究员")
-    segment = ShotSegment(ID, 3.0, "研究员对着麦克风。", (line,), None)
+    segment = ShotSegment(ID, (ID,), 3.0, "研究员对着麦克风。", (line,), None)
     (serialized,) = _serialize_segment(segment)["dialogue_lines"]
     assert serialized == {
         "character_id": None,

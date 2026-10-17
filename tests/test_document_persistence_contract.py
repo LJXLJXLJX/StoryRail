@@ -113,8 +113,6 @@ def test_bilingual_cue_and_language_tagged_generation_roundtrip():
 
     cue = NarrationCue(
         "c" * 32,
-        None,
-        None,
         NarrationTrack(
             "中文旁白。",
             1,

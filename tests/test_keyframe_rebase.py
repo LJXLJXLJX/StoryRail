@@ -9,10 +9,9 @@ A, B, C, D = ("a" * 32, "b" * 32, "c" * 32, "d" * 32)
 
 
 def _scenes(*segment_ids):
-    shot = SimpleNamespace(
-        segments=tuple(SimpleNamespace(id=item) for item in segment_ids), view_id=None
-    )
-    return (SimpleNamespace(shots=(shot,)),)
+    shot = SimpleNamespace(id="e" * 32, view_id=None)
+    segments = tuple(SimpleNamespace(id=item, shot_ids=(shot.id,)) for item in segment_ids)
+    return (SimpleNamespace(shots=(shot,), segments=segments),)
 
 
 def _frame(frame_id, owner, predecessor=None, prompt="", selected=None):

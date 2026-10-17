@@ -27,7 +27,7 @@ from ..models import (
     asset_usage_reasons,
 )
 from ..narration_timing import narration_timing_language, narration_timing_seconds
-from ..script_index import shot_segments
+from ..v32_projection import v32_cue_anchors, v32_shot_segments
 from ..video_inputs import start_frame_extraction_source, video_inputs_unchanged
 from .location_view import location_library_projection
 from .video_recipes import video_recipe_state
@@ -372,13 +372,13 @@ def _serialize_scene(
                             }
                         ),
                     }
-                    for segment in shot_segments(scene, shot.id)
+                    for segment in v32_shot_segments(scene, shot.id)
                 ],
             }
             for shot in scene.shots
         ],
         "narration_cues": [
-            _serialize_narration_cue(cue, asset_by_id) for cue in scene.narration_cues
+            _serialize_narration_cue(scene, cue, asset_by_id) for cue in scene.narration_cues
         ],
     }
     if animatic is not None:
@@ -388,7 +388,10 @@ def _serialize_scene(
     return serialized
 
 
-def _serialize_narration_cue(cue: NarrationCue, asset_by_id: dict[str, Asset]) -> dict[str, Any]:
+def _serialize_narration_cue(
+    scene: Scene, cue: NarrationCue, asset_by_id: dict[str, Asset]
+) -> dict[str, Any]:
+    start_shot_id, end_shot_id = v32_cue_anchors(scene)
     """旁白 Cue：所选语言各自的正文、参数与已选音频时长，以及时间基准语言。"""
     tracks: dict[str, Any] = {"zh": None, "en": None}
     for language, track in cue.tracks:
@@ -411,8 +414,8 @@ def _serialize_narration_cue(cue: NarrationCue, asset_by_id: dict[str, Asset]) -
         timing_language, timing_seconds = None, None
     return {
         "id": cue.id,
-        "start_shot_id": cue.start_shot_id,
-        "end_shot_id": cue.end_shot_id,
+        "start_shot_id": start_shot_id,
+        "end_shot_id": end_shot_id,
         **tracks,
         "timing_language": timing_language,
         "timing_seconds": timing_seconds,

@@ -325,8 +325,7 @@ async def save_video_inputs(service, *, segment_id, prompt_text, expected_revisi
         segment = next(
             segment
             for scene in document.director_script.scenes
-            for shot in scene.shots
-            for segment in shot.segments
+            for segment in scene.segments
             if segment.id == segment_id
         )
         predicates = (

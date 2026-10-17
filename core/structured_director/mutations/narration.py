@@ -35,6 +35,7 @@ from ..script_mutations import (
     _finish_director_run,
     _invalidate_production_after_script_revision,
 )
+from ..v32_projection import require_v32_cue_anchors, v32_cue_anchors
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,21 +57,8 @@ def merge_recipe_params(current: RecipeParams, updates: RecipeParams) -> RecipeP
     return merged
 
 
-def _without_selection(cue: NarrationCue) -> NarrationCue:
-    return replace(
-        cue,
-        zh=None if cue.zh is None else replace(cue.zh, selected_audio_asset_id=None),
-        en=None if cue.en is None else replace(cue.en, selected_audio_asset_id=None),
-    )
-
-
 def _preserve_unchanged_selections(current: NarrationCue, candidate: NarrationCue) -> NarrationCue:
-    """内容未变化的语言保留原音频选择；Shot 范围变化会让两种语言同时失效。"""
-    if (current.start_shot_id, current.end_shot_id) != (
-        candidate.start_shot_id,
-        candidate.end_shot_id,
-    ):
-        return _without_selection(candidate)
+    """内容未变化的语言保留原音频选择。"""
     result = candidate
     for language, track in candidate.tracks:
         previous = current.track(language)
@@ -146,7 +134,13 @@ def update_narration_cue(
     target_scene, current = containing[0]
     if target_scene.id not in update.scope_scene_ids:
         raise ValueError("旁白 update 超出已授权 Scene scope。")
-    candidate = replace(current, **update.fields)
+    fields = dict(update.fields)
+    require_v32_cue_anchors(
+        [shot.id for shot in target_scene.shots],
+        fields.pop("start_shot_id", v32_cue_anchors(target_scene)[0]),
+        fields.pop("end_shot_id", v32_cue_anchors(target_scene)[1]),
+    )
+    candidate = replace(current, **fields)
     for key, changes in update.track_fields.items():
         language = NarrationLanguage(key)
         track = candidate.track(language)

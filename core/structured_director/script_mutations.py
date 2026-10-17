@@ -45,7 +45,14 @@ from .models import (
     blank_keyframe,
 )
 from .narration_timing import conform_production_scenes
-from .script_index import scene_segments, script_segments, segment_view_ids, shot_segments
+from .script_index import (
+    scene_segments,
+    script_segments,
+    segment_shots,
+    segment_view_ids,
+    shot_segments,
+)
+from .v32_projection import require_v32_cue_anchors, require_v32_shot_segments, v32_shot_segments
 
 
 def _finish_director_run(
@@ -93,21 +100,17 @@ def _materialize_script(
     for scene in proposal.scenes:
         if scene.driver == "narration" and scene.shots:
             raise ValueError("Narration Scene 初稿只提交旁白；TTS 审核后再规划 Shot。")
-        shots = tuple(_materialize_shot(shot, lambda: uuid4().hex) for shot in scene.shots)
-        cues = tuple(
-            NarrationCue(
-                id=uuid4().hex,
-                start_shot_id=shots[cue.start_shot_index].id
-                if cue.start_shot_index is not None
-                else None,
-                end_shot_id=shots[cue.end_shot_index].id
-                if cue.end_shot_index is not None
-                else None,
-                zh=_materialize_track(cue.zh),
-                en=_materialize_track(cue.en),
+        shots, segments = _materialize_shots(scene.shots, lambda _shot: uuid4().hex)
+        cues = []
+        for cue in scene.narration_cues:
+            _require_cue_anchor_indexes(shots, cue)
+            cues.append(
+                NarrationCue(
+                    id=uuid4().hex,
+                    zh=_materialize_track(cue.zh),
+                    en=_materialize_track(cue.en),
+                )
             )
-            for cue in scene.narration_cues
-        )
         scenes.append(
             Scene(
                 id=uuid4().hex,
@@ -116,7 +119,8 @@ def _materialize_script(
                 setting=scene.setting.strip(),
                 driver=scene.driver,
                 shots=shots,
-                narration_cues=cues,
+                segments=segments,
+                narration_cues=tuple(cues),
             )
         )
     return DirectorScript(
@@ -153,31 +157,23 @@ def _materialize_script_revision(
 
     scenes: list[Scene] = []
     for scene in proposals:
-        shots = tuple(
-            _materialize_shot(
-                shot,
-                lambda value=shot.id: resolved(value, known_shot_ids, "shot.id"),
-                segment_id=lambda value: resolved(value, known_segment_ids, "segment.id"),
-            )
-            for shot in scene.shots
+        shots, segments = _materialize_shots(
+            scene.shots,
+            lambda shot: resolved(shot.id, known_shot_ids, "shot.id"),
+            segment_id=lambda value: resolved(value, known_segment_ids, "segment.id"),
         )
         cues: list[NarrationCue] = []
         for cue in scene.narration_cues:
             cue_id = resolved(cue.id, known_cue_ids, "narration_cue.id")
+            _require_cue_anchor_indexes(shots, cue)
             previous_cue = previous_cues.get(cue_id)
             candidate = NarrationCue(
                 id=cue_id,
-                start_shot_id=shots[cue.start_shot_index].id
-                if cue.start_shot_index is not None
-                else None,
-                end_shot_id=shots[cue.end_shot_index].id
-                if cue.end_shot_index is not None
-                else None,
                 zh=_materialize_track(cue.zh),
                 en=_materialize_track(cue.en),
             )
             if previous_cue is not None:
-                # Shot 范围可随脚本回改移动；每种语言只要正文与合成参数不变就保留已选音频。
+                # 每种语言只要正文与合成参数不变就保留已选音频。
                 for language, track in candidate.tracks:
                     previous_track = previous_cue.track(language)
                     if replace(previous_track, selected_audio_asset_id=None) == track:
@@ -199,6 +195,7 @@ def _materialize_script_revision(
                     replace(shot, view_id=_kept_view_id(previous_views.get(shot.id), location_id))
                     for shot in shots
                 ),
+                segments=segments,
                 narration_cues=tuple(cues),
             )
         )
@@ -290,28 +287,23 @@ def _apply_script_scene_operations(
             )
             scene_index = locate(scene_id)
             scene = scenes[scene_index]
-            shot_index = next(
-                (index for index, shot in enumerate(scene.shots) if shot.id == operation.shot_id),
-                None,
-            )
-            if shot_index is None:
+            if all(shot.id != operation.shot_id for shot in scene.shots):
                 raise ValueError("replace_segment 的 Shot 不属于指定 Scene。")
-            shot = scene.shots[shot_index]
-            segment_index = next(
-                (
-                    index
-                    for index, segment in enumerate(shot.segments)
-                    if segment.id == operation.segment.id
-                ),
-                None,
-            )
-            if segment_index is None:
+            if all(
+                segment.id != operation.segment.id
+                for segment in v32_shot_segments(scene, operation.shot_id)
+            ):
                 raise ValueError("replace_segment 的 Segment 不属于指定 Shot。")
-            segments = list(shot.segments)
-            segments[segment_index] = _materialize_segment(operation.segment)
-            shots = list(scene.shots)
-            shots[shot_index] = replace(shot, segments=tuple(segments))
-            scenes[scene_index] = replace(scene, shots=tuple(shots))
+            segments = tuple(
+                _materialize_segment(operation.segment, segment.id, segment.shot_ids)
+                if segment.id == operation.segment.id
+                else segment
+                for segment in scene.segments
+            )
+            require_v32_shot_segments(
+                [segment for segment in segments if segment.shot_ids[0] == operation.shot_id]
+            )
+            scenes[scene_index] = replace(scene, segments=segments)
     if not scenes:
         raise ValueError("结构化导演脚本至少需要一个 Scene。")
     return tuple(scenes)
@@ -328,10 +320,18 @@ def _validate_new_scene_ids(scene: EditableSceneProposal) -> None:
         raise ValueError("新增 Scene 的旁白 Cue ID 必须为 null。")
 
 
-def _materialize_segment(segment: Any) -> ShotSegment:
-    assert segment.id is not None
+def _require_cue_anchor_indexes(shots: tuple[Shot, ...], cue: Any) -> None:
+    require_v32_cue_anchors(
+        [shot.id for shot in shots],
+        None if cue.start_shot_index is None else shots[cue.start_shot_index].id,
+        None if cue.end_shot_index is None else shots[cue.end_shot_index].id,
+    )
+
+
+def _materialize_segment(segment: Any, segment_id: str, shot_ids: tuple[str, ...]) -> ShotSegment:
     return ShotSegment(
-        id=segment.id,
+        id=segment_id,
+        shot_ids=shot_ids,
         duration_estimate_seconds=segment.duration_estimate_seconds,
         action=segment.action.strip(),
         dialogue_lines=tuple(_dialogue_line(line) for line in segment.dialogue_lines),
@@ -415,7 +415,9 @@ def _invalidate_production_after_script_revision(
             scene.driver == "narration"
             and scene.shots
             and (
-                previous is None or previous.driver != "narration" or previous.shots != scene.shots
+                previous is None
+                or previous.driver != "narration"
+                or (previous.shots, previous.segments) != (scene.shots, scene.segments)
             )
             and not all(cue.fully_selected for cue in scene.narration_cues)
         ):
@@ -538,7 +540,6 @@ def _apply_script_operations(
     if not set(patch.scope_scene_ids) <= known_scene_ids:
         raise ValueError("script scope 包含不存在的 Scene。")
     changed_ids: set[str] = set()
-    narration_sensitive_scene_ids: set[str] = set()
     # 本 patch 新建的 Scene 视为已授权，允许同一 patch 后续操作引用。
     created_scene_ids: set[str] = set()
     all_ids = {
@@ -618,7 +619,6 @@ def _apply_script_operations(
                 source.shots.remove(shot)
                 scene.shots.append(shot)
                 changed_ids.update((source.id, shot.id))
-                narration_sensitive_scene_ids.add(source.id)
             drafts.insert(index, scene)
             created_scene_ids.add(scene.id)
             changed_ids.update(
@@ -629,7 +629,6 @@ def _apply_script_operations(
                     *(cue.id for cue in scene.narration_cues),
                 )
             )
-            narration_sensitive_scene_ids.add(scene.id)
             continue
         if operation.op == "move_scene":
             assert operation.scene_id is not None
@@ -674,7 +673,6 @@ def _apply_script_operations(
             )
             _insert_after(scene.shots, shot, operation.after_id, "Shot")
             changed_ids.update((scene.id, shot_id, *(item.id for item in shot.segments)))
-            narration_sensitive_scene_ids.add(scene.id)
             continue
         if operation.op in {"move_shot", "delete_shot"}:
             assert operation.scene_id is not None and operation.shot_id is not None
@@ -693,7 +691,6 @@ def _apply_script_operations(
                     raise ValueError("Shot 不能移动到自身之后。")
                 _insert_after(target.shots, shot, operation.after_id, "Shot")
             changed_ids.update((scene.id, target.id, shot.id))
-            narration_sensitive_scene_ids.update((scene.id, target.id))
             continue
         if operation.op == "update_segment_fields":
             assert operation.segment_id is not None and operation.fields is not None
@@ -701,8 +698,6 @@ def _apply_script_operations(
             for name, value in operation.fields.items():
                 setattr(segment, name, _script_segment_field(name, value))
             changed_ids.update((scene.id, segment.id))
-            if "duration_estimate_seconds" in operation.fields:
-                narration_sensitive_scene_ids.add(scene.id)
             continue
         if operation.op == "insert_segment":
             assert operation.shot_id is not None and operation.segment is not None
@@ -711,7 +706,6 @@ def _apply_script_operations(
             segment = _script_segment_draft(operation.segment, segment_id)
             _insert_after(shot.segments, segment, operation.after_id, "Segment")
             changed_ids.update((scene.id, shot.id, segment_id))
-            narration_sensitive_scene_ids.add(scene.id)
             continue
         if operation.op in {"move_segment", "delete_segment"}:
             assert operation.shot_id is not None and operation.segment_id is not None
@@ -725,7 +719,6 @@ def _apply_script_operations(
                     raise ValueError("Segment 不能移动到自身之后。")
                 _insert_after(shot.segments, segment, operation.after_id, "Segment")
             changed_ids.update((scene.id, shot.id, segment.id))
-            narration_sensitive_scene_ids.add(scene.id)
             continue
         if operation.op == "split_segment":
             assert (
@@ -743,7 +736,6 @@ def _apply_script_operations(
             second = _script_segment_draft(operation.second, second_id)
             shot.segments[segment_index : segment_index + 1] = [first, second]
             changed_ids.update((scene.id, shot.id, segment.id, new_id))
-            narration_sensitive_scene_ids.add(scene.id)
             continue
         if operation.op == "merge_adjacent_segments":
             assert (
@@ -763,17 +755,10 @@ def _apply_script_operations(
             merged = _script_segment_draft(operation.segment, merged_id)
             shot.segments[left_index : left_index + 2] = [merged]
             changed_ids.update((scene.id, shot.id, left.id, right.id))
-            narration_sensitive_scene_ids.add(scene.id)
             continue
         raise TypeError("未支持的 Script operation。")
 
-    materialized = tuple(
-        _materialize_script_scene_draft(
-            scene,
-            clear_narration=scene.id in narration_sensitive_scene_ids,
-        )
-        for scene in drafts
-    )
+    materialized = tuple(_materialize_script_scene_draft(scene) for scene in drafts)
     DirectorScript(1, 1, None, None, materialized)
     return materialized, changed_ids
 
@@ -801,7 +786,7 @@ def _script_scene_draft(scene: Scene) -> _ScriptSceneDraft:
                         segment.dialogue_lines,
                         segment.boundary_from_previous,
                     )
-                    for segment in shot.segments
+                    for segment in v32_shot_segments(scene, shot.id)
                 ],
                 None if shot.view_id is None else (scene.location_id, shot.view_id),
             )
@@ -837,8 +822,6 @@ def _script_new_scene_draft(
         else (
             NarrationCue(
                 id=fresh_id("scene:narration_cue"),
-                start_shot_id=None,
-                end_shot_id=None,
                 zh=_materialize_track(value.narration_cue.zh),
                 en=_materialize_track(value.narration_cue.en),
             ),
@@ -944,51 +927,42 @@ def _insert_after(
     items.insert(index + 1, value)
 
 
-def _materialize_script_scene_draft(
-    scene: _ScriptSceneDraft,
-    *,
-    clear_narration: bool,
-) -> Scene:
-    shots = tuple(
-        Shot(
-            shot.id,
-            shot.visible_character_ids,
-            shot.composition,
-            shot.camera_movement,
-            shot.action,
-            shot.audio_direction,
-            shot.transition_in,
-            tuple(
-                ShotSegment(
-                    segment.id,
-                    segment.duration_estimate_seconds,
-                    segment.action,
-                    segment.dialogue_lines,
-                    segment.boundary_from_previous,
-                )
-                for segment in shot.segments
-            ),
-            view_id=_kept_view_id(shot.view, scene.location_id),
+def _materialize_script_scene_draft(scene: _ScriptSceneDraft) -> Scene:
+    shots: list[Shot] = []
+    segments: list[ShotSegment] = []
+    for shot in scene.shots:
+        require_v32_shot_segments(shot.segments)
+        shots.append(
+            Shot(
+                shot.id,
+                shot.visible_character_ids,
+                shot.composition,
+                shot.camera_movement,
+                shot.action,
+                shot.audio_direction,
+                shot.transition_in,
+                view_id=_kept_view_id(shot.view, scene.location_id),
+            )
         )
-        for shot in scene.shots
-    )
-    cues = tuple(
-        replace(
-            cue,
-            start_shot_id=shots[0].id if shots else None,
-            end_shot_id=shots[-1].id if shots else None,
+        segments.extend(
+            ShotSegment(
+                segment.id,
+                (shot.id,),
+                segment.duration_estimate_seconds,
+                segment.action,
+                segment.dialogue_lines,
+                segment.boundary_from_previous,
+            )
+            for segment in shot.segments
         )
-        if clear_narration
-        else cue
-        for cue in scene.narration_cues
-    )
     return Scene(
         scene.id,
         scene.title,
         scene.summary,
         scene.setting,
-        shots,
-        cues,
+        tuple(shots),
+        tuple(segments),
+        scene.narration_cues,
         scene.driver,
         scene.location_id,
         scene.state_id,
@@ -1095,32 +1069,28 @@ def _rebase_video_plan(
     current_contexts = _segment_visual_contexts(scenes)
     old_items = {item.segment_id: item for item in plan.segments}
     items = []
-    for scene in scenes:
-        for shot in scene.shots:
-            for segment in shot_segments(scene, shot.id):
-                current = old_items.get(segment.id)
-                if (
-                    current is not None
-                    and previous_contexts.get(segment.id) == current_contexts[segment.id]
-                ):
-                    items.append(current)
-                elif current is not None:
-                    # 剧本字段与用户显式保存的视频计划属于不同内容层。剧本回改可以让
-                    # 已选渲染产物过期，但不能丢弃 H3 正文、模式或带描述的参考素材。
-                    items.append(
-                        replace(
-                            current,
-                            selected_asset_id=None,
-                            upscaled_asset_id=None,
-                        )
-                    )
-                else:
-                    items.append(
-                        SegmentVideo(
-                            segment.id,
-                            "",
-                        )
-                    )
+    for segment in script_segments(scenes):
+        current = old_items.get(segment.id)
+        unchanged = previous_contexts.get(segment.id) == current_contexts[segment.id]
+        if current is not None and unchanged:
+            items.append(current)
+        elif current is not None:
+            # 剧本字段与用户显式保存的视频计划属于不同内容层。剧本回改可以让
+            # 已选渲染产物过期，但不能丢弃 H3 正文、模式或带描述的参考素材。
+            items.append(
+                replace(
+                    current,
+                    selected_asset_id=None,
+                    upscaled_asset_id=None,
+                )
+            )
+        else:
+            items.append(
+                SegmentVideo(
+                    segment.id,
+                    "",
+                )
+            )
     return VideoPlan(source_script_revision, tuple(items))
 
 
@@ -1128,47 +1098,51 @@ def _segment_visual_contexts(scenes: tuple[Scene, ...]) -> dict[str, tuple[objec
     return {
         segment.id: (
             scene.setting,
-            shot.visible_character_ids,
-            shot.composition,
-            shot.camera_movement,
-            shot.action,
-            shot.transition_in,
+            tuple(
+                (
+                    shot.visible_character_ids,
+                    shot.composition,
+                    shot.camera_movement,
+                    shot.action,
+                    shot.transition_in,
+                )
+                for shot in segment_shots(scene, segment.id)
+            ),
             segment.duration_estimate_seconds,
             segment.action,
             segment.dialogue_lines,
             segment.boundary_from_previous,
         )
         for scene in scenes
-        for shot in scene.shots
-        for segment in shot_segments(scene, shot.id)
+        for segment in scene.segments
     }
 
 
-def _materialize_shot(shot: Any, shot_id: Callable[[], str], segment_id=None) -> Shot:
+def _materialize_shots(
+    shots: tuple[Any, ...],
+    shot_id: Callable[[Any], str],
+    segment_id: Callable[[str | None], str] | None = None,
+) -> tuple[tuple[Shot, ...], tuple[ShotSegment, ...]]:
+    """v32 形状的 Shot（各自下挂 Segment）物化为并列的 shots 与覆盖各自 Shot 的 segments。"""
     segment_id = segment_id or (lambda _value: uuid4().hex)
-    return Shot(
-        id=shot_id(),
-        visible_character_ids=shot.visible_character_ids,
-        composition=shot.composition.strip(),
-        camera_movement=shot.camera_movement.strip(),
-        action=shot.action.strip(),
-        audio_direction=shot.audio_direction.strip(),
-        transition_in=None if shot.transition_in is None else shot.transition_in.strip(),
-        segments=tuple(
-            ShotSegment(
-                id=segment_id(getattr(segment, "id", None)),
-                duration_estimate_seconds=segment.duration_estimate_seconds,
-                action=segment.action.strip(),
-                dialogue_lines=tuple(_dialogue_line(line) for line in segment.dialogue_lines),
-                boundary_from_previous=(
-                    None
-                    if segment.boundary_from_previous is None
-                    else SegmentBoundary(
-                        SegmentBoundaryReason(segment.boundary_from_previous.reason),
-                        segment.boundary_from_previous.continuity_instruction.strip(),
-                    )
-                ),
+    materialized_shots: list[Shot] = []
+    segments: list[ShotSegment] = []
+    for shot in shots:
+        require_v32_shot_segments(shot.segments)
+        materialized = Shot(
+            id=shot_id(shot),
+            visible_character_ids=shot.visible_character_ids,
+            composition=shot.composition.strip(),
+            camera_movement=shot.camera_movement.strip(),
+            action=shot.action.strip(),
+            audio_direction=shot.audio_direction.strip(),
+            transition_in=None if shot.transition_in is None else shot.transition_in.strip(),
+        )
+        materialized_shots.append(materialized)
+        segments.extend(
+            _materialize_segment(
+                segment, segment_id(getattr(segment, "id", None)), (materialized.id,)
             )
             for segment in shot.segments
-        ),
-    )
+        )
+    return tuple(materialized_shots), tuple(segments)

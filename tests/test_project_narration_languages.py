@@ -24,6 +24,7 @@ from core.structured_director import (
 from core.structured_director.models._shared import parse_narration_languages
 from core.structured_director.reads.professional_worksets import workset_read
 from core.structured_director.reads.snapshot_view import serialize_snapshot
+from core.structured_director.v32_projection import v32_cue_anchors
 from core.web_contracts.snapshot_schema import snapshot_schemas
 from server.api import StoryRailApi
 
@@ -210,8 +211,8 @@ def test_single_language_tts_to_scene_final_to_approval_survives_restart(tmp_pat
             json.dumps(
                 {
                     "expected_revision": document.revision,
-                    "start_shot_id": cue.start_shot_id,
-                    "end_shot_id": cue.end_shot_id,
+                    "start_shot_id": v32_cue_anchors(scene)[0],
+                    "end_shot_id": v32_cue_anchors(scene)[1],
                     language.value: {
                         "text": track.text + "。",
                         "seed": track.seed,

@@ -642,7 +642,7 @@ def test_external_upscale_animatic_scene_assembly_observation_cancel_retry(tmp_p
 
         scene = doc.director_script.scenes[0]
         for name, args in [
-            ("video.upscale", {"segment_id": scene.shots[0].segments[0].id}),
+            ("video.upscale", {"segment_id": scene.segments[0].id}),
             ("animatic.generate_scene", {"scene_id": scene.id}),
             ("final.assemble_scene", {"scene_id": scene.id}),
         ]:

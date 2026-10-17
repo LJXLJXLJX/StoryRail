@@ -508,8 +508,6 @@ class StructuredDirectorService:
                         "scope": {"scene_ids": [scene_id]},
                         "cue_id": cue.id,
                         "fields": {
-                            "start_shot_id": cue.start_shot_id,
-                            "end_shot_id": cue.end_shot_id,
                             **{
                                 language.value: {
                                     "text": track.text,

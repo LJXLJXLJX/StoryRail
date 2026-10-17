@@ -128,6 +128,7 @@ from .service import (
     StructuredDirectorService,
 )
 from .store import RevisionConflictError, StructuredDirectorStore
+from .v32_projection import require_v32_cue_anchors
 
 _CARD_RESOURCE = re.compile(r"/(?P<kind>characters)(?:/(?P<card_id>[0-9a-f]{32}))?(?P<action>/.*)?")
 _GENERATION_RESOURCE = re.compile(
@@ -432,15 +433,23 @@ class StructuredDirectorHttpApi:
             if isinstance(request, JsonResponse):
                 return request
             try:
+                shot_anchors = (
+                    _optional_id(request["start_shot_id"], "start_shot_id"),
+                    _optional_id(request["end_shot_id"], "end_shot_id"),
+                )
                 cue = NarrationCue(
                     id=cue_id,
-                    start_shot_id=_optional_id(request["start_shot_id"], "start_shot_id"),
-                    end_shot_id=_optional_id(request["end_shot_id"], "end_shot_id"),
                     zh=_narration_track(request["zh"], "zh"),
                     en=_narration_track(request["en"], "en"),
                 )
             except ValueError as exc:
                 return _error(400, "invalid_request", str(exc))
+            script = self._service.snapshot_required().director_script
+            scene = next(
+                (item for item in script.scenes if item.id == scene_id) if script else (), None
+            )
+            if scene is not None:
+                require_v32_cue_anchors([shot.id for shot in scene.shots], *shot_anchors)
             result = await self._service.save_narration_cue(
                 scene_id=scene_id,
                 cue=cue,

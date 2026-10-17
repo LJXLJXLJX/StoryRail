@@ -14,6 +14,7 @@ from core.structured_director.models import (
     SegmentBoundaryReason,
 )
 from core.structured_director.reads.semantic_projection import build_semantic_projection as build
+from core.structured_director.script_index import shot_segments
 
 
 def test_mixed_projection_and_selected_real_audio(tmp_path):
@@ -47,7 +48,7 @@ async def _mixed(tmp_path):
             "text": line.text,
             "delivery": line.delivery,
         }
-        for line in drama.shots[0].segments[0].dialogue_lines
+        for line in drama.segments[0].dialogue_lines
     ]
     assert "selection" not in segment and "dependencies" not in segment
     assert "director_script.scenes" in segment["provenance"]["field"]
@@ -116,25 +117,28 @@ async def _bounds(tmp_path):
     full = build(synthetic, {"level": "scene", "scope": scope, "extensions": ["text"]})
     assert len(preview["items"][0]["summary"]) == 240
     assert len(full["items"][0]["summary"]) == 4000
+
     # 单页展开正文超出 128 KiB 时明确拒绝，可缩页。
-    many = tuple(
-        replace(
+    def numbered(index):
+        shot_ids = {
+            shot.id: f"{1000 + index * 10 + j:032x}" for j, shot in enumerate(long_scene.shots)
+        }
+        return replace(
             long_scene,
             id=f"{index + 1:032x}",
-            shots=tuple(
+            shots=tuple(replace(shot, id=shot_ids[shot.id]) for shot in long_scene.shots),
+            segments=tuple(
                 replace(
-                    shot,
-                    id=f"{1000 + index * 10 + j:032x}",
-                    segments=tuple(
-                        replace(segment, id=f"{10000 + index * 100 + j * 10 + k:032x}")
-                        for k, segment in enumerate(shot.segments)
-                    ),
+                    segment,
+                    id=f"{10000 + index * 100 + j * 10 + k:032x}",
+                    shot_ids=tuple(shot_ids[item] for item in segment.shot_ids),
                 )
                 for j, shot in enumerate(long_scene.shots)
+                for k, segment in enumerate(shot_segments(long_scene, shot.id))
             ),
         )
-        for index in range(40)
-    )
+
+    many = tuple(numbered(index) for index in range(40))
     large = replace(
         document,
         keyframe_plan=None,
@@ -162,27 +166,27 @@ async def _parent_scope(tmp_path):
     _, _, document, _ = await _visual_project(str(tmp_path))
     scene = document.director_script.scenes[0]
     source = scene.shots[0]
-    shots = tuple(
+    source_segments = shot_segments(scene, source.id)
+    shots = tuple(replace(source, id=f"{i + 100:032x}") for i in range(4))
+    segments = tuple(
         replace(
-            source,
-            id=f"{i + 100:032x}",
-            segments=tuple(
-                replace(
-                    source.segments[0],
-                    id=f"{1000 + i * 10 + j:032x}",
-                    boundary_from_previous=None
-                    if j == 0
-                    else SegmentBoundary(
-                        SegmentBoundaryReason.CONTINUITY_ANCHOR, "从上一边界继续。"
-                    ),
-                )
-                for j in range(3)
-            ),
+            source_segments[0],
+            id=f"{1000 + i * 10 + j:032x}",
+            shot_ids=(shot.id,),
+            boundary_from_previous=None
+            if j == 0
+            else SegmentBoundary(SegmentBoundaryReason.CONTINUITY_ANCHOR, "从上一边界继续。"),
         )
-        for i in range(4)
+        for i, shot in enumerate(shots)
+        for j in range(3)
     )
-    scene = replace(scene, shots=shots)
-    other = replace(scene, id="e" * 32, shots=(replace(source, id="f" * 32),))
+    scene = replace(scene, shots=shots, segments=segments)
+    other = replace(
+        scene,
+        id="e" * 32,
+        shots=(replace(source, id="f" * 32),),
+        segments=tuple(replace(segment, shot_ids=("f" * 32,)) for segment in source_segments),
+    )
     document = replace(
         document,
         keyframe_plan=None,
@@ -198,16 +202,16 @@ async def _parent_scope(tmp_path):
     }
     first = build(document, request)
     assert first["total"] == 3 and first["parent_id"] == shots[0].id
-    assert first["items"][0]["id"] == shots[0].segments[0].id
+    assert first["items"][0]["id"] == segments[0].id
     second = build(document, {**request, "cursor": first["next_cursor"]})
-    assert second["items"][0]["id"] == shots[0].segments[1].id
+    assert second["items"][0]["id"] == segments[1].id
     for patch in (
         {"parent_id": shots[1].id, "cursor": first["next_cursor"]},
         {"parent_id": other.shots[0].id},
         {"parent_id": "0" * 32},
         {"parent_id": None},
         {"level": "shot"},
-        {"ids": [shots[1].segments[0].id]},
+        {"ids": [segments[3].id]},
     ):
         with pytest.raises(ValueError):
             build(document, {**request, **patch})
@@ -220,7 +224,7 @@ async def _parent_scope(tmp_path):
     outline = build(document, {"level": "outline", "scope": {"project_id": document.project_id}})
     scene_shots = build(document, {"level": "shot", "scope": request["scope"]})
     scene_segments = build(document, {"level": "segment", "scope": request["scope"]})
-    shot_segments = build(
+    shot_page = build(
         document, {"level": "segment", "scope": request["scope"], "parent_id": shots[0].id}
     )
     shot_detail = build(
@@ -232,7 +236,7 @@ async def _parent_scope(tmp_path):
         {
             "level": "segment",
             "scope": request["scope"],
-            "ids": [shots[0].segments[0].id],
+            "ids": [segments[0].id],
             "extensions": ["text"],
         },
     )
@@ -263,7 +267,7 @@ async def _parent_scope(tmp_path):
         },
         "agent_shot_children": {
             "before": measurement([scene_segments]),
-            "after": measurement([shot_segments]),
+            "after": measurement([shot_page]),
         },
     }
     assert report["agent_shot_children"]["before"]["nodes"] == 12

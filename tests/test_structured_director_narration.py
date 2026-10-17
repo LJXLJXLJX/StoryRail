@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from proposal_fixture_service import ProposalFixtureService as StructuredDirectorService
+from script_helpers import shot_segments_at
 from structured_director_fixtures import (
     ContinuousKeyframePlanner,
     NarrationReferenceProposer,
@@ -50,6 +51,7 @@ from core.structured_director.service import (
     _align_duration_ranges,
     _clip_starts,
 )
+from core.structured_director.v32_projection import v32_cue_anchors
 
 
 class StructuredDirectorNarrationTests(unittest.IsolatedAsyncioTestCase):
@@ -82,15 +84,14 @@ class StructuredDirectorNarrationTests(unittest.IsolatedAsyncioTestCase):
                 action="环境保持安静。",
                 audio_direction="",
                 transition_in=None,
-                segments=(
-                    ShotSegment(
-                        id=f"{index + 10:032x}",
-                        duration_estimate_seconds=2.5,
-                        action="环境保持安静。",
-                        dialogue_lines=(),
-                        boundary_from_previous=None,
-                    ),
-                ),
+            )
+            segment = ShotSegment(
+                id=f"{index + 10:032x}",
+                shot_ids=(shot_id,),
+                duration_estimate_seconds=2.5,
+                action="环境保持安静。",
+                dialogue_lines=(),
+                boundary_from_previous=None,
             )
             return Scene(
                 id=f"{index + 20:032x}",
@@ -99,11 +100,10 @@ class StructuredDirectorNarrationTests(unittest.IsolatedAsyncioTestCase):
                 setting="室内。",
                 driver="narration",
                 shots=(shot,),
+                segments=(segment,),
                 narration_cues=(
                     NarrationCue(
                         id=cue_id,
-                        start_shot_id=shot_id,
-                        end_shot_id=shot_id,
                         zh=NarrationTrack("同一个 Cue ID 不应跨 Scene 复用。", 42),
                         en=NarrationTrack("A cue ID must not repeat across scenes.", 42),
                     ),
@@ -309,7 +309,7 @@ class StructuredDirectorNarrationTests(unittest.IsolatedAsyncioTestCase):
             scripted = await service.prepare_script(expected_revision=references.revision)
             assert scripted.director_script is not None
             cue = scripted.director_script.scenes[0].narration_cues[0]
-            self.assertIsNone(cue.start_shot_id)
+            self.assertEqual(v32_cue_anchors(scripted.director_script.scenes[0]), (None, None))
             review = await service.confirm_script(expected_revision=scripted.revision)
             self.assertIs(review.status, StructuredDirectorStatus.REVIEWING_NARRATION)
             completed, generation_id = await synthesize_narration(
@@ -353,14 +353,10 @@ class StructuredDirectorNarrationTests(unittest.IsolatedAsyncioTestCase):
 
             assert conformed.director_script is not None
             scene = conformed.director_script.scenes[0]
-            scene_duration = sum(
-                segment.duration_estimate_seconds
-                for shot in scene.shots
-                for segment in shot.segments
-            )
+            scene_duration = sum(segment.duration_estimate_seconds for segment in scene.segments)
             self.assertAlmostEqual(scene_duration, 8.0, places=6)
             self.assertAlmostEqual(
-                sum(segment.duration_estimate_seconds for segment in scene.shots[0].segments),
+                sum(segment.duration_estimate_seconds for segment in shot_segments_at(scene, 0)),
                 4.0,
                 places=6,
             )

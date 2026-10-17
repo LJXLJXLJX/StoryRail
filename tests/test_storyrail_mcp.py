@@ -218,7 +218,7 @@ def test_prompt_scope_and_no_generation(tmp_path):
 
     store, service, document, _ = asyncio.run(_visual_project(str(tmp_path)))
     scene = document.director_script.scenes[0]
-    segment = scene.shots[0].segments[0]
+    segment = scene.segments[0]
     args = {
         "scope": {"scene_ids": [scene.id]},
         "segment_id": segment.id,
@@ -326,7 +326,7 @@ def test_mcp_locate_story_resolves_readable_path(tmp_path):
             )
             assert not located.is_error
             data = located.structured_content["data"]
-            segment = document.director_script.scenes[0].shots[0].segments[0]
+            segment = document.director_script.scenes[0].segments[0]
             assert data["target_type"] == "segment"
             assert data["target_id"] == segment.id
             assert data["location"] == "场景 1－镜头 1－片段 1"

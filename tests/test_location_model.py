@@ -381,7 +381,6 @@ def _shot(view_id: str | None = None) -> Shot:
         "角色等待。",
         "环境声。",
         None,
-        (ShotSegment(SEGMENT_ID, 2.0, "角色抬头。", (), None),),
         view_id,
     )
 
@@ -393,6 +392,7 @@ def _scene(**overrides) -> Scene:
         summary="摘要。",
         setting="环境。",
         shots=(_shot(),),
+        segments=(ShotSegment(SEGMENT_ID, (SHOT_ID,), 2.0, "角色抬头。", (), None),),
         driver="drama",
     )
     fields.update(overrides)

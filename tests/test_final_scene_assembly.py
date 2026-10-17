@@ -80,7 +80,7 @@ def test_final_assembly_plan_lists_scenes_without_a_current_scene_final(tmp_path
 def test_stale_scene_final_is_rejected_even_though_it_exists(tmp_path):
     document = asyncio.run(mixed_acceptance(tmp_path))
     first_scene, second_scene = document.director_script.scenes[:2]
-    stale_segment = first_scene.shots[0].segments[0].id
+    stale_segment = first_scene.segments[0].id
     # 把第一个 Scene 的 Segment 选择换成另一个 MP4，使它的 Scene 成片过期。
     replacement_asset_id = next(
         generation.output_asset_id

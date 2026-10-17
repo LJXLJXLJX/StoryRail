@@ -24,9 +24,10 @@ def _id(label: str) -> str:
     return label.encode().hex().ljust(32, "0")[:32]
 
 
-def _segment(label: str, *, continues: bool = False) -> ShotSegment:
+def _segment(label: str, *shots: str, continues: bool = False) -> ShotSegment:
     return ShotSegment(
         _id(label),
+        tuple(_id(item) for item in shots),
         4.0,
         f"{label} 动作",
         (),
@@ -36,7 +37,7 @@ def _segment(label: str, *, continues: bool = False) -> ShotSegment:
     )
 
 
-def _shot(label: str, segments: tuple[ShotSegment, ...], characters=(), view=None) -> Shot:
+def _shot(label: str, characters=(), view=None) -> Shot:
     return Shot(
         _id(label),
         tuple(_id(item) for item in characters),
@@ -45,62 +46,63 @@ def _shot(label: str, segments: tuple[ShotSegment, ...], characters=(), view=Non
         f"{label} 动作",
         "",
         None,
-        segments,
         view_id=None if view is None else _id(view),
     )
 
 
-def _scene(label: str, shots: tuple[Shot, ...]) -> Scene:
-    return Scene(_id(label), label, "摘要", "场景", shots, location_id=_id("loc"))
+def _scene(label: str, shots: tuple[Shot, ...], segments: tuple[ShotSegment, ...]) -> Scene:
+    return Scene(_id(label), label, "摘要", "场景", shots, segments, location_id=_id("loc"))
 
 
-# s1 一个 Segment；s2 长镜头拆成三段；s3 一个 Segment。
-G1, G2A, G2B, G2C, G3 = (
-    _segment("g1"),
-    _segment("g2a"),
-    _segment("g2b", continues=True),
-    _segment("g2c", continues=True),
-    _segment("g3"),
-)
-S1 = _shot("s1", (G1,), characters=("alice",), view="v1")
-S2 = _shot("s2", (G2A, G2B, G2C), characters=("bob", "alice"), view="v2")
-S3 = _shot("s3", (G3,))
-SCENE_A = _scene("a", (S1, S2))
-SCENE_B = _scene("b", (S3,))
+# g1 段内切镜覆盖 s1–s2；s3 长镜头拆成 g2、g3、g4；g4 延续 s3 后段内切到 s4；s5 独立。
+S1 = _shot("s1", characters=("alice",), view="v1")
+S2 = _shot("s2", characters=("bob", "alice"), view="v2")
+S3 = _shot("s3", characters=("carol",))
+S4 = _shot("s4", view="v4")
+S5 = _shot("s5")
+G1 = _segment("g1", "s1", "s2")
+G2 = _segment("g2", "s3")
+G3 = _segment("g3", "s3", continues=True)
+G4 = _segment("g4", "s3", "s4", continues=True)
+G5 = _segment("g5", "s5")
+SCENE_A = _scene("a", (S1, S2, S3, S4), (G1, G2, G3, G4))
+SCENE_B = _scene("b", (S5,), (G5,))
 SCRIPT = DirectorScript(1, 1, None, None, (SCENE_A, SCENE_B))
 
 
-def test_segments_follow_script_order_across_shots_and_scenes() -> None:
-    assert scene_segments(SCENE_A) == (G1, G2A, G2B, G2C)
-    assert script_segments(SCRIPT) == (G1, G2A, G2B, G2C, G3)
+def test_segments_follow_script_order_across_scenes() -> None:
+    assert scene_segments(SCENE_A) == (G1, G2, G3, G4)
+    assert script_segments(SCRIPT) == (G1, G2, G3, G4, G5)
     assert script_segments(SCRIPT.scenes) == script_segments(SCRIPT)
 
 
 def test_shot_and_segment_coverage_lookup() -> None:
-    assert shot_segments(SCENE_A, S2.id) == (G2A, G2B, G2C)
-    assert shot_segments(SCENE_A, S3.id) == ()
-    assert segment_shots(SCENE_A, G2B.id) == (S2,)
-    assert segment_shots(SCENE_A, G3.id) == ()
+    assert shot_segments(SCENE_A, S2.id) == (G1,)
+    assert shot_segments(SCENE_A, S3.id) == (G2, G3, G4)
+    assert shot_segments(SCENE_A, S5.id) == ()
+    assert segment_shots(SCENE_A, G1.id) == (S1, S2)
+    assert segment_shots(SCENE_A, G4.id) == (S3, S4)
+    assert segment_shots(SCENE_A, G5.id) == ()
 
 
 def test_segment_visible_characters_and_views_come_from_covering_shots() -> None:
-    assert segment_visible_character_ids(SCENE_A, G2A.id) == (_id("bob"), _id("alice"))
-    assert segment_visible_character_ids(SCENE_B, G3.id) == ()
-    assert segment_view_ids(SCENE_A, G1.id) == (_id("v1"), _id("v1"))
-    assert segment_view_ids(SCENE_B, G3.id) == (None, None)
+    assert segment_visible_character_ids(SCENE_A, G1.id) == (_id("alice"), _id("bob"))
+    assert segment_visible_character_ids(SCENE_B, G5.id) == ()
+    assert segment_view_ids(SCENE_A, G1.id) == (_id("v1"), _id("v2"))
+    assert segment_view_ids(SCENE_A, G4.id) == (None, _id("v4"))
     assert segment_view_ids(SCENE_B, G1.id) == (None, None)
 
 
 def test_find_segment_locates_owning_scene() -> None:
-    assert find_segment(SCRIPT, G3.id) == (SCENE_B, G3)
-    assert find_segment(SCRIPT.scenes, G2C.id) == (SCENE_A, G2C)
+    assert find_segment(SCRIPT, G5.id) == (SCENE_B, G5)
+    assert find_segment(SCRIPT.scenes, G3.id) == (SCENE_A, G3)
     assert find_segment(SCRIPT, _id("missing")) is None
 
 
-def test_continuation_only_within_the_same_shot() -> None:
+def test_continuation_means_sharing_the_boundary_shot() -> None:
     assert not segment_continues_previous(SCENE_A, G1.id)
-    assert not segment_continues_previous(SCENE_A, G2A.id)
-    assert segment_continues_previous(SCENE_A, G2B.id)
-    assert segment_continues_previous(SCENE_A, G2C.id)
-    assert not segment_continues_previous(SCENE_B, G3.id)
-    assert not segment_continues_previous(SCENE_A, G3.id)
+    assert not segment_continues_previous(SCENE_A, G2.id)
+    assert segment_continues_previous(SCENE_A, G3.id)
+    assert segment_continues_previous(SCENE_A, G4.id)
+    assert not segment_continues_previous(SCENE_B, G5.id)
+    assert not segment_continues_previous(SCENE_A, G5.id)

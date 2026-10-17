@@ -153,10 +153,7 @@ def test_voice_only_identity_roundtrip_dialogue_and_visibility(tmp_path):
         doc = store.apply_script_proposal(
             parse_structured_director_script_proposal(json.dumps(script))
         )
-        assert (
-            doc.director_script.scenes[0].shots[0].segments[0].dialogue_lines[0].character_id
-            == voice.id
-        )
+        assert doc.director_script.scenes[0].segments[0].dialogue_lines[0].character_id == voice.id
         assert store.read().reference_library.characters[0] == voice
 
     asyncio.run(run())

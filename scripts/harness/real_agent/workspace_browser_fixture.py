@@ -168,15 +168,8 @@ def main():
         scenes = tuple(
             replace(
                 scene,
-                shots=tuple(
-                    replace(
-                        shot,
-                        segments=tuple(
-                            replace(segment, duration_estimate_seconds=6.0)
-                            for segment in shot.segments
-                        ),
-                    )
-                    for shot in scene.shots
+                segments=tuple(
+                    replace(segment, duration_estimate_seconds=6.0) for segment in scene.segments
                 ),
             )
             for scene in doc.director_script.scenes

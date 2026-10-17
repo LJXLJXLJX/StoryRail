@@ -37,6 +37,7 @@ _BOUNDARY_FIELDS = {"reason", "continuity_instruction"}
 
 _SEGMENT_FIELDS = {
     "id",
+    "shot_ids",
     "duration_estimate_seconds",
     "action",
     "dialogue_lines",
@@ -51,7 +52,6 @@ _SHOT_FIELDS = {
     "action",
     "audio_direction",
     "transition_in",
-    "segments",
     "view_id",
 }
 
@@ -61,6 +61,7 @@ _SCENE_FIELDS = {
     "summary",
     "setting",
     "shots",
+    "segments",
     "narration_cues",
     "driver",
     "location_id",
@@ -136,6 +137,7 @@ def _serialize_scene(scene: Scene) -> dict[str, Any]:
         "location_id": scene.location_id,
         "state_id": scene.state_id,
         "shots": [_serialize_shot(shot) for shot in scene.shots],
+        "segments": [_serialize_segment(segment) for segment in scene.segments],
         "narration_cues": [_serialize_narration_cue(cue) for cue in scene.narration_cues],
     }
 
@@ -149,7 +151,6 @@ def _serialize_shot(shot: Shot) -> dict[str, Any]:
         "action": shot.action,
         "audio_direction": shot.audio_direction,
         "transition_in": shot.transition_in,
-        "segments": [_serialize_segment(segment) for segment in shot.segments],
         "view_id": shot.view_id,
     }
 
@@ -157,6 +158,7 @@ def _serialize_shot(shot: Shot) -> dict[str, Any]:
 def _serialize_segment(segment: ShotSegment) -> dict[str, Any]:
     return {
         "id": segment.id,
+        "shot_ids": list(segment.shot_ids),
         "duration_estimate_seconds": segment.duration_estimate_seconds,
         "action": segment.action,
         "dialogue_lines": [
@@ -311,6 +313,7 @@ def _parse_scene(value: object) -> Scene:
         location_id=_optional_string(fields["location_id"], "scene.location_id"),
         state_id=_optional_string(fields["state_id"], "scene.state_id"),
         shots=_object_list(fields["shots"], _parse_shot),
+        segments=_object_list(fields["segments"], _parse_segment),
         narration_cues=_object_list(fields["narration_cues"], _parse_narration_cue),
     )
 
@@ -327,7 +330,6 @@ def _parse_shot(value: object) -> Shot:
         action=_string(fields["action"], "shot.action"),
         audio_direction=_string(fields["audio_direction"], "shot.audio_direction"),
         transition_in=_optional_string(fields["transition_in"], "shot.transition_in"),
-        segments=_object_list(fields["segments"], _parse_segment),
         view_id=_optional_string(fields["view_id"], "shot.view_id"),
     )
 
@@ -337,6 +339,7 @@ def _parse_segment(value: object) -> ShotSegment:
     boundary = fields["boundary_from_previous"]
     return ShotSegment(
         id=_string(fields["id"], "segment.id"),
+        shot_ids=_string_list(fields["shot_ids"], "segment.shot_ids"),
         duration_estimate_seconds=_number(
             fields["duration_estimate_seconds"], "segment.duration_estimate_seconds"
         ),

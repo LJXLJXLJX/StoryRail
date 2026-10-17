@@ -59,9 +59,9 @@ def _full_fixture_document(**kw) -> StructuredDirectorDocument:
         VideoPlan,
     )
 
-    segment = ShotSegment(SEGMENT_ID, 4.0, "动作", (), None)
-    shot = Shot("8" * 32, (), "构图", "固定", "动作", "环境声", None, (segment,))
-    scene = Scene(ID_B, "场景", "摘要", "环境", (shot,), (), "drama", None)
+    shot = Shot("8" * 32, (), "构图", "固定", "动作", "环境声", None)
+    segment = ShotSegment(SEGMENT_ID, (shot.id,), 4.0, "动作", (), None)
+    scene = Scene(ID_B, "场景", "摘要", "环境", (shot,), (segment,), (), "drama", None)
     script = DirectorScript(1, 1, 1, (scene,), (scene,))
     keyframe_plan = KeyframePlan(
         1,

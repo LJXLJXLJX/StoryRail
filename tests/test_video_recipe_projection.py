@@ -26,7 +26,7 @@ def test_preview_labels_switch_guards_and_revision_are_read_only(tmp_path):
     )
     assert (
         state["duration_seconds"]
-        == document.director_script.scenes[0].shots[0].segments[0].duration_estimate_seconds
+        == document.director_script.scenes[0].segments[0].duration_estimate_seconds
     )
     assert [item["label"] for item in state["bindings"]] == [
         "<Picture 1>",

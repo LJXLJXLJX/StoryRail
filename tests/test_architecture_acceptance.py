@@ -5,6 +5,7 @@ from dataclasses import replace
 
 import pytest
 from conftest import make_service
+from script_helpers import shot_segments_at
 from structured_director_fixtures import RecordingProvider
 from test_scene_driver_invariants import MixedProposer, insert_shot, narration_project, select_audio
 from video_recipes import save_video_inputs
@@ -54,7 +55,7 @@ async def mixed_acceptance(
     assert (
         sum(
             s.duration_estimate_seconds
-            for s in document.director_script.scenes[0].shots[0].segments
+            for s in shot_segments_at(document.director_script.scenes[0], 0)
         )
         == 16
     )

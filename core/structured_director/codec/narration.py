@@ -9,7 +9,7 @@ from core.model_providers.recipe import RecipeParams
 from ..models import NarrationCue, NarrationTrack
 from ._shared import _exact_object, _integer, _optional_string, _string
 
-_NARRATION_CUE_FIELDS = {"id", "start_shot_id", "end_shot_id", "zh", "en"}
+_NARRATION_CUE_FIELDS = {"id", "zh", "en"}
 _NARRATION_TRACK_FIELDS = {"text", "seed", "selected_audio_asset_id", "recipe_params"}
 
 
@@ -27,8 +27,6 @@ def _serialize_narration_track(track: NarrationTrack | None) -> dict[str, Any] |
 def _serialize_narration_cue(cue: NarrationCue) -> dict[str, Any]:
     return {
         "id": cue.id,
-        "start_shot_id": cue.start_shot_id,
-        "end_shot_id": cue.end_shot_id,
         "zh": _serialize_narration_track(cue.zh),
         "en": _serialize_narration_track(cue.en),
     }
@@ -52,8 +50,6 @@ def _parse_narration_cue(value: object) -> NarrationCue:
     fields = _exact_object(value, _NARRATION_CUE_FIELDS)
     return NarrationCue(
         id=_string(fields["id"], "narration_cue.id"),
-        start_shot_id=_optional_string(fields["start_shot_id"], "narration_cue.start_shot_id"),
-        end_shot_id=_optional_string(fields["end_shot_id"], "narration_cue.end_shot_id"),
         zh=_parse_narration_track(fields["zh"], "narration_cue.zh"),
         en=_parse_narration_track(fields["en"], "narration_cue.en"),
     )

@@ -5,6 +5,7 @@ import json
 import struct
 from dataclasses import replace
 
+from script_helpers import shot_segments_at
 from structured_director_fixtures import wav_bytes
 from test_director_commands import _ScriptCompiler, _visual_project
 from video_recipes import (
@@ -31,6 +32,7 @@ from core.structured_director import ImageAssetCategory
 from core.structured_director.production_context import _production_state_json
 from core.structured_director.reads.semantic_projection import build_semantic_projection
 from core.structured_director.reads.snapshot_view import serialize_snapshot
+from core.structured_director.script_index import shot_segments
 
 
 def _mp4_bytes(*, duration_seconds: float) -> bytes:
@@ -128,7 +130,7 @@ async def fixture(tmp_path):
             video_wire_dict(
                 {
                     "scope": {"scene_ids": [scene.id]},
-                    "segment_id": scene.shots[0].segments[0].id,
+                    "segment_id": scene.segments[0].id,
                     "generation_mode": "ref2va",
                 }
             ),
@@ -136,7 +138,7 @@ async def fixture(tmp_path):
     ).document
     doc = await save_video_inputs(
         service,
-        segment_id=scene.shots[0].segments[0].id,
+        segment_id=scene.segments[0].id,
         prompt_text="",
         additional_image_references=(),
         audio_references=tuple(
@@ -169,7 +171,7 @@ async def fixture(tmp_path):
                 "operations": [
                     {
                         "op": "set_aux_references",
-                        "segment_id": scene.shots[0].segments[0].id,
+                        "segment_id": scene.segments[0].id,
                         "asset_ids": [aux],
                     }
                 ],
@@ -192,7 +194,7 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
     async def run():
         store, service, document, additional_asset_id = await fixture(tmp_path)
         scene = document.director_script.scenes[0]
-        segment = scene.shots[0].segments[0]
+        segment = scene.segments[0]
 
         await save_video_inputs(
             service,
@@ -273,7 +275,7 @@ def test_ref2va_submits_reference_videos_with_lineage(tmp_path):
 
     async def run():
         store, service, document, _ = await fixture(tmp_path)
-        segment = document.director_script.scenes[0].shots[0].segments[0]
+        segment = document.director_script.scenes[0].segments[0]
         provider = RecordingProvider(media_type="video/mp4", content=b"fake")
         replace_video_provider(service, "ref2va", provider)
 
@@ -333,7 +335,7 @@ def test_video_labels_number_independently_and_map_to_provider_order(tmp_path):
 
     async def run():
         store, service, document, additional_asset_id = await fixture(tmp_path)
-        segment = document.director_script.scenes[0].shots[0].segments[0]
+        segment = document.director_script.scenes[0].segments[0]
         video_ids = []
         for seconds in (2.0, 4.0):
             document = await service.import_media_asset(
@@ -441,7 +443,7 @@ def test_h3_context_rejects_invalid_video_reference_descriptions(tmp_path):
 
     async def run():
         _store, _service, document, _ = await fixture(tmp_path)
-        segment = document.director_script.scenes[0].shots[0].segments[0]
+        segment = document.director_script.scenes[0].segments[0]
         context = build_h3_context(document, segment.id)
         assert context.video_reference_descriptions == ()
         with pytest.raises(ValueError, match="多于 3 项"):
@@ -467,7 +469,7 @@ def test_ref2va_submits_additional_images_without_reference_audio(tmp_path):
 
     async def run():
         store, service, document, additional_asset_id = await fixture(tmp_path)
-        segment = document.director_script.scenes[0].shots[0].segments[0]
+        segment = document.director_script.scenes[0].segments[0]
         document = await save_video_inputs(
             service,
             segment_id=segment.id,
@@ -507,7 +509,7 @@ def test_invalid_input_and_specialized_scope_are_read_only(tmp_path):
 
     store, service, document, _ = asyncio.run(fixture(tmp_path))
     scene = document.director_script.scenes[0]
-    segment = scene.shots[0].segments[0]
+    segment = scene.segments[0]
     with pytest.raises(ValueError, match="必须填写说明"):
         SegmentVideoImageReference(document.assets[0].id, "   ")
     with pytest.raises(ValueError, match="必须填写说明"):
@@ -564,7 +566,7 @@ def test_invalid_input_and_specialized_scope_are_read_only(tmp_path):
         ),
     )
     assert build_h3_context(missing_voice, segment.id).audio_reference_descriptions
-    quiet_segment = scene.shots[1].segments[0]
+    quiet_segment = shot_segments_at(scene, 1)[0]
     generic_audio_video = replace_video(
         next(item for item in document.video_plan.segments if item.segment_id == quiet_segment.id),
         generation_mode=SegmentVideoGenerationMode.REF2VA,
@@ -661,7 +663,7 @@ def test_mcp_prompt_commit_lost_response_replay_and_invalidated_boundary(tmp_pat
 
     store, service, document, _ = asyncio.run(fixture(tmp_path))
     scene = document.director_script.scenes[0]
-    segment = scene.shots[0].segments[0]
+    segment = scene.segments[0]
     target = document.keyframe_plan.segments[0].start_keyframe_id
     h3_args = {
         "scope": {"scene_ids": [scene.id]},
@@ -822,7 +824,7 @@ def test_ref2va_reference_audio_has_no_duration_limit(tmp_path):
 
     async def run():
         store, service, document, _ = await fixture(tmp_path)
-        segment = document.director_script.scenes[0].shots[0].segments[0]
+        segment = document.director_script.scenes[0].segments[0]
         provider = RecordingProvider(media_type="video/mp4", content=b"fake")
         replace_video_provider(service, "ref2va", provider)
         references = []
@@ -859,20 +861,11 @@ def test_segment_over_soft_duration_limit_is_flagged_but_still_submitted(tmp_pat
     async def run():
         store, service, document, _ = await fixture(tmp_path)
         scene = document.director_script.scenes[0]
-        segment = scene.shots[0].segments[0]
+        segment = scene.segments[0]
         assert video_prompt_workset(document, segment.id)["exceeds_soft_duration_limit"] is False
         long_scene = replace(
             scene,
-            shots=(
-                replace(
-                    scene.shots[0],
-                    segments=(
-                        replace(segment, duration_estimate_seconds=20.0),
-                        *scene.shots[0].segments[1:],
-                    ),
-                ),
-                *scene.shots[1:],
-            ),
+            segments=(replace(segment, duration_estimate_seconds=20.0), *scene.segments[1:]),
         )
         document = await service.save_script(
             (long_scene, *document.director_script.scenes[1:]),
@@ -906,7 +899,7 @@ def test_video_workset_marks_off_screen_dialogue_speakers(tmp_path):
         _, service, document, _ = await fixture(tmp_path)
         scene = document.director_script.scenes[0]
         shot = scene.shots[0]
-        segment = shot.segments[0]
+        segment = shot_segments(scene, shot.id)[0]
         speakers = [line.character_id for line in segment.dialogue_lines]
         dialogue = video_prompt_workset(document, segment.id)["context"]["segment"]["dialogue"]
         assert [item["on_screen"] for item in dialogue] == [True, True, True]
@@ -938,23 +931,15 @@ def test_video_workset_carries_external_speakers_and_scene_driver(tmp_path):
         store, service, document, _ = await fixture(tmp_path)
         scene = document.director_script.scenes[0]
         shot = scene.shots[0]
-        segment = shot.segments[0]
+        segment = shot_segments(scene, shot.id)[0]
         external = DialogueLine(None, "实验编号 0x04，开始宣读。", "平板", speaker_label="研究员")
         document = await service.save_script(
             (
                 replace(
                     scene,
-                    shots=(
-                        replace(
-                            shot,
-                            segments=(
-                                replace(
-                                    segment, dialogue_lines=(*segment.dialogue_lines, external)
-                                ),
-                                *shot.segments[1:],
-                            ),
-                        ),
-                        *scene.shots[1:],
+                    segments=(
+                        replace(segment, dialogue_lines=(*segment.dialogue_lines, external)),
+                        *scene.segments[1:],
                     ),
                 ),
                 *document.director_script.scenes[1:],
@@ -962,7 +947,7 @@ def test_video_workset_carries_external_speakers_and_scene_driver(tmp_path):
             expected_revision=document.revision,
         )
         # 持久化往返保留 speaker_label。
-        stored = store.read().director_script.scenes[0].shots[0].segments[0]
+        stored = store.read().director_script.scenes[0].segments[0]
         assert stored.dialogue_lines[-1] == external
 
         # H3 插件已把工作集格式化为 prompt payload。
@@ -989,18 +974,12 @@ def test_dialogue_timing_soft_hint_reaches_snapshot_story_and_video_workset(tmp_
         store, service, document, _ = await fixture(tmp_path)
         scene = document.director_script.scenes[0]
         shot = scene.shots[0]
-        segment = shot.segments[0]
+        segment = shot_segments(scene, shot.id)[0]
         long_line = replace(segment.dialogue_lines[0], text="字" * 90)
         overloaded = replace(segment, duration_estimate_seconds=4.0, dialogue_lines=(long_line,))
         document = await service.save_script(
             (
-                replace(
-                    scene,
-                    shots=(
-                        replace(shot, segments=(overloaded, *shot.segments[1:])),
-                        *scene.shots[1:],
-                    ),
-                ),
+                replace(scene, segments=(overloaded, *scene.segments[1:])),
                 *document.director_script.scenes[1:],
             ),
             expected_revision=document.revision,

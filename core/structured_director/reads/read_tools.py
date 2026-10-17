@@ -13,7 +13,8 @@ from ..models import (
     ReferenceGenerationPhase,
     StructuredDirectorDocument,
 )
-from ..script_index import scene_segments, script_segments, shot_segments
+from ..script_index import scene_segments, script_segments
+from ..v32_projection import v32_shot_segments
 from .batch_observation import batch_observation, owned_batch_id_for_run
 from .common import ReadResultTooLarge as ReadResultTooLarge
 from .common import (
@@ -154,11 +155,11 @@ def _locate_story(
         shot = scene.shots[shot_index - 1]
     if segment_index is not None:
         assert shot is not None
-        if segment_index > len(shot_segments(scene, shot.id)):
+        if segment_index > len(v32_shot_segments(scene, shot.id)):
             raise ValueError(
                 f"场景 {scene_index}－镜头 {shot_index}－片段 {segment_index} 不存在。"
             )
-        segment = shot_segments(scene, shot.id)[segment_index - 1]
+        segment = v32_shot_segments(scene, shot.id)[segment_index - 1]
     kind = "segment" if segment is not None else "shot" if shot is not None else "scene"
     canonical = f"场景 {scene_index}"
     if shot_index is not None:
@@ -319,7 +320,7 @@ def _get_target(
                     return _semantic_target(
                         document, "shot", shot.id, scene.id, {"scene_id": scene.id}
                     )
-                for segment in shot_segments(scene, shot.id):
+                for segment in v32_shot_segments(scene, shot.id):
                     if segment.id == target_id:
                         index = next(
                             index for index, item in enumerate(timeline) if item.id == target_id

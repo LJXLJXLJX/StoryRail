@@ -68,30 +68,30 @@ def _apply_repair_operations(
                     next_shots.append(replace(shot, **operation.fields))
                     found = True
                     scene_changed = True
-                    continue
-                next_segments: list[ShotSegment] = []
-                shot_changed = False
-                for segment in shot.segments:
-                    if operation.entity_type == "segment" and segment.id == operation.entity_id:
-                        if scene.id not in patch.scope_scene_ids:
-                            raise ValueError("repair operation 超出已授权 Scene scope。")
-                        reverse_operations.append(
-                            RepairOperation(
-                                "segment",
-                                segment.id,
-                                {name: getattr(segment, name) for name in operation.fields},
-                            )
+                else:
+                    next_shots.append(shot)
+            next_segments: list[ShotSegment] = []
+            for segment in scene.segments:
+                if operation.entity_type == "segment" and segment.id == operation.entity_id:
+                    if scene.id not in patch.scope_scene_ids:
+                        raise ValueError("repair operation 超出已授权 Scene scope。")
+                    reverse_operations.append(
+                        RepairOperation(
+                            "segment",
+                            segment.id,
+                            {name: getattr(segment, name) for name in operation.fields},
                         )
-                        next_segments.append(replace(segment, **operation.fields))
-                        found = True
-                        shot_changed = True
-                    else:
-                        next_segments.append(segment)
-                next_shots.append(
-                    replace(shot, segments=tuple(next_segments)) if shot_changed else shot
-                )
-                scene_changed = scene_changed or shot_changed
-            next_scenes.append(replace(scene, shots=tuple(next_shots)) if scene_changed else scene)
+                    )
+                    next_segments.append(replace(segment, **operation.fields))
+                    found = True
+                    scene_changed = True
+                else:
+                    next_segments.append(segment)
+            next_scenes.append(
+                replace(scene, shots=tuple(next_shots), segments=tuple(next_segments))
+                if scene_changed
+                else scene
+            )
         if not found:
             raise ValueError("repair operation 目标不存在或类型不匹配。")
         current_scenes = tuple(next_scenes)

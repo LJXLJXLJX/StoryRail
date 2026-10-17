@@ -131,7 +131,7 @@ def test_large_project_application_writes_return_compact_receipts_and_stable_rep
         provider = RecordingProvider(media_type="image/png", content=b"\x89PNG\r\n\x1a\ncompact")
         service = make_service(store, image_provider=provider)
         scene = document.director_script.scenes[0]
-        segment = scene.shots[0].segments[0]
+        segment = scene.segments[0]
         keyframe_id = document.keyframe_plan.segments[0].start_keyframe_id
         commands = [
             (

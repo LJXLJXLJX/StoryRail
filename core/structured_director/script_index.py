@@ -1,7 +1,8 @@
 """脚本访问层：Scene / Shot / Segment 之间的只读遍历与覆盖关系（L1 纯函数）。
 
-调用方不直接展开 ``shot.segments``，而经本模块读取“Scene 的 Segment 序列”和“Segment 覆盖的 Shot”，
-使脚本存储形状的变化只影响这里与真正构造脚本树的代码。当前存储中每个 Segment 恰好属于一个 Shot。
+Scene 下并列 ``shots`` 与 ``segments``，``segment.shot_ids`` 记录 Segment 覆盖的 Shot
+（按顺序、连续）。一个 Segment 可覆盖多个 Shot，一个 Shot 可跨多个相邻 Segment；
+相邻 Segment 共享边界 Shot 即延续同一镜头。
 """
 
 from __future__ import annotations
@@ -13,29 +14,27 @@ from .models import DirectorScript, Scene, Shot, ShotSegment
 
 def scene_segments(scene: Scene) -> tuple[ShotSegment, ...]:
     """Scene 内全部 Segment，按脚本顺序。"""
-    return tuple(segment for shot in scene.shots for segment in shot.segments)
+    return scene.segments
 
 
 def script_segments(script: DirectorScript | Iterable[Scene]) -> tuple[ShotSegment, ...]:
     """全脚本 Segment，按脚本顺序；接受 DirectorScript 或 Scene 序列。"""
     scenes = script.scenes if isinstance(script, DirectorScript) else script
-    return tuple(segment for scene in scenes for segment in scene_segments(scene))
+    return tuple(segment for scene in scenes for segment in scene.segments)
 
 
 def shot_segments(scene: Scene, shot_id: str) -> tuple[ShotSegment, ...]:
     """覆盖该 Shot 的 Segment，按顺序；Shot 不在本 Scene 时为空。"""
-    for shot in scene.shots:
-        if shot.id == shot_id:
-            return shot.segments
-    return ()
+    return tuple(segment for segment in scene.segments if shot_id in segment.shot_ids)
 
 
 def segment_shots(scene: Scene, segment_id: str) -> tuple[Shot, ...]:
     """Segment 覆盖的 Shot，按顺序；Segment 不在本 Scene 时为空。"""
-    for shot in scene.shots:
-        if any(segment.id == segment_id for segment in shot.segments):
-            return (shot,)
-    return ()
+    segment = next((item for item in scene.segments if item.id == segment_id), None)
+    if segment is None:
+        return ()
+    shots = {shot.id: shot for shot in scene.shots}
+    return tuple(shots[shot_id] for shot_id in segment.shot_ids)
 
 
 def segment_visible_character_ids(scene: Scene, segment_id: str) -> tuple[str, ...]:
@@ -63,18 +62,16 @@ def find_segment(
     """定位 Segment 所在 Scene；不存在时为 None。"""
     scenes = scenes.scenes if isinstance(scenes, DirectorScript) else scenes
     for scene in scenes:
-        for segment in scene_segments(scene):
+        for segment in scene.segments:
             if segment.id == segment_id:
                 return scene, segment
     return None
 
 
 def segment_continues_previous(scene: Scene, segment_id: str) -> bool:
-    """Segment 是否与本 Scene 上一个 Segment 延续同一 Shot（共享边界 Shot）。"""
-    segments = scene_segments(scene)
+    """Segment 是否与本 Scene 上一个 Segment 共享边界 Shot（延续同一镜头）。"""
+    segments = scene.segments
     index = next((i for i, segment in enumerate(segments) if segment.id == segment_id), None)
     if not index:
         return False
-    previous = segment_shots(scene, segments[index - 1].id)
-    current = segment_shots(scene, segment_id)
-    return previous[-1].id == current[0].id
+    return segments[index - 1].shot_ids[-1] == segments[index].shot_ids[0]

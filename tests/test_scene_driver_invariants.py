@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import pytest
 from proposal_fixture_service import ProposalFixtureService as StructuredDirectorService
+from script_helpers import shot_segments_at
 from structured_director_fixtures import (
     NarrationReferenceProposer,
     NarrationScriptProposer,
@@ -43,6 +44,7 @@ from core.structured_director.models import (
 from core.structured_director.production_context import _script_json
 from core.structured_director.reads.snapshot_view import _allowed_actions
 from core.structured_director.reads.workflow_state import workflow_state
+from core.structured_director.v32_projection import v32_cue_anchors
 
 
 class TwoNarrationFirstProposer(NarrationScriptProposer):
@@ -173,7 +175,7 @@ async def _test_tts_first_then_one_sixteen_second_shot_and_invalidation(tmp_path
     store, service, _provider, document = await narration_project(tmp_path)
     scene = document.director_script.scenes[0]
     assert scene.driver == "narration" and scene.shots == ()
-    assert scene.narration_cues[0].start_shot_id is None
+    assert v32_cue_anchors(scene) == (None, None)
     registry = DirectorCommandRegistry(store)
     before = store.path.read_bytes()
     with pytest.raises(ValueError, match="必须先选择项目所选语言的 TTS"):
@@ -238,7 +240,10 @@ async def _test_tts_first_then_one_sixteen_second_shot_and_invalidation(tmp_path
     ready = store.read()
     assert ready == planned
     assert (
-        sum(s.duration_estimate_seconds for s in ready.director_script.scenes[0].shots[0].segments)
+        sum(
+            s.duration_estimate_seconds
+            for s in shot_segments_at(ready.director_script.scenes[0], 0)
+        )
         == 16
     )
     visual = await service.unlock_visual_production(expected_revision=ready.revision)
@@ -299,6 +304,7 @@ async def _test_tts_first_then_one_sixteen_second_shot_and_invalidation(tmp_path
         expected_revision=visual.revision,
     )
     assert changed.director_script.scenes[0].shots == visual.director_script.scenes[0].shots
+    assert changed.director_script.scenes[0].segments == visual.director_script.scenes[0].segments
     changed_cue = changed.director_script.scenes[0].narration_cues[0]
     assert changed_cue.zh.selected_audio_asset_id is None
     assert changed_cue.en.selected_audio_asset_id is not None
@@ -369,21 +375,20 @@ async def _test_adjacent_narration_planning_keeps_fixed_visual_tail(tmp_path):
     ).document
     baseline = document
     assert [
-        sum(segment.duration_estimate_seconds for shot in scene.shots for segment in shot.segments)
+        sum(segment.duration_estimate_seconds for segment in scene.segments)
         for scene in baseline.director_script.scenes
     ] == [16.4, 16.0]
 
     clips = tuple(
         SceneAssemblyClip(segment.id, f"{index:032x}", None)
         for index, scene in enumerate(baseline.director_script.scenes)
-        for shot in scene.shots
-        for segment in shot.segments
+        for segment in scene.segments
     )
     narrations = tuple(
         FinalNarrationPlacement(
             scene.narration_cues[0].id,
             scene.narration_cues[0].zh.selected_audio_asset_id,
-            scene.shots[0].segments[0].id,
+            scene.segments[0].id,
             16.0,
         )
         for scene in baseline.director_script.scenes
@@ -502,7 +507,7 @@ async def _mixed_authoring(tmp_path):
     assert (
         sum(
             segment.duration_estimate_seconds
-            for segment in result.document.director_script.scenes[1].shots[-1].segments
+            for segment in shot_segments_at(result.document.director_script.scenes[1], -1)
         )
         == 16
     )
@@ -510,16 +515,16 @@ async def _mixed_authoring(tmp_path):
 
 
 def _scene_with(driver, *, cues=(), dialogue=()):
-    segment = ShotSegment("1" * 32, 3.0, "站台保持安静。", dialogue, None)
-    shot = Shot("2" * 32, ("3" * 32,), "全景。", "固定。", "站台保持安静。", "", None, (segment,))
-    return Scene("4" * 32, "末班车", "等待末班车。", "傍晚站台。", (shot,), cues, driver)
+    segment = ShotSegment("1" * 32, ("2" * 32,), 3.0, "站台保持安静。", dialogue, None)
+    shot = Shot("2" * 32, ("3" * 32,), "全景。", "固定。", "站台保持安静。", "", None)
+    return Scene(
+        "4" * 32, "末班车", "等待末班车。", "傍晚站台。", (shot,), (segment,), cues, driver
+    )
 
 
 def test_scene_model_rejects_drama_narration_and_narration_dialogue():
     cue = NarrationCue(
         "5" * 32,
-        "2" * 32,
-        "2" * 32,
         NarrationTrack("末班车还没有来。", 1),
         NarrationTrack("The last train has not come yet.", 1),
     )
@@ -555,7 +560,7 @@ async def _driver_rule_commands(tmp_path):
                     "operations": [
                         {
                             "op": "update_segment_fields",
-                            "segment_id": narration.shots[0].segments[0].id,
+                            "segment_id": narration.segments[0].id,
                             "fields": {
                                 "dialogue_lines": [
                                     {

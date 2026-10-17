@@ -30,8 +30,9 @@ erDiagram
 
     DIRECTOR_SCRIPT ||--|{ SCENE : scenes
     SCENE ||--o{ SHOT : shots
+    SCENE ||--o{ SEGMENT : segments
     SCENE ||--o| NARRATION_CUE : "narration_cues (≤1)"
-    SHOT ||--|{ SEGMENT : segments
+    SEGMENT }o--|{ SHOT : shot_ids
     SEGMENT ||--o{ DIALOGUE_LINE : dialogue_lines
     NARRATION_CUE ||--|| TRACK_ZH : zh
     NARRATION_CUE ||--|| TRACK_EN : en
@@ -143,6 +144,7 @@ classDiagram
       state_id?
       narration_cues[0..1]
       shots[]
+      segments[]
     }
     class Shot {
       id
@@ -151,10 +153,10 @@ classDiagram
       audio_direction
       transition_in?
       view_id?
-      segments[1..]
     }
     class ShotSegment {
       id
+      shot_ids[1..]
       duration_estimate_seconds min 0.2
       action ≤4000
       dialogue_lines[]
@@ -166,18 +168,23 @@ classDiagram
     }
     DirectorScript "1" *-- "1..100" Scene
     Scene "1" *-- "0..*" Shot
-    Shot "1" *-- "1..*" ShotSegment
+    Scene "1" *-- "0..*" ShotSegment
+    ShotSegment "*" ..> "1..*" Shot : shot_ids
     ShotSegment "1" *-- "0..1" SegmentBoundary
 ```
 
 - 全项目最多 100 个 Scene、1,000 个 Shot、2,000 个 Segment；Scene、Shot、Segment、Cue 的 ID 全局唯一。
-- Shot 的第一个 Segment 不能带 `boundary_from_previous`，后续每个 Segment 必须带，说明为什么在此切开与如何保持连续。
-- `driver = narration`：必须恰好一条 Cue，所有 Segment 的 `dialogue_lines` 必须为空；在真实 TTS 之前可以没有 Shot，
-  此时 Cue 的 `start_shot_id` / `end_shot_id` 为 null。
+- Shot 是创作层描述，Segment 是生产原子。`segment.shot_ids` 是本 Scene `shots` 中按顺序连续的一段，非空不重复；
+  依次拼接全部 Segment 的 `shot_ids`（相邻 Segment 共享的边界 Shot 只算一次）必须恰好等于 `shots`，不跳过、不倒序、
+  不重复覆盖。一个 Segment 可覆盖多个 Shot，一个 Shot 可跨多个相邻 Segment。
+- 相邻 Segment 共享边界 Shot（前一段最后一个 = 后一段第一个）即延续同一镜头，后一段必须带 `boundary_from_previous`，
+  说明为什么在此切开与如何保持连续；不共享即剪辑，`boundary_from_previous` 必须为 null；Scene 第一个 Segment 为 null。
+- `shots` 与 `segments` 同时为空或同时非空。
+- `driver = narration`：必须恰好一条 Cue，覆盖整个 Scene 的全部 Segment；所有 Segment 的 `dialogue_lines` 必须为空；
+  在真实 TTS 之前可以没有 Shot 与 Segment。
 - `driver = drama`：至少一个 Shot；`narration_cues` 必须为空，对白可有可无。
 - 旁白与对白互斥由 `Scene` 模型构造时强制校验，任何写入路径（proposal、`script.apply_operations`、手工保存）产生
   违规 Scene 都会整体拒绝。
-- 有 Shot 时，Cue 必须从第一个 Shot 覆盖到最后一个 Shot。
 - `production_baseline_revision` 与 `production_baseline_scenes` 同时存在或同时为 null。旁白层解锁后，Core 在每次脚本/旁白写入
   里自动校准并写入它们，表示“这一版脚本的时序已经按真实音频校准”；无法校准时保留上一次的值，因而与 `revision` 不等。
   视觉生产、装配都要求 `production_baseline_revision == revision`。
@@ -186,7 +193,7 @@ classDiagram
 
 | 字段 | 说明 |
 | --- | --- |
-| `id`、`start_shot_id`、`end_shot_id` | 锚点；Narration Scene 规划 Shot 前为 null |
+| `id` | Cue ID；Cue 永远覆盖所在 Scene 的全部 Segment，没有 Shot 锚点 |
 | `zh` / `en` | 已选语言为非空 `NarrationTrack`，未选语言为 null |
 | `NarrationTrack.text` | 正文 ≤ 4,000；英文是适合朗读的意译 |
 | `NarrationTrack.seed` | 0 … 2⁶³−1 |

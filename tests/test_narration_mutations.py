@@ -66,15 +66,13 @@ def _cue(
 ) -> NarrationCue:
     return NarrationCue(
         cue_id,
-        None,
-        None,
         NarrationTrack("旁白文本", 1, selected),
         NarrationTrack("Narration text.", 1, selected_en),
     )
 
 
 def _scene(cue: NarrationCue, scene_id: str = ID_B) -> Scene:
-    return Scene(scene_id, "场景", "摘要", "环境", (), (cue,), "narration", None)
+    return Scene(scene_id, "场景", "摘要", "环境", (), (), (cue,), "narration", None)
 
 
 def _library():
@@ -295,22 +293,23 @@ def test_conform_production_scenes_is_idempotent_for_calibrated_timing():
         "动作",
         "风声",
         None,
-        (
-            ShotSegment("7" * 32, 1.1, "前半", (), None),
-            ShotSegment(
-                "8" * 32,
-                2.3,
-                "后半",
-                (),
-                SegmentBoundary(SegmentBoundaryReason.CONTINUITY_ANCHOR, "动作连续。"),
-            ),
+    )
+    segments = (
+        ShotSegment("7" * 32, (shot_id,), 1.1, "前半", (), None),
+        ShotSegment(
+            "8" * 32,
+            (shot_id,),
+            2.3,
+            "后半",
+            (),
+            SegmentBoundary(SegmentBoundaryReason.CONTINUITY_ANCHOR, "动作连续。"),
         ),
     )
-    cue = replace(_cue(selected=ID_D, selected_en=ID_C), start_shot_id=shot_id, end_shot_id=shot_id)
-    scenes = (Scene(ID_B, "场景", "摘要", "环境", (shot,), (cue,), "narration", None),)
+    cue = _cue(selected=ID_D, selected_en=ID_C)
+    scenes = (Scene(ID_B, "场景", "摘要", "环境", (shot,), segments, (cue,), "narration", None),)
     assets = {ID_D: _wav_asset(ID_D, 4.7), ID_C: _wav_asset(ID_C, 3.1)}
     first = conform_production_scenes(scenes, assets, narrator_ready=True)
-    durations = [s.duration_estimate_seconds for s in first[0].shots[0].segments]
+    durations = [s.duration_estimate_seconds for s in first[0].segments]
     assert sum(durations) == pytest.approx(4.7)
     # 每次脚本写入都会重新校准；已对齐的时长必须逐位保持，不能因浮点重算让视频选择失效。
     assert conform_production_scenes(first, assets, narrator_ready=True) == first

@@ -80,9 +80,8 @@ def test_oracle_script_structural_edit_invalidates_precisely(
         segment_ids = {
             segment["id"]
             for scene in structured["director_script"]["scenes"]
-            for shot in scene["shots"]
-            if shot["id"] == shot_id
-            for segment in shot["segments"]
+            for segment in scene["segments"]
+            if shot_id in segment["shot_ids"]
         }
         keyframe_ids = {
             keyframe_id

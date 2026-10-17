@@ -47,8 +47,8 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
 
 ## 事实来源
 
-1. `.stories/<项目名>-<project_id>/project.json` 是唯一权威结构化状态，当前 schema 为 v32（角色造型 `looks` 为角色图唯一单位、地点库与 Scene/Shot/Keyframe 的地点视图绑定、创建时选择中英文旁白语言、各启用语言一套音色、Keyframe 按帧选择角色参考图、视频保存 `active_recipe` 与 `recipes` 输入簿，旁白保存 `recipe_params`，Generation 记录提交时的 `provider_snapshot`）。
-   更早版本没有英文旁白或只有一套旁白音色，无法无损转换，一律拒绝读取并提示新建项目。
+1. `.stories/<项目名>-<project_id>/project.json` 是唯一权威结构化状态，当前 schema 为 v33（Scene 下并列 `shots` 与 `segments`、Segment 以 `shot_ids` 记录覆盖的 Shot、旁白 Cue 不带 Shot 锚点、角色造型 `looks` 为角色图唯一单位、地点库与 Scene/Shot/Keyframe 的地点视图绑定、创建时选择中英文旁白语言、各启用语言一套音色、Keyframe 按帧选择角色参考图、视频保存 `active_recipe` 与 `recipes` 输入簿，旁白保存 `recipe_params`，Generation 记录提交时的 `provider_snapshot`）。
+   更早版本的 Segment 挂在 Shot 下，或没有英文旁白、只有一套旁白音色，无法无损转换，一律拒绝读取并提示新建项目。
    `workspace_layers` 持久化旁白、Keyframe、视频和成片内容层是否已经解锁；这些事实不由 Web
    根据全局状态猜测。
 2. `title`、`aspect_ratio` 和 `director_plan_markdown` 在创建时固化；原始导演方案没有修改 API。

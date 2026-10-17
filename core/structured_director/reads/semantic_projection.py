@@ -8,7 +8,7 @@ import json
 from ..dialogue_timing import dialogue_timing
 from ..models import StructuredDirectorDocument
 from ..prompt_worksets import keyframe_workset, video_prompt_workset
-from ..script_index import shot_segments
+from ..v32_projection import v32_cue_anchors, v32_shot_segments
 from .common import (
     ReadResultTooLarge,
     _ids,
@@ -87,7 +87,7 @@ def build_semantic_projection(
             for scene in scenes
             for shot in scene.shots
             if parent_id is None or shot.id == parent_id
-            for node in ((shot,) if level == "shot" else shot_segments(scene, shot.id))
+            for node in ((shot,) if level == "shot" else v32_shot_segments(scene, shot.id))
             if ids is None or node.id in ids
         ]
         if ids is not None and set(ids) != {node.id for _, _, node in nodes}:
@@ -170,8 +170,8 @@ def build_semantic_projection(
                         for language, track in cue.tracks
                     },
                     "timing": "旁白以所选语言已选音频中最长的一条为时间基准。",
-                    "start_shot_id": cue.start_shot_id,
-                    "end_shot_id": cue.end_shot_id,
+                    "start_shot_id": v32_cue_anchors(scene)[0],
+                    "end_shot_id": v32_cue_anchors(scene)[1],
                 }
                 for cue in scene.narration_cues
             ]
@@ -185,7 +185,7 @@ def build_semantic_projection(
                 audio_direction=text(shot.audio_direction),
                 visible_character_ids=list(shot.visible_character_ids),
                 transition_in=text(shot.transition_in),
-                segment_count=len(shot_segments(scene, shot.id)),
+                segment_count=len(v32_shot_segments(scene, shot.id)),
             )
         else:
             item.update(

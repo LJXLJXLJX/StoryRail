@@ -1,6 +1,6 @@
 # store/
 
-L3 持久化：schema v32 项目 JSON 的唯一读写入口，完整领域校验（L0 `models/validation`）与原子落盘
+L3 持久化：schema v33 项目 JSON 的唯一读写入口，完整领域校验（L0 `models/validation`）与原子落盘
 （revision compare-and-swap + fsync + `os.replace`）。
 
 - `__init__.py`：`StructuredDirectorStore` facade。直接定义核心 public 方法（`path`、`exists`、`create_project`、`read`、

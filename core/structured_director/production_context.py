@@ -20,7 +20,7 @@ from .narration_timing import (
 )
 from .reads.read_tools import _json_value
 from .reads.semantic_projection import PROJECTION_VERSION, build_semantic_tree
-from .script_index import shot_segments
+from .v32_projection import v32_cue_anchors, v32_shot_segments
 
 _TERMINAL_PHASES = {
     ReferenceGenerationPhase.SUCCEEDED,
@@ -43,14 +43,15 @@ def _script_json(scenes: tuple[Scene, ...], document: StructuredDirectorDocument
             for cue in scene["narration_cues"]
         ]
         cues = {cue.id: cue for cue in source.narration_cues}
+        start_shot_id, end_shot_id = v32_cue_anchors(source)
         for cue in scene["narration_cues"]:
             original = cues[cue["id"]]
             cue.clear()
             cue.update(zh=None, en=None)
             cue.update(
                 id=original.id,
-                start_shot_index=positions.get(original.start_shot_id),
-                end_shot_index=positions.get(original.end_shot_id),
+                start_shot_index=positions.get(start_shot_id),
+                end_shot_index=positions.get(end_shot_id),
                 **{
                     language.value: {
                         "text": track.text,
@@ -225,7 +226,7 @@ def _director_state_json(
                                 )
                             ],
                         }
-                        for segment in shot_segments(scene, shot.id)
+                        for segment in v32_shot_segments(scene, shot.id)
                     ],
                 }
                 for shot in scene.shots

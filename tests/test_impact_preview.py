@@ -25,6 +25,7 @@ from core.structured_director.models import (
     Scene,
 )
 from core.structured_director.reads.impact import preview_command_impact
+from core.structured_director.script_index import shot_segments
 
 
 class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
@@ -33,14 +34,12 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
         assert document.director_script is not None
         scene = document.director_script.scenes[0]
         shot = scene.shots[0]
-        segment = shot.segments[0]
+        segment = shot_segments(scene, shot.id)[0]
         binding = document.keyframe_plan.segments[0]
         video = document.video_plan.segments[0]
         # 旁白只属于 Narration Scene：另附一个尚未规划 Shot 的旁白场景，视觉 Scene 保持 Drama。
         cue = NarrationCue(
             "d" * 32,
-            None,
-            None,
             NarrationTrack("夜色渐深，甲缓慢抬头望向窗外。", 1),
             NarrationTrack("Night deepens as A slowly looks out the window.", 1),
         )
@@ -50,6 +49,7 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
             summary="旁白交代夜色。",
             setting="夜晚，窗外。",
             shots=(),
+            segments=(),
             narration_cues=(cue,),
             driver="narration",
         )

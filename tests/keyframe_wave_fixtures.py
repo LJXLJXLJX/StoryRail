@@ -16,6 +16,7 @@ from core.director_proposals import (
     KeyframeShotProposal,
 )
 from core.structured_director import StructuredDirectorStore
+from core.structured_director.script_index import shot_segments
 
 
 class FiveShotScript(RecordingScriptProposer):
@@ -86,4 +87,6 @@ class KeyframeWaveFixture:
         document = await self.service.prepare_keyframes(expected_revision=document.revision)
         self.scene, self.other = document.director_script.scenes
         bindings = {item.segment_id: item for item in document.keyframe_plan.segments}
-        self.bindings = [bindings[shot.segments[0].id] for shot in self.scene.shots]
+        self.bindings = [
+            bindings[shot_segments(self.scene, shot.id)[0].id] for shot in self.scene.shots
+        ]

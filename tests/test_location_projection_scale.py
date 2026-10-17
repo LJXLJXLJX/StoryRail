@@ -64,18 +64,14 @@ def scaled_project(tmp_path):
     video = document.video_plan.segments[0]
     scenes, frames, bindings, videos = [], [], [], []
     for n in range(10):
-        shots = []
+        shots, segments = [], []
         for i in range(10):
             segment_id = uid(50000 + n * 10 + i)
             start, end = uid(60000 + n * 20 + i * 2), uid(60001 + n * 20 + i * 2)
             view_id = locations[n].views[i % 3].id
-            shots.append(
-                replace(
-                    scene.shots[0],
-                    id=uid(70000 + n * 10 + i),
-                    view_id=view_id,
-                    segments=(replace(scene.shots[0].segments[0], id=segment_id),),
-                )
+            shots.append(replace(scene.shots[0], id=uid(70000 + n * 10 + i), view_id=view_id))
+            segments.append(
+                replace(scene.segments[0], id=segment_id, shot_ids=(uid(70000 + n * 10 + i),))
             )
             frames.extend(
                 (
@@ -109,6 +105,7 @@ def scaled_project(tmp_path):
                 scene,
                 id=uid(80000 + n),
                 shots=tuple(shots),
+                segments=tuple(segments),
                 location_id=locations[n].id,
                 state_id=None,
             )
