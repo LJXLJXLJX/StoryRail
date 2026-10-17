@@ -13,7 +13,6 @@ from structured_director_fixtures import (
 from core.director_proposals import (
     KeyframePlanProposal,
     KeyframeSegmentProposal,
-    KeyframeShotProposal,
 )
 from core.structured_director import StructuredDirectorStore
 from core.structured_director.script_index import shot_segments
@@ -40,24 +39,17 @@ class FiveShotPlan:
     async def propose(self, **kwargs):
         return KeyframePlanProposal(
             tuple(
-                KeyframeShotProposal(
-                    shot_id=shot.id,
-                    continues_from_previous_shot=index in (2, 4),
-                    start_prompt_text=f"时刻 {index}"
-                    if index not in (2, 4)
-                    else f"结束 {index - 1}",
+                KeyframeSegmentProposal(
+                    segment_id=segment.id,
+                    continues_from_previous=index in (2, 4),
+                    frame_strategy="start" if index == 0 else "both",
+                    start_prompt_text="" if index in (2, 4) else f"时刻 {index}",
                     start_visible_character_ids=(),
-                    segments=(
-                        KeyframeSegmentProposal(
-                            shot.segments[0].id,
-                            "start" if index == 0 else "both",
-                            f"结束 {index}",
-                            (),
-                        ),
-                    ),
+                    end_prompt_text=f"结束 {index}",
+                    end_visible_character_ids=(),
                 )
                 for scene in kwargs["scenes"]
-                for index, shot in enumerate(scene.shots)
+                for index, segment in enumerate(scene.segments)
             )
         )
 

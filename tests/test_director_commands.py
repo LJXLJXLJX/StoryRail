@@ -42,7 +42,6 @@ from core.director_proposals import (
     KeyframeOperationsProposal,
     KeyframePlanProposal,
     KeyframeSegmentProposal,
-    KeyframeShotProposal,
     ReferenceLibraryProposal,
     SceneProposal,
     ShotProposal,
@@ -62,7 +61,10 @@ from core.structured_director import (
     StructuredDirectorStore,
 )
 from core.structured_director.models import NarrationCue, NarrationLanguage, NarrationTrack, Scene
-from core.structured_director.script_index import shot_segments
+from core.structured_director.script_index import (
+    segment_visible_character_ids,
+    shot_segments,
+)
 from core.structured_director.service import (
     _director_recent_scene_ids,
 )
@@ -159,21 +161,20 @@ class _NeverRoute:
 class _OperationsPlanner:
     async def propose(self, **kwargs: object) -> KeyframeOperationsProposal:
         scenes = kwargs["scenes"]
-        shot = scenes[0].shots[0]
-        segment = shot.segments[0]
+        segment = scenes[0].segments[0]
         return KeyframeOperationsProposal(
             operations=(
                 UpdateKeyframeFields(
                     keyframe_id=segment.start_keyframe_id,
                     prompt_text="operations 写入的首帧。",
-                    visible_character_ids=tuple(item.id for item in shot.visible_characters),
+                    visible_character_ids=tuple(item.id for item in segment.visible_characters),
                     environment_mode="none",
                     environment_none_reason="首帧是纯黑场，没有环境信息。",
                     environment_changed=True,
                 ),
                 SetKeyframeActivation(segment.id, True, False),
             ),
-            decision_summary="只更新目标 Shot 的现有首帧槽位。",
+            decision_summary="只更新目标 Segment 的现有首帧槽位。",
         )
 
 
@@ -273,46 +274,31 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             started, _ = store.begin_keyframe_plan(expected_revision=document.revision)
             assert started.director_script is not None
             scene = started.director_script.scenes[0]
-            first, second = scene.shots
-            shared_characters = first.visible_character_ids + second.visible_character_ids
+            first, second = scene.segments
+            first_characters = segment_visible_character_ids(scene, first.id)
+            second_characters = segment_visible_character_ids(scene, second.id)
+            shared_characters = tuple(dict.fromkeys((*first_characters, *second_characters)))
 
             def proposal(*, continuous: bool) -> KeyframePlanProposal:
-                first_end_characters = (
-                    shared_characters if continuous else first.visible_character_ids
-                )
-                second_start_characters = (
-                    shared_characters if continuous else second.visible_character_ids
-                )
-                boundary_prompt = "共享边界。" if continuous else "第二镜头独立首帧。"
                 return KeyframePlanProposal(
                     (
-                        KeyframeShotProposal(
+                        KeyframeSegmentProposal(
                             first.id,
                             False,
-                            "第一镜头首帧。",
-                            first.visible_character_ids,
-                            (
-                                KeyframeSegmentProposal(
-                                    shot_segments(scene, first.id)[0].id,
-                                    "both",
-                                    "共享边界。" if continuous else "第一镜头尾帧。",
-                                    first_end_characters,
-                                ),
-                            ),
+                            "both",
+                            "第一 Segment 首帧。",
+                            first_characters,
+                            "共享边界。" if continuous else "第一 Segment 尾帧。",
+                            shared_characters if continuous else first_characters,
                         ),
-                        KeyframeShotProposal(
+                        KeyframeSegmentProposal(
                             second.id,
                             continuous,
-                            boundary_prompt,
-                            second_start_characters,
-                            (
-                                KeyframeSegmentProposal(
-                                    shot_segments(scene, second.id)[0].id,
-                                    "both",
-                                    "第二镜头尾帧。",
-                                    second.visible_character_ids,
-                                ),
-                            ),
+                            "both",
+                            "" if continuous else "第二 Segment 独立首帧。",
+                            () if continuous else second_characters,
+                            "第二 Segment 尾帧。",
+                            second_characters,
                         ),
                     )
                 )
@@ -330,7 +316,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             second_start = next(
                 item for item in split.keyframe_plan.keyframes if item.id == right.start_keyframe_id
             )
-            self.assertEqual(second_start.prompt_text, "第二镜头独立首帧。")
+            self.assertEqual(second_start.prompt_text, "第二 Segment 独立首帧。")
 
     async def test_keyframe_three_mutation_paths_have_equivalent_project_evolution(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -340,27 +326,21 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             assert started.director_script.production_baseline_scenes is not None
             proposal = KeyframePlanProposal(
                 tuple(
-                    KeyframeShotProposal(
-                        shot.id,
+                    KeyframeSegmentProposal(
+                        segment.id,
                         False,
-                        f"{shot.id} 首帧。",
-                        shot.visible_character_ids,
-                        tuple(
-                            KeyframeSegmentProposal(
-                                segment.id,
-                                "both",
-                                f"{segment.id} 尾帧。",
-                                shot.visible_character_ids,
-                            )
-                            for segment in shot_segments(scene, shot.id)
-                        ),
+                        "both",
+                        f"{segment.id} 首帧。",
+                        segment_visible_character_ids(scene, segment.id),
+                        f"{segment.id} 尾帧。",
+                        segment_visible_character_ids(scene, segment.id),
                     )
                     for scene in started.director_script.production_baseline_scenes
-                    for shot in scene.shots
+                    for segment in scene.segments
                 )
             )
             operations = _translate_keyframe_plan_to_operations(
-                started, proposal, target_shot_ids=()
+                started, proposal, target_segment_ids=()
             )
             source = store.path.parent
             operation_plan_root = Path(directory) / "operation-plan"
@@ -520,9 +500,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                 ),
             ).document
             bindings = {item.segment_id: item for item in document.keyframe_plan.segments}
-            resolved = _resolve_keyframe_generation_targets(
-                document, (scene.id, scene.shots[1].id, left)
-            )
+            resolved = _resolve_keyframe_generation_targets(document, (scene.id, right, left))
             self.assertEqual(
                 resolved,
                 (
@@ -2530,12 +2508,12 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             )
             assert document.keyframe_plan is not None
             original_ids = tuple(item.id for item in document.keyframe_plan.keyframes)
-            first_shot = document.director_script.scenes[0].shots[0]
+            first_segment_id = document.keyframe_plan.segments[0].segment_id
             second_binding = document.keyframe_plan.segments[1]
 
             planned = await service.prepare_keyframes(
                 expected_revision=document.revision,
-                target_ids=(first_shot.id,),
+                target_ids=(first_segment_id,),
             )
             assert planned.keyframe_plan is not None
             self.assertEqual(

@@ -75,7 +75,7 @@ class ProposalFixtureService(CoreService):
         document, recovery = self._store.begin_keyframe_plan(
             expected_revision=expected_revision, target_ids=target_ids, user_message=user_message
         )
-        scenes, shots, boundaries = keyframe_inputs(document, target_ids, user_message)
+        scenes, segments, boundaries = keyframe_inputs(document, target_ids, user_message)
         proposal = await self.keyframe_fixture.propose(
             scenes=scenes,
             aspect_ratio=document.aspect_ratio.value,
@@ -88,4 +88,4 @@ class ProposalFixtureService(CoreService):
             if isinstance(proposal, KeyframeOperationsProposal)
             else self._store.apply_keyframe_plan
         )
-        return method(proposal, target_shot_ids=shots, required_shared_boundaries=boundaries)
+        return method(proposal, target_segment_ids=segments, required_shared_boundaries=boundaries)

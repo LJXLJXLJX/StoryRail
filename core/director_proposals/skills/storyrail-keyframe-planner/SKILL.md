@@ -22,14 +22,14 @@ Scene、Shot、Segment、对白、旁白、动作结果或时长；若上游镜�
 
 ## 静默设计顺序
 
-先读完整 Scene 作为上下文，按以下顺序判断，最后只输出 schema。读取完整 Scene 不扩大本轮允许修改的 Shot 范围；
-`planning_enabled=false` / `context_shot_ids` 只供阅读，输出的 `shots` 必须严格按 `writable_shot_ids`
-顺序且只包含这些授权 Shot。需要新建、解除或改写与上下文 Shot 的共享边界时，应报告必须扩大的最小相邻 Shot，不能替上下文 Shot 编造提案。
+先读完整 Scene 作为上下文，按以下顺序判断，最后只输出 schema。读取完整 Scene 不扩大本轮允许修改的 Segment 范围；
+`planning_enabled=false` / `context_segment_ids` 只供阅读，输出的 `segments` 必须严格按 `writable_segment_ids`
+顺序且只包含这些授权 Segment。需要新建、解除或改写与上下文 Segment 的共享边界时，应报告必须扩大的最小相邻 Segment，不能替上下文 Segment 编造提案。
 `saved_keyframe_plan` 是当前 scope 内已经持久化的计划事实：共享 Keyframe 按 ID 去重，`bindings`
 列出它在多个 Segment 的实际首尾用途，不能把 `owner_segment_id` 误解为唯一使用者。它不依赖图片生成就绪；
 实际可提交 Provider 的图片映射仍以单独的可执行输入为准，不能把保存的正文或 selected_asset_id 为 null 的槽位称为可生成输入。
 
-1. **连续关系**：先区分切镜与真正一镜到底，将连续 Shot/Segment 作为一个完整摄影过程理解，确定每个分段的交接时刻。不能先独立设计各 Shot 的代表构图，再拼接不相容的首尾帧。
+1. **连续关系**：先区分切镜与真正一镜到底，将相邻 Segment（无论是否共享边界 Shot）作为一个完整摄影过程理解，确定每个分段的交接时刻。不能先独立设计各 Segment 的代表构图，再拼接不相容的首尾帧。一个 Segment 覆盖多个 Shot 时，段内切镜是软约束，只有首/尾时刻需要静态帧。
 2. **整段变化**：沿已批准的动作与摄影机运动，梳理起点、经过和终点；检查哪些人物、环境、道具或身份特征会被新揭示。运动用于内部推演，不写进静态画面正文。
 3. **视觉信息覆盖**：逐项判断上述重要内容由哪张实际启用的首帧或尾帧提供视觉依据。仅在文字、角色卡、地点视图或其他 Segment 的图片中存在，不算当前视频已有视觉输入。
 4. **边界状态**：把连续过程落实为具体首尾时刻；共享交接只能设计一次。若脚本要求交接瞬间跳到不同机位，又要求一镜到底，不能暗改动作或假装共享解决了冲突，应交由 Director 澄清或显式回改脚本。
@@ -78,31 +78,33 @@ Scene、Shot、Segment、对白、旁白、动作结果或时长；若上游镜�
 - 双帧之间还会出现但两端都未覆盖的重要内容，不能声称已受约束；需要 Director 明确处理镜头设计或分段，Planner 不得自动改写脚本。
 - 固定机位且人物保持静止的 Segment，不要用两段近义描述激活两张几乎相同的首尾帧。若只需锁定与下一段共享的尾帧，优先 `end`；只有起点和终点确有独立约束时才用 `both`。不得为制造差异擅改静止表演或镜头运动。
 - 每个 Segment 必须明确输出 `frame_strategy`：`start` 只启用首帧，`end` 只启用尾帧，`both` 同时启用首尾帧；不能把选择留给下游猜测。
-- 每个 Shot 第一个 Segment 仍需首帧描述，每个 Segment 仍需尾帧描述；描述是计划，不是生成清单。
-- 同一 Shot 内，前一 Segment 的尾帧就是后一 Segment 的首帧，不为同一时刻另设计一张图。
+- 每个 Segment 都需要首帧与尾帧计划：首帧描述该 Segment 第一个覆盖 Shot 的开头，尾帧描述最后一个覆盖 Shot 的结尾；中间镜头不画帧，描述是计划，不是生成清单。
+- 相邻 Segment 是否共享边界 Shot 决定 `continues_from_previous` 的默认值；共享边界只设计一次，上一 Segment 的 `end_*` 就是下一 Segment 的首帧，后者不再重复填写 `start_*`。
 - 真正连续的交接必须在前段启用尾帧、后段启用首帧；连续组中间段的两个交接通常要求 `both`，不能以最少帧为由关闭边界。
 - 首帧应是“动作即将发生”的稳定时刻：意图可读、动势未耗尽、运动空间明确。
 - 尾帧应是“动作已经成立”的稳定时刻：结果清楚，可作为停顿或剪辑点。
 
-## 跨 Shot 连续边界
+## 相邻 Segment 的连续边界
 
-`continues_from_previous_shot=true` 表示两边复用**同一张像素级关键帧**，不仅是剧情连续。只有摄影机位置、
-景别、构图、人物姿态、道具和光线状态在交接的同一时刻完全相同时才能设置。普通正反打或明确切镜
-使用 `false`。一镜到底中的推近、绕行、拉远或景别变化发生在 Segment 内，不是切镜理由：必须先设计
-交接时刻，再从该时刻继续运动，不能比较两个 Shot 的代表构图后拒绝共享。
+`continues_from_previous=true` 表示两边复用**同一张像素级关键帧**，不仅是剧情连续。只有摄影机位置、
+景别、构图、人物姿态、道具和光线状态在交接的同一时刻完全相同时才能设置。相邻 Segment 共享边界 Shot
+时通常应延续；普通正反打、切镜或明确换机位使用 `false`。一镜到底中的推近、绕行、拉远或景别变化发生在
+Segment 内，不是切镜理由：必须先设计交接时刻，再从该时刻继续运动，不能比较两个 Segment 的代表构图后拒绝共享。
 Director 本轮采用的连续长镜头方案即使记录在 `director_hypotheses`，也应落实为真实共享边界；
 `required_shared_boundaries` 是最低强制集合，空数组不表示禁止或不需要共享。
 
-设置为 `true` 时，当前 Shot 的 `start_prompt_text`、`start_visible_character_ids` 和
-`start_character_references` 必须逐项重复上一 Shot 最后一个 Segment 的尾帧。每个 Scene 的第一个 Shot 必须为 `false`。
+设置为 `true` 时，当前 Segment 的 `start_*` 字段必须为空：`start_prompt_text=""`、
+`start_visible_character_ids=[]`、`start_character_references=[]`，三个 `start_environment_*` 为 null；
+Core 沿用上一 Segment 的 `end_*`。每个 Scene 的第一个 Segment 必须为 `false`。
+
+相邻 Segment 不共享边界 Shot（明确切镜）时，`continues_from_previous=false`，两个边界默认是独立 Keyframe：
+后段必须给出自己的 `start_*` 描述。也可显式共享为同一个 Keyframe，但像素级连续性要求不变。
 
 当 Core 提供 `required_shared_boundaries` 时，表示 Director 已把本轮采用的连续镜头方案解析成必须共用的
-时间边界。对应后一 Shot 必须设置 `continues_from_previous_shot=true`；即使后一 Shot 随后改变机位或景别，
-变化也只能发生在这个共用首帧之后。不得把该硬约束降级为仅保持人物、道具、光线或轴线状态相似。
+时间边界，列出的是相邻 Segment 对。对应后一 Segment 必须设置 `continues_from_previous=true`；即使它随后
+改变机位或景别，变化也只能发生在这个共用首帧之后。不得把该硬约束降级为仅保持人物、道具、光线或轴线状态相似。
 
 共享同一图片只约束交接画面，不保证运动自动无缝；还要沿原脚本核对动作阶段、运动方向和摄影机运动的衔接。
-
-Shot 内分段边界默认独立，后段首帧由 Core 复制前段 `end_*` 描述。
 
 ## 实际视频输入边界
 
@@ -115,7 +117,8 @@ Ref2VA 可另行提交对白音色，但参考音频不是必需输入。用于�
 ## 可见角色与参考约束
 
 - 每张帧只列该静态时刻真正可见的角色 ID；未出现的角色不得为了“保持一致”而加入。
-- 跨 Shot 共享边界时允许重复上一 Shot 的角色，即使该角色随后离开当前 Shot。
+- Segment 的可见角色是覆盖 Shot 的并集；段内切换后仍可见的角色都可出现在首/尾帧。
+- 共享边界时允许使用两侧 Segment 的角色并集，即使该角色在另一侧随后离开。
 - 空镜返回空数组。
 - 不把地点视图、角色定妆图或辅助参考图称为关键帧。
 - `visible_character_ids` 是用户、Planner 与 Core 共享的计划事实；用户可以在关键帧计划中显式纠正。
@@ -133,11 +136,11 @@ Ref2VA 可另行提交对白音色，但参考音频不是必需输入。用于�
 ## 地点视图的使用
 
 地点视图（机位图）是同一地点某个机位的空环境，只作**软参考**：它提供空间关系（布局、陈设方位、材质、主光方向），
-不规定本帧的机位与构图。工作集每个 Shot 的 `view_id` 只是建议；`location_views` 列出视图的名称、`purpose`、所属地点、
-状态与 `selected_asset_id`，本 Scene 地点的视图都可以自由选用。
+不规定本帧的机位与构图。工作集每个 Segment 的 `start_view_id` / `end_view_id` 是首/末覆盖 Shot 的视图建议；
+`location_views` 列出视图的名称、`purpose`、所属地点、状态与 `selected_asset_id`，本 Scene 地点的视图都可以自由选用。
 
 - **默认继承**：首尾帧的 `*_environment_mode`、`*_environment_view_id`、`*_environment_none_reason` 三项都写 null，
-  Core 按所属 Shot 填值：Shot 有视图 → `reference`；Shot 无视图 → `none`。Shot 的视图符合本帧朝向时直接继承。
+  Core 按本 Segment 首帧/尾帧的默认视图填值：有视图 → `reference`；无视图 → `none`。建议视图符合本帧朝向时直接继承。
 - **自由选择**：按本帧机位朝向，在本 Scene 地点的全部视图中挑最能说明可见空间关系的一张写 `reference`（三项一起写，
   视图 ID 必填、理由为 null）；没有合适的视图或画面没有环境信息时写 `none`，视图 ID 为 null，理由可选（最多 500 字，
   一般写 null）。改写继承值不需要说明理由；mode 为 null 时不能单独给视图或理由。
@@ -150,9 +153,9 @@ Ref2VA 可另行提交对白音色，但参考音频不是必需输入。用于�
   批次生成会把该帧留作等待项，用户选图后需要再次明确要求继续。不得把未选候选当作底图。
 - **输入名额**：地点视图 → 本帧可见角色参考 → 前置帧 → 辅助图，合计不超过 5 张；超出时 Core 拒绝并按这个顺序列出会被挤掉的输入。
   提交时 `edit` 视图排第一作为底图；`reference` 或 `none` 时由启用首帧的前置帧作底图。
-- 真正共享的边界是同一个 Keyframe，两侧天然同视图同模式；`continues_from_previous_shot=true` 时首帧三项与上一 Shot 尾帧逐项一致
-  （都为 null 时随上一 Shot 继承）。规划锁定节点保持原有环境字段。
-- 视图改选会失效使用它的帧及下游；Scene/Shot 改绑不改写已建立的帧，只影响之后新建的帧与 null 的继承。
+- 真正共享的边界是同一个 Keyframe，两侧天然同视图同模式；`continues_from_previous=true` 时首帧三项必须为 null，
+  由上一 Segment 的尾帧决定。规划锁定节点保持原有环境字段。
+- 视图改选会失效使用它的帧及下游；Shot 改绑不改写已建立的帧，只影响之后新建的帧与 null 的继承。
   视图只用于生成关键帧，不会自动交给视频模型。
 
 ## 输出前自检

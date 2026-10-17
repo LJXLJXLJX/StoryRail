@@ -464,7 +464,7 @@ it("视图选择器只列本 Scene 地点的视图，未选图标明需要选图
   expect(options).toEqual([
     "不使用地点视图",
     "当前值（来自地点「走廊」，不属于本 Scene 地点）· 走廊尽头 · 纵深全景",
-    "沙发正面 · 人眼高中景 · Shot 绑定",
+    "沙发正面 · 人眼高中景 · Segment 尾帧建议",
     "窗边反打 · 过肩反打背景 · 未选图，生成前需要选图",
   ]);
   expect(select).toHaveValue(VIEW_OTHER);

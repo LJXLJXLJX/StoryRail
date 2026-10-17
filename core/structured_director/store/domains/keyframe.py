@@ -12,7 +12,6 @@ from uuid import uuid4
 
 from core.director_commands import (
     CommandReceipt,
-    KeyframeCharacterReferenceSelection,
     KeyframeOperation,
     SetKeyframeActivation,
     ShareKeyframeBoundary,
@@ -21,18 +20,19 @@ from core.director_commands import (
     parse_keyframe_operations,
 )
 from core.director_proposals import (
-    KeyframeCharacterReferenceProposal,
     KeyframeOperationsProposal,
     KeyframePlanProposal,
 )
-from core.director_proposals.keyframe_codec import resolve_keyframe_environment
+from core.director_proposals.keyframe_codec import (
+    KeyframePlanSlot,
+    compile_plan_operations,
+)
 from core.structured_director.errors import RevisionConflictError as RevisionConflictError
 from core.structured_director.keyframe_mutations import (
     _apply_keyframe_operations as _apply_keyframe_operations,
 )
 from core.structured_director.keyframe_mutations import (
     _KeyframeMutationOperation,
-    _SplitKeyframeBoundaryWithId,
     _validate_planned_shared_boundaries,
 )
 from core.structured_director.manual_commands import (
@@ -61,7 +61,12 @@ from core.structured_director.store import _keyframe_is_enabled as _keyframe_is_
 from core.structured_director.store.pipeline import MutationResult as MutationResult
 from core.structured_director.store.pipeline import commit_mutation as commit_mutation
 
-from ...script_index import scene_segments, shot_segments
+from ...script_index import (
+    scene_segments,
+    segment_continues_previous,
+    segment_view_ids,
+    segment_visible_character_ids,
+)
 
 
 class _DomainBase:
@@ -77,7 +82,7 @@ class _DomainBase:
 def _keyframe_planning_context(
     document: StructuredDirectorDocument,
     *,
-    target_shot_ids: tuple[str, ...],
+    target_segment_ids: tuple[str, ...],
     missing_message: str,
     invalid_scope_message: str,
 ):
@@ -91,29 +96,29 @@ def _keyframe_planning_context(
         or plan is None
     ):
         raise ValueError(missing_message)
-    baseline_shots = {
-        shot.id: shot for scene in script.production_baseline_scenes for shot in scene.shots
+    baseline_segments = {
+        segment.id for scene in script.production_baseline_scenes for segment in scene.segments
     }
-    if len(target_shot_ids) != len(set(target_shot_ids)) or not set(target_shot_ids) <= set(
-        baseline_shots
+    if (
+        len(target_segment_ids) != len(set(target_segment_ids))
+        or not set(target_segment_ids) <= baseline_segments
     ):
         raise ValueError(invalid_scope_message)
     planning_scene_ids = {
         scene.id
         for scene in script.production_baseline_scenes
-        if any(shot.id in target_shot_ids for shot in scene.shots)
+        if any(segment.id in target_segment_ids for segment in scene.segments)
     }
     planning_scenes = tuple(
         scene
         for scene in script.production_baseline_scenes
-        if not target_shot_ids or scene.id in planning_scene_ids
+        if not target_segment_ids or scene.id in planning_scene_ids
     )
     allowed_segment_ids = {
         segment.id
         for scene in script.production_baseline_scenes
-        for shot in scene.shots
-        if not target_shot_ids or shot.id in target_shot_ids
-        for segment in shot_segments(scene, shot.id)
+        for segment in scene.segments
+        if not target_segment_ids or segment.id in target_segment_ids
     }
     protected_keyframe_ids = {
         item.id for item in plan.keyframes if item.selected_asset_id is not None
@@ -145,10 +150,9 @@ def _translate_keyframe_plan_to_operations(
     document: StructuredDirectorDocument,
     proposal: KeyframePlanProposal,
     *,
-    target_shot_ids: tuple[str, ...],
+    target_segment_ids: tuple[str, ...],
 ) -> tuple[_KeyframeMutationOperation, ...]:
-    """Translate the legacy whole-plan proposal to the canonical operation list."""
-
+    """Translate the whole-plan Segment proposal to the canonical operation list."""
     (
         _script,
         plan,
@@ -158,208 +162,73 @@ def _translate_keyframe_plan_to_operations(
         locked_segment_ids,
     ) = _keyframe_planning_context(
         document,
-        target_shot_ids=target_shot_ids,
+        target_segment_ids=target_segment_ids,
         missing_message="当前没有等待保存的关键帧计划。",
-        invalid_scope_message="关键帧规划包含不存在或重复的目标 Shot。",
+        invalid_scope_message="关键帧规划包含不存在或重复的目标 Segment。",
     )
-    expected_shots = [shot for scene in planning_scenes for shot in scene.shots]
-    if [item.shot_id for item in proposal.shots] != [item.id for item in expected_shots]:
-        raise ValueError("关键帧计划必须完整对应生产基线 Shot。")
-    proposal_by_id = {item.shot_id: item for item in proposal.shots}
+    expected_segments = [
+        segment
+        for scene in planning_scenes
+        for segment in scene.segments
+        if segment.id in allowed_segment_ids
+    ]
+    if [item.segment_id for item in proposal.segments] != [
+        segment.id for segment in expected_segments
+    ]:
+        raise ValueError("关键帧计划必须完整对应生产基线 Segment。")
+    proposal_by_id = {item.segment_id: item for item in proposal.segments}
     bindings = {item.segment_id: item for item in plan.segments}
-    operations: list[_KeyframeMutationOperation] = []
-    desired_fields: dict[
-        str,
-        tuple[
-            str,
-            tuple[str, ...],
-            str,
-            str | None,
-            str | None,
-            tuple[KeyframeCharacterReferenceSelection, ...],
-        ],
-    ] = {}
-
-    def set_desired(
-        keyframe_id: str,
-        prompt_text: str,
-        character_ids: tuple[str, ...],
-        environment: tuple[str | None, str | None, str | None],
-        shot_view_id: str | None,
-        character_references: tuple[KeyframeCharacterReferenceProposal, ...],
-    ) -> None:
-        environment_mode, environment_view_id, environment_none_reason = (
-            resolve_keyframe_environment(*environment, shot_view_id)
-        )
-        selections = tuple(
-            KeyframeCharacterReferenceSelection(item.character_id, item.look_id)
-            for item in character_references
-        )
-        desired = (
-            prompt_text.strip(),
-            character_ids,
-            environment_mode,
-            environment_view_id,
-            environment_none_reason,
-            selections,
-        )
-        previous = desired_fields.get(keyframe_id)
-        if previous is not None and (
-            previous[:5] != desired[:5]
-            or {item.character_id: set(item.asset_ids) for item in previous[5]}
-            != {item.character_id: set(item.asset_ids) for item in selections}
-        ):
-            raise ValueError("承接 Shot 的首帧必须与上一 Shot 尾帧完全一致。")
-        desired_fields[keyframe_id] = desired
-
     for scene in planning_scenes:
-        previous_shot = None
-        previous_item = None
-        for shot_index, shot in enumerate(scene.shots):
-            item = proposal_by_id[shot.id]
-            if [value.segment_id for value in item.segments] != [
-                value.id for value in shot_segments(scene, shot.id)
-            ]:
-                raise ValueError("关键帧计划必须完整对应 Shot 的 Segment。")
-            allowed_character_ids = set(shot.visible_character_ids)
-            next_shot = scene.shots[shot_index + 1] if shot_index + 1 < len(scene.shots) else None
-            next_item = None if next_shot is None else proposal_by_id[next_shot.id]
-            for segment_index, segment_item in enumerate(item.segments):
-                boundary_character_ids = set(allowed_character_ids)
-                if (
-                    segment_index == len(item.segments) - 1
-                    and next_shot is not None
-                    and next_item is not None
-                    and next_item.continues_from_previous_shot
+        for index, segment in enumerate(scene.segments):
+            planned = proposal_by_id.get(segment.id)
+            if planned is None:
+                continue
+            allowed_character_ids = set(segment_visible_character_ids(scene, segment.id))
+            if planned.continues_from_previous:
+                if index == 0:
+                    raise ValueError("Scene 首个 Segment 不能承接上一 Segment。")
+            elif not set(planned.start_visible_character_ids) <= allowed_character_ids:
+                raise ValueError("关键帧可见角色必须属于所属 Segment。")
+            next_segment = scene.segments[index + 1] if index + 1 < len(scene.segments) else None
+            boundary_character_ids = set(allowed_character_ids)
+            if next_segment is not None:
+                next_planned = (
+                    proposal_by_id.get(next_segment.id)
+                    if next_segment.id in allowed_segment_ids
+                    else None
+                )
+                if (next_planned is not None and next_planned.continues_from_previous) or (
+                    next_planned is None
+                    and bindings[next_segment.id].start_keyframe_id
+                    == bindings[segment.id].end_keyframe_id
                 ):
-                    boundary_character_ids.update(next_shot.visible_character_ids)
-                if not set(segment_item.end_visible_character_ids) <= boundary_character_ids:
-                    raise ValueError(
-                        "Keyframe 可见角色必须属于所属 Shot；跨 Shot 共享边界允许两侧角色并集。"
+                    boundary_character_ids.update(
+                        segment_visible_character_ids(scene, next_segment.id)
                     )
-            if (
-                not item.continues_from_previous_shot
-                and not set(item.start_visible_character_ids) <= allowed_character_ids
-            ):
-                raise ValueError("关键帧可见角色必须属于所属 Shot。")
-            first_segment_id = shot_segments(scene, shot.id)[0].id
-            if item.continues_from_previous_shot:
-                if previous_shot is None or previous_item is None:
-                    raise ValueError("Scene 首个 Shot 不能承接上一 Shot。")
-                previous_end = previous_item.segments[-1]
-                if (
-                    item.start_prompt_text.strip() != previous_end.end_prompt_text.strip()
-                    or set(item.start_visible_character_ids)
-                    != set(previous_end.end_visible_character_ids)
-                    or item.start_environment_mode != previous_end.end_environment_mode
-                    or item.start_environment_view_id != previous_end.end_environment_view_id
-                    or item.start_environment_none_reason
-                    != previous_end.end_environment_none_reason
-                    or {x.character_id: x.look_id for x in item.start_character_references}
-                    != {x.character_id: x.look_id for x in previous_end.end_character_references}
-                ):
-                    raise ValueError("承接 Shot 的首帧必须与上一 Shot 尾帧完全一致。")
-            if previous_shot is not None:
-                left_id = shot_segments(scene, previous_shot.id)[-1].id
-                right_id = first_segment_id
-                left = bindings[left_id]
-                right = bindings[right_id]
-                boundary_mutable = (
-                    left_id in allowed_segment_ids
-                    and right_id in allowed_segment_ids
-                    and left_id not in locked_segment_ids
-                    and right_id not in locked_segment_ids
+            if not set(planned.end_visible_character_ids) <= boundary_character_ids:
+                raise ValueError(
+                    "Keyframe 可见角色必须属于所属 Segment；跨 Segment 共享边界允许两侧角色并集。"
                 )
-                if item.continues_from_previous_shot and boundary_mutable:
-                    if left.end_keyframe_id != right.start_keyframe_id:
-                        operations.append(
-                            ShareKeyframeBoundary(
-                                left_id, right_id, left.end_keyframe_id, "cross_shot"
-                            )
-                        )
-                        bindings[right_id] = replace(right, start_keyframe_id=left.end_keyframe_id)
-                elif (
-                    not item.continues_from_previous_shot
-                    and boundary_mutable
-                    and left.end_keyframe_id == right.start_keyframe_id
-                ):
-                    clone_id = uuid4().hex
-                    operations.append(
-                        _SplitKeyframeBoundaryWithId(
-                            left_id, right_id, "right_start", False, clone_id
-                        )
-                    )
-                    bindings[right_id] = replace(right, start_keyframe_id=clone_id)
-            if (
-                first_segment_id in allowed_segment_ids
-                and first_segment_id not in locked_segment_ids
-            ):
-                set_desired(
-                    bindings[first_segment_id].start_keyframe_id,
-                    item.start_prompt_text,
-                    item.start_visible_character_ids,
-                    (
-                        item.start_environment_mode,
-                        item.start_environment_view_id,
-                        item.start_environment_none_reason,
-                    ),
-                    # 承接上一 Shot 的首帧就是上一 Shot 的尾帧，继承所属（左侧）Shot 的视图。
-                    (
-                        previous_shot.view_id
-                        if item.continues_from_previous_shot and previous_shot is not None
-                        else shot.view_id
-                    ),
-                    item.start_character_references,
-                )
-            for segment, segment_item in zip(
-                shot_segments(scene, shot.id), item.segments, strict=True
-            ):
-                if segment.id not in allowed_segment_ids or segment.id in locked_segment_ids:
-                    continue
-                binding = bindings[segment.id]
-                set_desired(
-                    binding.end_keyframe_id,
-                    segment_item.end_prompt_text,
-                    segment_item.end_visible_character_ids,
-                    (
-                        segment_item.end_environment_mode,
-                        segment_item.end_environment_view_id,
-                        segment_item.end_environment_none_reason,
-                    ),
-                    shot.view_id,
-                    segment_item.end_character_references,
-                )
-                operations.append(
-                    SetKeyframeActivation(
-                        segment.id,
-                        segment_item.frame_strategy in {"start", "both"},
-                        segment_item.frame_strategy in {"end", "both"},
-                    )
-                )
-            previous_shot = shot
-            previous_item = item
-
-    operations.extend(
-        UpdateKeyframeFields(
-            keyframe_id,
-            prompt_text,
-            character_ids,
-            environment_mode=environment_mode,
-            environment_view_id=environment_view_id,
-            environment_none_reason=environment_none_reason,
-            environment_changed=True,
-            character_references=selections,
+    scene_slots = tuple(
+        tuple(
+            KeyframePlanSlot(
+                segment.id,
+                bindings[segment.id].start_keyframe_id,
+                bindings[segment.id].end_keyframe_id,
+                segment.id in allowed_segment_ids,
+                segment.id in locked_segment_ids,
+                segment_view_ids(scene, segment.id)[0],
+                segment_view_ids(scene, segment.id)[1],
+                segment_continues_previous(scene, segment.id),
+            )
+            for segment in scene.segments
         )
-        for keyframe_id, (
-            prompt_text,
-            character_ids,
-            environment_mode,
-            environment_view_id,
-            environment_none_reason,
-            selections,
-        ) in desired_fields.items()
+        for scene in planning_scenes
     )
-    return tuple(operations)
+    operations = compile_plan_operations(proposal, scene_slots)
+    if operations is None:
+        raise ValueError("当前 Keyframe 槽位缺失，不能重新分配替代恢复。")
+    return operations
 
 
 def _validate_keyframe_planner_operations(
@@ -379,17 +248,15 @@ def _validate_keyframe_planner_operations(
     for operation in operations:
         if isinstance(operation, SetKeyframeActivation):
             if operation.segment_id not in allowed_segment_ids:
-                raise ValueError("Keyframe Planner operation 超出目标 Shot 范围。")
+                raise ValueError("Keyframe Planner operation 超出目标 Segment 范围。")
             affected_segments = {operation.segment_id}
             affected_keyframes: set[str] = set()
         elif isinstance(operation, UpdateKeyframeFields):
             affected_segments = keyframe_segments.get(operation.keyframe_id, set())
             affected_keyframes = {operation.keyframe_id}
             if not affected_segments or not affected_segments <= allowed_segment_ids:
-                raise ValueError("Keyframe Planner 字段修改超出目标 Shot 范围。")
-        elif isinstance(
-            operation, (ShareKeyframeBoundary, SplitKeyframeBoundary, _SplitKeyframeBoundaryWithId)
-        ):
+                raise ValueError("Keyframe Planner 字段修改超出目标 Segment 范围。")
+        elif isinstance(operation, (ShareKeyframeBoundary, SplitKeyframeBoundary)):
             affected_segments = {
                 operation.left_segment_id,
                 operation.right_segment_id,
@@ -397,7 +264,7 @@ def _validate_keyframe_planner_operations(
             if not affected_segments <= allowed_segment_ids or not affected_segments <= set(
                 bindings
             ):
-                raise ValueError("Keyframe Planner 边界修改超出目标 Shot 范围。")
+                raise ValueError("Keyframe Planner 边界修改超出目标 Segment 范围。")
             affected_keyframes = {
                 keyframe_id
                 for segment_id in affected_segments
@@ -539,33 +406,33 @@ class KeyframeDomain(_DomainBase):
             bindings: list[SegmentKeyframes] = []
             # 每个 Segment 都有独立首尾 Keyframe；是否共享边界由用户或 Director 显式决定。
             for scene in script.production_baseline_scenes:
-                for shot in scene.shots:
-                    for segment in shot_segments(scene, shot.id):
-                        start_keyframe_id = uuid4().hex
-                        end_keyframe_id = uuid4().hex
-                        keyframes.extend(
-                            (
-                                blank_keyframe(
-                                    start_keyframe_id,
-                                    segment.id,
-                                    None,
-                                    shot_view_id=shot.view_id,
-                                ),
-                                blank_keyframe(
-                                    end_keyframe_id,
-                                    segment.id,
-                                    start_keyframe_id,
-                                    shot_view_id=shot.view_id,
-                                ),
-                            )
+                for segment in scene_segments(scene):
+                    start_keyframe_id = uuid4().hex
+                    end_keyframe_id = uuid4().hex
+                    start_view_id, end_view_id = segment_view_ids(scene, segment.id)
+                    keyframes.extend(
+                        (
+                            blank_keyframe(
+                                start_keyframe_id,
+                                segment.id,
+                                None,
+                                view_id=start_view_id,
+                            ),
+                            blank_keyframe(
+                                end_keyframe_id,
+                                segment.id,
+                                start_keyframe_id,
+                                view_id=end_view_id,
+                            ),
                         )
-                        bindings.append(
-                            SegmentKeyframes(
-                                segment_id=segment.id,
-                                start_keyframe_id=start_keyframe_id,
-                                end_keyframe_id=end_keyframe_id,
-                            )
+                    )
+                    bindings.append(
+                        SegmentKeyframes(
+                            segment_id=segment.id,
+                            start_keyframe_id=start_keyframe_id,
+                            end_keyframe_id=end_keyframe_id,
                         )
+                    )
 
             plan = KeyframePlan(
                 source_script_revision=script.production_baseline_revision,
@@ -672,7 +539,7 @@ class KeyframeDomain(_DomainBase):
         self,
         proposal: KeyframeOperationsProposal,
         *,
-        target_shot_ids: tuple[str, ...] = (),
+        target_segment_ids: tuple[str, ...] = (),
         required_shared_boundaries: tuple[tuple[str, str], ...] = (),
     ) -> StructuredDirectorDocument:
         """在规划锁内校验并应用 compiler operations，然后一次性回到审核态。"""
@@ -687,9 +554,9 @@ class KeyframeDomain(_DomainBase):
                 locked_segment_ids,
             ) = _keyframe_planning_context(
                 document,
-                target_shot_ids=target_shot_ids,
+                target_segment_ids=target_segment_ids,
                 missing_message="当前没有等待保存的关键帧 operations。",
-                invalid_scope_message="关键帧 operations 包含不存在或重复的目标 Shot。",
+                invalid_scope_message="关键帧 operations 包含不存在或重复的目标 Segment。",
             )
             _validate_keyframe_planner_operations(
                 document,
@@ -714,7 +581,7 @@ class KeyframeDomain(_DomainBase):
         self,
         proposal: KeyframePlanProposal,
         *,
-        target_shot_ids: tuple[str, ...] = (),
+        target_segment_ids: tuple[str, ...] = (),
         required_shared_boundaries: tuple[tuple[str, str], ...] = (),
     ) -> StructuredDirectorDocument:
 
@@ -722,7 +589,7 @@ class KeyframeDomain(_DomainBase):
             operations = _translate_keyframe_plan_to_operations(
                 document,
                 proposal,
-                target_shot_ids=target_shot_ids,
+                target_segment_ids=target_segment_ids,
             )
             return MutationResult(
                 _finish_keyframe_operation_plan(

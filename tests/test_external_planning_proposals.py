@@ -6,7 +6,6 @@ from dataclasses import replace
 
 import pytest
 from mcp import Client
-from script_helpers import shot_segments_at
 from test_director_commands import _visual_project
 from test_external_reference_proposals import restart
 from test_external_script_proposals import agent, http
@@ -14,7 +13,6 @@ from test_prompt_worksets import fixture
 from test_storyrail_mcp import endpoint
 
 from core.director_commands import DirectorCommand
-from core.structured_director.script_index import shot_segments
 
 
 def request(document, kind, target_ids=None):
@@ -23,41 +21,35 @@ def request(document, kind, target_ids=None):
         "raw_user_instruction": "按当前完整上下文规划指定范围",
         "scope": {"scene_ids": [s.id for s in scenes]},
     }
-    args["target_ids"] = target_ids or [scenes[0].shots[0].id]
+    args["target_ids"] = target_ids or [scenes[0].segments[0].id]
     return DirectorCommand(f"{kind}.request_proposal", document.revision, "request", args)
 
 
 def proposal_for(document, kind, target_ids=None):
     scenes = document.director_script.production_baseline_scenes
-    writable = set(target_ids or [scenes[0].shots[0].id])
+    writable = set(target_ids or [scenes[0].segments[0].id])
     return {
-        "shots": [
+        "segments": [
             {
-                "start_environment_view_id": None,
-                "shot_id": shot.id,
-                "continues_from_previous_shot": False,
+                "segment_id": segment.id,
+                "continues_from_previous": False,
+                "frame_strategy": "both",
                 "start_prompt_text": "完整静态场景。",
                 "start_visible_character_ids": [],
                 "start_character_references": [],
                 "start_environment_mode": None,
+                "start_environment_view_id": None,
                 "start_environment_none_reason": None,
-                "segments": [
-                    {
-                        "end_environment_view_id": None,
-                        "segment_id": seg.id,
-                        "frame_strategy": "both",
-                        "end_prompt_text": "静态终点。",
-                        "end_visible_character_ids": [],
-                        "end_character_references": [],
-                        "end_environment_mode": None,
-                        "end_environment_none_reason": None,
-                    }
-                    for seg in shot_segments(scene, shot.id)
-                ],
+                "end_prompt_text": "静态终点。",
+                "end_visible_character_ids": [],
+                "end_character_references": [],
+                "end_environment_mode": None,
+                "end_environment_view_id": None,
+                "end_environment_none_reason": None,
             }
             for scene in scenes
-            for shot in scene.shots
-            if shot.id in writable
+            for segment in scene.segments
+            if segment.id in writable
         ]
     }
 
@@ -95,22 +87,22 @@ def test_planning_restart_scope_atomic_submit_and_no_builtin(tmp_path):
         assert (await http(restart(store), replace(caller, id="another"), get)).status == 403
         assert (await http(restart(store), replace(caller, grants=()), get)).status == 403
         good = proposal_for(doc, kind)
-        bads = [{**good, "extra": True}, {"shots": []}, {"shots": good["shots"] * 2}]
+        bads = [{**good, "extra": True}, {"segments": []}, {"segments": good["segments"] * 2}]
         wrong = copy.deepcopy(good)
-        wrong["shots"][0]["shot_id"] = "f" * 32
+        wrong["segments"][0]["segment_id"] = "f" * 32
         bads.append(wrong)
         missing_segment = copy.deepcopy(good)
-        missing_segment["shots"][0]["segments"] = []
+        missing_segment["segments"][0]["frame_strategy"] = "invalid"
         bads.append(missing_segment)
-        extra_shot = proposal_for(
+        extra_segment = proposal_for(
             doc,
             kind,
             [
-                doc.director_script.scenes[0].shots[0].id,
-                doc.director_script.scenes[0].shots[1].id,
+                doc.director_script.scenes[0].segments[0].id,
+                doc.director_script.scenes[0].segments[1].id,
             ],
         )
-        bads.append(extra_shot)
+        bads.append(extra_segment)
         for index, bad in enumerate(bads):
             submit = DirectorCommand(
                 f"{kind}.submit_proposal",
@@ -140,7 +132,7 @@ def test_planning_restart_scope_atomic_submit_and_no_builtin(tmp_path):
         completed = await http(restart(store), caller, completed_get)
         assert completed.body["data"]["proposal_observation"]["phase"] == "completed"
         # Same-Scene context Shot is not writable; original slots and empty fields stay intact.
-        untouched = shot_segments_at(doc.director_script.scenes[0], 1)[0].id
+        untouched = doc.director_script.scenes[0].segments[1].id
         before_binding = next(b for b in doc.keyframe_plan.segments if b.segment_id == untouched)
         assert before_binding in finished.keyframe_plan.segments
         ids = {before_binding.start_keyframe_id, before_binding.end_keyframe_id}
@@ -159,19 +151,19 @@ def test_keyframe_partial_scope_schema_and_second_shot_submit(tmp_path):
     async def run():
         store, _, doc, _ = await _visual_project(str(tmp_path))
         scene = doc.director_script.scenes[0]
-        target = scene.shots[1].id
+        target = scene.segments[1].id
         req = request(doc, "keyframe", [target])
         caller = agent(doc, req)
         started = await http(restart(store), caller, req)
         assert started.status == 200, started.body
         data = started.body["data"]
         facts = data["core_facts"]
-        assert facts["context_shot_ids"] == [shot.id for shot in scene.shots]
-        assert facts["writable_shot_ids"] == [target]
-        shot_schema = data["output_schema"]["properties"]["shots"]
-        assert shot_schema["minItems"] == shot_schema["maxItems"] == 1
+        assert facts["context_segment_ids"] == [segment.id for segment in scene.segments]
+        assert facts["writable_segment_ids"] == [target]
+        segment_schema = data["output_schema"]["properties"]["segments"]
+        assert segment_schema["minItems"] == segment_schema["maxItems"] == 1
         assert [
-            schema["properties"]["shot_id"]["const"] for schema in shot_schema["prefixItems"]
+            schema["properties"]["segment_id"]["const"] for schema in segment_schema["prefixItems"]
         ] == [target]
 
         before = store.read()
@@ -218,12 +210,12 @@ def test_keyframe_non_contiguous_targets_keep_context_shots_unchanged(tmp_path):
     async def run():
         store, _, doc, _ = await _visual_project(str(tmp_path), script_proposer=FiveShotScript())
         scene = doc.director_script.scenes[0]
-        target_ids = [scene.shots[0].id, scene.shots[2].id]
+        target_ids = [scene.segments[0].id, scene.segments[2].id]
         req = request(doc, "keyframe", target_ids)
         caller = agent(doc, req)
         started = await http(restart(store), caller, req)
         assert started.status == 200, started.body
-        assert started.body["data"]["core_facts"]["writable_shot_ids"] == target_ids
+        assert started.body["data"]["core_facts"]["writable_segment_ids"] == target_ids
         before = store.read()
         submit = DirectorCommand(
             "keyframe.submit_proposal",
@@ -238,10 +230,7 @@ def test_keyframe_non_contiguous_targets_keep_context_shots_unchanged(tmp_path):
         assert result.status == 200, result.body
         finished = store.read()
         untouched_segments = {
-            segment.id
-            for shot in scene.shots
-            if shot.id not in target_ids
-            for segment in shot_segments(scene, shot.id)
+            segment.id for segment in scene.segments if segment.id not in target_ids
         }
         assert [
             item

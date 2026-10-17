@@ -17,7 +17,12 @@ from test_storyrail_mcp import endpoint
 import core.director_proposals
 from core.director_commands import DirectorCommand, DirectorCommandRegistry
 from core.director_proposals.professional_contracts import CONTRACTS, read_contract
-from core.structured_director.models import ImageAssetCategory
+from core.structured_director.models import (
+    ImageAssetCategory,
+    LocationView,
+    SegmentBoundary,
+    SegmentBoundaryReason,
+)
 from core.structured_director.planning_inputs import keyframe_inputs
 from core.structured_director.prompt_worksets import keyframe_workset, video_prompt_workset
 from core.structured_director.reads.professional_worksets import workset_read
@@ -93,20 +98,19 @@ def test_worksets_current_facts_schema_scope_and_no_writes(tmp_path):
     scoped = {
         "capability": "keyframe",
         "scope": {"scene_ids": [scene.id]},
-        "target_ids": [scene.shots[0].id],
+        "target_ids": [segment.id],
     }
     result = execute_project_read(document, "project.get_workset", scoped)
-    scenes, targets, _ = keyframe_inputs(document, (scene.shots[0].id,))
+    scenes, targets, _ = keyframe_inputs(document, (segment.id,))
     assert result["core_facts"]["scenes"] == _json_value(scenes)
-    assert result["core_facts"]["target_shot_ids"] == list(targets)
-    assert scenes[0].shots[0].planning_enabled and not scenes[0].shots[1].planning_enabled
-    assert scenes[0].shots[0].segments[0].start_locked
+    assert result["core_facts"]["target_segment_ids"] == list(targets)
+    assert scenes[0].segments[0].planning_enabled and not scenes[0].segments[1].planning_enabled
+    assert scenes[0].segments[0].start_locked
     for extra in (
         {"path": "../../secret"},
         {"scope": {}},
         {"target_ids": []},
         {"target_ids": ["f" * 32]},
-        {"target_ids": [segment.id]},
         {"scope": {"scene_ids": ["f" * 32]}},
         {"capability": "shell"},
     ):
@@ -338,7 +342,7 @@ def test_saved_keyframe_plan_is_complete_scoped_and_independent_of_executable_in
         request = {
             "capability": "keyframe",
             "scope": {"scene_ids": [scene.id]},
-            "target_ids": [scene.shots[1].id],
+            "target_ids": [second_segment.id],
         }
         before = store.path.read_bytes()
         result = execute_project_read(doc, "project.get_workset", request)
@@ -384,7 +388,7 @@ def test_keyframe_workset_reports_plan_not_established_before_unlock(tmp_path):
         {
             "capability": "keyframe",
             "scope": {"scene_ids": [scene.id]},
-            "target_ids": [scene.shots[0].id],
+            "target_ids": [scene.segments[0].id],
         },
     )
     saved = result["core_facts"]["saved_keyframe_plan"]
@@ -430,7 +434,7 @@ def test_mcp_professional_reads_need_no_mutation_grant(tmp_path):
                     **base,
                     "capability": "keyframe",
                     "scene_ids": [scene.id],
-                    "target_ids": [scene.shots[0].id],
+                    "target_ids": [scene.segments[0].id],
                 },
             )
             assert not keyframes.is_error
@@ -453,3 +457,90 @@ def test_mcp_professional_reads_need_no_mutation_grant(tmp_path):
     with endpoint(tmp_path, store, service, caller) as (params, _):
         asyncio.run(run(params))
     assert store.path.read_bytes() == before
+
+
+def test_keyframe_inputs_multi_shot_segment_union_and_segment_view_defaults(tmp_path):
+    _store, _service, document, _route = asyncio.run(_location_project(str(tmp_path)))
+    scene = document.director_script.scenes[0]
+    first, second = scene.shots[:2]
+    location = next(
+        item for item in document.location_library.locations if item.id == scene.location_id
+    )
+    first_view = location.views[0].id
+    second_view = "b" * 32
+    location = replace(
+        location,
+        views=(
+            *location.views,
+            LocationView(second_view, "反打", "正反打背景", azimuth_deg=180.0),
+        ),
+    )
+    document = replace(
+        document,
+        location_library=replace(
+            document.location_library,
+            locations=tuple(
+                location if item.id == location.id else item
+                for item in document.location_library.locations
+            ),
+        ),
+    )
+    updated_scene = replace(
+        scene,
+        shots=(
+            replace(first, view_id=first_view),
+            replace(second, view_id=second_view),
+            *scene.shots[2:],
+        ),
+        segments=(
+            scene.segments[0],
+            replace(
+                scene.segments[1],
+                shot_ids=(first.id, second.id),
+                boundary_from_previous=SegmentBoundary(
+                    SegmentBoundaryReason.CONTINUITY_ANCHOR, "延续同一镜头"
+                ),
+            ),
+        ),
+    )
+    baseline = document.director_script.production_baseline_scenes
+    document = replace(
+        document,
+        director_script=replace(
+            document.director_script,
+            scenes=(updated_scene, *document.director_script.scenes[1:]),
+            production_baseline_scenes=(
+                None if baseline is None else (updated_scene, *baseline[1:])
+            ),
+        ),
+    )
+    scenes, targets, _boundaries = keyframe_inputs(document, (scene.segments[1].id,))
+    segment = scenes[0].segments[1]
+    assert [item.id for item in segment.visible_characters] == [
+        first.visible_character_ids[0],
+        second.visible_character_ids[0],
+    ]
+    assert segment.start_view_id == first_view
+    assert segment.end_view_id == second_view
+    assert segment.continues_from_previous is True
+    assert scenes[0].segments[0].planning_enabled is False
+    assert segment.planning_enabled is True
+    assert targets == (scene.segments[1].id,)
+
+
+def test_required_shared_boundary_outside_target_segments_reports_expansion(tmp_path):
+    _store, _service, document, _route = asyncio.run(_location_project(str(tmp_path)))
+    scene = document.director_script.scenes[0]
+    left, right = scene.segments[0], scene.segments[1]
+    message = json.dumps(
+        {
+            "scope_guard": {
+                "required_shared_boundaries": [
+                    {"left_segment_id": left.id, "right_segment_id": right.id}
+                ]
+            }
+        }
+    )
+    with pytest.raises(ValueError, match="至少扩大目标范围到") as error:
+        keyframe_inputs(document, (left.id,), message)
+    assert right.id in str(error.value)

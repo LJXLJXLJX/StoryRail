@@ -72,18 +72,7 @@ class _KeyframeMutation:
     applied_summary: dict[str, int]
 
 
-@dataclass(frozen=True, slots=True)
-class _SplitKeyframeBoundaryWithId:
-    """Planner-only split whose new identity is known to following operations."""
-
-    left_segment_id: str
-    right_segment_id: str
-    clone_side: str
-    copy_selection: bool
-    clone_id: str
-
-
-_KeyframeMutationOperation = KeyframeOperation | _SplitKeyframeBoundaryWithId
+_KeyframeMutationOperation = KeyframeOperation
 
 
 def _apply_keyframe_operations(
@@ -401,19 +390,16 @@ def _apply_keyframe_operations(
             remove_orphans()
             continue
 
-        if isinstance(operation, (SplitKeyframeBoundary, _SplitKeyframeBoundaryWithId)):
+        if isinstance(operation, SplitKeyframeBoundary):
             adjacency(operation.left_segment_id, operation.right_segment_id)
             left = require_segment(operation.left_segment_id)
             right = require_segment(operation.right_segment_id)
             if left.end_keyframe_id != right.start_keyframe_id:
                 continue
             shared = require_keyframe(left.end_keyframe_id)
-            clone_id = (
-                operation.clone_id
-                if isinstance(operation, _SplitKeyframeBoundaryWithId)
-                else uuid4().hex
-            )
+            clone_id = uuid4().hex
             if operation.clone_side == "left_end":
+                # 原共享 Keyframe 留给右段首帧，左段尾帧得到独立副本。
                 clone = replace(
                     shared,
                     id=clone_id,
@@ -425,8 +411,14 @@ def _apply_keyframe_operations(
                 )
                 keyframes[clone_id] = clone
                 keyframe_order.append(clone_id)
+                keyframes[shared.id] = replace(
+                    shared,
+                    owner_segment_id=operation.right_segment_id,
+                    predecessor_keyframe_id=None,
+                )
                 bindings[operation.left_segment_id] = replace(left, end_keyframe_id=clone_id)
                 directly_affected_segments.add(operation.left_segment_id)
+                directly_affected_segments.add(operation.right_segment_id)
             else:
                 clone = replace(
                     shared,
@@ -570,7 +562,7 @@ def _validate_keyframe_operation_context(
             scene_ids.add(scene_id)
             allowed_characters.update(visible_character_ids)
         if not set(keyframe.visible_character_ids) <= allowed_characters:
-            raise ValueError("Keyframe 可见角色必须属于使用该边界的相邻 Shot 角色并集。")
+            raise ValueError("Keyframe 可见角色必须属于使用该边界的相邻 Segment 角色并集。")
         if (
             keyframe.environment_view_id is not None
             and document.location_library.view_owner(keyframe.environment_view_id) is None

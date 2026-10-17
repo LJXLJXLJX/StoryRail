@@ -1017,26 +1017,21 @@ export interface NarrationCueUpdate {
 }
 
 export interface KeyframePlanProposal {
-  shots: KeyframeShotProposal[];
-}
-
-export interface KeyframeShotProposal {
-  shot_id: string;
-  continues_from_previous_shot: boolean;
-  start_prompt_text: string;
-  start_visible_character_ids: string[];
   segments: KeyframeSegmentProposal[];
-  start_environment_mode: "edit" | "reference" | "none" | null;
-  start_environment_view_id: string | null;
-  start_environment_none_reason: string | null;
-  start_character_references: KeyframeCharacterReferenceProposal[];
 }
 
 export interface KeyframeSegmentProposal {
   segment_id: string;
+  continues_from_previous: boolean;
   frame_strategy: "start" | "end" | "both";
+  start_prompt_text: string;
+  start_visible_character_ids: string[];
   end_prompt_text: string;
   end_visible_character_ids: string[];
+  start_environment_mode: "edit" | "reference" | "none" | null;
+  start_environment_view_id: string | null;
+  start_environment_none_reason: string | null;
+  start_character_references: KeyframeCharacterReferenceProposal[];
   end_environment_mode: "edit" | "reference" | "none" | null;
   end_environment_view_id: string | null;
   end_environment_none_reason: string | null;

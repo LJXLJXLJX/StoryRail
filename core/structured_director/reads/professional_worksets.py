@@ -139,7 +139,7 @@ def _location_library_facts(document):
 
 
 def _keyframe_location_views(document):
-    """Keyframe 规划可引用的全部地点视图（Keyframe 可覆盖 Shot 绑定）。
+    """Keyframe 规划可引用的全部地点视图（Keyframe 可覆盖 Shot 的视图建议）。
 
     每项带所属地点名与状态、purpose 和已选图；`selected_asset_id` 为 null 时可以规划，
     但生成前必须先选图或把帧改为 none。
@@ -282,14 +282,16 @@ def workset_read(
         elif capability == "keyframe":
             if targets is not None:
                 build_semantic_projection(
-                    document, {"level": "shot", "scope": scope, "ids": list(targets)}
+                    document, {"level": "segment", "scope": scope, "ids": list(targets)}
                 )
-            scenes, shots, boundaries = keyframe_inputs(document, tuple(targets or scene_ids))
+            scenes, segments, boundaries = keyframe_inputs(document, tuple(targets or scene_ids))
             facts = {
                 "scenes": _json_value(scenes),
-                "context_shot_ids": [shot.id for scene in scenes for shot in scene.shots],
-                "writable_shot_ids": list(shots),
-                "target_shot_ids": list(shots),
+                "context_segment_ids": [
+                    segment.id for scene in scenes for segment in scene.segments
+                ],
+                "writable_segment_ids": list(segments),
+                "target_segment_ids": list(segments),
                 "required_shared_boundaries": _json_value(boundaries),
                 "aspect_ratio": document.aspect_ratio.value,
                 "saved_keyframe_plan": _saved_keyframe_plan(document, scene_ids),

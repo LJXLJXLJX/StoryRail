@@ -964,59 +964,62 @@ class Journey:
 
     @staticmethod
     def _default_keyframe_proposal(workset: dict, prompt_text: str | None) -> dict:
-        """按请求工作集构造覆盖全部授权 Shot 的最小合法 KeyframePlanProposal。"""
-        shots = []
+        """按请求工作集构造覆盖全部授权 Segment 的最小合法 KeyframePlanProposal。"""
+        segments = []
         for scene in workset["core_facts"]["scenes"]:
-            for shot in scene["shots"]:
-                if not shot["planning_enabled"]:
+            previous_end = None
+            for segment in scene["segments"]:
+                continues = (
+                    previous_end is not None and segment["start_keyframe_id"] == previous_end
+                )
+                if not segment.get("planning_enabled", True):
+                    previous_end = segment["end_keyframe_id"]
                     continue
-                character_ids = [character["id"] for character in shot["visible_characters"]]
-                start_prompt = prompt_text or f"{scene['title']}的静态首帧。"
-                shots.append(
+                character_ids = [character["id"] for character in segment["visible_characters"]]
+                segments.append(
                     {
-                        "shot_id": shot["id"],
-                        "continues_from_previous_shot": False,
-                        "start_prompt_text": start_prompt,
-                        "start_visible_character_ids": character_ids,
+                        "segment_id": segment["id"],
+                        "continues_from_previous": continues,
+                        "frame_strategy": "both",
+                        "start_prompt_text": (
+                            "" if continues else prompt_text or f"{scene['title']}的静态首帧。"
+                        ),
+                        "start_visible_character_ids": [] if continues else character_ids,
                         "start_character_references": [],
                         "start_environment_view_id": None,
                         "start_environment_mode": None,
                         "start_environment_none_reason": None,
-                        "segments": [
-                            {
-                                "segment_id": segment["id"],
-                                "frame_strategy": "both",
-                                "end_prompt_text": prompt_text or f"{scene['title']}的静态尾帧。",
-                                "end_visible_character_ids": character_ids,
-                                "end_character_references": [],
-                                "end_environment_view_id": None,
-                                "end_environment_mode": None,
-                                "end_environment_none_reason": None,
-                            }
-                            for segment in shot["segments"]
-                        ],
+                        "end_prompt_text": prompt_text or f"{scene['title']}的静态尾帧。",
+                        "end_visible_character_ids": character_ids,
+                        "end_character_references": [],
+                        "end_environment_view_id": None,
+                        "end_environment_mode": None,
+                        "end_environment_none_reason": None,
                     }
                 )
-        return {"shots": shots}
+                previous_end = segment["end_keyframe_id"]
+        return {"segments": segments}
 
     def plan_keyframes(
         self,
         proposal: dict | None = None,
         prompt_text: str | None = None,
-        instruction: str = "按当前生产基线为全部 Shot 规划关键帧",
+        instruction: str = "按当前生产基线为全部 Segment 规划关键帧",
     ) -> dict:
         """agent 走 keyframe proposal 规划并提交（不生成），返回 submit 响应。"""
         snap = self.snapshot()
         scene_ids = [scene["id"] for scene in snap["director_script"]["scenes"]]
-        shot_ids = [
-            shot["id"] for scene in snap["director_script"]["scenes"] for shot in scene["shots"]
+        segment_ids = [
+            segment["id"]
+            for scene in snap["director_script"]["scenes"]
+            for segment in scene["segments"]
         ]
         requested = self._command(
             "keyframe.request_proposal",
             {
                 "raw_user_instruction": instruction,
                 "scope": {"scene_ids": scene_ids},
-                "target_ids": shot_ids,
+                "target_ids": segment_ids,
             },
             role="agent",
             step="plan_keyframes.request",
@@ -1104,7 +1107,7 @@ class Journey:
         self,
         proposal: dict | None = None,
         prompt_text: str | None = None,
-        instruction: str = "按当前生产基线为全部 Shot 规划关键帧",
+        instruction: str = "按当前生产基线为全部 Segment 规划关键帧",
         select: bool = True,
     ) -> dict:
         """agent 走 keyframe proposal 规划 → human 批量生成 → 逐个选择候选。"""

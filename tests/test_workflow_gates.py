@@ -293,7 +293,7 @@ def test_primary_workflow_parallel_generation_and_unlocked_capabilities_are_orth
             {
                 "capability": "keyframe",
                 "scope": {"scene_ids": [scene.id]},
-                "target_ids": [scene.shots[0].id],
+                "target_ids": [scene.segments[0].id],
             },
         )
         video_prompt_workset = execute_project_read(

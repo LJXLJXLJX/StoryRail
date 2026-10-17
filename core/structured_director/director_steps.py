@@ -12,7 +12,6 @@ from .models import (
     Scene,
     StructuredDirectorDocument,
 )
-from .script_index import shot_segments
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,34 +69,28 @@ def _validate_required_keyframe_boundary_scope(
     scenes: tuple[Scene, ...],
     boundaries: tuple[tuple[str, str], ...],
     *,
-    target_shot_ids: set[str] | None = None,
+    target_segment_ids: set[str] | None = None,
 ) -> None:
     adjacent = {
-        (
-            shot_segments(scene, left_shot.id)[-1].id,
-            shot_segments(scene, right_shot.id)[0].id,
-        ): (
-            left_shot.id,
-            right_shot.id,
-        )
+        (left.id, right.id): (left.id, right.id)
         for scene in scenes
-        for left_shot, right_shot in zip(scene.shots, scene.shots[1:], strict=False)
+        for left, right in zip(scene.segments, scene.segments[1:], strict=False)
     }
     unknown = set(boundaries) - set(adjacent)
     if unknown:
-        raise ValueError("Keyframe Compiler 共享边界超出目标 Scene 或不是真实相邻 Shot。")
-    if target_shot_ids is not None:
+        raise ValueError("Keyframe Compiler 共享边界超出目标 Scene 或不是真实相邻 Segment。")
+    if target_segment_ids is not None:
         missing = tuple(
             dict.fromkeys(
-                shot_id
+                segment_id
                 for boundary in boundaries
-                for shot_id in adjacent[boundary]
-                if shot_id not in target_shot_ids
+                for segment_id in adjacent[boundary]
+                if segment_id not in target_segment_ids
             )
         )
         if missing:
             raise ValueError(
-                "Keyframe Compiler 共享边界越出可写 Shot；请至少扩大目标范围到："
+                "Keyframe Compiler 共享边界越出可写 Segment；请至少扩大目标范围到："
                 + "、".join(missing)
                 + "。"
             )

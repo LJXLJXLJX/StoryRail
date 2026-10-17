@@ -70,7 +70,7 @@ class PlanningProposalHandler:
         if not isinstance(args, dict) or set(args) != self.request_fields():
             raise ValueError("规划恢复缺少原始 scope，不能扩大为全部。")
         self._workset(document, args)
-        scenes, shots, boundaries = keyframe_inputs(
+        scenes, segments, boundaries = keyframe_inputs(
             document, tuple(args["target_ids"]), args["raw_user_instruction"]
         )
         proposal, operations = keyframe.compile_keyframe_proposal(proposal, scenes, boundaries)
@@ -78,6 +78,6 @@ class PlanningProposalHandler:
             raise ValueError("当前 Keyframe 槽位缺失，不能重新分配替代恢复。")
         return store.apply_keyframe_operation_plan(
             KeyframeOperationsProposal(operations, "已按原始外部规划 scope 编译。"),
-            target_shot_ids=shots,
+            target_segment_ids=segments,
             required_shared_boundaries=boundaries,
         )

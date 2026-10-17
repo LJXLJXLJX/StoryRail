@@ -25,7 +25,7 @@ from .models import (
     ShotSegment,
     StructuredDirectorDocument,
 )
-from .script_index import shot_segments
+from .script_index import find_segment, segment_shots, shot_segments
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,17 +80,14 @@ def _keyframe_label(document: StructuredDirectorDocument, keyframe_id: str | Non
     labels: list[str] = []
     binding_by_segment = {item.segment_id: item for item in document.keyframe_plan.segments}
     for scene_index, scene in enumerate(document.director_script.scenes, start=1):
-        for shot_index, shot in enumerate(scene.shots, start=1):
-            for segment_index, segment in enumerate(shot_segments(scene, shot.id), start=1):
-                binding = binding_by_segment[segment.id]
-                for side, enabled, candidate_id in (
-                    ("首帧", binding.start_enabled, binding.start_keyframe_id),
-                    ("尾帧", binding.end_enabled, binding.end_keyframe_id),
-                ):
-                    if enabled and candidate_id == keyframe_id:
-                        labels.append(
-                            f"Scene {scene_index} Shot {shot_index} Segment {segment_index} {side}"
-                        )
+        for segment_index, segment in enumerate(scene.segments, start=1):
+            binding = binding_by_segment[segment.id]
+            for side, enabled, candidate_id in (
+                ("首帧", binding.start_enabled, binding.start_keyframe_id),
+                ("尾帧", binding.end_enabled, binding.end_keyframe_id),
+            ):
+                if enabled and candidate_id == keyframe_id:
+                    labels.append(f"Scene {scene_index} Segment {segment_index} {side}")
     if not labels:
         return f"Keyframe {keyframe_id[:8]}"
     if len(labels) == 1:
@@ -145,7 +142,7 @@ def _keyframe_existing_result(document: StructuredDirectorDocument, keyframe_id:
 def _resolve_keyframe_generation_targets(
     document: StructuredDirectorDocument, target_ids: tuple[str, ...]
 ) -> tuple[str, ...]:
-    """Expand an explicit Scene/Shot/Segment scope to active slots, once."""
+    """Expand an explicit Scene/Segment scope to active slots, once."""
     script, plan = document.director_script, document.keyframe_plan
     if script is None or plan is None or not target_ids:
         raise ValueError("生成 Keyframe 必须指定已建立计划的目标。")
@@ -154,22 +151,18 @@ def _resolve_keyframe_generation_targets(
     scopes: dict[str, tuple[str, ...]] = {}
     for scene in script.scenes:
         scene_frames: list[str] = []
-        for shot in scene.shots:
-            shot_frames: list[str] = []
-            for segment in shot_segments(scene, shot.id):
-                binding = bindings[segment.id]
-                frames = tuple(
-                    frame_id
-                    for enabled, frame_id in (
-                        (binding.start_enabled, binding.start_keyframe_id),
-                        (binding.end_enabled, binding.end_keyframe_id),
-                    )
-                    if enabled
+        for segment in scene.segments:
+            binding = bindings[segment.id]
+            frames = tuple(
+                frame_id
+                for enabled, frame_id in (
+                    (binding.start_enabled, binding.start_keyframe_id),
+                    (binding.end_enabled, binding.end_keyframe_id),
                 )
-                scopes[segment.id] = frames
-                shot_frames.extend(frames)
-            scopes[shot.id] = tuple(shot_frames)
-            scene_frames.extend(shot_frames)
+                if enabled
+            )
+            scopes[segment.id] = frames
+            scene_frames.extend(frames)
         scopes[scene.id] = tuple(scene_frames)
     resolved: list[str] = []
     for target_id in target_ids:
@@ -226,19 +219,7 @@ def _keyframe_generation_inputs(
     )
     if binding is None:
         raise ValueError("Keyframe owner Segment 没有输入绑定。")
-    owning_scene = None
-    owning_shot = None
-    for scene in script.scenes:
-        for shot in scene.shots:
-            if any(
-                segment.id == keyframe.owner_segment_id for segment in shot_segments(scene, shot.id)
-            ):
-                owning_scene = scene
-                owning_shot = shot
-                break
-        if owning_scene is not None:
-            break
-    if owning_scene is None or owning_shot is None:
+    if find_segment(script.scenes, keyframe.owner_segment_id) is None:
         raise ValueError("Keyframe owner Segment 不在当前脚本中。")
     # 名额优先级：地点视图 → 可见角色参考 → 前置帧 → 辅助图；编辑底图提交时排第一。
     view_input: ImageInput | None = None
@@ -457,7 +438,10 @@ def _keyframe_prompt_context_json(document: StructuredDirectorDocument, keyframe
     keyframe = _find_keyframe(document, keyframe_id)
     if script is None:
         raise ValueError("关键帧提示词缺少导演脚本。")
-    scene, shot, segment = _find_segment_context(script.scenes, keyframe.owner_segment_id)
+    found = find_segment(script.scenes, keyframe.owner_segment_id)
+    if found is None:
+        raise ValueError("Segment 不存在。")
+    scene, segment = found
     return json.dumps(
         {
             "scene": {
@@ -466,14 +450,18 @@ def _keyframe_prompt_context_json(document: StructuredDirectorDocument, keyframe
                 "summary": scene.summary,
                 "setting": scene.setting,
             },
-            "shot": {
-                "id": shot.id,
-                "composition": shot.composition,
-                "camera_movement": shot.camera_movement,
-                "action": shot.action,
-            },
+            "shots": [
+                {
+                    "id": shot.id,
+                    "composition": shot.composition,
+                    "camera_movement": shot.camera_movement,
+                    "action": shot.action,
+                }
+                for shot in segment_shots(scene, segment.id)
+            ],
             "segment": {
                 "id": segment.id,
+                "shot_ids": list(segment.shot_ids),
                 "action": segment.action,
                 "dialogue_lines": [line.text for line in segment.dialogue_lines],
             },

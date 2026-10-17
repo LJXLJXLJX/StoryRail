@@ -53,40 +53,67 @@ class KeyframeCharacterReferenceProposal:
 
 
 @dataclass(frozen=True, slots=True)
-class KeyframeSegmentInput:
-    id: str
-    action: str
-    dialogue_lines: tuple[str, ...] = ()
-    start_keyframe_id: str | None = None
-    end_keyframe_id: str | None = None
-    start_locked: bool = False
-    end_locked: bool = False
-
-    def __post_init__(self) -> None:
-        if (self.start_keyframe_id is None) != (self.end_keyframe_id is None):
-            raise ValueError("当前 Segment 必须同时提供首尾 Keyframe ID。")
-        for keyframe_id in (self.start_keyframe_id, self.end_keyframe_id):
-            if keyframe_id is not None and not _ID.fullmatch(keyframe_id):
-                raise ValueError("当前 Segment 的 Keyframe ID 不合法。")
-        if type(self.start_locked) is not bool or type(self.end_locked) is not bool:
-            raise ValueError("当前 Segment 的 Keyframe 锁定状态不合法。")
-
-
-@dataclass(frozen=True, slots=True)
 class KeyframeShotInput:
+    """Segment 按顺序覆盖的一个 Shot 的创作描述；Shot 本身不持有生产状态。"""
+
     id: str
     composition: str
     camera_movement: str
     action: str
     visible_characters: tuple[KeyframeCharacterInput, ...]
-    segments: tuple[KeyframeSegmentInput, ...]
     audio_direction: str = ""
-    planning_enabled: bool = True
+    # Shot 绑定的地点视图只是空间参考建议；首/尾帧默认取 Segment 首个/末个覆盖 Shot 的视图。
     view_id: str | None = None
 
     def __post_init__(self) -> None:
-        if type(self.planning_enabled) is not bool:
-            raise ValueError("Shot 关键帧规划范围标记不合法。")
+        if not _ID.fullmatch(self.id):
+            raise ValueError("关键帧 Shot 输入 ID 不合法。")
+        if not self.visible_characters:
+            return
+        ids = [item.id for item in self.visible_characters]
+        if len(ids) != len(set(ids)):
+            raise ValueError("关键帧 Shot 可见角色不能重复。")
+
+
+@dataclass(frozen=True, slots=True)
+class KeyframeSegmentInput:
+    """Keyframe Planner 的 Segment 输入：覆盖 Shot、派生可见角色与首/尾视图建议。"""
+
+    id: str
+    action: str
+    shots: tuple[KeyframeShotInput, ...]
+    dialogue_lines: tuple[str, ...] = ()
+    start_keyframe_id: str | None = None
+    end_keyframe_id: str | None = None
+    start_locked: bool = False
+    end_locked: bool = False
+    planning_enabled: bool = True
+    # 覆盖 Shot 可见角色的并集，保序去重；Planner 只能从这里选本帧可见角色。
+    visible_characters: tuple[KeyframeCharacterInput, ...] = ()
+    start_view_id: str | None = None
+    end_view_id: str | None = None
+    # 与同 Scene 上一 Segment 共享边界 Shot：延续同一镜头，默认共享边界 Keyframe。
+    continues_from_previous: bool = False
+
+    def __post_init__(self) -> None:
+        if not _ID.fullmatch(self.id):
+            raise ValueError("当前 Segment 的 ID 不合法。")
+        if not self.shots:
+            raise ValueError("当前 Segment 必须至少覆盖一个 Shot。")
+        shot_ids = [item.id for item in self.shots]
+        if len(shot_ids) != len(set(shot_ids)):
+            raise ValueError("当前 Segment 覆盖的 Shot 不能重复。")
+        if (self.start_keyframe_id is None) != (self.end_keyframe_id is None):
+            raise ValueError("当前 Segment 必须同时提供首尾 Keyframe ID。")
+        for keyframe_id in (self.start_keyframe_id, self.end_keyframe_id):
+            if keyframe_id is not None and not _ID.fullmatch(keyframe_id):
+                raise ValueError("当前 Segment 的 Keyframe ID 不合法。")
+        for value in (self.start_locked, self.end_locked, self.planning_enabled):
+            if type(value) is not bool:
+                raise ValueError("当前 Segment 的 Keyframe 锁定或规划范围标记不合法。")
+        for view_id in (self.start_view_id, self.end_view_id):
+            if view_id is not None and not _ID.fullmatch(view_id):
+                raise ValueError("当前 Segment 的地点视图 ID 不合法。")
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,7 +121,7 @@ class KeyframeSceneInput:
     id: str
     title: str
     setting: str
-    shots: tuple[KeyframeShotInput, ...]
+    segments: tuple[KeyframeSegmentInput, ...]
     summary: str = ""
     location_id: str | None = None
     # 项目内全部地点视图 ID；Keyframe 只能引用其中之一。
@@ -103,17 +130,28 @@ class KeyframeSceneInput:
 
 @dataclass(frozen=True, slots=True)
 class KeyframeSegmentProposal:
+    """一个 Segment 的首尾计划；承接上一 Segment 时首帧字段必须为空。"""
+
     segment_id: str
+    continues_from_previous: bool
     frame_strategy: str
+    start_prompt_text: str
+    start_visible_character_ids: tuple[str, ...]
     end_prompt_text: str
     end_visible_character_ids: tuple[str, ...]
-    # null 表示未声明：Core 按所属 Shot 的视图填继承默认值（有视图 reference，无视图 none）。
+    # null 表示未声明：Core 按本 Segment 首个/末个覆盖 Shot 的视图填继承默认值。
+    start_environment_mode: str | None = None
+    start_environment_view_id: str | None = None
+    start_environment_none_reason: str | None = None
+    start_character_references: tuple[KeyframeCharacterReferenceProposal, ...] = ()
     end_environment_mode: str | None = None
     end_environment_view_id: str | None = None
     end_environment_none_reason: str | None = None
     end_character_references: tuple[KeyframeCharacterReferenceProposal, ...] = ()
 
     def __post_init__(self) -> None:
+        if type(self.continues_from_previous) is not bool:
+            raise ValueError("Segment 是否承接上一 Segment 必须是布尔值。")
         if self.frame_strategy not in {"start", "end", "both"}:
             raise ValueError("Segment 关键帧策略必须是 start、end 或 both。")
         if not self.end_prompt_text.strip() or len(self.end_prompt_text) > 18_000:
@@ -131,24 +169,35 @@ class KeyframeSegmentProposal:
                 self.end_environment_none_reason,
             ),
         )
-
-
-@dataclass(frozen=True, slots=True)
-class KeyframeShotProposal:
-    shot_id: str
-    continues_from_previous_shot: bool
-    start_prompt_text: str
-    start_visible_character_ids: tuple[str, ...]
-    segments: tuple[KeyframeSegmentProposal, ...]
-    # null 表示未声明：Core 按所属 Shot 的视图填继承默认值（有视图 reference，无视图 none）。
-    start_environment_mode: str | None = None
-    start_environment_view_id: str | None = None
-    start_environment_none_reason: str | None = None
-    start_character_references: tuple[KeyframeCharacterReferenceProposal, ...] = ()
-
-    def __post_init__(self) -> None:
+        if self.continues_from_previous:
+            # 承接时首帧就是上一 Segment 的尾帧：只允许空值，避免模型重复设计同一画面。
+            if self.start_prompt_text.strip():
+                raise ValueError(
+                    "承接上一 Segment 时首帧沿用上一 Segment 的尾帧，"
+                    "start_prompt_text 必须为空字符串。"
+                )
+            if self.start_visible_character_ids:
+                raise ValueError(
+                    "承接上一 Segment 时不能单独给出首帧可见角色；"
+                    "请清空 start_visible_character_ids。"
+                )
+            if self.start_character_references:
+                raise ValueError(
+                    "承接上一 Segment 时不能单独给出首帧角色造型；"
+                    "请清空 start_character_references。"
+                )
+            if (
+                self.start_environment_mode is not None
+                or self.start_environment_view_id is not None
+                or self.start_environment_none_reason is not None
+            ):
+                raise ValueError(
+                    "承接上一 Segment 时首帧沿用上一 Segment 的环境字段；"
+                    "start_environment_* 必须全部为 null。"
+                )
+            return
         if not self.start_prompt_text.strip() or len(self.start_prompt_text) > 18_000:
-            raise ValueError("Shot 首帧提示词不能为空或过长。")
+            raise ValueError("Segment 首帧提示词不能为空或过长。")
         _validate_character_ids(self.start_visible_character_ids)
         _validate_character_references(
             self.start_character_references, self.start_visible_character_ids
@@ -162,21 +211,16 @@ class KeyframeShotProposal:
                 self.start_environment_none_reason,
             ),
         )
-        if not self.segments:
-            raise ValueError("每个 Shot 必须包含 Segment 尾帧计划。")
-        ids = [item.segment_id for item in self.segments]
-        if len(ids) != len(set(ids)):
-            raise ValueError("Segment 计划不能重复。")
 
 
 @dataclass(frozen=True, slots=True)
 class KeyframePlanProposal:
-    shots: tuple[KeyframeShotProposal, ...]
+    segments: tuple[KeyframeSegmentProposal, ...]
 
     def __post_init__(self) -> None:
-        ids = [item.shot_id for item in self.shots]
+        ids = [item.segment_id for item in self.segments]
         if not ids or len(ids) != len(set(ids)):
-            raise ValueError("关键帧计划必须包含不重复的 Shot。")
+            raise ValueError("关键帧计划必须包含不重复的 Segment。")
 
 
 @dataclass(frozen=True, slots=True)

@@ -78,3 +78,27 @@ def test_share_partner_deleted_keeps_original_keyframe_identity():
         None,
     )
     assert "1" * 32 not in frames
+
+
+def test_new_segment_defaults_follow_first_and_last_covered_shot_views():
+    from core.structured_director.models import KeyframeEnvironmentMode
+
+    first = SimpleNamespace(id="e" * 32, view_id="6" * 32)
+    second = SimpleNamespace(id="f" * 32, view_id="7" * 32)
+    segment = SimpleNamespace(id=D, shot_ids=(first.id, second.id))
+    scenes = (SimpleNamespace(shots=(first, second), segments=(segment,)),)
+    plan = _rebase_keyframe_plan(_plan(), source_script_revision=2, scenes=scenes)
+    binding = _bindings(plan)[D]
+    frames = {item.id: item for item in plan.keyframes}
+    start = frames[binding.start_keyframe_id]
+    end = frames[binding.end_keyframe_id]
+    assert (
+        start.environment_mode,
+        start.environment_view_id,
+        start.environment_none_reason,
+    ) == (KeyframeEnvironmentMode.REFERENCE, first.view_id, None)
+    assert (
+        end.environment_mode,
+        end.environment_view_id,
+        end.environment_none_reason,
+    ) == (KeyframeEnvironmentMode.REFERENCE, second.view_id, None)

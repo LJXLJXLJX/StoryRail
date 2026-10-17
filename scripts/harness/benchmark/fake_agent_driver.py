@@ -49,7 +49,6 @@ from core.director_proposals import (  # noqa: E402
     DialogueLineProposal,
     KeyframePlanProposal,
     KeyframeSegmentProposal,
-    KeyframeShotProposal,
     NarratorProfileProposal,
     ReferenceLibraryProposal,
     SceneProposal,
@@ -213,37 +212,29 @@ def _script_proposal(character_id: str) -> StructuredDirectorScriptProposal:
     )
 
 
-def _keyframe_plan(store: StructuredDirectorStore, target_shot_ids: tuple[str, ...]):
+def _keyframe_plan(store: StructuredDirectorStore, target_segment_ids: tuple[str, ...]):
     document = store.read()
-    scenes, shots, boundaries = keyframe_inputs(document, target_shot_ids)
+    scenes, segments, boundaries = keyframe_inputs(document, target_segment_ids)
     proposals = []
     for scene in scenes:
-        for shot in scene.shots:
-            if not shot.planning_enabled:
-                continue
-            character_ids = tuple(item.id for item in shot.visible_characters)
-            proposals.append(
-                KeyframeShotProposal(
-                    shot_id=shot.id,
-                    continues_from_previous_shot=False,
-                    start_prompt_text=f"{scene.title}的静态首帧。",
-                    start_visible_character_ids=character_ids,
-                    start_environment_mode=None,
-                    start_environment_view_id=None,
-                    segments=tuple(
-                        KeyframeSegmentProposal(
-                            segment_id=segment.id,
-                            frame_strategy="both",
-                            end_prompt_text=f"{scene.title}的静态尾帧。",
-                            end_visible_character_ids=character_ids,
-                            end_environment_mode=None,
-                            end_environment_view_id=None,
-                        )
-                        for segment in shot.segments
-                    ),
+        previous_end = None
+        for segment in scene.segments:
+            continues = previous_end is not None and segment.start_keyframe_id == previous_end
+            if segment.planning_enabled:
+                character_ids = tuple(item.id for item in segment.visible_characters)
+                proposals.append(
+                    KeyframeSegmentProposal(
+                        segment_id=segment.id,
+                        continues_from_previous=continues,
+                        frame_strategy="both",
+                        start_prompt_text=("" if continues else f"{scene.title}的静态首帧。"),
+                        start_visible_character_ids=(() if continues else character_ids),
+                        end_prompt_text=f"{scene.title}的静态尾帧。",
+                        end_visible_character_ids=character_ids,
+                    )
                 )
-            )
-    return KeyframePlanProposal(tuple(proposals)), shots, boundaries
+            previous_end = segment.end_keyframe_id
+    return KeyframePlanProposal(tuple(proposals)), segments, boundaries
 
 
 async def bootstrap(store, service, stage: str) -> dict[str, Any]:
@@ -281,9 +272,9 @@ async def bootstrap(store, service, stage: str) -> dict[str, Any]:
     document = await service.confirm_script(expected_revision=document.revision)
     script = store.read().director_script
     scene_ids = tuple(scene.id for scene in script.scenes)
-    shot_ids = tuple(shot.id for scene in script.scenes for shot in scene.shots)
+    segment_ids = tuple(segment.id for scene in script.scenes for segment in scene.segments)
     base["scene_ids"] = list(scene_ids)
-    base["shot_ids"] = list(shot_ids)
+    base["segment_ids"] = list(segment_ids)
     base["expected_revision"] = store.read().revision
     if stage == "timing":
         return base
@@ -294,10 +285,12 @@ async def bootstrap(store, service, stage: str) -> dict[str, Any]:
         return base
 
     document, _recovery = store.begin_keyframe_plan(
-        expected_revision=document.revision, target_ids=shot_ids
+        expected_revision=document.revision, target_ids=segment_ids
     )
-    plan, shots, boundaries = _keyframe_plan(store, shot_ids)
-    store.apply_keyframe_plan(plan, target_shot_ids=shots, required_shared_boundaries=boundaries)
+    plan, segments, boundaries = _keyframe_plan(store, segment_ids)
+    store.apply_keyframe_plan(
+        plan, target_segment_ids=segments, required_shared_boundaries=boundaries
+    )
     base["expected_revision"] = store.read().revision
     await _finish_keyframe_generations(service)
     document = store.read()
@@ -454,36 +447,32 @@ def _keyframe_payload(workset: dict[str, Any]) -> dict[str, Any]:
     scenes = workset["core_facts"]["scenes"]
     proposals = []
     for scene in scenes:
-        for shot in scene["shots"]:
-            if not shot.get("planning_enabled", True):
-                continue
-            character_ids = [item["id"] for item in shot.get("visible_characters", [])]
-            proposals.append(
-                {
-                    "shot_id": shot["id"],
-                    "continues_from_previous_shot": False,
-                    "start_prompt_text": f"{scene['title']}的静态首帧。",
-                    "start_visible_character_ids": character_ids,
-                    "start_character_references": [],
-                    "start_environment_mode": None,
-                    "start_environment_view_id": None,
-                    "start_environment_none_reason": None,
-                    "segments": [
-                        {
-                            "segment_id": segment["id"],
-                            "frame_strategy": "both",
-                            "end_prompt_text": f"{scene['title']}的静态尾帧。",
-                            "end_visible_character_ids": character_ids,
-                            "end_character_references": [],
-                            "end_environment_mode": None,
-                            "end_environment_view_id": None,
-                            "end_environment_none_reason": None,
-                        }
-                        for segment in shot["segments"]
-                    ],
-                }
-            )
-    return {"shots": proposals}
+        previous_end = None
+        for segment in scene["segments"]:
+            continues = previous_end is not None and segment["start_keyframe_id"] == previous_end
+            if segment.get("planning_enabled", True):
+                character_ids = [item["id"] for item in segment.get("visible_characters", [])]
+                proposals.append(
+                    {
+                        "segment_id": segment["id"],
+                        "continues_from_previous": continues,
+                        "frame_strategy": "both",
+                        "start_prompt_text": ("" if continues else f"{scene['title']}的静态首帧。"),
+                        "start_visible_character_ids": ([] if continues else character_ids),
+                        "start_character_references": [],
+                        "start_environment_mode": None,
+                        "start_environment_view_id": None,
+                        "start_environment_none_reason": None,
+                        "end_prompt_text": f"{scene['title']}的静态尾帧。",
+                        "end_visible_character_ids": character_ids,
+                        "end_character_references": [],
+                        "end_environment_mode": None,
+                        "end_environment_view_id": None,
+                        "end_environment_none_reason": None,
+                    }
+                )
+            previous_end = segment["end_keyframe_id"]
+    return {"segments": proposals}
 
 
 def _location_payload(workset: dict[str, Any]) -> dict[str, Any]:

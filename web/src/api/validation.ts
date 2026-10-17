@@ -5879,21 +5879,28 @@ const schemas: Record<string, JsonSchema> = {
   "KeyframePlanProposal": {
     "type": "object",
     "properties": {
-      "shots": {
+      "segments": {
         "type": "array",
         "items": {
           "type": "object",
           "properties": {
-            "shot_id": {
+            "segment_id": {
               "type": "string",
               "pattern": "^[0-9a-f]{32}$"
             },
-            "continues_from_previous_shot": {
+            "continues_from_previous": {
               "type": "boolean"
+            },
+            "frame_strategy": {
+              "type": "string",
+              "enum": [
+                "start",
+                "end",
+                "both"
+              ]
             },
             "start_prompt_text": {
               "type": "string",
-              "minLength": 1,
               "maxLength": 18000
             },
             "start_visible_character_ids": {
@@ -5903,114 +5910,17 @@ const schemas: Record<string, JsonSchema> = {
                 "pattern": "^[0-9a-f]{32}$"
               }
             },
-            "segments": {
+            "end_prompt_text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 18000
+            },
+            "end_visible_character_ids": {
               "type": "array",
               "items": {
-                "type": "object",
-                "properties": {
-                  "segment_id": {
-                    "type": "string",
-                    "pattern": "^[0-9a-f]{32}$"
-                  },
-                  "frame_strategy": {
-                    "type": "string",
-                    "enum": [
-                      "start",
-                      "end",
-                      "both"
-                    ]
-                  },
-                  "end_prompt_text": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 18000
-                  },
-                  "end_visible_character_ids": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "pattern": "^[0-9a-f]{32}$"
-                    }
-                  },
-                  "end_environment_mode": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "edit",
-                          "reference",
-                          "none"
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "end_environment_view_id": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "pattern": "^[0-9a-f]{32}$"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "end_environment_none_reason": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 500
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "end_character_references": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "character_id": {
-                          "type": "string",
-                          "pattern": "^[0-9a-f]{32}$"
-                        },
-                        "look_id": {
-                          "anyOf": [
-                            {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{32}$"
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "character_id",
-                        "look_id"
-                      ],
-                      "additionalProperties": false
-                    }
-                  }
-                },
-                "required": [
-                  "segment_id",
-                  "frame_strategy",
-                  "end_prompt_text",
-                  "end_visible_character_ids",
-                  "end_environment_mode",
-                  "end_environment_view_id",
-                  "end_environment_none_reason",
-                  "end_character_references"
-                ],
-                "additionalProperties": false
-              },
-              "minItems": 1
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$"
+              }
             },
             "start_environment_mode": {
               "anyOf": [
@@ -6076,25 +5986,96 @@ const schemas: Record<string, JsonSchema> = {
                 ],
                 "additionalProperties": false
               }
+            },
+            "end_environment_mode": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "edit",
+                    "reference",
+                    "none"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "end_environment_view_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{32}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "end_environment_none_reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "end_character_references": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "character_id": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{32}$"
+                  },
+                  "look_id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{32}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "character_id",
+                  "look_id"
+                ],
+                "additionalProperties": false
+              }
             }
           },
           "required": [
-            "shot_id",
-            "continues_from_previous_shot",
+            "segment_id",
+            "continues_from_previous",
+            "frame_strategy",
             "start_prompt_text",
             "start_visible_character_ids",
-            "segments",
+            "end_prompt_text",
+            "end_visible_character_ids",
             "start_environment_mode",
             "start_environment_view_id",
             "start_environment_none_reason",
-            "start_character_references"
+            "start_character_references",
+            "end_environment_mode",
+            "end_environment_view_id",
+            "end_environment_none_reason",
+            "end_character_references"
           ],
           "additionalProperties": false
         }
       }
     },
     "required": [
-      "shots"
+      "segments"
     ],
     "additionalProperties": false
   },

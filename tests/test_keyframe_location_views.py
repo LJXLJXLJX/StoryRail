@@ -27,7 +27,6 @@ from core.director_proposals import (
     KeyframeSegmentInput,
     KeyframeSegmentProposal,
     KeyframeShotInput,
-    KeyframeShotProposal,
 )
 from core.director_proposals.keyframe_codec import compile_keyframe_proposal, parse_keyframe_plan
 from core.model_providers.boundary import GenerationPhase
@@ -49,7 +48,7 @@ from core.structured_director.models import (
 )
 from core.structured_director.planning_inputs import keyframe_inputs
 from core.structured_director.reads.read_tools import execute_project_read
-from core.structured_director.script_index import shot_segments
+from core.structured_director.script_index import segment_view_ids, shot_segments
 
 VIEW = "7" * 32
 
@@ -121,15 +120,18 @@ def test_unlock_inherits_shot_view_as_explicit_reference(tmp_path):
     _store, _service, document = asyncio.run(_unlocked(tmp_path))
     frames = _frames(document)
     for scene in document.director_script.scenes:
-        for shot in scene.shots:
-            assert shot.view_id is not None
-            for segment in shot_segments(scene, shot.id):
-                binding = _binding(document, segment.id)
-                for frame_id in (binding.start_keyframe_id, binding.end_keyframe_id):
-                    frame = frames[frame_id]
-                    assert frame.environment_mode is KeyframeEnvironmentMode.REFERENCE
-                    assert frame.environment_view_id == shot.view_id
-                    assert frame.environment_none_reason is None
+        for segment in scene.segments:
+            start_view_id, end_view_id = segment_view_ids(scene, segment.id)
+            assert start_view_id is not None and end_view_id is not None
+            binding = _binding(document, segment.id)
+            for frame_id, view_id in (
+                (binding.start_keyframe_id, start_view_id),
+                (binding.end_keyframe_id, end_view_id),
+            ):
+                frame = frames[frame_id]
+                assert frame.environment_mode is KeyframeEnvironmentMode.REFERENCE
+                assert frame.environment_view_id == view_id
+                assert frame.environment_none_reason is None
 
 
 def test_unlock_without_shot_view_writes_none_without_reason(tmp_path):
@@ -194,28 +196,32 @@ def test_rebinding_keeps_frames_and_rebuild_gives_new_segments_current_default(t
 # --- Planner proposal：未声明继承、none 理由可选、锁定节点不改写 ---
 
 
-def _scene(view_id, *, locked=False):
+def _scene(view_id, *, locked=False, end_view_id=None):
+    start_view = view_id
+    last_view = view_id if end_view_id is None else end_view_id
     return KeyframeSceneInput(
         "5" * 32,
         "客厅",
         "室内。",
         (
-            KeyframeShotInput(
-                "1" * 32,
-                "中景。",
-                "固定。",
+            KeyframeSegmentInput(
+                "2" * 32,
                 "角色坐下。",
-                (),
                 (
-                    KeyframeSegmentInput(
-                        "2" * 32,
+                    KeyframeShotInput(
+                        "1" * 32,
+                        "中景。",
+                        "固定。",
                         "角色坐下。",
-                        start_keyframe_id="3" * 32,
-                        end_keyframe_id="4" * 32,
-                        start_locked=locked,
+                        (),
+                        view_id=start_view,
                     ),
                 ),
-                view_id=view_id,
+                start_keyframe_id="3" * 32,
+                end_keyframe_id="4" * 32,
+                start_locked=locked,
+                start_view_id=start_view,
+                end_view_id=last_view,
             ),
         ),
         available_view_ids=(VIEW, "8" * 32),
@@ -225,12 +231,15 @@ def _scene(view_id, *, locked=False):
 def _proposal(**environment):
     return KeyframePlanProposal(
         (
-            KeyframeShotProposal(
-                "1" * 32,
+            KeyframeSegmentProposal(
+                "2" * 32,
                 False,
+                "both",
                 "角色站在沙发旁。",
                 (),
-                (KeyframeSegmentProposal("2" * 32, "both", "角色坐在沙发上。", (), **environment),),
+                "角色坐在沙发上。",
+                (),
+                **environment,
             ),
         )
     )
@@ -289,21 +298,21 @@ def test_planner_explicit_none_reason_is_optional():
 def test_planner_wire_schema_accepts_none_without_reason():
     def raw(mode, reason):
         return (
-            '{"shots":[{"shot_id":"' + "1" * 32 + '","continues_from_previous_shot":false,'
-            '"start_prompt_text":"站着。","start_visible_character_ids":[],'
-            '"start_character_references":[],"start_environment_mode":null,'
-            '"start_environment_view_id":null,"start_environment_none_reason":null,'
-            '"segments":[{"segment_id":"' + "2" * 32 + '","frame_strategy":"both",'
-            '"end_prompt_text":"坐下。","end_visible_character_ids":[],'
-            f'"end_character_references":[],"end_environment_mode":{mode},'
-            f'"end_environment_view_id":null,"end_environment_none_reason":{reason}}}]}}]}}'
+            '{"segments":[{"segment_id":"' + "2" * 32 + '","continues_from_previous":false,'
+            '"frame_strategy":"both","start_prompt_text":"站着。",'
+            '"start_visible_character_ids":[],"start_character_references":[],'
+            '"start_environment_mode":null,"start_environment_view_id":null,'
+            '"start_environment_none_reason":null,"end_prompt_text":"坐下。",'
+            '"end_visible_character_ids":[],"end_character_references":[],'
+            f'"end_environment_mode":{mode},"end_environment_view_id":null,'
+            f'"end_environment_none_reason":{reason}}}]}}'
         )
 
     parsed = parse_keyframe_plan(raw("null", "null"))
-    assert parsed.shots[0].segments[0].end_environment_mode is None
-    assert parse_keyframe_plan(raw('"none"', '"空镜"')).shots[0].segments[0].end_environment_mode
+    assert parsed.segments[0].end_environment_mode is None
+    assert parse_keyframe_plan(raw('"none"', '"空镜"')).segments[0].end_environment_mode
     for reason in ("null", '""'):
-        segment = parse_keyframe_plan(raw('"none"', reason)).shots[0].segments[0]
+        segment = parse_keyframe_plan(raw('"none"', reason)).segments[0]
         assert (segment.end_environment_mode, segment.end_environment_none_reason) == ("none", None)
 
 
@@ -323,22 +332,21 @@ def test_planner_proposal_end_to_end_inherits_none_without_reason(tmp_path):
         return store.read(), shot
 
     document, shot = asyncio.run(run())
+    segment = segments_of_shot(document, shot)[0]
     proposal = KeyframePlanProposal(
         (
-            KeyframeShotProposal(
-                shot.id,
+            KeyframeSegmentProposal(
+                segment.id,
                 False,
+                "both",
                 "甲抬头。",
                 (),
-                (
-                    KeyframeSegmentProposal(
-                        segments_of_shot(document, shot)[0].id, "both", "甲看向门口。", ()
-                    ),
-                ),
+                "甲看向门口。",
+                (),
             ),
         )
     )
-    scenes, _targets, _ = keyframe_inputs(document, (shot.id,))
+    scenes, _targets, _ = keyframe_inputs(document, (segment.id,))
     _out, operations = compile_keyframe_proposal(proposal, scenes)
     execution = _apply_keyframe_operations(document, operations).document
     binding = _binding(execution, segments_of_shot(execution, shot)[0].id)
@@ -456,7 +464,7 @@ def test_over_quota_rejects_and_lists_squeezed_inputs_in_priority_order(tmp_path
     )
     assert squeezed in message
     assert names[ids["view"]] not in message
-    assert message.startswith("Scene 1 Shot 1 Segment 1 尾帧的地点视图、角色参考、前置帧与辅助参考")
+    assert message.startswith("Scene 1 Segment 1 尾帧的地点视图、角色参考、前置帧与辅助参考")
 
 
 def test_unselected_view_allows_planning_but_rejects_generation(tmp_path):
@@ -550,7 +558,7 @@ def test_prompt_text_for_edit_and_reference(tmp_path, qwen):
 # --- 工作集 ---
 
 
-def test_keyframe_workset_exposes_shot_view_and_location_views(tmp_path):
+def test_keyframe_workset_exposes_segment_shot_views_and_location_views(tmp_path):
     _store, _service, document = asyncio.run(_unlocked(tmp_path))
     scene = document.director_script.scenes[0]
     facts = execute_project_read(
@@ -558,7 +566,9 @@ def test_keyframe_workset_exposes_shot_view_and_location_views(tmp_path):
         "project.get_workset",
         {"capability": "keyframe", "scope": {"scene_ids": [scene.id]}},
     )["core_facts"]
-    assert facts["scenes"][0]["shots"][0]["view_id"] == scene.shots[0].view_id
+    first_segment = facts["scenes"][0]["segments"][0]
+    assert first_segment["shots"][0]["view_id"] == scene.shots[0].view_id
+    assert first_segment["start_view_id"] == scene.shots[0].view_id
     assert "location_library" not in facts
     expected = []
     for location in document.location_library.locations:

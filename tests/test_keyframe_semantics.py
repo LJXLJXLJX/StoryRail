@@ -2,13 +2,11 @@
 
 import json
 import unittest
-from dataclasses import replace
-
-from test_keyframe_planner import _one_shot_response, _one_shot_scene
 
 from core.director_commands import (
     SetKeyframeActivation,
     ShareKeyframeBoundary,
+    SplitKeyframeBoundary,
     UpdateKeyframeFields,
 )
 from core.director_proposals import (
@@ -24,6 +22,8 @@ from core.director_proposals.keyframe_codec import (
 )
 from core.director_proposals.schema_gen import ProposalError
 
+CHARACTER = KeyframeCharacterInput("a" * 32, "Jack")
+
 
 def compile_fixture(raw, *, scenes, required_shared_boundaries=(), **unused):
     proposal, operations = compile_keyframe_proposal(
@@ -34,69 +34,106 @@ def compile_fixture(raw, *, scenes, required_shared_boundaries=(), **unused):
     )
 
 
+def _shot(shot_id: str, characters=()) -> KeyframeShotInput:
+    return KeyframeShotInput(shot_id, "中景。", "固定。", "环境变化。", tuple(characters))
+
+
+def _scene(
+    segments: tuple[KeyframeSegmentInput, ...],
+) -> KeyframeSceneInput:
+    return KeyframeSceneInput("9" * 32, "Scene", "安静的空间。", segments)
+
+
+def _plan(segments: list[dict]) -> str:
+    return json.dumps({"segments": segments})
+
+
+def _segment_plan(
+    segment_id: str,
+    *,
+    continues: bool = False,
+    strategy: str = "both",
+    start_prompt: str = "起始状态。",
+    start_ids: tuple[str, ...] = (),
+    end_prompt: str = "结束状态。",
+    end_ids: tuple[str, ...] = (),
+    mode: str | None = None,
+    view_id: str | None = None,
+) -> dict:
+    return {
+        "segment_id": segment_id,
+        "continues_from_previous": continues,
+        "frame_strategy": strategy,
+        "start_prompt_text": "" if continues else start_prompt,
+        "start_visible_character_ids": [] if continues else list(start_ids),
+        "start_character_references": [],
+        "start_environment_mode": None if continues else mode,
+        "start_environment_view_id": None if continues else view_id,
+        "start_environment_none_reason": None,
+        "end_prompt_text": end_prompt,
+        "end_visible_character_ids": list(end_ids),
+        "end_character_references": [],
+        "end_environment_mode": mode,
+        "end_environment_view_id": view_id,
+        "end_environment_none_reason": None,
+    }
+
+
 class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
-    async def test_pure_single_anchor_must_cover_characters_at_both_endpoints(self) -> None:
-        character = KeyframeCharacterInput("a" * 32, "Jack")
-        base = _one_shot_scene("1" * 32, "2" * 32, "3" * 32)
-        scene = replace(
-            base,
-            shots=(
-                replace(
-                    base.shots[0],
-                    visible_characters=(character,),
-                    composition="电台局部与人物所在房间。",
-                    camera_movement="沿原轴线推近或拉远。",
+    async def test_single_anchor_must_cover_characters_at_both_endpoints(self) -> None:
+        scene = _scene(
+            (
+                KeyframeSegmentInput(
+                    "2" * 32,
+                    "环境变化。",
+                    (_shot("1" * 32, (CHARACTER,)),),
+                    visible_characters=(CHARACTER,),
                 ),
-            ),
+            )
         )
         for strategy, start_ids, end_ids, expected in (
-            ("start", [], [character.id], "both"),
-            ("end", [character.id], [], "both"),
-            ("start", [character.id], [character.id], "start"),
-            ("end", [character.id], [character.id], "end"),
+            ("start", [], [CHARACTER.id], "both"),
+            ("end", [CHARACTER.id], [], "both"),
+            ("start", [CHARACTER.id], [CHARACTER.id], "start"),
+            ("end", [CHARACTER.id], [CHARACTER.id], "end"),
             ("start", [], [], "start"),
         ):
             with self.subTest(strategy=strategy, start=start_ids, end=end_ids):
-                value = json.loads(_one_shot_response("2" * 32, "3" * 32))
-                shot = value["shots"][0]
-                shot["start_visible_character_ids"] = start_ids
-                segment = shot["segments"][0]
-                segment["end_visible_character_ids"] = end_ids
-                segment["frame_strategy"] = strategy
-                adapter = json.dumps(value)
-                result = compile_fixture(adapter, scenes=(scene,))
-                actual = result.shots[0]
-                self.assertEqual(actual.segments[0].frame_strategy, expected)
+                plan = _segment_plan(
+                    "2" * 32,
+                    strategy=strategy,
+                    start_ids=tuple(start_ids),
+                    end_ids=tuple(end_ids),
+                )
+                result = compile_fixture(_plan([plan]), scenes=(scene,))
+                actual = result.segments[0]
+                self.assertEqual(actual.frame_strategy, expected)
                 self.assertEqual(list(actual.start_visible_character_ids), start_ids)
-                self.assertEqual(list(actual.segments[0].end_visible_character_ids), end_ids)
+                self.assertEqual(list(actual.end_visible_character_ids), end_ids)
 
-    async def test_pure_internal_boundaries_follow_planner_strategy(self) -> None:
-        """Shot 内边界不再被强制两侧启用；独立首帧继承上一段尾帧描述作为连续性起点。"""
-        base = _one_shot_scene("1" * 32, "2" * 32, "3" * 32)
+    async def test_independent_segments_follow_planner_strategy(self) -> None:
+        """相邻 Segment 独立边界时按各自策略启用，不强制共享。"""
         for strategy in ("start", "end"):
             for with_slots in (False, True):
                 with self.subTest(strategy=strategy, with_slots=with_slots):
-                    inputs, outputs = ([], [])
+                    segments, plans = ([], [])
                     for index in range(3):
                         segment_id = f"{index + 3:032x}"
-                        inputs.append(
+                        segments.append(
                             KeyframeSegmentInput(
                                 segment_id,
                                 "沿同一镜头继续运动。",
+                                (_shot(f"{index + 1:032x}"),),
                                 start_keyframe_id=(
                                     f"{index * 2 + 10:032x}" if with_slots else None
                                 ),
-                                end_keyframe_id=f"{index * 2 + 11:032x}" if with_slots else None,
+                                end_keyframe_id=(f"{index * 2 + 11:032x}" if with_slots else None),
                             )
                         )
-                        output = json.loads(_one_shot_response("2" * 32, segment_id))
-                        segment = output["shots"][0]["segments"][0]
-                        segment["frame_strategy"] = strategy
-                        outputs.append(segment)
-                    value = json.loads(_one_shot_response("2" * 32, "3" * 32))
-                    value["shots"][0]["segments"] = outputs
-                    scene = replace(base, shots=(replace(base.shots[0], segments=tuple(inputs)),))
-                    result = compile_fixture(json.dumps(value), scenes=(scene,))
+                        plans.append(
+                            _segment_plan(segment_id, strategy=strategy, end_prompt="结束状态。")
+                        )
+                    result = compile_fixture(_plan(plans), scenes=(_scene(tuple(segments)),))
                     expected = [(True, False)] * 3 if strategy == "start" else [(False, True)] * 3
                     if with_slots:
                         activations = [
@@ -110,26 +147,26 @@ class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
                         )
                         self.assertFalse(
                             any(
-                                isinstance(item, ShareKeyframeBoundary)
+                                isinstance(item, (ShareKeyframeBoundary, SplitKeyframeBoundary))
                                 for item in result.operations
                             )
                         )
-                        start_updates = {
-                            item.keyframe_id: item
+                        updates = {
+                            item.keyframe_id
                             for item in result.operations
                             if isinstance(item, UpdateKeyframeFields)
-                            and item.keyframe_id
-                            in {segment.start_keyframe_id for segment in inputs[1:]}
                         }
                         self.assertEqual(
-                            set(start_updates),
-                            {segment.start_keyframe_id for segment in inputs[1:]},
+                            updates,
+                            {
+                                keyframe_id
+                                for segment in segments
+                                for keyframe_id in (
+                                    segment.start_keyframe_id,
+                                    segment.end_keyframe_id,
+                                )
+                            },
                         )
-                        for previous, current in zip(outputs, inputs[1:], strict=False):
-                            self.assertEqual(
-                                start_updates[current.start_keyframe_id].prompt_text,
-                                previous["end_prompt_text"].strip(),
-                            )
                     else:
                         self.assertEqual(
                             [
@@ -137,70 +174,48 @@ class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
                                     item.frame_strategy in {"start", "both"},
                                     item.frame_strategy in {"end", "both"},
                                 )
-                                for item in result.shots[0].segments
+                                for item in result.segments
                             ],
                             expected,
                         )
 
-    async def test_pure_coverage_normalization_preserves_locked_segments(
-        self,
-    ) -> None:
-        character = KeyframeCharacterInput("a" * 32, "Jack")
-        base = _one_shot_scene("1" * 32, "2" * 32, "3" * 32)
-        value = json.loads(_one_shot_response("2" * 32, "3" * 32))
-        value["shots"][0]["segments"][0]["end_visible_character_ids"] = [character.id]
-        scene = replace(
-            base,
-            shots=(
-                replace(
-                    base.shots[0],
-                    visible_characters=(character,),
-                    segments=(
-                        replace(
-                            base.shots[0].segments[0],
-                            start_keyframe_id="4" * 32,
-                            end_keyframe_id="5" * 32,
-                            start_locked=True,
-                        ),
-                    ),
+    async def test_coverage_normalization_preserves_locked_segments(self) -> None:
+        scene = _scene(
+            (
+                KeyframeSegmentInput(
+                    "2" * 32,
+                    "环境变化。",
+                    (_shot("1" * 32, (CHARACTER,)),),
+                    start_keyframe_id="4" * 32,
+                    end_keyframe_id="5" * 32,
+                    start_locked=True,
+                    visible_characters=(CHARACTER,),
                 ),
-            ),
+            )
         )
-        result = compile_fixture(json.dumps(value), scenes=(scene,))
+        result = compile_fixture(
+            _plan([_segment_plan("2" * 32, end_ids=(CHARACTER.id,))]), scenes=(scene,)
+        )
         self.assertIsInstance(result, KeyframeOperationsProposal)
         self.assertEqual(result.operations, ())
 
-    async def test_pure_compiles_creative_plan_to_existing_slot_operations(self) -> None:
-        shot_id = "1" * 32
-        segment_id = "2" * 32
-        start_id = "3" * 32
-        end_id = "4" * 32
-        adapter = _one_shot_response(shot_id, segment_id)
-        scene = KeyframeSceneInput(
-            "5" * 32,
-            "Scene",
-            "安静的空间。",
+    async def test_compiles_creative_plan_to_existing_slot_operations(self) -> None:
+        start_id, end_id, segment_id = "3" * 32, "4" * 32, "2" * 32
+        scene = _scene(
             (
-                KeyframeShotInput(
-                    shot_id,
-                    "中景。",
-                    "固定。",
+                KeyframeSegmentInput(
+                    segment_id,
                     "环境变化。",
-                    (),
-                    (
-                        KeyframeSegmentInput(
-                            segment_id,
-                            "环境变化。",
-                            start_keyframe_id=start_id,
-                            end_keyframe_id=end_id,
-                        ),
-                    ),
+                    (_shot("1" * 32),),
+                    start_keyframe_id=start_id,
+                    end_keyframe_id=end_id,
                 ),
-            ),
+            )
         )
-        proposal = compile_fixture(adapter, scenes=(scene,))
+        proposal = compile_fixture(
+            _plan([_segment_plan(segment_id, strategy="start")]), scenes=(scene,)
+        )
         self.assertIsInstance(proposal, KeyframeOperationsProposal)
-        assert isinstance(proposal, KeyframeOperationsProposal)
         updates = [item for item in proposal.operations if isinstance(item, UpdateKeyframeFields)]
         activations = [
             item for item in proposal.operations if isinstance(item, SetKeyframeActivation)
@@ -210,69 +225,38 @@ class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(activations[0].start_enabled)
         self.assertFalse(activations[0].end_enabled)
 
-    async def test_pure_compiler_preserves_segment_when_either_slot_is_locked(self) -> None:
-        shot_id = "1" * 32
-        segment_id = "2" * 32
-        adapter = _one_shot_response(shot_id, segment_id)
-        scene = KeyframeSceneInput(
-            "5" * 32,
-            "Scene",
-            "安静的空间。",
+    async def test_compiler_preserves_segment_when_either_slot_is_locked(self) -> None:
+        scene = _scene(
             (
-                KeyframeShotInput(
-                    shot_id,
-                    "中景。",
-                    "固定。",
+                KeyframeSegmentInput(
+                    "2" * 32,
                     "环境变化。",
-                    (),
-                    (
-                        KeyframeSegmentInput(
-                            segment_id,
-                            "环境变化。",
-                            start_keyframe_id="3" * 32,
-                            end_keyframe_id="4" * 32,
-                            start_locked=True,
-                        ),
-                    ),
+                    (_shot("1" * 32),),
+                    start_keyframe_id="3" * 32,
+                    end_keyframe_id="4" * 32,
+                    start_locked=True,
                 ),
-            ),
+            )
         )
-        proposal = compile_fixture(adapter, scenes=(scene,))
+        proposal = compile_fixture(_plan([_segment_plan("2" * 32)]), scenes=(scene,))
         self.assertIsInstance(proposal, KeyframeOperationsProposal)
-        assert isinstance(proposal, KeyframeOperationsProposal)
         self.assertEqual(proposal.operations, ())
 
-    async def test_pure_compiles_creative_plan_to_current_keyframe_operations(self) -> None:
-        shot_id = "1" * 32
-        segment_id = "2" * 32
-        start_id = "3" * 32
-        end_id = "4" * 32
-        adapter = _one_shot_response(shot_id, segment_id)
-        scene = KeyframeSceneInput(
-            "5" * 32,
-            "Scene",
-            "安静的空间。",
+    async def test_compiles_creative_plan_to_current_keyframe_operations(self) -> None:
+        start_id, end_id, segment_id = "3" * 32, "4" * 32, "2" * 32
+        scene = _scene(
             (
-                KeyframeShotInput(
-                    shot_id,
-                    "中景。",
-                    "固定。",
+                KeyframeSegmentInput(
+                    segment_id,
                     "环境变化。",
-                    (),
-                    (
-                        KeyframeSegmentInput(
-                            segment_id,
-                            "环境变化。",
-                            start_keyframe_id=start_id,
-                            end_keyframe_id=end_id,
-                        ),
-                    ),
+                    (_shot("1" * 32),),
+                    start_keyframe_id=start_id,
+                    end_keyframe_id=end_id,
                 ),
-            ),
+            )
         )
-        proposal = compile_fixture(adapter, scenes=(scene,))
+        proposal = compile_fixture(_plan([_segment_plan(segment_id)]), scenes=(scene,))
         self.assertIsInstance(proposal, KeyframeOperationsProposal)
-        assert isinstance(proposal, KeyframeOperationsProposal)
         self.assertEqual(len(proposal.operations), 3)
         self.assertIsInstance(proposal.operations[0], UpdateKeyframeFields)
         self.assertEqual(proposal.operations[0].keyframe_id, start_id)
@@ -280,165 +264,124 @@ class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(proposal.operations[1].keyframe_id, end_id)
         self.assertIsInstance(proposal.operations[2], SetKeyframeActivation)
 
-    async def test_pure_rejects_character_id_outside_owning_shot(self) -> None:
-        shot_id = "1" * 32
-        segment_id = "2" * 32
-        allowed_id = "3" * 32
-        unknown_id = "4" * 32
-        adapter = f'''{{"shots":[{{"shot_id":"{shot_id}",
-            "continues_from_previous_shot":false,
-            "start_prompt_text":"角色站在门边。",
-            "start_visible_character_ids":["{unknown_id}"],"start_character_references":[],
-            "start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
-            "segments":[{{"segment_id":"{segment_id}",
-            "frame_strategy":"start",
-            "end_prompt_text":"角色离开画面。","end_visible_character_ids":[],"end_character_references":[],
-            "end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null}}]}}]}}'''
-        scene = KeyframeSceneInput(
-            "5" * 32,
-            "门厅",
-            "空门厅。",
+    async def test_rejects_character_id_outside_owning_segment(self) -> None:
+        scene = _scene(
             (
-                KeyframeShotInput(
-                    shot_id,
-                    "中景。",
-                    "固定。",
+                KeyframeSegmentInput(
+                    "2" * 32,
                     "角色离开。",
-                    (KeyframeCharacterInput(allowed_id, "Comi"),),
-                    (KeyframeSegmentInput(segment_id, "角色离开。"),),
+                    (_shot("1" * 32, (KeyframeCharacterInput("3" * 32, "Comi"),)),),
+                    visible_characters=(KeyframeCharacterInput("3" * 32, "Comi"),),
                 ),
-            ),
+            )
         )
-        with self.assertRaisesRegex(ProposalError, "不属于该 Shot"):
-            compile_fixture(adapter, scenes=(scene,))
+        with self.assertRaisesRegex(ProposalError, "不属于该 Segment"):
+            compile_fixture(
+                _plan(
+                    [
+                        _segment_plan(
+                            "2" * 32,
+                            strategy="start",
+                            start_ids=("4" * 32,),
+                            start_prompt="角色站在门边。",
+                        )
+                    ]
+                ),
+                scenes=(scene,),
+            )
 
-    async def test_pure_shared_start_uses_previous_shot_character_scope(self) -> None:
-        first_shot_id = "1" * 32
-        second_shot_id = "2" * 32
-        first_segment_id = "3" * 32
-        second_segment_id = "4" * 32
-        character_id = "5" * 32
-        shared_prompt = "角色的手仍停在桌上的文件旁。"
-        adapter = f'''{{"shots":[
-              {{"shot_id":"{first_shot_id}",
-               "continues_from_previous_shot":false,
-               "start_prompt_text":"角色站在桌边。",
-               "start_visible_character_ids":["{character_id}"],"start_character_references":[],
-               "start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
-               "segments":[{{"segment_id":"{first_segment_id}",
-                 "frame_strategy":"both",
-                 "end_prompt_text":"{shared_prompt}",
-                 "end_visible_character_ids":["{character_id}"],"end_character_references":[],
-                 "end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null}}]}},
-              {{"shot_id":"{second_shot_id}",
-               "continues_from_previous_shot":true,
-               "start_prompt_text":"{shared_prompt}",
-               "start_visible_character_ids":["{character_id}"],"start_character_references":[],
-               "start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
-               "segments":[{{"segment_id":"{second_segment_id}",
-                 "frame_strategy":"end",
-                 "end_prompt_text":"桌面上只剩文件。",
-                 "end_visible_character_ids":[],"end_character_references":[],
-                 "end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null}}]}}
-            ]}}'''
-        scene = KeyframeSceneInput(
-            "6" * 32,
-            "办公室",
-            "安静的办公室。",
+    async def test_shared_start_uses_boundary_character_union(self) -> None:
+        character_id = CHARACTER.id
+        scene = _scene(
             (
-                KeyframeShotInput(
-                    first_shot_id,
-                    "中景。",
-                    "固定。",
+                KeyframeSegmentInput(
+                    "3" * 32,
                     "角色放下文件。",
-                    (KeyframeCharacterInput(character_id, "Jack"),),
-                    (KeyframeSegmentInput(first_segment_id, "角色放下文件。"),),
+                    (_shot("1" * 32, (CHARACTER,)),),
+                    start_keyframe_id="5" * 32,
+                    end_keyframe_id="6" * 32,
+                    visible_characters=(CHARACTER,),
                 ),
-                KeyframeShotInput(
-                    second_shot_id,
-                    "文件特写。",
-                    "固定。",
-                    "角色的手离开画面。",
-                    (),
-                    (KeyframeSegmentInput(second_segment_id, "手离开画面。"),),
+                KeyframeSegmentInput(
+                    "4" * 32,
+                    "手离开画面。",
+                    (_shot("2" * 32),),
+                    start_keyframe_id="6" * 32,
+                    end_keyframe_id="7" * 32,
+                    visible_characters=(),
+                    continues_from_previous=True,
                 ),
-            ),
+            )
         )
-        proposal = compile_fixture(adapter, scenes=(scene,))
-        self.assertTrue(proposal.shots[1].continues_from_previous_shot)
-        self.assertEqual(proposal.shots[1].start_visible_character_ids, (character_id,))
+        parsed, operations = compile_keyframe_proposal(
+            parse_keyframe_plan(
+                _plan(
+                    [
+                        _segment_plan(
+                            "3" * 32,
+                            end_prompt="角色的手仍停在桌上的文件旁。",
+                            end_ids=(character_id,),
+                        ),
+                        _segment_plan(
+                            "4" * 32,
+                            continues=True,
+                            strategy="end",
+                            end_prompt="桌面上只剩文件。",
+                            end_ids=(),
+                        ),
+                    ]
+                )
+            ),
+            (scene,),
+        )
+        assert operations is not None
+        self.assertTrue(parsed.segments[1].continues_from_previous)
+        self.assertEqual(parsed.segments[1].start_visible_character_ids, ())
+        self.assertEqual(parsed.segments[1].end_visible_character_ids, ())
+        self.assertFalse(any(isinstance(item, ShareKeyframeBoundary) for item in operations))
 
-    async def test_pure_core_required_boundary_is_enforced_when_model_returns_false(self) -> None:
-        first_shot_id = "1" * 32
-        second_shot_id = "2" * 32
-        first_segment_id = "3" * 32
-        second_segment_id = "4" * 32
-        first_start_id = "5" * 32
-        first_end_id = "6" * 32
-        second_start_id = "7" * 32
-        second_end_id = "8" * 32
-        adapter = f'''{{"shots":[
-              {{"shot_id":"{first_shot_id}",
-               "continues_from_previous_shot":false,
-               "start_prompt_text":"角色走向控制台。","start_visible_character_ids":[],"start_character_references":[],
-               "start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
-               "segments":[{{"segment_id":"{first_segment_id}",
-                 "frame_strategy":"start",
-                 "end_prompt_text":"角色停在控制台前，指示灯熄灭。",
-                 "end_visible_character_ids":[],"end_character_references":[],"end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null}}]}},
-              {{"shot_id":"{second_shot_id}",
-               "continues_from_previous_shot":false,
-               "start_prompt_text":"控制台的另一幅近景。","start_visible_character_ids":[],"start_character_references":[],
-               "start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
-               "segments":[{{"segment_id":"{second_segment_id}",
-                 "frame_strategy":"end",
-                 "end_prompt_text":"指示灯亮起。",
-                 "end_visible_character_ids":[],"end_character_references":[],"end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null}}]}}
-            ]}}'''
-        scene = KeyframeSceneInput(
-            "9" * 32,
-            "控制室",
-            "昏暗控制室。",
+    async def test_core_required_boundary_is_enforced_when_model_returns_false(self) -> None:
+        first_segment_id, second_segment_id = "3" * 32, "4" * 32
+        scene = _scene(
             (
-                KeyframeShotInput(
-                    first_shot_id,
-                    "全景。",
-                    "固定。",
-                    "角色抵达控制台。",
-                    (),
-                    (
-                        KeyframeSegmentInput(
+                KeyframeSegmentInput(
+                    first_segment_id,
+                    "抵达。",
+                    (_shot("1" * 32),),
+                    start_keyframe_id="5" * 32,
+                    end_keyframe_id="6" * 32,
+                ),
+                KeyframeSegmentInput(
+                    second_segment_id,
+                    "亮灯。",
+                    (_shot("2" * 32),),
+                    start_keyframe_id="7" * 32,
+                    end_keyframe_id="8" * 32,
+                ),
+            )
+        )
+        parsed, operations = compile_keyframe_proposal(
+            parse_keyframe_plan(
+                _plan(
+                    [
+                        _segment_plan(
                             first_segment_id,
-                            "抵达。",
-                            start_keyframe_id=first_start_id,
-                            end_keyframe_id=first_end_id,
+                            strategy="start",
+                            end_prompt="角色停在控制台前，指示灯熄灭。",
                         ),
-                    ),
-                ),
-                KeyframeShotInput(
-                    second_shot_id,
-                    "近景。",
-                    "固定。",
-                    "指示灯亮起。",
-                    (),
-                    (
-                        KeyframeSegmentInput(
+                        _segment_plan(
                             second_segment_id,
-                            "亮灯。",
-                            start_keyframe_id=second_start_id,
-                            end_keyframe_id=second_end_id,
+                            strategy="end",
+                            end_prompt="指示灯亮起。",
                         ),
-                    ),
-                ),
+                    ]
+                )
             ),
+            (scene,),
+            ((first_segment_id, second_segment_id),),
         )
-        proposal = compile_fixture(
-            adapter,
-            scenes=(scene,),
-            required_shared_boundaries=((first_segment_id, second_segment_id),),
-        )
-        self.assertIsInstance(proposal, KeyframeOperationsProposal)
-        assert isinstance(proposal, KeyframeOperationsProposal)
+        assert operations is not None
+        proposal = KeyframeOperationsProposal(operations, "测试纯编译结果")
         shares = [item for item in proposal.operations if isinstance(item, ShareKeyframeBoundary)]
         self.assertEqual(
             [(item.left_segment_id, item.right_segment_id) for item in shares],
@@ -451,67 +394,42 @@ class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
         }
         self.assertTrue(activations[first_segment_id].end_enabled)
         self.assertTrue(activations[second_segment_id].start_enabled)
+        self.assertTrue(parsed.segments[1].continues_from_previous)
+        self.assertEqual(parsed.segments[1].start_prompt_text, "")
 
-    async def test_pure_adopted_long_take_keeps_cuts_and_activates_shared_boundaries(self) -> None:
+    async def test_adopted_long_take_keeps_cuts_and_activates_shared_boundaries(self) -> None:
         for already_shared in (False, True):
             with self.subTest(already_shared=already_shared):
-                shots, output = ([], [])
+                segments, plans = ([], [])
                 for index in range(5):
-                    shot_id, segment_id = (f"{index + 1:032x}", f"{index + 11:032x}")
+                    segment_id = f"{index + 11:032x}"
                     start_id, end_id = (f"{index + 21:032x}", f"{index + 31:032x}")
                     continuous = index >= 3
                     if already_shared and continuous:
-                        start_id = shots[-1].segments[-1].end_keyframe_id
-                    shots.append(
-                        KeyframeShotInput(
-                            shot_id,
-                            "近景。",
-                            "缓慢拉开后绕至肩后。",
-                            "倾听无线电。",
-                            (),
-                            (
-                                KeyframeSegmentInput(
-                                    segment_id,
-                                    "倾听。",
-                                    start_keyframe_id=start_id,
-                                    end_keyframe_id=end_id,
-                                ),
-                            ),
+                        start_id = segments[-1].end_keyframe_id
+                    segments.append(
+                        KeyframeSegmentInput(
+                            segment_id,
+                            "倾听。",
+                            (_shot(f"{index + 1:032x}"),),
+                            start_keyframe_id=start_id,
+                            end_keyframe_id=end_id,
+                            continues_from_previous=already_shared and continuous,
                         )
                     )
-                    output.append(
-                        {
-                            "start_environment_view_id": None,
-                            "shot_id": shot_id,
-                            "continues_from_previous_shot": already_shared and continuous,
-                            "start_prompt_text": "无线电亮灯。",
-                            "start_visible_character_ids": [],
-                            "start_character_references": [],
-                            "start_environment_mode": None,
-                            "start_environment_none_reason": None,
-                            "segments": [
-                                {
-                                    "end_environment_view_id": None,
-                                    "segment_id": segment_id,
-                                    "frame_strategy": "start",
-                                    "end_prompt_text": "无线电亮灯。",
-                                    "end_visible_character_ids": [],
-                                    "end_character_references": [],
-                                    "end_environment_mode": None,
-                                    "end_environment_none_reason": None,
-                                }
-                            ],
-                        }
+                    plans.append(
+                        _segment_plan(
+                            segment_id,
+                            continues=already_shared and continuous,
+                            strategy="start",
+                            end_prompt="无线电亮灯。",
+                        )
                     )
-                scene = KeyframeSceneInput("f" * 32, "空站呼叫", "控制室。", tuple(shots))
-                boundaries = tuple(
-                    (shots[i].segments[0].id, shots[i + 1].segments[0].id) for i in (2, 3)
-                )
-                adapter = json.dumps({"shots": output})
+                scene = _scene(tuple(segments))
+                boundaries = tuple((segments[i].id, segments[i + 1].id) for i in (2, 3))
                 proposal = compile_fixture(
-                    adapter,
+                    _plan(plans),
                     scenes=(scene,),
-                    user_message="规划一下关键帧；本轮采用上一轮 Shot 3–5 一镜到底建议。",
                     required_shared_boundaries=() if already_shared else boundaries,
                 )
                 self.assertIsInstance(proposal, KeyframeOperationsProposal)
@@ -520,9 +438,9 @@ class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
                     for item in proposal.operations
                     if isinstance(item, SetKeyframeActivation)
                 }
-                for index, shot in enumerate(shots):
-                    self.assertEqual(activations[shot.segments[0].id].end_enabled, index in (2, 3))
-                    self.assertTrue(activations[shot.segments[0].id].start_enabled)
+                for index, segment in enumerate(segments):
+                    self.assertEqual(activations[segment.id].end_enabled, index in (2, 3))
+                    self.assertTrue(activations[segment.id].start_enabled)
                 shares = tuple(
                     (item.left_segment_id, item.right_segment_id)
                     for item in proposal.operations
@@ -530,51 +448,73 @@ class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(shares, () if already_shared else boundaries)
 
-    async def test_pure_rejects_shared_start_that_differs_from_previous_end(self) -> None:
-        first_shot_id = "1" * 32
-        second_shot_id = "2" * 32
-        first_segment_id = "3" * 32
-        second_segment_id = "4" * 32
-        adapter = f'''{{"shots":[
-              {{"shot_id":"{first_shot_id}",
-               "continues_from_previous_shot":false,
-               "start_prompt_text":"空桌面。","start_visible_character_ids":[],"start_character_references":[],
-               "start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
-               "segments":[{{"segment_id":"{first_segment_id}",
-                 "frame_strategy":"both",
-                 "end_prompt_text":"文件落在桌面。","end_visible_character_ids":[],"end_character_references":[],
-                 "end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null}}]}},
-              {{"shot_id":"{second_shot_id}",
-               "continues_from_previous_shot":true,
-               "start_prompt_text":"文件已经被拿走。","start_visible_character_ids":[],"start_character_references":[],
-               "start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
-               "segments":[{{"segment_id":"{second_segment_id}",
-                 "frame_strategy":"both",
-                 "end_prompt_text":"空桌面。","end_visible_character_ids":[],"end_character_references":[],
-                 "end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null}}]}}
-            ]}}'''
-        scene = KeyframeSceneInput(
-            "6" * 32,
-            "办公室",
-            "安静的办公室。",
+    async def test_rejects_continues_from_previous_with_non_empty_start(self) -> None:
+        plan = _segment_plan("2" * 32, continues=True)
+        plan["start_prompt_text"] = "上一段尾帧之外的另一种画面。"
+        with self.assertRaisesRegex(ProposalError, "必须为空"):
+            parse_keyframe_plan(_plan([plan]))
+
+    async def test_rejects_first_scene_segment_continuing(self) -> None:
+        scene = _scene(
             (
-                KeyframeShotInput(
-                    first_shot_id,
-                    "特写。",
-                    "固定。",
-                    "文件落下。",
-                    (),
-                    (KeyframeSegmentInput(first_segment_id, "文件落下。"),),
+                KeyframeSegmentInput(
+                    "2" * 32,
+                    "环境变化。",
+                    (_shot("1" * 32),),
+                    start_keyframe_id="3" * 32,
+                    end_keyframe_id="4" * 32,
                 ),
-                KeyframeShotInput(
-                    second_shot_id,
-                    "特写。",
-                    "固定。",
-                    "文件被拿走。",
-                    (),
-                    (KeyframeSegmentInput(second_segment_id, "文件被拿走。"),),
-                ),
-            ),
+            )
         )
-        with self.assertRaisesRegex(ProposalError, "完全一致"):
-            compile_fixture(adapter, scenes=(scene,))
+        with self.assertRaisesRegex(ProposalError, "第一个 Segment 不能承接"):
+            compile_fixture(_plan([_segment_plan("2" * 32, continues=True)]), scenes=(scene,))
+
+    async def test_continues_into_context_segment_requires_existing_shared_slot(self) -> None:
+        scene = _scene(
+            (
+                KeyframeSegmentInput(
+                    "2" * 32,
+                    "上下文段落。",
+                    (_shot("1" * 32),),
+                    start_keyframe_id="3" * 32,
+                    end_keyframe_id="4" * 32,
+                    planning_enabled=False,
+                ),
+                KeyframeSegmentInput(
+                    "5" * 32,
+                    "授权段落。",
+                    (_shot("2" * 32),),
+                    start_keyframe_id="6" * 32,
+                    end_keyframe_id="7" * 32,
+                ),
+            )
+        )
+        with self.assertRaisesRegex(ProposalError, "请至少扩大到相邻 Segment"):
+            compile_fixture(_plan([_segment_plan("5" * 32, continues=True)]), scenes=(scene,))
+
+    async def test_unsharing_context_boundary_requires_expanded_scope(self) -> None:
+        scene = _scene(
+            (
+                KeyframeSegmentInput(
+                    "2" * 32,
+                    "上下文段落。",
+                    (_shot("1" * 32),),
+                    start_keyframe_id="3" * 32,
+                    end_keyframe_id="4" * 32,
+                    planning_enabled=False,
+                ),
+                KeyframeSegmentInput(
+                    "5" * 32,
+                    "授权段落。",
+                    (_shot("2" * 32),),
+                    start_keyframe_id="4" * 32,
+                    end_keyframe_id="7" * 32,
+                ),
+            )
+        )
+        with self.assertRaisesRegex(ProposalError, "请至少扩大到相邻 Segment"):
+            compile_fixture(_plan([_segment_plan("5" * 32, strategy="end")]), scenes=(scene,))
+
+
+if __name__ == "__main__":
+    unittest.main()

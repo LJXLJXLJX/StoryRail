@@ -55,9 +55,9 @@
         "expected_revision": "$base.expected_revision",
         "idempotency_key": "bench-keyframe-request",
         "action": "request",
-        "raw_user_instruction": "按当前生产基线为全部 Shot 规划关键帧",
+        "raw_user_instruction": "按当前生产基线为全部 Segment 规划关键帧",
         "scene_ids": "$base.scene_ids",
-        "target_ids": "$base.shot_ids"
+        "target_ids": "$base.segment_ids"
       },
       "assert": {
         "no_error": true
@@ -107,7 +107,7 @@
         "idempotency_key": "bench-keyframe-batch",
         "kind": "keyframe",
         "action": "start",
-        "target_ids": "$base.shot_ids"
+        "target_ids": "$planned.ids"
       },
       "assert": {
         "no_error": true

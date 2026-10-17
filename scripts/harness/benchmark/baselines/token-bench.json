@@ -11,7 +11,7 @@
   },
   "environment": {
     "date": "2026-10-18",
-    "git_sha": "ff0058c7e75cf46aa88ead1820953ffcff44fae0",
+    "git_sha": "230ea2c0d9fd04471d0ccef343dea8b9c74623be",
     "python_version": "3.12.12",
     "platform": "macOS-26.6.2-arm64-arm-64bit",
     "driver": "scripts/harness/benchmark/fake_agent_driver.py"
@@ -26,7 +26,7 @@
         "total_wire_bytes": 80050
       },
       "keyframe": {
-        "total_wire_bytes": 79987
+        "total_wire_bytes": 80974
       },
       "location": {
         "total_wire_bytes": 55744
@@ -135,11 +135,11 @@
         "tools_list_bytes": 31153,
         "tool_count": 24,
         "requests": 8,
-        "input_bytes": 2232,
-        "output_bytes": 77755,
-        "total_wire_bytes": 79987,
-        "contract_read_bytes": 33371,
-        "workset_read_bytes": 17579,
+        "input_bytes": 2208,
+        "output_bytes": 78766,
+        "total_wire_bytes": 80974,
+        "contract_read_bytes": 34608,
+        "workset_read_bytes": 17443,
         "pagination_rounds": 8,
         "wait_rounds": 1,
         "error_responses": 0
@@ -162,7 +162,7 @@
           "tool": "read_professional_contract",
           "action": "pages",
           "input_bytes": 158,
-          "output_bytes": 33213,
+          "output_bytes": 34450,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -173,7 +173,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 206,
-          "output_bytes": 8238,
+          "output_bytes": 8170,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -183,8 +183,8 @@
           "step": "request",
           "tool": "keyframe_proposal",
           "action": "request",
-          "input_bytes": 309,
-          "output_bytes": 10990,
+          "input_bytes": 312,
+          "output_bytes": 10928,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -194,7 +194,7 @@
           "step": "submit",
           "tool": "keyframe_proposal",
           "action": "submit",
-          "input_bytes": 859,
+          "input_bytes": 797,
           "output_bytes": 1782,
           "is_error": false,
           "pagination_rounds": 1,
@@ -206,7 +206,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 205,
-          "output_bytes": 8930,
+          "output_bytes": 8862,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -216,8 +216,8 @@
           "step": "batch",
           "tool": "media_batch",
           "action": "start",
-          "input_bytes": 198,
-          "output_bytes": 5521,
+          "input_bytes": 233,
+          "output_bytes": 5493,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null

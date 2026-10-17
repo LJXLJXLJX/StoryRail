@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from core.director_proposals import (
+    KeyframeCharacterInput,
     KeyframeSceneInput,
     KeyframeSegmentInput,
     KeyframeShotInput,
@@ -35,57 +36,50 @@ class KeyframePlannerTests(unittest.IsolatedAsyncioTestCase):
         )
 
     def test_rejects_unknown_fields_and_non_boolean_continuity(self) -> None:
-        shot_id = "1" * 32
         segment_id = "2" * 32
+
+        def raw(extra: str, continues: str) -> str:
+            return f'''{{"segments":[{{"segment_id":"{segment_id}",
+            "continues_from_previous":{continues},
+            "frame_strategy":"both",
+            "start_prompt_text":"起始状态。",
+            "start_visible_character_ids":[],"start_character_references":[],
+            "start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
+            "end_prompt_text":"结束状态。","end_visible_character_ids":[],"end_character_references":[],
+            "end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null{extra}}}]}}'''
+
         with self.assertRaisesRegex(ProposalError, "未声明"):
-            parse_keyframe_plan(
-                f'''{{"shots":[{{"shot_id":"{shot_id}",
-                "continues_from_previous_shot":false,"start_prompt_text":"起始状态。",
-                "start_visible_character_ids":[],"start_character_references":[],
-                "start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
-                "segments":[{{"segment_id":"{segment_id}",
-                "frame_strategy":"both",
-                "end_prompt_text":"结束状态。","end_visible_character_ids":[],"end_character_references":[],
-                "end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null,
-                "model":"video_prompt"}}]}}]}}'''
-            )
+            parse_keyframe_plan(raw(',"model":"video_prompt"', "false"))
         with self.assertRaisesRegex(ProposalError, "类型"):
-            parse_keyframe_plan(
-                f'''{{"shots":[{{"shot_id":"{shot_id}",
-                "continues_from_previous_shot":1,"start_prompt_text":"起始状态。",
-                "start_visible_character_ids":[],"start_character_references":[],
-                "start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
-                "segments":[{{"segment_id":"{segment_id}",
-                "frame_strategy":"both",
-                "end_prompt_text":"结束状态.","end_visible_character_ids":[],"end_character_references":[],
-                "end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null}}]}}]}}'''
-            )
+            parse_keyframe_plan(raw("", "1"))
 
 
-def _one_shot_response(shot_id: str, segment_id: str) -> str:
-    return f'''{{"shots":[{{"shot_id":"{shot_id}",
-    "continues_from_previous_shot":false,"start_prompt_text":"起始状态。",
-    "start_visible_character_ids":[],"start_character_references":[],"start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
-    "segments":[{{"segment_id":"{segment_id}",
+def _one_segment_response(segment_id: str) -> str:
+    return f'''{{"segments":[{{"segment_id":"{segment_id}",
+    "continues_from_previous":false,
     "frame_strategy":"start",
+    "start_prompt_text":"起始状态。",
+    "start_visible_character_ids":[],"start_character_references":[],"start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
     "end_prompt_text":"结束状态。","end_visible_character_ids":[],"end_character_references":[],
-    "end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null}}]}}]}}'''
+    "end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null}}]}}'''
 
 
-def _one_shot_scene(scene_id: str, shot_id: str, segment_id: str) -> KeyframeSceneInput:
+def _one_segment_scene(
+    scene_id: str, shot_id: str, segment_ids: tuple[str, ...]
+) -> KeyframeSceneInput:
+    shot = KeyframeShotInput(
+        shot_id,
+        "中景。",
+        "固定。",
+        "环境变化。",
+        (KeyframeCharacterInput("a" * 32, "Jack"),),
+    )
     return KeyframeSceneInput(
         scene_id,
         "Scene",
         "安静的空间。",
-        (
-            KeyframeShotInput(
-                shot_id,
-                "中景。",
-                "固定。",
-                "环境变化。",
-                (),
-                (KeyframeSegmentInput(segment_id, "环境变化。"),),
-            ),
+        tuple(
+            KeyframeSegmentInput(segment_id, "环境变化。", (shot,)) for segment_id in segment_ids
         ),
     )
 

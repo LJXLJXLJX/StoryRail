@@ -46,7 +46,13 @@ def test_large_keyframe_proposal_submit_is_not_limited_by_read_envelope(tmp_path
         store, service, document, _ = await _visual_project(
             str(tmp_path), script_proposer=FifteenShotScript()
         )
-        target_ids = [shot.id for scene in document.director_script.scenes for shot in scene.shots]
+        target_ids = list(
+            dict.fromkeys(
+                segment.id
+                for scene in document.director_script.scenes
+                for segment in scene.segments
+            )
+        )
         start_command = request(document, "keyframe", target_ids)
         caller = agent(document, start_command)
 

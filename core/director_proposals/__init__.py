@@ -8,7 +8,6 @@ from .keyframe import (
     KeyframeSegmentInput,
     KeyframeSegmentProposal,
     KeyframeShotInput,
-    KeyframeShotProposal,
 )
 from .location import (
     ExistingLocationInput,
@@ -72,7 +71,6 @@ __all__ = [
     "KeyframeSegmentInput",
     "KeyframeSegmentProposal",
     "KeyframeShotInput",
-    "KeyframeShotProposal",
     "LocationCharacterInput",
     "LocationFixtureProposal",
     "LocationKeyLightProposal",

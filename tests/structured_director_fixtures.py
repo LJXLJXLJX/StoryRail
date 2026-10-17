@@ -14,7 +14,6 @@ from core.director_proposals import (
     DialogueLineProposal,
     KeyframePlanProposal,
     KeyframeSegmentProposal,
-    KeyframeShotProposal,
     NarrationCueProposal,
     NarrationTrackProposal,
     NarratorProfileProposal,
@@ -348,50 +347,38 @@ class ContinuousKeyframePlanner:
 
     async def propose(self, **kwargs: object) -> KeyframePlanProposal:
         scene = kwargs["scenes"][0]
-        first, second = scene.shots
-        # Shot 绑定了地点视图时两帧都以视图为编辑底图。
-        view_id = first.view_id
+        first, second = scene.segments
+        # 首个 Segment 的覆盖 Shot 绑定了地点视图时两帧都以视图为编辑底图。
+        view_id = first.start_view_id
         mode = "edit" if view_id is not None else None
-        # 这个静态边界只出现 Shot 可见角色中的第一个；其余角色不得被带入生图输入。
+        # 这个静态边界只出现 Segment 可见角色中的第一个；其余角色不得被带入生图输入。
         character_ids = tuple(item.id for item in first.visible_characters[:1])
         second_character_ids = tuple(item.id for item in second.visible_characters[:1])
         return KeyframePlanProposal(
             (
-                KeyframeShotProposal(
-                    shot_id=first.id,
-                    continues_from_previous_shot=False,
+                KeyframeSegmentProposal(
+                    segment_id=first.id,
+                    continues_from_previous=False,
+                    frame_strategy="both",
                     start_prompt_text="小满站在站牌旁，手扶行李箱，尚未抬头。",
                     start_visible_character_ids=character_ids,
                     start_environment_mode=mode,
                     start_environment_view_id=view_id,
-                    segments=(
-                        KeyframeSegmentProposal(
-                            first.segments[0].id,
-                            "both",
-                            "小满已经抬头看向站牌，手仍扶住行李箱。",
-                            character_ids,
-                            mode,
-                            view_id,
-                        ),
-                    ),
+                    end_prompt_text="小满已经抬头看向站牌，手仍扶住行李箱。",
+                    end_visible_character_ids=character_ids,
+                    end_environment_mode=mode,
+                    end_environment_view_id=view_id,
                 ),
-                KeyframeShotProposal(
-                    shot_id=second.id,
-                    continues_from_previous_shot=True,
-                    start_prompt_text="小满已经抬头看向站牌，手仍扶住行李箱。",
-                    start_visible_character_ids=character_ids,
-                    start_environment_mode=mode,
-                    start_environment_view_id=view_id,
-                    segments=(
-                        KeyframeSegmentProposal(
-                            second.segments[0].id,
-                            "both",
-                            "远处车灯已经进入画面，近景中没有角色。",
-                            second_character_ids,
-                            mode,
-                            view_id,
-                        ),
-                    ),
+                KeyframeSegmentProposal(
+                    segment_id=second.id,
+                    continues_from_previous=True,
+                    frame_strategy="both",
+                    start_prompt_text="",
+                    start_visible_character_ids=(),
+                    end_prompt_text="远处车灯已经进入画面，近景中没有角色。",
+                    end_visible_character_ids=second_character_ids,
+                    end_environment_mode=mode,
+                    end_environment_view_id=second.end_view_id,
                 ),
             )
         )
@@ -403,25 +390,30 @@ class ContinuousKeyframePlanner:
 
 class SingleKeyframePlanner:
     async def propose(self, **kwargs: object) -> KeyframePlanProposal:
-        shot = kwargs["scenes"][0].shots[0]
-        character_ids = tuple(item.id for item in shot.visible_characters)
+        scene = kwargs["scenes"][0]
         return KeyframePlanProposal(
-            (
-                KeyframeShotProposal(
-                    shot_id=shot.id,
-                    continues_from_previous_shot=False,
-                    start_prompt_text="角色尚未开始动作的静态首帧。",
-                    start_visible_character_ids=character_ids,
-                    segments=tuple(
-                        KeyframeSegmentProposal(
-                            segment.id,
-                            "both",
-                            "本段动作刚刚完成的静态尾帧。",
-                            character_ids,
-                        )
-                        for segment in shot.segments
+            tuple(
+                KeyframeSegmentProposal(
+                    segment_id=segment.id,
+                    continues_from_previous=index > 0
+                    and segment.start_keyframe_id == scene.segments[index - 1].end_keyframe_id,
+                    frame_strategy="both",
+                    start_prompt_text=(
+                        ""
+                        if index > 0
+                        and segment.start_keyframe_id == scene.segments[index - 1].end_keyframe_id
+                        else "角色尚未开始动作的静态首帧。"
                     ),
-                ),
+                    start_visible_character_ids=(
+                        ()
+                        if index > 0
+                        and segment.start_keyframe_id == scene.segments[index - 1].end_keyframe_id
+                        else tuple(item.id for item in segment.visible_characters)
+                    ),
+                    end_prompt_text="本段动作刚刚完成的静态尾帧。",
+                    end_visible_character_ids=tuple(item.id for item in segment.visible_characters),
+                )
+                for index, segment in enumerate(scene.segments)
             )
         )
 
@@ -439,27 +431,30 @@ class RecordingScopedKeyframePlanner:
     async def propose(self, **kwargs: object) -> KeyframePlanProposal:
         scenes = kwargs["scenes"]
         self.scene_requests.append(tuple(scene.id for scene in scenes))
-        return KeyframePlanProposal(
-            tuple(
-                KeyframeShotProposal(
-                    shot_id=shot.id,
-                    continues_from_previous_shot=False,
-                    start_prompt_text=f"{scene.title}的静态首帧。",
-                    start_visible_character_ids=tuple(item.id for item in shot.visible_characters),
-                    segments=tuple(
-                        KeyframeSegmentProposal(
-                            segment.id,
-                            "start",
-                            f"{scene.title}的静态尾帧。",
-                            tuple(item.id for item in shot.visible_characters),
-                        )
-                        for segment in shot.segments
-                    ),
+        proposals = []
+        for scene in scenes:
+            for index, segment in enumerate(scene.segments):
+                continues = index > 0 and (
+                    segment.start_keyframe_id == scene.segments[index - 1].end_keyframe_id
                 )
-                for scene in scenes
-                for shot in scene.shots
-            )
-        )
+                proposals.append(
+                    KeyframeSegmentProposal(
+                        segment_id=segment.id,
+                        continues_from_previous=continues,
+                        frame_strategy="start",
+                        start_prompt_text=("" if continues else f"{scene.title}的静态首帧。"),
+                        start_visible_character_ids=(
+                            ()
+                            if continues
+                            else tuple(item.id for item in segment.visible_characters)
+                        ),
+                        end_prompt_text=f"{scene.title}的静态尾帧。",
+                        end_visible_character_ids=tuple(
+                            item.id for item in segment.visible_characters
+                        ),
+                    )
+                )
+        return KeyframePlanProposal(tuple(proposals))
 
 
 def create_project(

@@ -260,7 +260,7 @@ Scene 与未绑定视图的 Shot。
 
 **解锁**（`unlock_visual_production`）要求生产基线 = 当前脚本 revision。它一次性：
 
-1. 为每个 Segment 建立独立的首帧与尾帧 Keyframe（尾帧以首帧为前置），两个槽位默认都不启用；环境字段按所属 Shot 的视图写成显式值；
+1. 为每个 Segment 建立独立的首帧与尾帧 Keyframe（尾帧以首帧为前置），两个槽位默认都不启用；环境字段按 Segment 首个/末个覆盖 Shot 的视图写成显式值；
 2. 为每个 Segment 建立视频卡（无对白默认 FL2VA，有对白默认 Ref2VA）；
 3. 置 `keyframes_unlocked` 与 `videos_unlocked`，`status = reviewing_videos`。
 
@@ -274,7 +274,7 @@ Scene 与未绑定视图的 Shot。
 - 角色唯一、造型可多套：每套造型对应不同时期、服装或状态，带使用场合。每个 Keyframe 为可见角色选择本帧使用的造型
   （`character_references`），Planner 与手工弹窗读写同一字段；多套造型未选择时该帧不能生成，所选造型没有造型图时也不能生成
   （批次中作为等待依赖）。删除造型时 Core 同步剪除各 Keyframe 对它的选择，已生成候选与选择保留。
-- 默认只规划用户指定范围；Planner 可读目标 Shot 所属完整 Scene 作上下文，但 Core 只合并目标 Shot 的 Keyframe 子图。
+- 默认只规划用户指定范围；Planner 可读目标 Segment 所属完整 Scene 作上下文，但 Core 只合并目标 Segment 的 Keyframe 子图。
   只有用户明确要求全部规划时才遍历整个项目；局部规划恢复时目标范围丢失，必须无修改结束并要求重试，绝不扩大成全量。
 - **规划锁定节点**：已有未隐藏成功候选或已选候选的 Segment，重新规划时保留其首尾绑定、正文、候选与辅助图。
 
@@ -288,9 +288,9 @@ Scene 与未绑定视图的 Shot。
 | `reference` | 视图已选图作为参考（默认） | 同一地点的空间参考；只参考固定陈设的方位关系、空间布局、材质与主光方向，不照搬该图的机位、视角与构图，按本帧画面目标重新构图，人物与环境须融为同一光照与透视 |
 | `none` | 不提交视图，视图为 null | 理由可选（最多 500 字，空白存为 null），不进入提交 |
 
-- **继承**只在建帧时发生（解锁视觉生产、脚本回改给新 Segment 建帧）：Shot 有视图 → `reference` + 该视图；无视图 → `none`
+- **继承**只在建帧时发生（解锁视觉生产、脚本回改给新 Segment 建帧）：首帧取首个覆盖 Shot 的视图、尾帧取最后一个覆盖 Shot 的视图，有视图 → `reference` + 该视图；无视图 → `none`
   （无理由）。之后 Scene/Shot 改绑不改写已建立的帧，规划锁定节点也不被继承改写。
-- 视图是软参考：Shot 的视图只是建议。Keyframe Planner 的三个环境字段都写 null 表示继承，由 Core 按同一规则填值；
+- 视图是软参考：Segment 首/末覆盖 Shot 的视图只是建议。Keyframe Planner 的三个环境字段都写 null 表示继承，由 Core 按同一规则填值；
   也可以按本帧机位朝向在本 Scene 地点的全部视图中自由改选（`reference`），没有合适视图或画面没有环境信息时用 `none`，
   改写不需要说明理由。`edit` 只在用户明确要求画面严格贴合视图（背景逐像素一致、不做重新构图）时使用。Planner、手工弹窗与
   `keyframe.apply_operations` 的 `none` 理由都可选。正文不重述视图里已有的固定陈设、材质与主光，只写人物、动作、构图与需要变化的部分。

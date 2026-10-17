@@ -16,7 +16,6 @@ from core.director_proposals import (
     KeyframeSegmentInput,
     KeyframeSegmentProposal,
     KeyframeShotInput,
-    KeyframeShotProposal,
 )
 from core.director_proposals.keyframe_codec import compile_keyframe_proposal
 from core.director_proposals.schema_gen import ProposalError
@@ -296,8 +295,8 @@ def test_keyframe_workset_exposes_look_asset_ids_for_media_read(tmp_path):
         "project.get_workset",
         {"capability": "keyframe", "scope": {"scene_ids": [scene.id]}},
     )
-    shot = result["core_facts"]["scenes"][0]["shots"][0]
-    looks = shot["visible_characters"][0]["looks"]
+    segment = result["core_facts"]["scenes"][0]["segments"][0]
+    looks = segment["visible_characters"][0]["looks"]
     assert [item["name"] for item in looks] == list(_NOTES)
     assert looks[0]["usage"] == "青年征战军服时期" and looks[0]["has_image"] is True
     assert looks[0]["selected_asset_id"] == (
@@ -324,42 +323,42 @@ def test_keyframe_workset_exposes_look_asset_ids_for_media_read(tmp_path):
 
 
 def _planner_scene(character_id, look_ids):
-    segment = KeyframeSegmentInput("3" * 32, "动作。", (), "4" * 32, "5" * 32)
+    character = KeyframeCharacterInput(
+        character_id,
+        "甲",
+        tuple(KeyframeCharacterLookInput(x, "造型", "场合", "6" * 32) for x in look_ids),
+    )
     shot = KeyframeShotInput(
         "2" * 32,
         "中景。",
         "固定。",
         "动作。",
-        (
-            KeyframeCharacterInput(
-                character_id,
-                "甲",
-                tuple(KeyframeCharacterLookInput(x, "造型", "场合", "6" * 32) for x in look_ids),
-            ),
-        ),
-        (segment,),
+        (character,),
     )
-    return KeyframeSceneInput("1" * 32, "场景", "室内。", (shot,))
+    segment = KeyframeSegmentInput(
+        "3" * 32,
+        "动作。",
+        (shot,),
+        start_keyframe_id="4" * 32,
+        end_keyframe_id="5" * 32,
+        visible_characters=(character,),
+    )
+    return KeyframeSceneInput("1" * 32, "场景", "室内。", (segment,))
 
 
 def _planner_proposal(character_id, start_refs, end_refs):
     return KeyframePlanProposal(
         (
-            KeyframeShotProposal(
-                "2" * 32,
+            KeyframeSegmentProposal(
+                "3" * 32,
                 False,
+                "both",
                 "甲站立。",
                 (character_id,),
-                (
-                    KeyframeSegmentProposal(
-                        "3" * 32,
-                        "both",
-                        "甲坐下。",
-                        (character_id,),
-                        end_character_references=end_refs,
-                    ),
-                ),
+                "甲坐下。",
+                (character_id,),
                 start_character_references=start_refs,
+                end_character_references=end_refs,
             ),
         )
     )
@@ -383,11 +382,13 @@ def test_planner_compiles_selection_and_rejects_foreign_looks():
     with pytest.raises(ProposalError, match="looks"):
         compile_keyframe_proposal(_planner_proposal(character_id, foreign, ()), (scene,))
     with pytest.raises(ValueError, match="可见角色"):
-        KeyframeShotProposal(
-            "2" * 32,
+        KeyframeSegmentProposal(
+            "3" * 32,
             False,
+            "both",
             "空镜。",
             (),
+            "空镜结束。",
             (),
             start_character_references=chosen,
         )

@@ -212,7 +212,12 @@ class Proposal(Request):
 
 class PlanningProposal(Proposal):
     scene_ids: list[ID] | None = Field(default=None, min_length=1, max_length=100)
-    target_ids: list[ID] | None = Field(default=None, min_length=1, max_length=100)
+    target_ids: list[ID] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description="规划的 Segment ID；可读取所属完整 Scene 作上下文，只合并目标 Segment。",
+    )
 
     @model_validator(mode="after")
     def exact_action_fields(self):
@@ -632,7 +637,7 @@ def create_server(bridge: CoreBridge):
             "当前模型无视觉能力时直接拒绝看图任务。"
         ),
         "keyframe_proposal": (
-            "原始 Scene/Shot scope 的 Keyframe 规划生命周期；request 后由当前 Agent 编写并 submit。"
+            "Scene/Segment scope 的 Keyframe 规划生命周期；request 后由当前 Agent 编写并 submit。"
         ),
         "location_proposal": (
             "从完整脚本规划地点库与 Scene/Shot 绑定；request 后由当前 Agent 编写并 submit。"

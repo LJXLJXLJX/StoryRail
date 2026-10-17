@@ -288,8 +288,6 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
     )
     journey.wait_generations(kind="narration_audio", target_ids={cue_id})
     drama, narration = journey.snapshot()["director_script"]["scenes"]
-    drama_shot = drama["shots"][0]
-    narration_shot = narration["shots"][0]
     first_segment, second_segment = (item["id"] for item in drama["segments"])
     narration_segment = narration["segments"][0]["id"]
 
@@ -303,10 +301,11 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
     journey.unlock_visual_production()
     journey.plan_keyframes(
         proposal={
-            "shots": [
+            "segments": [
                 {
-                    "shot_id": drama_shot["id"],
-                    "continues_from_previous_shot": False,
+                    "segment_id": first_segment,
+                    "continues_from_previous": False,
+                    "frame_strategy": "both",
                     "start_prompt_text": "小满站在站台右侧，握着红色行李箱拉杆抬头。",
                     "start_visible_character_ids": [character_id],
                     "start_character_references": [
@@ -315,54 +314,48 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
                     "start_environment_view_id": station,
                     "start_environment_mode": "edit",
                     "start_environment_none_reason": None,
-                    "segments": [
-                        {
-                            "segment_id": first_segment,
-                            "frame_strategy": "both",
-                            "end_prompt_text": "小满抬头看站牌，表情迟疑。",
-                            "end_visible_character_ids": [character_id],
-                            "end_character_references": [
-                                {"character_id": character_id, "look_id": casual}
-                            ],
-                            "end_environment_view_id": station,
-                            "end_environment_mode": "reference",
-                            "end_environment_none_reason": None,
-                        },
-                        {
-                            "segment_id": second_segment,
-                            "frame_strategy": "both",
-                            "end_prompt_text": "小满转身望向轨道尽头，行李箱留在身侧。",
-                            "end_visible_character_ids": [character_id],
-                            "end_character_references": [
-                                {"character_id": character_id, "look_id": None}
-                            ],
-                            "end_environment_view_id": None,
-                            "end_environment_mode": "none",
-                            "end_environment_none_reason": "站台主机位不覆盖轨道尽头方向",
-                        },
-                    ],
+                    "end_prompt_text": "小满抬头看站牌，表情迟疑。",
+                    "end_visible_character_ids": [character_id],
+                    "end_character_references": [{"character_id": character_id, "look_id": casual}],
+                    "end_environment_view_id": station,
+                    "end_environment_mode": "reference",
+                    "end_environment_none_reason": None,
                 },
                 {
-                    "shot_id": narration_shot["id"],
-                    "continues_from_previous_shot": False,
+                    "segment_id": second_segment,
+                    "continues_from_previous": False,
+                    "frame_strategy": "both",
+                    "start_prompt_text": "小满抬头看站牌，表情迟疑。",
+                    "start_visible_character_ids": [character_id],
+                    "start_character_references": [
+                        {"character_id": character_id, "look_id": casual}
+                    ],
+                    "start_environment_view_id": station,
+                    "start_environment_mode": "reference",
+                    "start_environment_none_reason": None,
+                    "end_prompt_text": "小满转身望向轨道尽头，行李箱留在身侧。",
+                    "end_visible_character_ids": [character_id],
+                    "end_character_references": [{"character_id": character_id, "look_id": None}],
+                    "end_environment_view_id": None,
+                    "end_environment_mode": "none",
+                    "end_environment_none_reason": "站台主机位不覆盖轨道尽头方向",
+                },
+                {
+                    "segment_id": narration_segment,
+                    "continues_from_previous": False,
+                    "frame_strategy": "start",
                     "start_prompt_text": "入夜的空旷站台全景，站灯亮起。",
                     "start_visible_character_ids": [],
                     "start_character_references": [],
                     "start_environment_view_id": night,
                     "start_environment_mode": "edit",
                     "start_environment_none_reason": None,
-                    "segments": [
-                        {
-                            "segment_id": narration_segment,
-                            "frame_strategy": "start",
-                            "end_prompt_text": "入夜站台的静止尾帧。",
-                            "end_visible_character_ids": [],
-                            "end_character_references": [],
-                            "end_environment_view_id": None,
-                            "end_environment_mode": "none",
-                            "end_environment_none_reason": "尾帧未启用，不提交地点视图",
-                        }
-                    ],
+                    "end_prompt_text": "入夜站台的静止尾帧。",
+                    "end_visible_character_ids": [],
+                    "end_character_references": [],
+                    "end_environment_view_id": None,
+                    "end_environment_mode": "none",
+                    "end_environment_none_reason": "尾帧未启用，不提交地点视图",
                 },
             ]
         }

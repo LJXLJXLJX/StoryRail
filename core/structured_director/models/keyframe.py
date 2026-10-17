@@ -49,7 +49,7 @@ class Keyframe:
     selected_asset_id: str | None = None
     environment_mode: KeyframeEnvironmentMode = KeyframeEnvironmentMode.NONE
     environment_view_id: str | None = None
-    # none 时可选（1–500 字或 None），edit/reference 时必须为 None。
+    # none 时可选（0–500 字或 None），edit/reference 时必须为 None。
     environment_none_reason: str | None = None
     # 未列出的可见角色按默认规则：角色只有一套造型时使用它，多套造型必须显式选择。
     character_references: tuple[KeyframeCharacterReference, ...] = ()
@@ -92,15 +92,16 @@ def blank_keyframe(
     owner_segment_id: str,
     predecessor_keyframe_id: str | None,
     *,
-    shot_view_id: str | None,
+    view_id: str | None,
 ) -> Keyframe:
-    """新建空 Keyframe，环境字段按所属 Shot 的视图写成显式值。
+    """新建空 Keyframe，环境字段按本槽位的默认视图写成显式值。
 
-    Shot 有视图 → `reference` + 该视图；无视图 → `none`、无理由。视图只作空间参考，
+    默认视图由调用方从 `segment_view_ids` 取：首帧用首个覆盖 Shot、尾帧用最后一个覆盖 Shot。
+    有视图 → `reference` + 该视图；无视图 → `none`、无理由。视图只作空间参考，
     `edit` 只在用户明确要求画面严格贴合视图时使用。只在建立和重建帧时调用；
     之后 Shot 改绑不回写已有帧，失效级联因此只需看帧上显式的 `environment_view_id`。
     """
-    if shot_view_id is None:
+    if view_id is None:
         return Keyframe(keyframe_id, owner_segment_id, predecessor_keyframe_id, "", ())
     return Keyframe(
         keyframe_id,
@@ -109,7 +110,7 @@ def blank_keyframe(
         "",
         (),
         environment_mode=KeyframeEnvironmentMode.REFERENCE,
-        environment_view_id=shot_view_id,
+        environment_view_id=view_id,
         environment_none_reason=None,
     )
 

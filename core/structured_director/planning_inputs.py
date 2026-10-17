@@ -20,7 +20,13 @@ from .director_steps import (
     _validate_required_keyframe_boundary_scope,
 )
 from .models import ReferenceGenerationKind, ReferenceGenerationPhase
-from .v32_projection import v32_shot_segments
+from .script_index import (
+    scene_segments,
+    segment_continues_previous,
+    segment_shots,
+    segment_view_ids,
+    segment_visible_character_ids,
+)
 
 
 def keyframe_inputs(document, target_ids=(), user_message=""):
@@ -29,19 +35,23 @@ def keyframe_inputs(document, target_ids=(), user_message=""):
         raise ValueError("导演脚本尚未建立。")
     planning_source = script.production_baseline_scenes or script.scenes
     baseline_scene_ids = {scene.id for scene in planning_source}
-    shot_to_scene = {shot.id: scene.id for scene in planning_source for shot in scene.shots}
+    segment_to_scene = {
+        segment.id: scene.id for scene in planning_source for segment in scene.segments
+    }
     if len(target_ids) != len(set(target_ids)) or not set(target_ids) <= (
-        baseline_scene_ids | shot_to_scene.keys()
+        baseline_scene_ids | segment_to_scene.keys()
     ):
-        raise ValueError("关键帧规划包含不存在或重复的 Scene/Shot 目标。")
-    target_shot_ids = {
-        shot.id
+        raise ValueError("关键帧规划包含不存在或重复的 Scene/Segment 目标。")
+    target_segment_ids = {
+        segment.id
         for scene in planning_source
-        for shot in scene.shots
-        if scene.id in target_ids or shot.id in target_ids
+        for segment in scene.segments
+        if scene.id in target_ids or segment.id in target_ids
     }
     planning_scene_ids = {
-        scene_id for shot_id, scene_id in shot_to_scene.items() if shot_id in target_shot_ids
+        scene_id
+        for segment_id, scene_id in segment_to_scene.items()
+        if segment_id in target_segment_ids
     }
     planning_scenes = tuple(
         scene for scene in planning_source if not target_ids or scene.id in planning_scene_ids
@@ -50,7 +60,7 @@ def keyframe_inputs(document, target_ids=(), user_message=""):
     _validate_required_keyframe_boundary_scope(
         planning_scenes,
         required_shared_boundaries,
-        target_shot_ids=target_shot_ids if target_ids else None,
+        target_segment_ids=target_segment_ids if target_ids else None,
     )
     binding_by_segment = {
         item.segment_id: item
@@ -73,6 +83,22 @@ def keyframe_inputs(document, target_ids=(), user_message=""):
     )
     character_by_id = {item.id: item.name for item in document.reference_library.characters}
     card_by_id = {item.id: item for item in document.reference_library.characters}
+
+    def character_input(character_id: str) -> KeyframeCharacterInput:
+        return KeyframeCharacterInput(
+            character_id,
+            character_by_id[character_id],
+            tuple(
+                KeyframeCharacterLookInput(
+                    look.id,
+                    look.name,
+                    look.usage,
+                    look.selected_asset_id,
+                )
+                for look in card_by_id[character_id].looks
+            ),
+        )
+
     scenes = tuple(
         KeyframeSceneInput(
             id=scene.id,
@@ -81,89 +107,86 @@ def keyframe_inputs(document, target_ids=(), user_message=""):
             summary=scene.summary,
             location_id=scene.location_id,
             available_view_ids=available_view_ids,
-            shots=tuple(
-                KeyframeShotInput(
-                    id=shot.id,
-                    composition=shot.composition,
-                    camera_movement=shot.camera_movement,
-                    action=shot.action,
-                    visible_characters=tuple(
-                        KeyframeCharacterInput(
-                            item,
-                            character_by_id[item],
-                            tuple(
-                                KeyframeCharacterLookInput(
-                                    look.id,
-                                    look.name,
-                                    look.usage,
-                                    look.selected_asset_id,
-                                )
-                                for look in card_by_id[item].looks
+            segments=tuple(
+                KeyframeSegmentInput(
+                    id=segment.id,
+                    action=segment.action,
+                    shots=tuple(
+                        KeyframeShotInput(
+                            id=shot.id,
+                            composition=shot.composition,
+                            camera_movement=shot.camera_movement,
+                            action=shot.action,
+                            visible_characters=tuple(
+                                character_input(item)
+                                for item in shot.visible_character_ids
+                                if item in character_by_id
                             ),
+                            audio_direction=shot.audio_direction,
+                            view_id=shot.view_id,
                         )
-                        for item in shot.visible_character_ids
+                        for shot in segment_shots(scene, segment.id)
+                    ),
+                    dialogue_lines=tuple(
+                        (
+                            (
+                                line.speaker_label
+                                if line.character_id is None
+                                else character_by_id.get(line.character_id, "角色")
+                            )
+                            + "："
+                            + line.text
+                            + (f"（{line.delivery}）" if line.delivery else "")
+                        )
+                        for line in segment.dialogue_lines
+                    ),
+                    start_keyframe_id=(
+                        binding_by_segment[segment.id].start_keyframe_id
+                        if segment.id in binding_by_segment
+                        else None
+                    ),
+                    end_keyframe_id=(
+                        binding_by_segment[segment.id].end_keyframe_id
+                        if segment.id in binding_by_segment
+                        else None
+                    ),
+                    start_locked=(
+                        segment.id in binding_by_segment
+                        and binding_by_segment[segment.id].start_keyframe_id
+                        in protected_keyframe_ids
+                    ),
+                    end_locked=(
+                        segment.id in binding_by_segment
+                        and binding_by_segment[segment.id].end_keyframe_id in protected_keyframe_ids
+                    ),
+                    planning_enabled=(not target_ids or segment.id in target_segment_ids),
+                    visible_characters=tuple(
+                        character_input(item)
+                        for item in segment_visible_character_ids(scene, segment.id)
                         if item in character_by_id
                     ),
-                    segments=tuple(
-                        KeyframeSegmentInput(
-                            item.id,
-                            item.action,
-                            tuple(
-                                (
-                                    (
-                                        line.speaker_label
-                                        if line.character_id is None
-                                        else character_by_id.get(line.character_id, "角色")
-                                    )
-                                    + "："
-                                    + line.text
-                                    + (f"（{line.delivery}）" if line.delivery else "")
-                                )
-                                for line in item.dialogue_lines
-                            ),
-                            start_keyframe_id=(
-                                binding_by_segment[item.id].start_keyframe_id
-                                if item.id in binding_by_segment
-                                else None
-                            ),
-                            end_keyframe_id=(
-                                binding_by_segment[item.id].end_keyframe_id
-                                if item.id in binding_by_segment
-                                else None
-                            ),
-                            start_locked=(
-                                item.id in binding_by_segment
-                                and binding_by_segment[item.id].start_keyframe_id
-                                in protected_keyframe_ids
-                            ),
-                            end_locked=(
-                                item.id in binding_by_segment
-                                and binding_by_segment[item.id].end_keyframe_id
-                                in protected_keyframe_ids
-                            ),
-                        )
-                        for item in v32_shot_segments(scene, shot.id)
-                    ),
-                    audio_direction=shot.audio_direction,
-                    planning_enabled=(not target_ids or shot.id in target_shot_ids),
-                    view_id=shot.view_id,
+                    start_view_id=segment_view_ids(scene, segment.id)[0],
+                    end_view_id=segment_view_ids(scene, segment.id)[1],
+                    continues_from_previous=segment_continues_previous(scene, segment.id),
                 )
-                for shot in scene.shots
+                for segment in scene_segments(scene)
             ),
         )
         for scene in planning_scenes
     )
-    ordered_target_shot_ids = (
+    ordered_target_segment_ids = (
         tuple(
-            shot.id
-            for scene in planning_source
-            for shot in scene.shots
-            if shot.id in target_shot_ids
+            dict.fromkeys(
+                segment.id
+                for scene in planning_source
+                for segment in scene.segments
+                if segment.id in target_segment_ids
+            )
         )
         if target_ids
         else ()
     )
-    return scenes, ordered_target_shot_ids, required_shared_boundaries
+    return scenes, ordered_target_segment_ids, required_shared_boundaries
 
 
 def location_inputs(document):

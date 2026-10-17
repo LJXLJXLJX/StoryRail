@@ -2132,7 +2132,7 @@ describe("StructuredDirectorWorkspace", () => {
     expect(onSaveSegmentKeyframeBoundary).toHaveBeenCalledWith("7".repeat(32), false);
     fireEvent.click(within(within(screen.getByRole("navigation",{name:"故事层级"})).getByRole("list",{name:"场景 1 的生成片段"})).getByRole("button",{name:/片段 3 · 镜头 2/}));
     expect(
-      screen.getAllByText(/与上一 Shot 末段尾帧共享/).length,
+      screen.getAllByText(/与上一 Segment 尾帧共享/).length,
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/首帧与上一段尾帧是同一 Keyframe/)).toBeInTheDocument();
     fireEvent.click(within(within(screen.getByRole("navigation",{name:"故事层级"})).getByRole("list",{name:"场景 1 的生成片段"})).getByRole("button",{name:/片段 1/}));

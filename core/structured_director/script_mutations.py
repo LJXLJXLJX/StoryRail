@@ -1065,7 +1065,7 @@ def _rebase_keyframe_plan(
             if not reuse_binding:
                 start_id = uuid4().hex
                 keyframes[start_id] = blank_keyframe(
-                    start_id, segment.id, None, shot_view_id=start_view_id
+                    start_id, segment.id, None, view_id=start_view_id
                 )
             elif old_binding.start_keyframe_id == previous_end_id:
                 start_id = old_binding.start_keyframe_id
@@ -1085,7 +1085,7 @@ def _rebase_keyframe_plan(
             if not reuse_binding:
                 end_id = uuid4().hex
                 keyframes[end_id] = blank_keyframe(
-                    end_id, segment.id, start_id, shot_view_id=end_view_id
+                    end_id, segment.id, start_id, view_id=end_view_id
                 )
             elif old_binding.end_keyframe_id in keyframes:
                 # 已被前面某个 Segment 作为首帧占用，说明原共享边界已不再紧邻。

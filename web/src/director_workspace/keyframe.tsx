@@ -29,7 +29,7 @@ import {
   recipeInputsError,
   useSegmentVideoDraft,
 } from "./RecipeInputsControl";
-import { findSegmentScene } from "./script_index";
+import { findSegmentScene, segmentShots } from "./script_index";
 export function SegmentKeyframeInputs({
   projectId,
   snapshot,
@@ -115,15 +115,15 @@ export function SegmentKeyframeInputs({
   const startRelation = sharesPrevious
     ? continuesPrevious
       ? "与上一 Segment 尾帧共享"
-      : "与上一 Shot 末段尾帧共享"
+      : "与上一 Segment 尾帧共享（切镜）"
     : segmentIndex > 0
       ? "独立首帧"
-      : "当前 Shot 的起始时间边界";
+      : "本 Segment 的起始时间边界";
   const endRelation = sharesNext
     ? "与下一 Segment 首帧共享"
     : continuesNext
-      ? "独立尾帧"
-      : "当前 Shot 的结束时间边界";
+      ? "独立尾帧（下一 Segment 延续同一镜头）"
+      : "本 Segment 的结束时间边界";
   const extraction = binding.start_frame_extraction;
   const hasPreviousInScene = segmentIndex > 0;
   const sourceVideo =
@@ -162,6 +162,7 @@ export function SegmentKeyframeInputs({
       </summary>
       <div className="segment-keyframe-grid">
         <KeyframeSlot
+          slot="start"
           label="首帧"
           temporalLabel="START"
           keyframe={start}
@@ -204,6 +205,7 @@ export function SegmentKeyframeInputs({
           <span />
         </div>
         <KeyframeSlot
+          slot="end"
           label="尾帧"
           temporalLabel="END"
           keyframe={end}
@@ -609,6 +611,7 @@ function SegmentOtherImages({
 export function KeyframeSlot({
   projectId,
   segmentId,
+  slot,
   referenceAssetIds,
   onReferenceAssetIdsChange,
   onSaveReferences,
@@ -630,6 +633,7 @@ export function KeyframeSlot({
 }: {
   projectId: string;
   segmentId: string;
+  slot: "start" | "end";
   referenceAssetIds: string[];
   onReferenceAssetIdsChange: (assetIds: string[]) => void;
   onSaveReferences: () => void;
@@ -936,6 +940,7 @@ export function KeyframeSlot({
                 <KeyframeEnvironmentFields
                   snapshot={snapshot}
                   ownerSegmentId={keyframe.owner_segment_id}
+                  slot={slot}
                   mode={environmentMode}
                   viewId={environmentViewId}
                   noneReason={environmentNoneReason}
@@ -1396,10 +1401,12 @@ export function keyframeViewOptions(
   snapshot: StructuredDirectorSnapshot,
   ownerSegmentId: string,
   currentViewId: string | null,
+  slot: "start" | "end",
 ) {
   const scene = findSegmentScene(snapshot.director_script?.scenes ?? [], ownerSegmentId);
   const owner = scene?.segments.find((segment) => segment.id === ownerSegmentId);
-  const shot = scene?.shots.find((item) => item.id === owner?.shot_ids[0]);
+  const covered = scene !== undefined && owner !== undefined ? segmentShots(scene, owner) : [];
+  const shot = slot === "start" ? covered[0] : covered[covered.length - 1];
   const locations = snapshot.location_library.locations;
   const location =
     scene?.location_id == null
@@ -1418,7 +1425,7 @@ export function keyframeViewOptions(
         ? null
         : (owner.states.find((item) => item.id === view.state_id)?.name ?? null),
     selected: view.selected_asset_id !== null,
-    shotDefault: shot?.view_id === view.id,
+    slotDefault: shot?.view_id === view.id,
   });
   const options = (location?.views ?? []).map((view) => describe(location!, view));
   let foreign: (ReturnType<typeof describe> & { ownLocation: false }) | null = null;
@@ -1436,6 +1443,7 @@ export function keyframeViewOptions(
 function KeyframeEnvironmentFields({
   snapshot,
   ownerSegmentId,
+  slot,
   mode,
   viewId,
   noneReason,
@@ -1445,6 +1453,7 @@ function KeyframeEnvironmentFields({
 }: {
   snapshot: StructuredDirectorSnapshot;
   ownerSegmentId: string;
+  slot: "start" | "end";
   mode: KeyframeEnvironmentMode;
   viewId: string | null;
   noneReason: string;
@@ -1462,6 +1471,7 @@ function KeyframeEnvironmentFields({
     snapshot,
     ownerSegmentId,
     viewId,
+    slot,
   );
   const current =
     options.find((item) => item.id === viewId) ??
@@ -1471,7 +1481,11 @@ function KeyframeEnvironmentFields({
       item.name,
       item.purpose,
       item.stateName === null ? null : `状态「${item.stateName}」`,
-      item.shotDefault ? "Shot 绑定" : null,
+      item.slotDefault
+        ? slot === "start"
+          ? "Segment 首帧建议"
+          : "Segment 尾帧建议"
+        : null,
       item.selected ? null : "未选图，生成前需要选图",
     ]
       .filter((part) => part !== null && part !== "")

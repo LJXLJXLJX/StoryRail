@@ -208,7 +208,6 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `manual_commands.py`：UI 手工 Keyframe 值对象转为正式命令。
 - `candidate_eligibility.py`：候选可审核性的只读判定。
 - `script_index.py`：脚本访问层：Scene 的 Segment 序列与 Segment↔Shot 覆盖关系的只读遍历。
-- `v32_projection.py`：仍为 v32 形状的脚本写入面与 Keyframe Planner 分组到 v33 存储之间的临时投影。
 
 外部 Agent 规划与 run：
 
