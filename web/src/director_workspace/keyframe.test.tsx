@@ -486,7 +486,7 @@ it("视图选择器只列本 Scene 地点的视图，未选图标明需要选图
   );
 });
 
-it("从不使用选回视图时默认作为编辑底图；Scene 未绑定地点时没有可选视图并给出提示", () => {
+it("从不使用选回视图时默认作为空间参考；Scene 未绑定地点时没有可选视图并给出提示", () => {
   mockPreview();
   const { snapshot, binding } = locationSnapshot({
     mode: "none",
@@ -497,7 +497,8 @@ it("从不使用选回视图时默认作为编辑底图；Scene 未绑定地点�
   fireEvent.change(within(dialog).getByLabelText("地点视图"), {
     target: { value: VIEW_MAIN },
   });
-  expect(within(dialog).getByLabelText("地点视图使用方式")).toHaveValue("edit");
+  expect(within(dialog).getByLabelText("地点视图使用方式")).toHaveValue("reference");
+  expect(within(dialog).getByText(/默认 reference/)).toBeInTheDocument();
   expect(within(dialog).queryByLabelText("不使用地点视图的理由")).not.toBeInTheDocument();
   cleanup();
 

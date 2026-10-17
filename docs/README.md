@@ -46,7 +46,7 @@ flowchart LR
 | Scene / Shot / Segment | 叙事块 / 连续镜头 / 单次视频生成切片 |
 | Cue | Scene 旁白，按项目所选中文或英文语言建立轨道 |
 | Location / State / View | 跨 Scene 共享的固定空间 / 同一空间的可见状态变体 / Shot 可绑定的机位视图 |
-| Keyframe | Segment 首帧或尾帧的静态时间锚点；默认以所属 Shot 的视图为编辑底图 |
+| Keyframe | Segment 首帧或尾帧的静态时间锚点；默认以所属 Shot 的视图为空间参考 |
 | Asset | 内容不可变的媒体字节（SHA-256 校验） |
 | Generation | 一次媒体生成或处理尝试，记录输入、参数、状态与产物 |
 | Candidate / Selection | 成功 Generation 的产物 / 用户显式采用其中一个 |

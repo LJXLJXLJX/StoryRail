@@ -299,14 +299,15 @@ def _compile_operations(
 def resolve_keyframe_environment(
     mode: str | None, view_id: str | None, none_reason: str | None, shot_view_id: str | None
 ) -> tuple[str, str | None, str | None]:
-    """Planner 未声明（mode 为 null）时按所属 Shot 视图继承：有视图 edit，无视图 none + 默认理由。
+    """Planner 未声明（mode 为 null）时继承 Shot 视图：有视图 reference，否则 none + 默认理由。
 
-    与 `blank_keyframe` 同一规则；显式 none 的理由已由 proposal 校验为必填。
+    与 `blank_keyframe` 同一规则；视图只作空间参考，`edit` 只在显式声明时使用。
+    显式 none 的理由已由 proposal 校验为必填。
     """
     if mode is not None:
         return mode, view_id, none_reason
     if shot_view_id is not None:
-        return "edit", shot_view_id, None
+        return "reference", shot_view_id, None
     return "none", None, DEFAULT_ENVIRONMENT_NONE_REASON
 
 

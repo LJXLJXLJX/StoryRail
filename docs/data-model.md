@@ -259,8 +259,8 @@ erDiagram
 | Shot | `view_id?` | 必须属于所在 Scene 的 Location；Scene 没有 Location 时必须为空 |
 | Keyframe | `environment_view_id?`、`environment_mode`、`environment_none_reason?` | `none` ⇔ 视图为 null；`none` 时理由必填（1–500 字），`edit`/`reference` 时理由必须为空；视图必须存在于地点库 |
 
-Keyframe 的环境字段只在建帧时按所属 Shot 的视图写成显式值（规则见 [生产工作流](production-workflow.md#keyframe-使用地点视图)）；
-之后 Scene/Shot 改绑不回写已有帧。
+Keyframe 的环境字段只在建帧时按所属 Shot 的视图写成显式值：Shot 有视图 → `reference`，无视图 → `none` + 默认理由
+（规则见 [生产工作流](production-workflow.md#keyframe-使用地点视图)）；之后 Scene/Shot 改绑不回写已有帧。
 
 ### 失效规则
 

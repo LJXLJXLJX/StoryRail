@@ -106,7 +106,7 @@ class KeyframeSegmentProposal:
     frame_strategy: str
     end_prompt_text: str
     end_visible_character_ids: tuple[str, ...]
-    # null 表示未声明：Core 按所属 Shot 的视图填继承默认值（有视图 edit，无视图 none）。
+    # null 表示未声明：Core 按所属 Shot 的视图填继承默认值（有视图 reference，无视图 none）。
     end_environment_mode: str | None = None
     end_environment_view_id: str | None = None
     end_environment_none_reason: str | None = None
@@ -135,7 +135,7 @@ class KeyframeShotProposal:
     start_prompt_text: str
     start_visible_character_ids: tuple[str, ...]
     segments: tuple[KeyframeSegmentProposal, ...]
-    # null 表示未声明：Core 按所属 Shot 的视图填继承默认值（有视图 edit，无视图 none）。
+    # null 表示未声明：Core 按所属 Shot 的视图填继承默认值（有视图 reference，无视图 none）。
     start_environment_mode: str | None = None
     start_environment_view_id: str | None = None
     start_environment_none_reason: str | None = None

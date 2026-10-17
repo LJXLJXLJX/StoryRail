@@ -1496,8 +1496,8 @@ function KeyframeEnvironmentFields({
                 ? { environmentViewId: null, environmentMode: "none" }
                 : {
                     environmentViewId: next,
-                    // 从 none 选回视图时按 D5 默认作为编辑底图。
-                    environmentMode: mode === "none" ? "edit" : mode,
+                    // 从 none 选回视图时默认作为空间参考。
+                    environmentMode: mode === "none" ? "reference" : mode,
                   },
             );
           }}
@@ -1551,8 +1551,9 @@ function KeyframeEnvironmentFields({
           <option value="none">不使用（none）</option>
         </select>
         <small>
-          默认 edit：视图是同一地点该机位的空环境，只加入人物与动作；机位明显偏离视图时用
-          reference；画面没有环境信息时选不使用并写明理由。
+          默认 reference：视图只作空间参考，只参考固定陈设的方位关系、空间布局、材质与主光方向，
+          不照搬该图的机位与构图；需要画面严格贴合视图时选编辑底图（edit）；画面没有环境信息时选
+          不使用并写明理由。
         </small>
       </label>
       {mode === "none" ? (

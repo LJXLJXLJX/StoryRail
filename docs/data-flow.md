@@ -76,7 +76,7 @@ flowchart TB
     start[Keyframe] --> env{environment_mode}
     env -- edit/reference 且视图未选图 --> vwait[拒绝单帧生成<br/>批次中作为等待项]
     env -- edit --> e1[视图已选图：编辑底图<br/>只加入人物与动作]
-    env -- reference --> e2[视图已选图：空间参考<br/>保持陈设方位、材质与主光]
+    env -- reference（默认） --> e2[视图已选图：空间参考<br/>只参考陈设方位、布局、材质与主光，不照搬机位与构图]
     env -- none --> e3[不提交地点视图]
     e1 & e2 & e3 --> chars{每个可见角色}
     chars -- 有本帧选择 --> c1[角色参考 = 选中的角色卡图<br/>用途带该图 note；空选择不提交]

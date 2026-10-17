@@ -96,7 +96,8 @@ def blank_keyframe(
 ) -> Keyframe:
     """新建空 Keyframe，环境字段按所属 Shot 的视图写成显式值。
 
-    Shot 有视图 → `edit` + 该视图；无视图 → `none` + 默认理由。只在建立和重建帧时调用；
+    Shot 有视图 → `reference` + 该视图；无视图 → `none` + 默认理由。视图只作空间参考，
+    `edit` 只在用户明确要求画面严格贴合视图时使用。只在建立和重建帧时调用；
     之后 Shot 改绑不回写已有帧，失效级联因此只需看帧上显式的 `environment_view_id`。
     """
     if shot_view_id is None:
@@ -107,7 +108,7 @@ def blank_keyframe(
         predecessor_keyframe_id,
         "",
         (),
-        environment_mode=KeyframeEnvironmentMode.EDIT,
+        environment_mode=KeyframeEnvironmentMode.REFERENCE,
         environment_view_id=shot_view_id,
         environment_none_reason=None,
     )

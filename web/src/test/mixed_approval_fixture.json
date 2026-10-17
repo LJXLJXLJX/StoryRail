@@ -348,10 +348,10 @@
   "provider_recipes": [],
   "generations": [
     {
-      "id": "65200ebbc91b4fe7b111c9df500bcc86",
+      "id": "790aa1b191274d08a381e47dd97acb91",
       "kind": "narration_audio",
       "operation": "synthesize",
-      "target_id": "dc0d0f26df5646c48881136fd504205d",
+      "target_id": "9f8aa4a3c9e1494fbf9c503c87d380de",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
@@ -378,10 +378,10 @@
       "allowed_actions": []
     },
     {
-      "id": "7b9ab367bd1e41b18b24111929baa5b9",
+      "id": "c04e2803f3ae49549c74cbfb4fcfd168",
       "kind": "narration_audio",
       "operation": "synthesize",
-      "target_id": "dc0d0f26df5646c48881136fd504205d",
+      "target_id": "9f8aa4a3c9e1494fbf9c503c87d380de",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
@@ -408,10 +408,10 @@
       "allowed_actions": []
     },
     {
-      "id": "10fac7f31f054d56b900c19e5e57a67b",
+      "id": "b1c9ad030ffd4357b77e05ecc5d85f5d",
       "kind": "keyframe_image",
       "operation": "generate",
-      "target_id": "cc65c93644ed4626a5be9ed081d2a9c3",
+      "target_id": "f895066ca43a4b81b883b78ccb4df9f8",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
@@ -436,14 +436,14 @@
       "allowed_actions": []
     },
     {
-      "id": "c80f92a8e8e444a0b4f89285d6fc616d",
+      "id": "b7f3e9962be34e979677e846e96d0aaa",
       "kind": "keyframe_image",
       "operation": "edit",
-      "target_id": "da1de271003748c38db821666d3e3f26",
+      "target_id": "2724734faf3543e3a364e3358bc2f06f",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
-      "prompt_text": "输入图对应关系（按实际传入顺序，禁止混淆身份）：\n第 1 张输入图「Scene-01-末班车-Shot-01-Segment-01-首帧-候选.png」：前一时间边界 Keyframe；用于保持相邻画面的动作、位置和构图连续。\n\n项目固定画幅：16:9。关键帧硬约束：只生成一张单一静态画面，不得生成分镜拼图、文字或水印；准确表现这一时刻的可见状态，并严格遵守上述每张输入图的用途：编辑底图或前一时间边界是画面基础；标记为仅参考或辅助参考的图片不是编辑底图，允许按本帧目标重新构图；未启用的地点视图不得进入输入或影响画面；输出必须保持项目画幅比例与横竖方向，不得在连续关键帧之间改变画幅。\n\n本帧创作正文：\n静态空站台，固定机位。",
+      "prompt_text": "输入图对应关系（按实际传入顺序，禁止混淆身份）：\n第 1 张输入图「Scene-01-末班车-Shot-01-Segment-01-首帧-候选.png」：前一时间边界 Keyframe；用于保持相邻画面的动作、位置和构图连续。\n\n项目固定画幅：16:9。关键帧硬约束：只生成一张单一静态画面，不得生成分镜拼图、文字或水印；准确表现这一时刻的可见状态，并严格遵守上述每张输入图的用途：编辑底图或前一时间边界是画面基础；标记为仅参考或辅助参考的图片只提供空间关系或辅助信息，不是编辑底图，不照搬其机位、视角与构图，允许按本帧目标重新构图；未启用的地点视图不得进入输入或影响画面；输出必须保持项目画幅比例与横竖方向，不得在连续关键帧之间改变画幅。\n\n本帧创作正文：\n静态空站台，固定机位。",
       "language": null,
       "input_asset_ids": [
         "5edde07cef711e2867e7f7c528e9d84c"
@@ -466,14 +466,14 @@
       "allowed_actions": []
     },
     {
-      "id": "637e972d1e194b76ac3b9f4a3820aa46",
+      "id": "5c86eed5bf164a7f8dd95bf6cd282f96",
       "kind": "keyframe_image",
       "operation": "edit",
-      "target_id": "2db370ce15eb4a60aa957482d155f9ac",
+      "target_id": "683c5517c00f4bfe8d9f89e7f9d00b1e",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
-      "prompt_text": "输入图对应关系（按实际传入顺序，禁止混淆身份）：\n第 1 张输入图「Scene-01-末班车-Shot-01-Segment-01-尾帧-候选.png」：前一时间边界 Keyframe；用于保持相邻画面的动作、位置和构图连续。\n\n项目固定画幅：16:9。关键帧硬约束：只生成一张单一静态画面，不得生成分镜拼图、文字或水印；准确表现这一时刻的可见状态，并严格遵守上述每张输入图的用途：编辑底图或前一时间边界是画面基础；标记为仅参考或辅助参考的图片不是编辑底图，允许按本帧目标重新构图；未启用的地点视图不得进入输入或影响画面；输出必须保持项目画幅比例与横竖方向，不得在连续关键帧之间改变画幅。\n\n本帧创作正文：\n静态空站台，固定机位。",
+      "prompt_text": "输入图对应关系（按实际传入顺序，禁止混淆身份）：\n第 1 张输入图「Scene-01-末班车-Shot-01-Segment-01-尾帧-候选.png」：前一时间边界 Keyframe；用于保持相邻画面的动作、位置和构图连续。\n\n项目固定画幅：16:9。关键帧硬约束：只生成一张单一静态画面，不得生成分镜拼图、文字或水印；准确表现这一时刻的可见状态，并严格遵守上述每张输入图的用途：编辑底图或前一时间边界是画面基础；标记为仅参考或辅助参考的图片只提供空间关系或辅助信息，不是编辑底图，不照搬其机位、视角与构图，允许按本帧目标重新构图；未启用的地点视图不得进入输入或影响画面；输出必须保持项目画幅比例与横竖方向，不得在连续关键帧之间改变画幅。\n\n本帧创作正文：\n静态空站台，固定机位。",
       "language": null,
       "input_asset_ids": [
         "e3813c1c7bed52609f4b47bf5123702a"
@@ -496,10 +496,10 @@
       "allowed_actions": []
     },
     {
-      "id": "c3841d1974db450798f3f6797cfd5e1a",
+      "id": "2579fc4aa37d47508ad4e64a0999e55b",
       "kind": "keyframe_image",
       "operation": "generate",
-      "target_id": "f5939d1a5d9e4905970b77a9a692a320",
+      "target_id": "82e3fd6496d046a984cfabea9b3b6b74",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
@@ -524,14 +524,14 @@
       "allowed_actions": []
     },
     {
-      "id": "d2c791830a66469daf1d6d38fe612d62",
+      "id": "4c54f466b2db4e7bac5eec5c61180c5c",
       "kind": "keyframe_image",
       "operation": "edit",
-      "target_id": "c4eb0de3dd18423188f59f10546427c3",
+      "target_id": "f36ab431e7574cc3ae2fde6101523856",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
-      "prompt_text": "输入图对应关系（按实际传入顺序，禁止混淆身份）：\n第 1 张输入图「Scene-02-末班车-Shot-01-Segment-01-首帧-候选.png」：前一时间边界 Keyframe；用于保持相邻画面的动作、位置和构图连续。\n\n项目固定画幅：16:9。关键帧硬约束：只生成一张单一静态画面，不得生成分镜拼图、文字或水印；准确表现这一时刻的可见状态，并严格遵守上述每张输入图的用途：编辑底图或前一时间边界是画面基础；标记为仅参考或辅助参考的图片不是编辑底图，允许按本帧目标重新构图；未启用的地点视图不得进入输入或影响画面；输出必须保持项目画幅比例与横竖方向，不得在连续关键帧之间改变画幅。\n\n本帧创作正文：\n静态空站台，固定机位。",
+      "prompt_text": "输入图对应关系（按实际传入顺序，禁止混淆身份）：\n第 1 张输入图「Scene-02-末班车-Shot-01-Segment-01-首帧-候选.png」：前一时间边界 Keyframe；用于保持相邻画面的动作、位置和构图连续。\n\n项目固定画幅：16:9。关键帧硬约束：只生成一张单一静态画面，不得生成分镜拼图、文字或水印；准确表现这一时刻的可见状态，并严格遵守上述每张输入图的用途：编辑底图或前一时间边界是画面基础；标记为仅参考或辅助参考的图片只提供空间关系或辅助信息，不是编辑底图，不照搬其机位、视角与构图，允许按本帧目标重新构图；未启用的地点视图不得进入输入或影响画面；输出必须保持项目画幅比例与横竖方向，不得在连续关键帧之间改变画幅。\n\n本帧创作正文：\n静态空站台，固定机位。",
       "language": null,
       "input_asset_ids": [
         "e34d22b70e843cf36413ed30439ef87b"
@@ -554,10 +554,10 @@
       "allowed_actions": []
     },
     {
-      "id": "a00f58f7291c4ad68e42b9c142aacdec",
+      "id": "bcc1ca536ebe45839196f65a099db553",
       "kind": "segment_video",
       "operation": "render",
-      "target_id": "ef5693e16367feb4c06be404db0501ef",
+      "target_id": "1aad8a0c64bf829ba6200a5b1376bc06",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
@@ -568,7 +568,7 @@
         "e3813c1c7bed52609f4b47bf5123702a"
       ],
       "sample_text": null,
-      "seed": "8022762382451801780",
+      "seed": "1922344401791582875",
       "aspect_ratio": null,
       "duration_seconds": 8.0,
       "output_asset_id": "6338b846412608d0de9f683e92ce2fb8",
@@ -585,10 +585,10 @@
       "allowed_actions": []
     },
     {
-      "id": "082893eb73d2432bba3d1a967596a7e3",
+      "id": "4de85f7ce2024defa9dca82062eb52c0",
       "kind": "segment_video",
       "operation": "render",
-      "target_id": "520aa2edee555e92a0a8091aa50bc500",
+      "target_id": "48657e28b9bf7d5f4b4a8b5f41b738be",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
@@ -599,7 +599,7 @@
         "2e317a48a30220d247bf587cb2a18a99"
       ],
       "sample_text": null,
-      "seed": "5911716603666718354",
+      "seed": "5216714456758713695",
       "aspect_ratio": null,
       "duration_seconds": 8.0,
       "output_asset_id": "81a93e72ee355b3d9c7480abbbaf66a6",
@@ -616,10 +616,10 @@
       "allowed_actions": []
     },
     {
-      "id": "a72541ed1f574e5a98d6c5a2f6eeafd5",
+      "id": "58beaca5d28144af82313033011d8023",
       "kind": "segment_video",
       "operation": "render",
-      "target_id": "7c2bcfec5752403a9ef312d6f4ee57db",
+      "target_id": "578c0f4b91e74e9bb260bb5a8f537715",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
@@ -630,7 +630,7 @@
         "aedddebdbb604cd51b7dd27a44bcfcca"
       ],
       "sample_text": null,
-      "seed": "8947473698685861946",
+      "seed": "6308433995284041371",
       "aspect_ratio": null,
       "duration_seconds": 6.0,
       "output_asset_id": "e8466cb5af1556363a360f6c255f87c1",
@@ -647,10 +647,10 @@
       "allowed_actions": []
     },
     {
-      "id": "e7cdfd54fb5e40ad8dba04aaeeeb1778",
+      "id": "744de67f37d744e1ac83bc96db8f1e9d",
       "kind": "scene_final_video",
       "operation": "assemble",
-      "target_id": "035e481b9f064811846c489fb9a1cff5",
+      "target_id": "3e858559a96f4cb6ac9416332a224805",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
@@ -675,10 +675,10 @@
       "allowed_actions": []
     },
     {
-      "id": "05f25536ee5543a2a926eeec5c3d66b8",
+      "id": "1bdf5418446d4926aa0b26d3ee9c0ff1",
       "kind": "scene_final_video",
       "operation": "assemble",
-      "target_id": "035e481b9f064811846c489fb9a1cff5",
+      "target_id": "3e858559a96f4cb6ac9416332a224805",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
@@ -703,10 +703,10 @@
       "allowed_actions": []
     },
     {
-      "id": "0e604184cebb47b29ffac6355d091d1d",
+      "id": "33c7769966c146c689a74f068fc9bf3f",
       "kind": "scene_final_video",
       "operation": "assemble",
-      "target_id": "e34e99d94fb24da58db9c5a285ad55ae",
+      "target_id": "00eadbd2fad44d7f93ecdc1efc3bb013",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
@@ -729,10 +729,10 @@
       "allowed_actions": []
     },
     {
-      "id": "5e8b26fe498d4ce2a9d6c3ae0fe16296",
+      "id": "408f4be4290d4d6ba885bd5dd584c9f0",
       "kind": "scene_final_video",
       "operation": "assemble",
-      "target_id": "e34e99d94fb24da58db9c5a285ad55ae",
+      "target_id": "00eadbd2fad44d7f93ecdc1efc3bb013",
       "phase": "succeeded",
       "progress": 1.0,
       "message": "完成",
@@ -755,7 +755,7 @@
       "allowed_actions": []
     },
     {
-      "id": "c9d4544519f943a5b2d742b469df54a0",
+      "id": "e5eae2b36d424ae0b9375fbc31ee9697",
       "kind": "final_video",
       "operation": "assemble",
       "target_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -782,7 +782,7 @@
       "allowed_actions": []
     },
     {
-      "id": "f71d7e0a9cd545fd9f024715aa82e1ba",
+      "id": "806dbf00677c4dd4bb444c63307855c1",
       "kind": "final_video",
       "operation": "assemble",
       "target_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -813,7 +813,7 @@
     "reviewed": true,
     "characters": [
       {
-        "id": "35a515b416cc4562b54eeb3517fbc6e3",
+        "id": "b17d407dc27348bb87ca06262518fd0b",
         "name": "小满",
         "visual_description": "短发，蓝色外套，一直带着红色行李箱",
         "looks": [],
@@ -823,7 +823,7 @@
       }
     ],
     "narrator": {
-      "id": "f912f67d41574dd6ad1d8a8ad8fff916",
+      "id": "a241503a1aed47db941ddfb1ce9abaa1",
       "name": "旁白",
       "zh": {
         "voice_description": "克制、温和、纪录片式表达",
@@ -843,7 +843,7 @@
     "production_baseline_revision": 4,
     "production_baseline_scenes": [
       {
-        "id": "035e481b9f064811846c489fb9a1cff5",
+        "id": "3e858559a96f4cb6ac9416332a224805",
         "title": "末班车",
         "summary": "小满在停用前的车站等最后一班车。",
         "setting": "傍晚，空旷站台，冷蓝色天光。",
@@ -852,7 +852,7 @@
         "state_id": null,
         "shots": [
           {
-            "id": "74311756caba8aaeeba9f9943d4e24b6",
+            "id": "0a80ea9ad6ce7a283527b2f9991be342",
             "visible_character_ids": [],
             "composition": "全景",
             "camera_movement": "缓慢推进",
@@ -862,14 +862,14 @@
             "view_id": null,
             "segments": [
               {
-                "id": "ef5693e16367feb4c06be404db0501ef",
+                "id": "1aad8a0c64bf829ba6200a5b1376bc06",
                 "duration_estimate_seconds": 8.0,
                 "action": "连续推进的前半程",
                 "dialogue_lines": [],
                 "boundary_from_previous": null
               },
               {
-                "id": "520aa2edee555e92a0a8091aa50bc500",
+                "id": "48657e28b9bf7d5f4b4a8b5f41b738be",
                 "duration_estimate_seconds": 8.0,
                 "action": "连续推进的后半程",
                 "dialogue_lines": [],
@@ -883,9 +883,9 @@
         ],
         "narration_cues": [
           {
-            "id": "dc0d0f26df5646c48881136fd504205d",
-            "start_shot_id": "74311756caba8aaeeba9f9943d4e24b6",
-            "end_shot_id": "74311756caba8aaeeba9f9943d4e24b6",
+            "id": "9f8aa4a3c9e1494fbf9c503c87d380de",
+            "start_shot_id": "0a80ea9ad6ce7a283527b2f9991be342",
+            "end_shot_id": "0a80ea9ad6ce7a283527b2f9991be342",
             "zh": {
               "text": "末班车到来以前，站台仍旧保持着漫长的安静。",
               "seed": 42,
@@ -906,7 +906,7 @@
         ]
       },
       {
-        "id": "e34e99d94fb24da58db9c5a285ad55ae",
+        "id": "00eadbd2fad44d7f93ecdc1efc3bb013",
         "title": "末班车",
         "summary": "小满在停用前的车站等最后一班车。",
         "setting": "傍晚，空旷站台，冷蓝色天光。",
@@ -915,7 +915,7 @@
         "state_id": null,
         "shots": [
           {
-            "id": "530d4641d08a4d3893ea6a5310af2f11",
+            "id": "3eb75e6fac7046b9a782a901e39c189b",
             "visible_character_ids": [],
             "composition": "中远景，人物位于画面右侧。",
             "camera_movement": "缓慢推近。",
@@ -925,7 +925,7 @@
             "view_id": null,
             "segments": [
               {
-                "id": "7c2bcfec5752403a9ef312d6f4ee57db",
+                "id": "578c0f4b91e74e9bb260bb5a8f537715",
                 "duration_estimate_seconds": 6.0,
                 "action": "小满抬头看向站牌。",
                 "dialogue_lines": [],
@@ -939,7 +939,7 @@
     ],
     "scenes": [
       {
-        "id": "035e481b9f064811846c489fb9a1cff5",
+        "id": "3e858559a96f4cb6ac9416332a224805",
         "title": "末班车",
         "summary": "小满在停用前的车站等最后一班车。",
         "setting": "傍晚，空旷站台，冷蓝色天光。",
@@ -948,7 +948,7 @@
         "state_id": null,
         "shots": [
           {
-            "id": "74311756caba8aaeeba9f9943d4e24b6",
+            "id": "0a80ea9ad6ce7a283527b2f9991be342",
             "visible_character_ids": [],
             "composition": "全景",
             "camera_movement": "缓慢推进",
@@ -958,14 +958,14 @@
             "view_id": null,
             "segments": [
               {
-                "id": "ef5693e16367feb4c06be404db0501ef",
+                "id": "1aad8a0c64bf829ba6200a5b1376bc06",
                 "duration_estimate_seconds": 8.0,
                 "action": "连续推进的前半程",
                 "dialogue_lines": [],
                 "boundary_from_previous": null
               },
               {
-                "id": "520aa2edee555e92a0a8091aa50bc500",
+                "id": "48657e28b9bf7d5f4b4a8b5f41b738be",
                 "duration_estimate_seconds": 8.0,
                 "action": "连续推进的后半程",
                 "dialogue_lines": [],
@@ -979,9 +979,9 @@
         ],
         "narration_cues": [
           {
-            "id": "dc0d0f26df5646c48881136fd504205d",
-            "start_shot_id": "74311756caba8aaeeba9f9943d4e24b6",
-            "end_shot_id": "74311756caba8aaeeba9f9943d4e24b6",
+            "id": "9f8aa4a3c9e1494fbf9c503c87d380de",
+            "start_shot_id": "0a80ea9ad6ce7a283527b2f9991be342",
+            "end_shot_id": "0a80ea9ad6ce7a283527b2f9991be342",
             "zh": {
               "text": "末班车到来以前，站台仍旧保持着漫长的安静。",
               "seed": 42,
@@ -1013,20 +1013,20 @@
           "reason": "已就绪。",
           "zh": {
             "active_generation_id": null,
-            "latest_succeeded_generation_id": "e7cdfd54fb5e40ad8dba04aaeeeb1778",
+            "latest_succeeded_generation_id": "744de67f37d744e1ac83bc96db8f1e9d",
             "current_asset_id": "7881ed0d22d065f1f29b90cdac675bfc",
             "outdated": false
           },
           "en": {
             "active_generation_id": null,
-            "latest_succeeded_generation_id": "05f25536ee5543a2a926eeec5c3d66b8",
+            "latest_succeeded_generation_id": "1bdf5418446d4926aa0b26d3ee9c0ff1",
             "current_asset_id": "7881ed0d22d065f1f29b90cdac675bfc",
             "outdated": false
           }
         }
       },
       {
-        "id": "e34e99d94fb24da58db9c5a285ad55ae",
+        "id": "00eadbd2fad44d7f93ecdc1efc3bb013",
         "title": "末班车",
         "summary": "小满在停用前的车站等最后一班车。",
         "setting": "傍晚，空旷站台，冷蓝色天光。",
@@ -1035,7 +1035,7 @@
         "state_id": null,
         "shots": [
           {
-            "id": "530d4641d08a4d3893ea6a5310af2f11",
+            "id": "3eb75e6fac7046b9a782a901e39c189b",
             "visible_character_ids": [],
             "composition": "中远景，人物位于画面右侧。",
             "camera_movement": "缓慢推近。",
@@ -1045,7 +1045,7 @@
             "view_id": null,
             "segments": [
               {
-                "id": "7c2bcfec5752403a9ef312d6f4ee57db",
+                "id": "578c0f4b91e74e9bb260bb5a8f537715",
                 "duration_estimate_seconds": 6.0,
                 "action": "小满抬头看向站牌。",
                 "dialogue_lines": [],
@@ -1068,13 +1068,13 @@
           "reason": "已就绪。",
           "zh": {
             "active_generation_id": null,
-            "latest_succeeded_generation_id": "0e604184cebb47b29ffac6355d091d1d",
+            "latest_succeeded_generation_id": "33c7769966c146c689a74f068fc9bf3f",
             "current_asset_id": "2de3faa5cca0fe60752473dc2b720784",
             "outdated": false
           },
           "en": {
             "active_generation_id": null,
-            "latest_succeeded_generation_id": "5e8b26fe498d4ce2a9d6c3ae0fe16296",
+            "latest_succeeded_generation_id": "408f4be4290d4d6ba885bd5dd584c9f0",
             "current_asset_id": "2de3faa5cca0fe60752473dc2b720784",
             "outdated": false
           }
@@ -1116,8 +1116,8 @@
     "source_script_revision": 4,
     "keyframes": [
       {
-        "id": "cc65c93644ed4626a5be9ed081d2a9c3",
-        "owner_segment_id": "ef5693e16367feb4c06be404db0501ef",
+        "id": "f895066ca43a4b81b883b78ccb4df9f8",
+        "owner_segment_id": "1aad8a0c64bf829ba6200a5b1376bc06",
         "predecessor_keyframe_id": null,
         "prompt_text": "静态空站台，固定机位。",
         "visible_character_ids": [],
@@ -1128,9 +1128,9 @@
         "environment_none_reason": "Shot 未绑定地点视图"
       },
       {
-        "id": "da1de271003748c38db821666d3e3f26",
-        "owner_segment_id": "ef5693e16367feb4c06be404db0501ef",
-        "predecessor_keyframe_id": "cc65c93644ed4626a5be9ed081d2a9c3",
+        "id": "2724734faf3543e3a364e3358bc2f06f",
+        "owner_segment_id": "1aad8a0c64bf829ba6200a5b1376bc06",
+        "predecessor_keyframe_id": "f895066ca43a4b81b883b78ccb4df9f8",
         "prompt_text": "静态空站台，固定机位。",
         "visible_character_ids": [],
         "character_references": [],
@@ -1140,9 +1140,9 @@
         "environment_none_reason": "Shot 未绑定地点视图"
       },
       {
-        "id": "2db370ce15eb4a60aa957482d155f9ac",
-        "owner_segment_id": "520aa2edee555e92a0a8091aa50bc500",
-        "predecessor_keyframe_id": "da1de271003748c38db821666d3e3f26",
+        "id": "683c5517c00f4bfe8d9f89e7f9d00b1e",
+        "owner_segment_id": "48657e28b9bf7d5f4b4a8b5f41b738be",
+        "predecessor_keyframe_id": "2724734faf3543e3a364e3358bc2f06f",
         "prompt_text": "静态空站台，固定机位。",
         "visible_character_ids": [],
         "character_references": [],
@@ -1152,8 +1152,8 @@
         "environment_none_reason": "Shot 未绑定地点视图"
       },
       {
-        "id": "f5939d1a5d9e4905970b77a9a692a320",
-        "owner_segment_id": "7c2bcfec5752403a9ef312d6f4ee57db",
+        "id": "82e3fd6496d046a984cfabea9b3b6b74",
+        "owner_segment_id": "578c0f4b91e74e9bb260bb5a8f537715",
         "predecessor_keyframe_id": null,
         "prompt_text": "静态空站台，固定机位。",
         "visible_character_ids": [],
@@ -1164,9 +1164,9 @@
         "environment_none_reason": "Shot 未绑定地点视图"
       },
       {
-        "id": "c4eb0de3dd18423188f59f10546427c3",
-        "owner_segment_id": "7c2bcfec5752403a9ef312d6f4ee57db",
-        "predecessor_keyframe_id": "f5939d1a5d9e4905970b77a9a692a320",
+        "id": "f36ab431e7574cc3ae2fde6101523856",
+        "owner_segment_id": "578c0f4b91e74e9bb260bb5a8f537715",
+        "predecessor_keyframe_id": "82e3fd6496d046a984cfabea9b3b6b74",
         "prompt_text": "静态空站台，固定机位。",
         "visible_character_ids": [],
         "character_references": [],
@@ -1178,9 +1178,9 @@
     ],
     "segments": [
       {
-        "segment_id": "ef5693e16367feb4c06be404db0501ef",
-        "start_keyframe_id": "cc65c93644ed4626a5be9ed081d2a9c3",
-        "end_keyframe_id": "da1de271003748c38db821666d3e3f26",
+        "segment_id": "1aad8a0c64bf829ba6200a5b1376bc06",
+        "start_keyframe_id": "f895066ca43a4b81b883b78ccb4df9f8",
+        "end_keyframe_id": "2724734faf3543e3a364e3358bc2f06f",
         "start_enabled": true,
         "end_enabled": true,
         "reference_asset_ids": [],
@@ -1192,28 +1192,28 @@
         }
       },
       {
-        "segment_id": "520aa2edee555e92a0a8091aa50bc500",
-        "start_keyframe_id": "da1de271003748c38db821666d3e3f26",
-        "end_keyframe_id": "2db370ce15eb4a60aa957482d155f9ac",
+        "segment_id": "48657e28b9bf7d5f4b4a8b5f41b738be",
+        "start_keyframe_id": "2724734faf3543e3a364e3358bc2f06f",
+        "end_keyframe_id": "683c5517c00f4bfe8d9f89e7f9d00b1e",
         "start_enabled": true,
         "end_enabled": true,
         "reference_asset_ids": [],
         "start_frame_extraction": {
-          "source_segment_id": "ef5693e16367feb4c06be404db0501ef",
+          "source_segment_id": "1aad8a0c64bf829ba6200a5b1376bc06",
           "source_video_asset_id": null,
           "state": "shared_boundary",
           "message": "该首帧与上一段尾帧共享，不能从上一段视频抽取；请先拆开边界。"
         }
       },
       {
-        "segment_id": "7c2bcfec5752403a9ef312d6f4ee57db",
-        "start_keyframe_id": "f5939d1a5d9e4905970b77a9a692a320",
-        "end_keyframe_id": "c4eb0de3dd18423188f59f10546427c3",
+        "segment_id": "578c0f4b91e74e9bb260bb5a8f537715",
+        "start_keyframe_id": "82e3fd6496d046a984cfabea9b3b6b74",
+        "end_keyframe_id": "f36ab431e7574cc3ae2fde6101523856",
         "start_enabled": true,
         "end_enabled": true,
         "reference_asset_ids": [],
         "start_frame_extraction": {
-          "source_segment_id": "520aa2edee555e92a0a8091aa50bc500",
+          "source_segment_id": "48657e28b9bf7d5f4b4a8b5f41b738be",
           "source_video_asset_id": "81a93e72ee355b3d9c7480abbbaf66a6",
           "state": "ready",
           "message": "可以从上一段视频抽取。"
@@ -1225,7 +1225,7 @@
     "source_script_revision": 4,
     "segments": [
       {
-        "segment_id": "ef5693e16367feb4c06be404db0501ef",
+        "segment_id": "1aad8a0c64bf829ba6200a5b1376bc06",
         "prompt_text": "固定机位观察空站台，无对白。",
         "active_recipe": "minimax_h3.fl2va",
         "recipes": {
@@ -1248,7 +1248,7 @@
         "upscaled_asset_id": null
       },
       {
-        "segment_id": "520aa2edee555e92a0a8091aa50bc500",
+        "segment_id": "48657e28b9bf7d5f4b4a8b5f41b738be",
         "prompt_text": "固定机位观察空站台，无对白。",
         "active_recipe": "minimax_h3.fl2va",
         "recipes": {
@@ -1271,7 +1271,7 @@
         "upscaled_asset_id": null
       },
       {
-        "segment_id": "7c2bcfec5752403a9ef312d6f4ee57db",
+        "segment_id": "578c0f4b91e74e9bb260bb5a8f537715",
         "prompt_text": "固定机位观察空站台，无对白。",
         "active_recipe": "minimax_h3.fl2va",
         "recipes": {
@@ -1299,13 +1299,13 @@
     "source_script_revision": 4,
     "clips": [
       {
-        "scene_id": "035e481b9f064811846c489fb9a1cff5",
+        "scene_id": "3e858559a96f4cb6ac9416332a224805",
         "zh_asset_id": "7881ed0d22d065f1f29b90cdac675bfc",
         "en_asset_id": "7881ed0d22d065f1f29b90cdac675bfc",
         "transition_from_previous": null
       },
       {
-        "scene_id": "e34e99d94fb24da58db9c5a285ad55ae",
+        "scene_id": "00eadbd2fad44d7f93ecdc1efc3bb013",
         "zh_asset_id": "2de3faa5cca0fe60752473dc2b720784",
         "en_asset_id": "2de3faa5cca0fe60752473dc2b720784",
         "transition_from_previous": null
@@ -1316,9 +1316,9 @@
   },
   "final_approval": {
     "zh_asset_id": "8b23422a26bf724627d51a4758660d76",
-    "zh_generation_id": "c9d4544519f943a5b2d742b469df54a0",
+    "zh_generation_id": "e5eae2b36d424ae0b9375fbc31ee9697",
     "en_asset_id": "8b23422a26bf724627d51a4758660d76",
-    "en_generation_id": "f71d7e0a9cd545fd9f024715aa82e1ba",
+    "en_generation_id": "806dbf00677c4dd4bb444c63307855c1",
     "source_script_revision": 4,
     "approved_project_revision": 84
   }

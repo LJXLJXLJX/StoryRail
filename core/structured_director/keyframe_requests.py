@@ -266,7 +266,9 @@ def _keyframe_generation_inputs(
                 view.selected_asset_id,
                 "地点视图",
                 f"地点「{location.name}」的视图「{view.name}」：同一地点的空间参考；"
-                "保持其中固定陈设、方位关系、材质与主光一致，只允许改变构图和景别。",
+                "只参考固定陈设的方位关系、空间布局、材质与主光方向；"
+                "不照搬该图的机位、视角与构图，按本帧画面目标重新构图，"
+                "人物与环境须融为同一光照与透视。",
             )
     predecessor_input: ImageInput | None = None
     if keyframe.predecessor_keyframe_id is not None and binding.start_enabled:
@@ -423,7 +425,8 @@ def _keyframe_effective_prompt(
     )
     input_rule = (
         "严格遵守上述每张输入图的用途：编辑底图或前一时间边界是画面基础；"
-        "标记为仅参考或辅助参考的图片不是编辑底图，允许按本帧目标重新构图；"
+        "标记为仅参考或辅助参考的图片只提供空间关系或辅助信息，不是编辑底图，"
+        "不照搬其机位、视角与构图，允许按本帧目标重新构图；"
         if inputs.asset_ids
         else "根据本帧描述建立完整且自洽的空间、陈设、光线与画风；"
     )

@@ -114,7 +114,7 @@ def _insert_segment(store, document, shot, character_id):
 # --- 建帧继承与改绑不回写 ---
 
 
-def test_unlock_inherits_shot_view_as_explicit_edit(tmp_path):
+def test_unlock_inherits_shot_view_as_explicit_reference(tmp_path):
     _store, _service, document = asyncio.run(_unlocked(tmp_path))
     frames = _frames(document)
     for scene in document.director_script.scenes:
@@ -124,7 +124,7 @@ def test_unlock_inherits_shot_view_as_explicit_edit(tmp_path):
                 binding = _binding(document, segment.id)
                 for frame_id in (binding.start_keyframe_id, binding.end_keyframe_id):
                     frame = frames[frame_id]
-                    assert frame.environment_mode is KeyframeEnvironmentMode.EDIT
+                    assert frame.environment_mode is KeyframeEnvironmentMode.REFERENCE
                     assert frame.environment_view_id == shot.view_id
                     assert frame.environment_none_reason is None
 
@@ -174,7 +174,7 @@ def test_rebinding_keeps_frames_and_rebuild_gives_new_segments_current_default(t
     bound_new = document.director_script.scenes[1].shots[0].segments[-1]
     for segment, mode, view_id in (
         (unbound_new, KeyframeEnvironmentMode.NONE, None),
-        (bound_new, KeyframeEnvironmentMode.EDIT, bound.view_id),
+        (bound_new, KeyframeEnvironmentMode.REFERENCE, bound.view_id),
     ):
         binding = _binding(document, segment.id)
         for frame_id in (binding.start_keyframe_id, binding.end_keyframe_id):
@@ -249,7 +249,7 @@ def _field_updates(operations):
 @pytest.mark.parametrize(
     ("shot_view", "expected"),
     [
-        (VIEW, ("edit", VIEW, None)),
+        (VIEW, ("reference", VIEW, None)),
         (None, ("none", None, DEFAULT_ENVIRONMENT_NONE_REASON)),
     ],
 )
@@ -267,7 +267,7 @@ def test_planner_explicit_environment_overrides_inheritance():
     _out, operations = compile_keyframe_proposal(proposal, (_scene(VIEW),))
     updates = _field_updates(operations)
     assert updates["4" * 32] == ("reference", "8" * 32, None)
-    assert updates["3" * 32] == ("edit", VIEW, None)
+    assert updates["3" * 32] == ("reference", VIEW, None)
 
 
 def test_planner_explicit_none_requires_reason():
@@ -512,7 +512,9 @@ def test_prompt_text_for_edit_and_reference(tmp_path, qwen):
         ),
         (
             KeyframeEnvironmentMode.REFERENCE,
-            "同一地点的空间参考；保持其中固定陈设、方位关系、材质与主光一致，只允许改变构图和景别。",
+            "同一地点的空间参考；只参考固定陈设的方位关系、空间布局、材质与主光方向；"
+            "不照搬该图的机位、视角与构图，按本帧画面目标重新构图，"
+            "人物与环境须融为同一光照与透视。",
             "这是本次图片编辑的底图",
         ),
     ):
@@ -525,6 +527,13 @@ def test_prompt_text_for_edit_and_reference(tmp_path, qwen):
         assert expected in prompt
         assert absent not in prompt
         assert prompt.count("16:9") == (0 if qwen else 1)
+        if mode is KeyframeEnvironmentMode.REFERENCE:
+            view_description = next(
+                description for _name, description in inputs.mapping if "空间参考" in description
+            )
+            assert "不照搬" in view_description
+            assert "空间" in view_description
+            assert "底图" not in view_description
 
 
 # --- 工作集 ---

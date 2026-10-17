@@ -50,7 +50,7 @@ StoryRail 不内置 Agent、不持有模型会话，也没有隐藏 fallback。�
 | Segment | 适配生成能力的物理切片（不短于 0.2 秒，默认 15 秒软约束），承载对白（仅 Drama Scene）；每个 Segment 一张视频卡 |
 | Narration Cue | Scene 旁白，按创建时所选语言建立 `zh` / `en` 轨道，未选语言为 null，各自正文、seed、表演指示、已选音频 |
 | Location | 跨 Scene 共享的固定空间：主图（室内 2:1 全景、室外项目画幅）、固定陈设与主光、状态变体、供 Shot 绑定的机位视图 |
-| Location View | 地点内的一个机位（方位、俯仰、视场角）；室内由全景裁切后细化，室外由主图转向；Keyframe 默认以它为编辑底图 |
+| Location View | 地点内的一个机位（方位、俯仰、视场角）；室内由全景裁切后细化，室外由主图转向；Keyframe 默认以它为空间参考 |
 | Keyframe | Segment 的首帧或尾帧；相邻 Segment 可显式共享边界 Keyframe；以 `edit` / `reference` / `none` 使用地点视图 |
 | Asset | 不可变媒体字节，按 SHA-256、媒体类型、字节数校验 |
 | Generation | 一次 Provider 尝试或本地处理：输入、参数、seed、状态、产物、`retry_of` |
