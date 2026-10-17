@@ -37,18 +37,48 @@ def test_keyframe_contract_treats_views_as_soft_reference():
     assert "只在以下情况改写" not in skill
 
 
-def test_initial_planning_keeps_one_segment_per_shot_and_defers_split_to_video_reminder():
-    script = "\n".join(item["text"] for item in read_contract("script")["resources"])
-    assert "初次规划一个 Shot 只对应一个 Segment" in script
-    assert "超过 15 秒软约束也不压缩或拆分" in script
-    # 旧的预拆分说法不能与新规则并存。
-    assert "再将过长 Shot 拆成 Segment" not in script
-    assert "普通 Shot 只返回一个" not in script
-    assert "是则用 Segment" not in script
+def test_script_skill_designs_shots_before_packing_them_into_segments():
+    """先设计 Shot 列表，再按打包规则装进 Segment；长镜头与段内切镜都通过覆盖关系表达。"""
+    resources = read_contract("script")["resources"]
+    text = {item["name"]: item["text"] for item in resources}
+    skill = text["SKILL.md"]
+    for required in ("设计 Shot 列表", "打包成 Segment", "打包理由"):
+        assert required in skill, required
+    contract = text["references/script-contract.md"]
+    for required in (
+        "先设计 Shot 列表，再打包成 Segment",
+        "一个 Segment 可以覆盖多个相邻 Shot",
+        "一个 Shot 也可以跨多个相邻 Segment",
+        "实验前每个 Segment 不超过 3 个",
+        "需要精确构图控制的镜头独占 Segment",
+        "`boundary_from_previous`",
+        "初稿与回改都在 `reply_markdown` 简述打包理由",
+    ):
+        assert required in contract, required
+    quality = " ".join(text["references/quality-gate.md"].split())
+    for required in (
+        "打包覆盖完整连续",
+        "每个 Segment 预计不超过 15 秒",
+        "段内切镜只用于同空间、同一节拍的紧密镜头组",
+        "实验前每个 Segment 不超过 3 个",
+        "精确构图控制",
+        "打包理由已写入 `reply_markdown`",
+    ):
+        assert required in quality, required
+    # 旧规则不能以任何措辞残留在契约资源里。
+    combined = "\n".join(text.values())
+    for stale in (
+        "初次规划一个 Shot 只对应一个 Segment",
+        "新规划的 Shot 恰好一个 Segment",
+        "超过 15 秒软约束也不压缩或拆分",
+        "一个 Shot 只有一个 Segment",
+    ):
+        assert stale not in combined, stale
     launcher = (
         Path(__file__).resolve().parents[1] / "integrations/agent_launcher/PROMPT.md"
     ).read_text()
     assert "exceeds_soft_duration_limit" in launcher
+    assert "拆分 Segment 不改变 Shot 设计" in launcher
     assert "一个 Shot 只有一个 Segment" not in launcher
 
 
@@ -85,15 +115,19 @@ def test_multi_shot_video_segments_are_in_video_contract_and_launcher():
         assert "一个 Shot 只有一个 Segment" not in text
 
 
-def test_script_contract_carries_single_visible_speaker_rule():
-    """剧情戏的对白约束：一个 Segment 至多一个开口说话的可见角色。"""
+def test_script_contract_carries_single_visible_speaker_rule_per_shot():
+    """段内切镜后开口约束按 Shot 计：每个 Shot 至多一个开口说话的可见角色。"""
     resources = read_contract("script")["resources"]
     names = [item["name"] for item in resources]
     assert "references/drama-scene-craft.md" in names
     craft = next(i["text"] for i in resources if i["name"] == "references/drama-scene-craft.md")
-    assert "一个 Segment 里只有一个开口说话的可见人物" in craft
-    quality = next(i["text"] for i in resources if i["name"] == "references/quality-gate.md")
-    assert "每个 Segment 至多一个开口说话的可见角色" in quality
+    assert "每个 Shot 里只有一个开口说话的可见人物" in craft
+    assert "一个 Segment 里只有一个开口说话的可见人物" not in craft
+    quality = " ".join(
+        next(i["text"] for i in resources if i["name"] == "references/quality-gate.md").split()
+    )
+    assert "每个 Shot 至多一个开口说话的可见角色" in quality
+    assert "每个 Segment 至多一个开口说话的可见角色" not in quality
     from core.model_providers.minimax_h3.prompt_context import skill_resources
 
     h3 = "\n".join(r["text"] for r in skill_resources())

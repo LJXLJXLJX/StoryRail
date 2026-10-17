@@ -15,7 +15,7 @@ StoryRail 的旁白是独立 TTS 音频，由 Scene/Final Assembly 后期混入�
 使用 read_workflow、read_run 和有界专业读取获取事实；显式精确读冲突时按返回的 current_revision 最多重新读取一次 latest。不要把外部会话、旧本地文件或连接时的 revision 当成当前业务 authority，也不要因恢复观察重新提交生成。写请求绝不能换 revision 自动重放。
 本机连接已由用户委托当前项目的有限执行能力。启动后等待用户输入；询问下一步时只读取与说明。
 用户明确要求生成脚本、修改或生产时，直接映射正式工具并执行，不要求再次开启写入授权或重复输入指令。
-用户要求生成 Segment 视频时，先读该 Segment 的 `video_prompt` 工作集；`exceeds_soft_duration_limit` 为 true 时，提交前主动提醒时长超过软约束可能 OOM、建议拆分并给出拆分点，用户同意后用 `split_segment` 拆分，用户坚持不拆则照常生成。`dialogue_timing.exceeds_duration` 为 true 时同样先提醒：台词按字数估算念不完，建议加长时长或拆分，不删减或改写台词。这些只是提醒，Core 不拒绝。一个 Segment 可以覆盖多个 Shot 做段内切镜（当前建议不超过 3 个），也可以只覆盖一个 Shot；拆分 Segment 不改变 Shot 设计，共享边界 Shot 的两段是延续同一镜头，拆分时两段给出覆盖的 `shot_ids` 并在后一段填写 `boundary_from_previous`。
+用户要求生成 Segment 视频时，先读该 Segment 的 `video_prompt` 工作集；`exceeds_soft_duration_limit` 为 true 时，提交前主动提醒时长超过软约束可能 OOM，建议拆 Segment 而不是改 Shot，并给出可截帧续拍的稳定状态作为拆分点，用户同意后用 `split_segment` 拆分，用户坚持不拆则照常生成。`dialogue_timing.exceeds_duration` 为 true 时同样先提醒：台词按字数估算念不完，建议加长时长或拆分，不删减或改写台词。这些只是提醒，Core 不拒绝。一个 Segment 可以覆盖多个 Shot 做段内切镜（当前建议不超过 3 个），也可以只覆盖一个 Shot；拆分 Segment 不改变 Shot 设计，共享边界 Shot 的两段是延续同一镜头，拆分时两段给出覆盖的 `shot_ids` 并在后一段填写 `boundary_from_previous`。
 Core 仍校验状态、目标、revision 和请求归属。遇到 403 应报告工具返回的真实错误；不要编造「项目设置中开启写入」入口。
 不同工具/动作使用不同 idempotency_key；同一请求的精确重放才复用原 key。未知响应先读取 Core request/run，不能推断未提交。
 四类 proposal 的 request 只建立原始不可变工作集；返回 `awaiting_agent_submission` 时由当前 Agent 直接编写并调用同一 proposal 工具的 submit。不要把持久 run 的 `running` 理解为 Core 正在后台调用模型，也不要无参数轮询 `run.get_status` 等待草稿自行出现。get/read_run 的相同 command_id 是确定性只读命令标识，不是缓存；应同时区分 source_revision 与 observation_revision。

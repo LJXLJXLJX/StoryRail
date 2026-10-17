@@ -1,6 +1,6 @@
 ---
 name: storyrail-structured-director-script
-description: 创建或按用户要求修改可审核的 Scene、Shot、ShotSegment 完整草稿；不处理媒体生成和生产任务。
+description: 创建或按用户要求修改可审核的 Scene、Shot、ShotSegment 完整草稿；先设计 Shot 再打包成 Segment，不处理媒体生成和生产任务。
 ---
 
 # StoryRail 结构化导演脚本
@@ -28,7 +28,7 @@ read、bash、shell、jq 或其它发现工具，也不得读取项目目录。`
 
 ## 工作顺序
 
-生成初稿或回改一个以上 Scene 时按以下顺序，前四步只在内部完成：
+生成初稿或回改一个以上 Scene 时按以下顺序，前六步只在内部完成：
 
 1. 读完整导演方案，记下每段的目的、观众认知变化、必须揭示、必须保留和情绪功能；方案写明的以方案为准。
    同时按 `quality-gate.md`「方案覆盖」列出方案清单：每个节拍、每句台词及说话者、画面中的可见文字与插入镜头、
@@ -36,14 +36,20 @@ read、bash、shell、jq 或其它发现工具，也不得读取项目目录。`
 2. drama Scene 先做整场设计：按 `drama-scene-craft.md` 第 1 节回答这场戏是谁的、双方各想要什么、转折在哪、
    关系从什么状态进入到什么状态离开，并定下全场最重的镜头。
 3. 再调度：按 `cinematic-director-intent.md` 第 3 节为每个 Scene 建立空间、角色路径、注意力和揭示顺序。
-4. 沿调度和强度曲线决定切镜，每个新 Shot 只写一个 Segment，写出完整草稿；方案清单的每一项都落到具体
-   Segment 的 `action`、`dialogue_lines` 或 Shot 的 `audio_direction`。合并镜号只合并摄影，不删内容。
-5. 复查后再提交：逐 Scene 按 `quality-gate.md` 复查草稿，drama Scene 同时过 `drama-scene-craft.md` 第 9 节，重点看每个切镜能否说出理由、同空间只换角度的
-   相邻 Shot、揭示是否早于导演方案、新 Shot 是否只有一个 Segment、跨 Shot 轴线与道具。发现问题先改草稿，
-   再复查该 Scene。所用 Agent 支持独立上下文的子任务时，可只把导演方案、引用卡和草稿交给它复查。
-   复查过程不写入 proposal。
-6. `reply_markdown` 按 Scene 写出方案时长与脚本合计时长；有意删减或合并的方案内容逐条列出并说明原因，
-   没有删减时明确写“无删减”。提交后用 `read_story` 读 Segment 层，`dialogue_timing.exceeds_duration` 为 true
-   的 Segment 加长 `duration_estimate_seconds` 或按用户要求拆分，不压缩台词。
+4. **设计 Shot 列表**：沿调度和强度曲线决定切镜，只决定创作层的镜头内容与边界。沿用最少切镜原则，drama Scene
+   同时按 `drama-scene-craft.md` 第 5 节判断切点；合并镜号只合并摄影，不删内容。这一步不决定生产分段。
+5. **打包成 Segment**：按 `script-contract.md` 的 ShotSegment 打包规则把 Shot 列表装进 Segment。一个 Segment
+   可以覆盖多个相邻 Shot（段内切镜，只用于同空间、同一节拍的紧密镜头组，实验前不超过 3 个），一个 Shot 也可以
+   跨多个相邻 Segment（长镜头拆段，边界落在可截帧续拍的稳定状态）；需要精确构图控制的镜头独占 Segment；每个
+   Segment 预计不超过 15 秒。确定覆盖关系、共享边界与 `boundary_from_previous`、各段时长和 `action` 区间。
+   方案清单的每一项都落到具体 Segment 的 `action`、`dialogue_lines` 或覆盖 Shot 的 `audio_direction`。
+6. 复查后再提交：逐 Scene 按 `quality-gate.md` 复查草稿，drama Scene 同时过 `drama-scene-craft.md` 第 9 节，
+   重点看每个切镜能否说出理由、同空间只换角度的相邻 Shot、揭示是否早于导演方案、覆盖是否完整连续、段内切镜
+   是否确有剪辑理由且不超上限、精确构图镜头是否独占 Segment、跨 Shot 轴线与道具。发现问题先改草稿，再复查该
+   Scene。所用 Agent 支持独立上下文的子任务时，可只把导演方案、引用卡和草稿交给它复查。复查过程不写入 proposal。
+7. `reply_markdown` 按 Scene 写出方案时长与脚本合计时长、打包理由（哪些镜头组合并成一个 Segment、哪些长镜头
+   拆成相邻 Segment、为什么）；有意删减或合并的方案内容逐条列出并说明原因，没有删减时明确写“无删减”。
+   提交后用 `read_story` 读 Segment 层，`dialogue_timing.exceeds_duration` 为 true 的 Segment 加长
+   `duration_estimate_seconds` 或按用户要求拆分，不压缩台词。
 
-只改单个 Segment 或少量文字时，只复查受影响的 Shot 及其相邻边界。
+只改单个 Segment 或少量文字时，只复查受影响的 Shot、覆盖它的全部 Segment 及相邻边界。

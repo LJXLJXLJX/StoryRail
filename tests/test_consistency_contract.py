@@ -59,6 +59,25 @@ def test_shared_skill_delivers_both_modes_and_scope_boundaries():
         assert obligation in text
 
 
+def test_consistency_skill_covers_many_to_many_shot_segment_relations():
+    """Shot 与 Segment 是多对多覆盖：改一侧时检查另一侧的全部覆盖关系。"""
+    resource = next(
+        r
+        for r in read_contract("script", include=("consistency-review",))["resources"]
+        if r["name"] == "shared/storyrail-consistency-review/SKILL.md"
+    )
+    text = " ".join(resource["text"].split())
+    for required in (
+        "Shot 与 Segment 是多对多覆盖关系",
+        "一个 Shot 可被多个相邻 Segment 覆盖",
+        "一个 Segment 可覆盖 多个相邻 Shot",
+        "覆盖该 Shot 的全部 Segment",
+        "覆盖的全部 Shot",
+        "共享边界 Shot 的两段是延续 同一镜头",
+    ):
+        assert required in text, required
+
+
 def test_agent_entries_view_images_natively_without_cli_tools():
     root = Path(__file__).resolve().parents[1]
     launcher = (root / "integrations/agent_launcher/PROMPT.md").read_text()

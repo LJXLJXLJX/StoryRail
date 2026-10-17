@@ -62,26 +62,37 @@ Segment 与 Shot 平级写在 `scenes[].segments[]`，Shot 本身没有 `segment
 一个 Segment 可以覆盖多个相邻 Shot（段内切镜），一个 Shot 也可以跨多个相邻 Segment（长镜头拆段）。
 改稿里的 `replace_scene` 同样用本 Scene 新 `shots` 数组的序号。
 
-**初次规划一个 Shot 只对应一个 Segment。** 首次写出某个 Shot 时（drama 初稿、narration Scene 在 TTS 后规划
-Shot、改稿中新建 Shot），一律只返回一个覆盖它的 Segment；不因预计时长、模型限制、
-控制方式或连续性锚点预先拆分。已有 Shot 的 Segment 只在用户明确要求时拆分或合并（`split_segment`、
-`merge_adjacent_segments`），拆出的第二段及以后在同一 Shot 内部拆分时两段共享该 Shot 并填写
-`boundary_from_previous`；不与上一段共享边界 Shot 的 Segment 必须返回 null。
-改稿时保留已有 Segment 划分，不擅自合并用户已拆开的分段。
+先设计 Shot 列表，再打包成 Segment。打包决定生产边界，不改变 Shot 设计：拆 Segment 不新增、不合并、不重写
+Shot；同一 Shot 跨多个 Segment 时是同一连续镜头的生产切片。按以下规则打包：
+
+- 每个 Segment 预计不超过 15 秒。长镜头预计超过时，拆成共享该 Shot 的相邻 Segment，边界落在可直接从上一段
+  实际视频截帧续拍的稳定状态（站定、落脚、手停在物体上、运镜匀速段），前后各约半秒内画面不发生关键变化；
+  多 Shot Segment 预计超过时，先在 Shot 边界拆开，再处理仍然超长的镜头。拆分不压缩动作或台词凑时长；仍
+  超过时按真实节奏填写 `duration_estimate_seconds`，由 Director 在生成视频前提醒用户，用户同意后再拆。
+- 同一空间、同一节拍内的紧密镜头组可以装进一个 Segment：对话正反打、反应镜头、插入特写。段内切镜只用于
+  这类有明确剪辑理由的镜头组，实验前每个 Segment 不超过 3 个；不要为凑节拍虚构切镜，也不要把时间跳跃或
+  视角主体切换塞进同一 Segment。
+- 需要精确构图控制的镜头独占 Segment：建立镜头、关键揭示、全场最重的镜头、需要严格首尾状态的镜头。
+- 相邻 Segment 共享边界 Shot 即延续同一镜头，后一段必须填写 `boundary_from_previous`，写清交接时刻的角色、
+  摄影机、道具和光线状态；不共享边界 Shot 即剪辑，`boundary_from_previous` 必须为 null；第一个 Segment 为 null。
+- 初稿与回改都在 `reply_markdown` 简述打包理由：哪些镜头组合并进一个 Segment、哪些长镜头拆成相邻 Segment、
+  为什么。
+
+改稿时保留已有 Segment 划分，只在用户明确要求时拆分或合并（`split_segment`、`merge_adjacent_segments`）。
+在某个 Shot 内部拆分时，两段都包含该 Shot，后一段填写 `boundary_from_previous`；合并后的 `shot_ids` 为两段
+覆盖的并集。每次拆分、合并或插入后都必须重新满足完整连续覆盖。
 
 `duration_estimate_seconds` 只是节奏预估。Segment 的 `action` 写该分段负责的动作区间。角色对白写入
 `dialogue_lines`，每句引用说话角色，`delivery` 写本句的潜台词（嘴上说的与真正想要的）和语气；
 说话者可以在画外，此时不列入该 Shot 的 `visible_character_ids`。导演方案里不在引用库的说话者
 （研究员、门外路人、广播等）写 `character_id: null` 与 `speaker_label`（≤ 60 字称呼），台词照常保留，
-不要删掉，也不要挪进 `audio_direction`；是否入画在 Segment `action` 里写明。一个 Segment 至多一个开口说话的可见角色；
-没有对白时返回空数组。旁白不是角色对白，不写入这里。
+不要删掉，也不要挪进 `audio_direction`；是否入画在 Segment `action` 里写明。每个 Shot 至多一个开口说话的
+可见角色；一个 Segment 覆盖多个 Shot 时这条规则分别作用于每个 Shot，台词在该 Shot 对应的段内区间说完，
+不要在同一段内让两个可见人物在同一镜头里轮流开口。没有对白时返回空数组。旁白不是角色对白，不写入这里。
 只有 drama Scene 的 Segment 可以有对白；narration Scene 的 Segment 一律返回空数组。
 
 当前默认本地 H3 对每个 Segment 有 15 秒软约束：超过可能（但不一定）OOM，Core 不会拒绝。这是生产阶段的
-机器约束，不在初次规划时处理：连续镜头预计超过 15 秒也保持一个 Segment，按真实节奏填写
-`duration_estimate_seconds`，不压缩动作凑时长，也不为它切镜。超过的 Segment 由 Director 在生成视频前提醒
-用户，用户同意后再拆。拆分时在自然动作状态、明确控制方式变化或可复用连续性锚点处分段，边界是可直接从
-前一段实际视频截帧续拍的稳定状态；不要拆碎原本较短、完整的动作，也不要把生产分段伪装成切镜。
+机器约束，不要写成故事或镜头里的创作事实，也不要为它切碎原本完整的动作。
 Narration Scene 的 Segment 时长在 TTS 之后规划，Core 随写入按真实音频自动校准后该字段承载生产时长。
 相邻 Segment 边界默认是独立 Keyframe。Scene 边界不决定切换；默认硬切，
 仅显式共享边界 Keyframe identity 时由系统做 0.1 秒接缝融合，这不是导演 dissolve。
@@ -96,4 +107,5 @@ Thread 中的旧脚本判断当前事实，也不要输出完整 state。结果�
 使用 `replace_scene`，单个 Segment 使用 `replace_segment`，Scene 结构变化使用显式插入、删除或移动操作，
 不能从结果缺失项推断删除。现有层级沿用输入 ID；新增层级返回 null ID；`replace_scene` / `replace_segment`
 的 Segment 一律用本 Scene 新 `shots` 数组的序号表达覆盖。`reply_markdown` 只简要说明实际修改；新建或整体重写 drama Scene 时，每个 Scene 用一两句白话写导演阐述：
-这场戏是谁的、转折在哪、最重的镜头是哪个。
+这场戏是谁的、转折在哪、最重的镜头是哪个。打包有变化时同时说明哪些镜头组合并进一个 Segment、哪些长镜头
+拆成相邻 Segment、为什么。
