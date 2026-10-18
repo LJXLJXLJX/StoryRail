@@ -3,6 +3,9 @@ import { DraftProtection } from "./draft_protection";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   DialogueTimingWarning,
+  DialogueLine,
+  DialogueAudio,
+  ProviderRecipeView,
   Scene,
   Shot,
   ShotSegment,
@@ -23,6 +26,7 @@ import {
 import { FinalAssemblyWorkspace } from "./final";
 import { SceneMedia } from "./SceneMedia";
 import { generationPhaseLabel } from "./generation";
+import { SettingField, type SettingValue } from "../provider_settings/SettingField";
 import { copyText } from "./clipboard";
 import { newSceneDraft } from "./script_draft";
 import {
@@ -509,6 +513,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
                     character={character}
                     onGenerate={props.onGenerateDialogue}
                     onSelect={props.onSelectDialogueAudio}
+                    onSaveRecipeParams={props.onSaveDialogueRecipeParams}
                     onDismiss={props.onDismissGeneration}
                     onSetTiming={props.onSetDialogueTiming}
                   />
@@ -748,6 +753,7 @@ function DialogueProductionPanel({
   character,
   onGenerate,
   onSelect,
+  onSaveRecipeParams,
   onDismiss,
   onSetTiming,
 }: {
@@ -757,6 +763,10 @@ function DialogueProductionPanel({
   character: (id: string) => string;
   onGenerate?: (dialogueLineId: string) => void;
   onSelect?: (dialogueLineId: string, generationId: string) => void;
+  onSaveRecipeParams?: (
+    dialogueLineId: string,
+    recipeParams: Record<string, unknown>,
+  ) => void;
   onDismiss?: (generationId: string) => void;
   onSetTiming?: (
     segmentId: string,
@@ -800,6 +810,10 @@ function DialogueProductionPanel({
           (value) => value.id === line.character_id,
         );
         const route = card?.voice_reference_asset_id ? "音色克隆" : "音色设计";
+        const voiceDescription = card?.voice_description ?? line.voice_description;
+        const speechRecipe = (snapshot.provider_recipes ?? []).find(
+          (view) => view.capability === "speech.synthesize",
+        );
         const history = snapshot.generations.filter(
           (generation) =>
             generation.kind === "dialogue_audio" &&
@@ -827,6 +841,21 @@ function DialogueProductionPanel({
           <div key={line.id}>
             <strong>{speaker} · {route}</strong>
             <p>{line.text}</p>
+            <p className="dialogue-direction-copy">
+              <strong>基础音色描述：</strong>{voiceDescription || "未填写"}
+              <br />
+              <strong>剧本表演要求：</strong>{line.delivery || "未填写"}
+            </p>
+            {card?.voice_reference_asset_id && speechRecipe && item ? (
+              <DialogueRecipeControls
+                line={line}
+                item={item}
+                recipe={speechRecipe}
+                busy={busy}
+                canEdit={snapshot.allowed_actions.includes("edit_dialogue_audio")}
+                onSave={onSaveRecipeParams}
+              />
+            ) : null}
             <p>
               {asset
                 ? "已选 WAV · " + asset.duration_seconds?.toFixed(3) + " 秒" + timing
@@ -965,6 +994,80 @@ function DialogueProductionPanel({
       </button>
       <p>自动校准会留基础停顿；Director Agent 可按镜头和情绪设置更大的余量。</p>
     </section>
+  );
+}
+
+function DialogueRecipeControls({
+  line,
+  item,
+  recipe,
+  busy,
+  canEdit,
+  onSave,
+}: {
+  line: DialogueLine;
+  item: DialogueAudio;
+  recipe: ProviderRecipeView;
+  busy: boolean;
+  canEdit: boolean;
+  onSave?: (dialogueLineId: string, recipeParams: Record<string, unknown>) => void;
+}) {
+  const effectiveParams = { ...item.recipe_params };
+  if (!(recipe.recipe.id in effectiveParams)) {
+    effectiveParams[recipe.recipe.id] = Object.fromEntries(
+      recipe.editable_params.map((field) => [
+        field.key,
+        field.key === "performance_instruction" && line.delivery.trim()
+          ? line.delivery.trim()
+          : field.default,
+      ]),
+    );
+  }
+  const savedKey = JSON.stringify(effectiveParams);
+  const [draft, setDraft] = useState<Record<string, unknown>>(effectiveParams);
+  useEffect(() => setDraft(effectiveParams), [line.id, savedKey]);
+  if (!recipe.editable_params.length) return null;
+  const current = (draft[recipe.recipe.id] ?? {}) as Record<string, SettingValue>;
+  const dirty = JSON.stringify(draft) !== savedKey;
+  const update = (key: string, value: SettingValue) => {
+    const defaults = Object.fromEntries(
+      recipe.editable_params.map((field) => [field.key, field.default]),
+    );
+    setDraft({
+      ...draft,
+      [recipe.recipe.id]: { ...defaults, ...current, [key]: value },
+    });
+  };
+  return (
+    <fieldset className="dialogue-recipe-controls" disabled={busy || !canEdit}>
+      <legend>{recipe.plugin_label} · {recipe.recipe.label}</legend>
+      {recipe.editable_params.map((field) => (
+        <div key={field.key}>
+          <SettingField
+            field={field}
+            label={
+              field.key === "performance_instruction"
+                ? "表演指示（语气、情绪、语速、停顿）"
+                : field.label
+            }
+            value={current[field.key] ?? field.default}
+            onChange={(value) => update(field.key, value)}
+          />
+          {field.help ? <small>{field.help}</small> : null}
+        </div>
+      ))}
+      <button
+        type="button"
+        className="secondary-button"
+        disabled={busy || !canEdit || !onSave || !dirty}
+        onClick={() => onSave?.(line.id, draft)}
+      >
+        保存对白表演参数
+      </button>
+      {dirty && item.selected_audio_asset_id ? (
+        <small>保存后会清除这句已选音频，并重新校准本段对白时序。</small>
+      ) : null}
+    </fieldset>
   );
 }
 

@@ -54,6 +54,7 @@ STRUCTURED_DIRECTOR_ACTIONS = (
     "generate_narration",
     "generate_narration_batch",
     "select_narration_audio",
+    "edit_dialogue_audio",
     "generate_dialogue",
     "generate_dialogue_batch",
     "select_dialogue_audio",

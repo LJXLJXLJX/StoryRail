@@ -173,6 +173,9 @@ _NARRATION_CUE_RESOURCE = re.compile(
 _DIALOGUE_LINE_RESOURCE = re.compile(
     r"/dialogue-lines/(?P<dialogue_line_id>[0-9a-f]{32})/(?P<action>generate|select)"
 )
+_DIALOGUE_RECIPE_PARAMS_RESOURCE = re.compile(
+    r"/dialogue-lines/(?P<dialogue_line_id>[0-9a-f]{32})/recipe-params"
+)
 _SEGMENT_DIALOGUE_TIMING_RESOURCE = re.compile(
     r"/segments/(?P<segment_id>[0-9a-f]{32})/dialogue-timing"
 )
@@ -554,6 +557,26 @@ class StructuredDirectorHttpApi:
         except (RuntimeError, ValueError) as exc:
             return _error(409, "action_not_allowed", str(exc))
         return JsonResponse(202, self._serialize_snapshot(result))
+
+    async def _save_dialogue_recipe_params(
+        self, dialogue_line_id: str, body: bytes
+    ) -> JsonResponse:
+        request = _parse_request(body, required={"expected_revision", "recipe_params"})
+        if isinstance(request, JsonResponse):
+            return request
+        try:
+            result = await self._service.update_dialogue_recipe_params(
+                dialogue_line_id=dialogue_line_id,
+                recipe_params=RecipeParams.from_json(
+                    request["recipe_params"], "dialogue.recipe_params"
+                ),
+                expected_revision=_required_revision(request),
+            )
+            return JsonResponse(200, self._serialize_snapshot(result))
+        except RevisionConflictError as exc:
+            return _error(409, "revision_conflict", str(exc), recoverable=True)
+        except (RuntimeError, ValueError) as exc:
+            return _error(409, "action_not_allowed", str(exc))
 
     async def _set_dialogue_timing(self, segment_id: str, body: bytes) -> JsonResponse:
         request = _parse_request(body, required={"expected_revision", "starts", "duration_seconds"})
@@ -2331,6 +2354,12 @@ _ROUTES: tuple[_Route, ...] = (
         frozenset({"POST"}),
         _DIALOGUE_LINE_RESOURCE,
         _group_route("_dialogue_line_action", "dialogue_line_id", "action"),
+        "project.write",
+    ),
+    _Route(
+        frozenset({"PUT"}),
+        _DIALOGUE_RECIPE_PARAMS_RESOURCE,
+        _group_route("_save_dialogue_recipe_params", "dialogue_line_id"),
         "project.write",
     ),
     _Route(frozenset({"POST", "PUT", "DELETE"}), _CARD_RESOURCE, _card_route, "project.write"),

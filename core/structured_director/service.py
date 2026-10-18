@@ -592,6 +592,20 @@ class StructuredDirectorService:
                 retry_of=_retry_of,
             )
 
+    async def update_dialogue_recipe_params(
+        self,
+        *,
+        dialogue_line_id: str,
+        recipe_params,
+        expected_revision: int,
+    ) -> StructuredDirectorDocument:
+        async with self._lock:
+            return self._store.update_dialogue_recipe_params(
+                dialogue_line_id=dialogue_line_id,
+                recipe_params=recipe_params,
+                expected_revision=expected_revision,
+            )
+
     async def generate_dialogue_batch(
         self, *, expected_revision: int
     ) -> StructuredDirectorDocument:

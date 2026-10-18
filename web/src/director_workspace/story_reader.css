@@ -42,6 +42,11 @@
 .dialogue-generation-state { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); background: var(--paper); }
 .dialogue-generation-state.is-failed { border-color: var(--red); background: rgba(216, 75, 53, .07); }
 .dialogue-generation-state p { margin: 5px 0 0; font-size: 12px; line-height: 1.6; }
+.dialogue-direction-copy { color: var(--muted); font-size: 13px; }
+.dialogue-recipe-controls { display: grid; gap: 8px; max-width: 720px; margin: 10px 0; padding: 12px; border: 1px solid var(--line); }
+.dialogue-recipe-controls label, .dialogue-recipe-controls textarea { display: block; width: 100%; }
+.dialogue-recipe-controls textarea { min-height: 76px; margin-top: 5px; }
+.dialogue-recipe-controls small { color: var(--muted); }
 .dialogue-audio-candidate { display: grid; grid-template-columns: minmax(220px, 1fr) auto; align-items: center; gap: 10px; margin-top: 10px; }
 .dialogue-audio-candidate-actions, .dialogue-dismiss-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .dialogue-dismiss-confirm { grid-column: 1 / -1; padding-top: 7px; border-top: 1px solid var(--line); }

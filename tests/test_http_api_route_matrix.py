@@ -121,6 +121,11 @@ NAMED_ROUTE_CASES: tuple[RouteCase, ...] = (
         f"/scenes/{SCENE_ID}/narration-cues/{CUE_ID}/clear-selection",
         "_narration_cue_action",
     ),
+    RouteCase(
+        "PUT",
+        f"/dialogue-lines/{CUE_ID}/recipe-params",
+        "_save_dialogue_recipe_params",
+    ),
     RouteCase("POST", "/characters", "_card_action"),
     RouteCase("PUT", f"/characters/{CARD_ID}", "_card_action"),
     RouteCase("DELETE", f"/characters/{CARD_ID}", "_card_action"),

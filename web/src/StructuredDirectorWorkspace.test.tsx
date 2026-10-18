@@ -3740,6 +3740,10 @@ function renderWorkspace(
     onSelectLookAsset?: WorkspaceActions["onSelectLookAsset"];
     onPreviewLookSheet?: WorkspaceActions["onPreviewLookSheet"];
     onDismissGeneration?: (generationId: string) => void;
+    onSaveDialogueRecipeParams?: (
+      dialogueLineId: string,
+      recipeParams: Record<string, unknown>,
+    ) => void;
     onCancelGeneration?: (generationId: string) => void;
     onSaveScript?: (scenes: Scene[]) => void;
     onConfirmScript?: () => void;
@@ -3868,6 +3872,7 @@ function renderWorkspace(
       onAttachNarratorVoice={vi.fn()}
       onCancelGeneration={overrides.onCancelGeneration ?? vi.fn()}
       onDismissGeneration={overrides.onDismissGeneration ?? vi.fn()}
+      onSaveDialogueRecipeParams={overrides.onSaveDialogueRecipeParams ?? vi.fn()}
       onSaveSegmentVideoInputs={overrides.onSaveSegmentVideoInputs ?? vi.fn()}
       onSaveSegmentVideoRecipe={overrides.onSaveSegmentVideoRecipe ?? vi.fn()}
       onGenerateSegmentVideo={overrides.onGenerateSegmentVideo ?? vi.fn()}
@@ -3953,9 +3958,14 @@ it('Scene 正文覆盖全部镜头对白；旁白未规划 Shot 时保持可读�
 it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物',()=>{
  const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;
  const onDismissGeneration=vi.fn();
+ const onSaveDialogueRecipeParams=vi.fn();
+ if(!value.allowed_actions.includes('edit_dialogue_audio')) value.allowed_actions.push('edit_dialogue_audio');
  const scene=value.director_script!.scenes[1];
  const segment=scene.segments[0];
  const line=segment.dialogue_lines[0];
+ const card=value.reference_library.characters.find(item=>item.id===line.character_id)!;
+ card.voice_reference_asset_id='a'.repeat(32);
+ card.voice_reference_transcript='完整参考音频文字稿。';
  const base=value.generations[0];
  const active={
    ...base,
@@ -3965,11 +3975,20 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
    allowed_actions:['cancel'] as typeof base.allowed_actions,
  };
  value.generations.push(active);
- const view=renderWorkspace({onDismissGeneration},value);
+ const view=renderWorkspace({onDismissGeneration,onSaveDialogueRecipeParams},value);
  const nav=screen.getByRole('navigation',{name:'故事层级'});
  fireEvent.click(within(nav).getByRole('button',{name:/场景 2.*戏剧/}));
  const segmentList=within(nav).getByRole('list',{name:'场景 2 的生成片段'});
  fireEvent.click(within(segmentList).getByRole('button',{name:/片段 1.*小满抬头/}));
+ const direction=screen.getByText('基础音色描述：').closest('p');
+ expect(direction).toHaveTextContent('基础音色描述：年轻、克制、语速偏慢');
+ expect(direction).toHaveTextContent('剧本表演要求：轻声，带一点迟疑');
+ const performance=screen.getByLabelText('表演指示（语气、情绪、语速、停顿）');
+ fireEvent.change(performance,{target:{value:'压低声音，带一点迟疑，语速稍慢。'}});
+ fireEvent.click(screen.getByRole('button',{name:'保存对白表演参数'}));
+ expect(onSaveDialogueRecipeParams).toHaveBeenCalledWith(line.id,{
+   'breeze_tts2.clone':{performance_instruction:'压低声音，带一点迟疑，语速稍慢。'},
+ });
  expect(screen.getByText(/生成中 · 42% · Breeze 正在合成对白/)).toBeInTheDocument();
  expect(screen.getByRole('button',{name:'生成中…'})).toBeDisabled();
 

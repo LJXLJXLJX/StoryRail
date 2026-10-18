@@ -11,7 +11,7 @@
   },
   "environment": {
     "date": "2026-10-18",
-    "git_sha": "e43350058564e0523e952b7ea19f3db04e6278ae",
+    "git_sha": "d1c577a9f26f3599e4d4255bc5dc40b37cb542aa",
     "python_version": "3.12.12",
     "platform": "macOS-26.6.2-arm64-arm-64bit",
     "driver": "scripts/harness/benchmark/fake_agent_driver.py"
@@ -23,16 +23,16 @@
     "tools_list_bytes": 32288,
     "scenarios": {
       "h3": {
-        "total_wire_bytes": 86976
+        "total_wire_bytes": 86998
       },
       "keyframe": {
-        "total_wire_bytes": 75305
+        "total_wire_bytes": 75327
       },
       "location": {
-        "total_wire_bytes": 47747
+        "total_wire_bytes": 47769
       },
       "ref2va": {
-        "total_wire_bytes": 88650
+        "total_wire_bytes": 88672
       },
       "reference": {
         "total_wire_bytes": 30036
@@ -51,8 +51,8 @@
         "tool_count": 25,
         "requests": 6,
         "input_bytes": 1182,
-        "output_bytes": 85794,
-        "total_wire_bytes": 86976,
+        "output_bytes": 85816,
+        "total_wire_bytes": 86998,
         "contract_read_bytes": 6399,
         "workset_read_bytes": 66566,
         "pagination_rounds": 6,
@@ -66,7 +66,7 @@
           "tool": "read_workflow",
           "action": "call",
           "input_bytes": 110,
-          "output_bytes": 8225,
+          "output_bytes": 8247,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -136,8 +136,8 @@
         "tool_count": 25,
         "requests": 8,
         "input_bytes": 2019,
-        "output_bytes": 73286,
-        "total_wire_bytes": 75305,
+        "output_bytes": 73308,
+        "total_wire_bytes": 75327,
         "contract_read_bytes": 31160,
         "workset_read_bytes": 15512,
         "pagination_rounds": 8,
@@ -151,7 +151,7 @@
           "tool": "read_workflow",
           "action": "call",
           "input_bytes": 116,
-          "output_bytes": 6376,
+          "output_bytes": 6398,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -243,8 +243,8 @@
         "tool_count": 25,
         "requests": 6,
         "input_bytes": 1673,
-        "output_bytes": 46074,
-        "total_wire_bytes": 47747,
+        "output_bytes": 46096,
+        "total_wire_bytes": 47769,
         "contract_read_bytes": 13411,
         "workset_read_bytes": 15622,
         "pagination_rounds": 6,
@@ -258,7 +258,7 @@
           "tool": "read_workflow",
           "action": "call",
           "input_bytes": 116,
-          "output_bytes": 6866,
+          "output_bytes": 6888,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -328,8 +328,8 @@
         "tool_count": 25,
         "requests": 7,
         "input_bytes": 1436,
-        "output_bytes": 87214,
-        "total_wire_bytes": 88650,
+        "output_bytes": 87236,
+        "total_wire_bytes": 88672,
         "contract_read_bytes": 6403,
         "workset_read_bytes": 66570,
         "pagination_rounds": 7,
@@ -343,7 +343,7 @@
           "tool": "read_workflow",
           "action": "call",
           "input_bytes": 114,
-          "output_bytes": 8225,
+          "output_bytes": 8247,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null

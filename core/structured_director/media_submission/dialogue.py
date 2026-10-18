@@ -57,6 +57,11 @@ class DialogueSubmission:
         prepared = prepare_tts_recipe(self._registry, capability, retry_of)
         mechanism = plan_item.recipe_params.get(prepared.recipe.id)
         if voice_asset_id is not None:
+            if mechanism is None and any(
+                field.key == "performance_instruction" and field.role is None
+                for field in prepared.recipe.params
+            ):
+                mechanism = {"performance_instruction": line.delivery.strip() or None}
             transcript = (card.voice_reference_transcript or "").strip()
             if not transcript:
                 raise ValueError("该角色已有参考音色，但缺少参考音频的完整文字稿，不能克隆。")

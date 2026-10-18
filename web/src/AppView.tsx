@@ -39,6 +39,7 @@ type PendingAction =
   | "select_narration"
   | "clear_narration_selection"
   | "generate_dialogue"
+  | "edit_dialogue_audio"
   | "generate_dialogue_batch"
   | "select_dialogue"
   | "set_dialogue_timing"
@@ -357,6 +358,22 @@ export function App() {
           dialogueLineId,
         ),
       "generate_dialogue",
+    );
+  }
+  async function saveDialogueRecipeParams(
+    dialogueLineId: string,
+    recipeParams: Record<string, unknown>,
+  ) {
+    if (selectedProject === null || structuredSnapshot === null) return;
+    await mutateStructuredDirector(
+      () =>
+        structuredDirectorApi.saveDialogueRecipeParams(
+          selectedProject.id,
+          structuredSnapshot.revision,
+          dialogueLineId,
+          recipeParams,
+        ),
+      "edit_dialogue_audio",
     );
   }
   async function generateDialogueBatch() {
@@ -1065,6 +1082,9 @@ export function App() {
               void clearNarrationSelection(sceneId, cueId, language)
             }
             onGenerateDialogue={(lineId) => void generateDialogue(lineId)}
+            onSaveDialogueRecipeParams={(lineId, recipeParams) =>
+              void saveDialogueRecipeParams(lineId, recipeParams)
+            }
             onGenerateDialogueBatch={() => void generateDialogueBatch()}
             onSelectDialogueAudio={(lineId, generationId) =>
               void selectDialogue(lineId, generationId)

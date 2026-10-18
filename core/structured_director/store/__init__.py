@@ -321,6 +321,14 @@ def _narration_tracks(document: StructuredDirectorDocument):
     }
 
 
+def _dialogue_audio_items(document: StructuredDirectorDocument):
+    return (
+        {}
+        if document.dialogue_plan is None
+        else {item.dialogue_line_id: item for item in document.dialogue_plan.items}
+    )
+
+
 def _check_changed_recipe_params(
     catalog: ProviderCatalog | None,
     previous: StructuredDirectorDocument,
@@ -354,6 +362,17 @@ def _check_changed_recipe_params(
                 catalog.validate_recipe_params(Capability.SPEECH_SYNTHESIZE, recipe_id, params)
             except ValueError as exc:
                 raise ValueError(f"旁白{key[1].value}轨道的合成参数不合法：{exc}") from exc
+    before_dialogue = _dialogue_audio_items(previous)
+    for line_id, item in _dialogue_audio_items(document).items():
+        old = before_dialogue.get(line_id)
+        for recipe_id in item.recipe_params.changed_entries(
+            empty if old is None else old.recipe_params
+        ):
+            params = item.recipe_params.get(recipe_id)
+            try:
+                catalog.validate_recipe_params(Capability.SPEECH_SYNTHESIZE, recipe_id, params)
+            except ValueError as exc:
+                raise ValueError(f"对白 {line_id} 的合成参数不合法：{exc}") from exc
 
 
 # Asset 不可变；进程内跨 Service/Store 实例复用，只缓存内容校验，不缓存 I/O 失败。

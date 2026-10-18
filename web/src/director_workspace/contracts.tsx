@@ -70,6 +70,10 @@ export interface WorkspaceActions {
   onGenerateDialogue?: (dialogueLineId: string) => void;
   onGenerateDialogueBatch?: () => void;
   onSelectDialogueAudio?: (dialogueLineId: string, generationId: string) => void;
+  onSaveDialogueRecipeParams?: (
+    dialogueLineId: string,
+    recipeParams: Record<string, unknown>,
+  ) => void;
   onSetDialogueTiming?: (
     segmentId: string,
     starts: Record<string, number>,

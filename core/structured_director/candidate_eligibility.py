@@ -55,6 +55,29 @@ def generation_is_reviewable(document, generation) -> bool:
             return False
         if generation.prompt_text != line.text:
             return False
+        plan_item = next(
+            (
+                item
+                for item in (() if document.dialogue_plan is None else document.dialogue_plan.items)
+                if item.dialogue_line_id == target_id
+            ),
+            None,
+        )
+        recipe_id = (
+            None if generation.provider_snapshot is None else generation.provider_snapshot.recipe_id
+        )
+        if plan_item is not None and recipe_id is not None:
+            configured = plan_item.recipe_params.get(recipe_id)
+            submitted = generation.recipe_params.get(recipe_id)
+            if configured is not None and submitted != configured:
+                return False
+            if (
+                configured is None
+                and submitted is not None
+                and "performance_instruction" in submitted
+                and submitted["performance_instruction"] != (line.delivery.strip() or None)
+            ):
+                return False
         if line.character_id is None:
             return (
                 generation.operation.value == "voice_design"

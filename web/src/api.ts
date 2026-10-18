@@ -363,6 +363,18 @@ export const structuredDirectorApi = {
     structuredMutation(projectId, `dialogue-lines/${dialogueLineId}/generate`, {
       expected_revision: revision,
     }),
+  saveDialogueRecipeParams: (
+    projectId: string,
+    revision: number,
+    dialogueLineId: string,
+    recipeParams: Record<string, unknown>,
+  ) =>
+    structuredMutation(
+      projectId,
+      `dialogue-lines/${dialogueLineId}/recipe-params`,
+      { expected_revision: revision, recipe_params: recipeParams },
+      "PUT",
+    ),
   generateDialogueBatch: (projectId: string, revision: number) =>
     structuredMutation(projectId, "dialogue/generate-batch", {
       expected_revision: revision,

@@ -9,6 +9,7 @@ from provider_factory import make_service
 from structured_director_fixtures import RecordingProvider, wav_bytes
 from test_director_commands import _visual_project
 
+from core.model_providers.recipe import RecipeParams
 from core.structured_director import StructuredDirectorStore
 from core.structured_director.models import GenerationOperation
 
@@ -75,6 +76,37 @@ def test_character_dialogue_uses_voice_design_without_reference_and_clone_with_r
         assert clone_generation.input_asset_ids == (card.voice_reference_asset_id,)
         assert clone_generation.sample_text == transcript
         assert len(clone_provider.requests) == 1
+        assert clone_provider.requests[0].param("performance_instruction") == clone_line.delivery
+        assert clone_generation.recipe_params.get("breeze_tts2.clone") == {
+            "performance_instruction": clone_line.delivery
+        }
+        cloned = await clone_service._generation_observer.refresh_generation(clone_generation.id)
+        clone_doc = await clone_service._generation_observer.refresh_generation(clone_generation.id)
+
+        performance_instruction = "压低声音，带一点迟疑，语速稍慢，问句后停顿。"
+        clone_doc = await clone_service.update_dialogue_recipe_params(
+            dialogue_line_id=clone_line.id,
+            recipe_params=RecipeParams.from_json(
+                {"breeze_tts2.clone": {"performance_instruction": performance_instruction}}
+            ),
+            expected_revision=clone_doc.revision,
+        )
+        with pytest.raises(ValueError, match="已不匹配"):
+            await clone_service.select_dialogue_audio(
+                dialogue_line_id=clone_line.id,
+                generation_id=clone_generation.id,
+                expected_revision=clone_doc.revision,
+            )
+        overridden = await clone_service.generate_dialogue(
+            dialogue_line_id=clone_line.id,
+            expected_revision=clone_doc.revision,
+        )
+        assert (
+            clone_provider.requests[-1].param("performance_instruction") == performance_instruction
+        )
+        assert overridden.generations[-1].recipe_params.get("breeze_tts2.clone") == {
+            "performance_instruction": performance_instruction
+        }
         assert design_provider.requests == []
 
     asyncio.run(run())

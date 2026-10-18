@@ -193,6 +193,7 @@ def _allowed_actions(document: StructuredDirectorDocument) -> tuple[str, ...]:
         if any(segment.dialogue_lines for scene in script.scenes for segment in scene.segments):
             actions.extend(
                 [
+                    "edit_dialogue_audio",
                     "generate_dialogue",
                     "generate_dialogue_batch",
                     "select_dialogue_audio",

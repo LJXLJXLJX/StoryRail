@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import replace
 from math import isfinite
 
+from core.model_providers.recipe import RecipeParams
+
 from ..candidate_eligibility import generation_is_reviewable
 from ..models import (
     ReferenceGenerationKind,
@@ -49,6 +51,60 @@ def select_dialogue_audio(
             document,
             revision=document.revision + 1,
             dialogue_plan=replace(plan, items=items),
+        ),
+        segment.id,
+    )
+
+
+def update_dialogue_recipe_params(
+    document: StructuredDirectorDocument,
+    *,
+    dialogue_line_id: str,
+    recipe_params: RecipeParams,
+) -> StructuredDirectorDocument:
+    """保存逐句克隆表演参数，并清除依赖旧参数的选择、时序与视频。"""
+    plan, _scene, segment = _require_dialogue_line(document, dialogue_line_id)
+    current = next(item for item in plan.items if item.dialogue_line_id == dialogue_line_id)
+    if current.recipe_params == recipe_params:
+        return document
+    line = next(line for line in segment.dialogue_lines if line.id == dialogue_line_id)
+    card = (
+        None
+        if line.character_id is None
+        else next(
+            item for item in document.reference_library.characters if item.id == line.character_id
+        )
+    )
+    if (card is None or card.voice_reference_asset_id is None) and recipe_params.entries:
+        raise ValueError("Voice Design 对白不能保存语音克隆表演参数。")
+    segment_line_ids = {line.id for line in segment.dialogue_lines}
+    updated_plan = replace(
+        plan,
+        items=tuple(
+            replace(
+                item,
+                recipe_params=(
+                    recipe_params
+                    if item.dialogue_line_id == dialogue_line_id
+                    else item.recipe_params
+                ),
+                selected_audio_asset_id=(
+                    None
+                    if item.dialogue_line_id == dialogue_line_id
+                    else item.selected_audio_asset_id
+                ),
+                start_seconds=None,
+            )
+            if item.dialogue_line_id in segment_line_ids
+            else item
+            for item in plan.items
+        ),
+    )
+    return _invalidate_segment_video(
+        replace(
+            document,
+            revision=document.revision + 1,
+            dialogue_plan=updated_plan,
         ),
         segment.id,
     )

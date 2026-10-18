@@ -15,7 +15,7 @@
     "reference_library": {
       "characters": [
         {
-          "id": "3bd5dd7684db41f1a3127c856e59ff15",
+          "id": "216527406be1481db34556330af32b8a",
           "name": "小满"
         }
       ]
@@ -41,9 +41,9 @@
       "text_preview_characters": 240,
       "items": [
         {
-          "id": "c620b5604b1e43ccaa474b3b93b2ed36",
+          "id": "f1282b5381b24d11929651859324f910",
           "kind": "scene",
-          "scene_id": "c620b5604b1e43ccaa474b3b93b2ed36",
+          "scene_id": "f1282b5381b24d11929651859324f910",
           "driver": "narration",
           "parent": {
             "kind": "project",
@@ -51,7 +51,7 @@
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=c620b5604b1e43ccaa474b3b93b2ed36]"
+            "field": "director_script.scenes[id=f1282b5381b24d11929651859324f910]"
           },
           "title": "潮声之前",
           "summary": "天亮前，海边车站尚无人声。",
@@ -59,7 +59,7 @@
           "segment_count": 0,
           "narration": [
             {
-              "id": "6362e0e66173448e88fa55afb975e80d",
+              "id": "1280418bd9fb4d82ad9a43c198b16615",
               "zh": {
                 "text": "末班车到来以前，站台仍旧保持着漫长的安静。",
                 "selected_audio_asset_id": "3871797c7759a28ff7844a4a3752c35d",
@@ -77,9 +77,9 @@
           ]
         },
         {
-          "id": "4db4d97c824445058a570ba77b7fbf6f",
+          "id": "0e6b5ae666184c49a6d205b6a57c4ec8",
           "kind": "scene",
-          "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+          "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
           "driver": "drama",
           "parent": {
             "kind": "project",
@@ -87,7 +87,7 @@
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f]"
+            "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8]"
           },
           "title": "沿岸行走",
           "summary": "小满握住行李箱，在海风里等候。",
@@ -96,9 +96,9 @@
           "narration": []
         },
         {
-          "id": "192427c9b06140d4a794925245093bea",
+          "id": "9104113b22824628b852d53fd7d549b5",
           "kind": "scene",
-          "scene_id": "192427c9b06140d4a794925245093bea",
+          "scene_id": "9104113b22824628b852d53fd7d549b5",
           "driver": "drama",
           "parent": {
             "kind": "project",
@@ -106,7 +106,7 @@
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=192427c9b06140d4a794925245093bea]"
+            "field": "director_script.scenes[id=9104113b22824628b852d53fd7d549b5]"
           },
           "title": "远处的灯",
           "summary": "她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。",
@@ -118,7 +118,7 @@
       "total": 3,
       "next_cursor": null
     },
-    "scene:c620b5604b1e43ccaa474b3b93b2ed36": {
+    "scene:f1282b5381b24d11929651859324f910": {
       "projection_version": 1,
       "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "revision": 22,
@@ -126,7 +126,7 @@
       "level": "scene",
       "scope": {
         "scene_ids": [
-          "c620b5604b1e43ccaa474b3b93b2ed36"
+          "f1282b5381b24d11929651859324f910"
         ]
       },
       "extensions": [
@@ -136,9 +136,9 @@
       "text_preview_characters": 240,
       "items": [
         {
-          "id": "c620b5604b1e43ccaa474b3b93b2ed36",
+          "id": "f1282b5381b24d11929651859324f910",
           "kind": "scene",
-          "scene_id": "c620b5604b1e43ccaa474b3b93b2ed36",
+          "scene_id": "f1282b5381b24d11929651859324f910",
           "driver": "narration",
           "parent": {
             "kind": "project",
@@ -146,7 +146,7 @@
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=c620b5604b1e43ccaa474b3b93b2ed36]"
+            "field": "director_script.scenes[id=f1282b5381b24d11929651859324f910]"
           },
           "title": "潮声之前",
           "summary": "天亮前，海边车站尚无人声。",
@@ -154,7 +154,7 @@
           "segment_count": 0,
           "narration": [
             {
-              "id": "6362e0e66173448e88fa55afb975e80d",
+              "id": "1280418bd9fb4d82ad9a43c198b16615",
               "zh": {
                 "text": "末班车到来以前，站台仍旧保持着漫长的安静。",
                 "selected_audio_asset_id": "3871797c7759a28ff7844a4a3752c35d",
@@ -176,7 +176,7 @@
       "total": 1,
       "next_cursor": null
     },
-    "shot:c620b5604b1e43ccaa474b3b93b2ed36": {
+    "shot:f1282b5381b24d11929651859324f910": {
       "projection_version": 1,
       "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "revision": 22,
@@ -184,7 +184,7 @@
       "level": "shot",
       "scope": {
         "scene_ids": [
-          "c620b5604b1e43ccaa474b3b93b2ed36"
+          "f1282b5381b24d11929651859324f910"
         ]
       },
       "extensions": [
@@ -196,7 +196,7 @@
       "total": 0,
       "next_cursor": null
     },
-    "segment:c620b5604b1e43ccaa474b3b93b2ed36": {
+    "segment:f1282b5381b24d11929651859324f910": {
       "projection_version": 1,
       "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "revision": 22,
@@ -204,7 +204,7 @@
       "level": "segment",
       "scope": {
         "scene_ids": [
-          "c620b5604b1e43ccaa474b3b93b2ed36"
+          "f1282b5381b24d11929651859324f910"
         ]
       },
       "extensions": [
@@ -216,7 +216,7 @@
       "total": 0,
       "next_cursor": null
     },
-    "scene:4db4d97c824445058a570ba77b7fbf6f": {
+    "scene:0e6b5ae666184c49a6d205b6a57c4ec8": {
       "projection_version": 1,
       "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "revision": 22,
@@ -224,7 +224,7 @@
       "level": "scene",
       "scope": {
         "scene_ids": [
-          "4db4d97c824445058a570ba77b7fbf6f"
+          "0e6b5ae666184c49a6d205b6a57c4ec8"
         ]
       },
       "extensions": [
@@ -234,9 +234,9 @@
       "text_preview_characters": 240,
       "items": [
         {
-          "id": "4db4d97c824445058a570ba77b7fbf6f",
+          "id": "0e6b5ae666184c49a6d205b6a57c4ec8",
           "kind": "scene",
-          "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+          "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
           "driver": "drama",
           "parent": {
             "kind": "project",
@@ -244,7 +244,7 @@
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f]"
+            "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8]"
           },
           "title": "沿岸行走",
           "summary": "小满握住行李箱，在海风里等候。",
@@ -257,7 +257,7 @@
       "total": 1,
       "next_cursor": null
     },
-    "shot:4db4d97c824445058a570ba77b7fbf6f": {
+    "shot:0e6b5ae666184c49a6d205b6a57c4ec8": {
       "projection_version": 1,
       "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "revision": 22,
@@ -265,7 +265,7 @@
       "level": "shot",
       "scope": {
         "scene_ids": [
-          "4db4d97c824445058a570ba77b7fbf6f"
+          "0e6b5ae666184c49a6d205b6a57c4ec8"
         ]
       },
       "extensions": [
@@ -275,42 +275,42 @@
       "text_preview_characters": 240,
       "items": [
         {
-          "id": "d8860bf49834411cb85e719929eea017",
+          "id": "71c78eccefa04d5db815071331828259",
           "kind": "shot",
-          "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+          "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
           "driver": "drama",
           "parent": {
             "kind": "scene",
-            "id": "4db4d97c824445058a570ba77b7fbf6f"
+            "id": "0e6b5ae666184c49a6d205b6a57c4ec8"
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f].shots[id=d8860bf49834411cb85e719929eea017]"
+            "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8].shots[id=71c78eccefa04d5db815071331828259]"
           },
           "action": "小满握住行李箱拉杆，抬头看向站牌。",
           "composition": "中远景，人物位于画面右侧。",
           "camera_movement": "缓慢推近。",
           "audio_direction": "远处风声和站内电流声。",
           "visible_character_ids": [
-            "3bd5dd7684db41f1a3127c856e59ff15"
+            "216527406be1481db34556330af32b8a"
           ],
           "transition_in": null,
           "segment_ids": [
-            "0e8373033e754663b4332ebcfcbcb40c"
+            "1f714e67ab0f4edcb5087ff6ecdb1ffb"
           ]
         },
         {
-          "id": "e81f129051f419f389234ea8ca16fe0b",
+          "id": "ed8f31d7e7af8d5e2c53ef74a0e496fa",
           "kind": "shot",
-          "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+          "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
           "driver": "drama",
           "parent": {
             "kind": "scene",
-            "id": "4db4d97c824445058a570ba77b7fbf6f"
+            "id": "0e6b5ae666184c49a6d205b6a57c4ec8"
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f].shots[id=e81f129051f419f389234ea8ca16fe0b]"
+            "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8].shots[id=ed8f31d7e7af8d5e2c53ef74a0e496fa]"
           },
           "action": "同一镜头连续观察环境",
           "composition": "全景",
@@ -319,15 +319,15 @@
           "visible_character_ids": [],
           "transition_in": null,
           "segment_ids": [
-            "ec0a2904ff4b74c4ed062188f24b32dc",
-            "282cfa67407683e2024f607a795ca075"
+            "39a1470eda0f2d0f77d432b2cbc5187e",
+            "651cddcceda393100fbfacf7c49c2906"
           ]
         }
       ],
       "total": 2,
       "next_cursor": null
     },
-    "segment:4db4d97c824445058a570ba77b7fbf6f": {
+    "segment:0e6b5ae666184c49a6d205b6a57c4ec8": {
       "projection_version": 1,
       "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "revision": 22,
@@ -335,7 +335,7 @@
       "level": "segment",
       "scope": {
         "scene_ids": [
-          "4db4d97c824445058a570ba77b7fbf6f"
+          "0e6b5ae666184c49a6d205b6a57c4ec8"
         ]
       },
       "extensions": [
@@ -345,26 +345,26 @@
       "text_preview_characters": 240,
       "items": [
         {
-          "id": "0e8373033e754663b4332ebcfcbcb40c",
+          "id": "1f714e67ab0f4edcb5087ff6ecdb1ffb",
           "kind": "segment",
-          "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+          "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
           "driver": "drama",
           "parent": {
             "kind": "scene",
-            "id": "4db4d97c824445058a570ba77b7fbf6f"
+            "id": "0e6b5ae666184c49a6d205b6a57c4ec8"
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f].segments[id=0e8373033e754663b4332ebcfcbcb40c]"
+            "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8].segments[id=1f714e67ab0f4edcb5087ff6ecdb1ffb]"
           },
           "shot_ids": [
-            "d8860bf49834411cb85e719929eea017"
+            "71c78eccefa04d5db815071331828259"
           ],
           "action": "小满抬头看向站牌。",
           "duration_estimate_seconds": 6.0,
           "dialogue_lines": [
             {
-              "character_id": "3bd5dd7684db41f1a3127c856e59ff15",
+              "character_id": "216527406be1481db34556330af32b8a",
               "speaker_label": null,
               "text": "还会来吗？",
               "delivery": "轻声，带一点迟疑"
@@ -377,20 +377,20 @@
           "boundary_from_previous": null
         },
         {
-          "id": "ec0a2904ff4b74c4ed062188f24b32dc",
+          "id": "39a1470eda0f2d0f77d432b2cbc5187e",
           "kind": "segment",
-          "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+          "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
           "driver": "drama",
           "parent": {
             "kind": "scene",
-            "id": "4db4d97c824445058a570ba77b7fbf6f"
+            "id": "0e6b5ae666184c49a6d205b6a57c4ec8"
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f].segments[id=ec0a2904ff4b74c4ed062188f24b32dc]"
+            "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8].segments[id=39a1470eda0f2d0f77d432b2cbc5187e]"
           },
           "shot_ids": [
-            "e81f129051f419f389234ea8ca16fe0b"
+            "ed8f31d7e7af8d5e2c53ef74a0e496fa"
           ],
           "action": "连续推进的前半程",
           "duration_estimate_seconds": 8.0,
@@ -399,20 +399,20 @@
           "boundary_from_previous": null
         },
         {
-          "id": "282cfa67407683e2024f607a795ca075",
+          "id": "651cddcceda393100fbfacf7c49c2906",
           "kind": "segment",
-          "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+          "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
           "driver": "drama",
           "parent": {
             "kind": "scene",
-            "id": "4db4d97c824445058a570ba77b7fbf6f"
+            "id": "0e6b5ae666184c49a6d205b6a57c4ec8"
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f].segments[id=282cfa67407683e2024f607a795ca075]"
+            "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8].segments[id=651cddcceda393100fbfacf7c49c2906]"
           },
           "shot_ids": [
-            "e81f129051f419f389234ea8ca16fe0b"
+            "ed8f31d7e7af8d5e2c53ef74a0e496fa"
           ],
           "action": "连续推进的后半程",
           "duration_estimate_seconds": 8.0,
@@ -427,7 +427,7 @@
       "total": 3,
       "next_cursor": null
     },
-    "scene:192427c9b06140d4a794925245093bea": {
+    "scene:9104113b22824628b852d53fd7d549b5": {
       "projection_version": 1,
       "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "revision": 22,
@@ -435,7 +435,7 @@
       "level": "scene",
       "scope": {
         "scene_ids": [
-          "192427c9b06140d4a794925245093bea"
+          "9104113b22824628b852d53fd7d549b5"
         ]
       },
       "extensions": [
@@ -445,9 +445,9 @@
       "text_preview_characters": 240,
       "items": [
         {
-          "id": "192427c9b06140d4a794925245093bea",
+          "id": "9104113b22824628b852d53fd7d549b5",
           "kind": "scene",
-          "scene_id": "192427c9b06140d4a794925245093bea",
+          "scene_id": "9104113b22824628b852d53fd7d549b5",
           "driver": "drama",
           "parent": {
             "kind": "project",
@@ -455,7 +455,7 @@
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=192427c9b06140d4a794925245093bea]"
+            "field": "director_script.scenes[id=9104113b22824628b852d53fd7d549b5]"
           },
           "title": "远处的灯",
           "summary": "她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。",
@@ -468,7 +468,7 @@
       "total": 1,
       "next_cursor": null
     },
-    "shot:192427c9b06140d4a794925245093bea": {
+    "shot:9104113b22824628b852d53fd7d549b5": {
       "projection_version": 1,
       "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "revision": 22,
@@ -476,7 +476,7 @@
       "level": "shot",
       "scope": {
         "scene_ids": [
-          "192427c9b06140d4a794925245093bea"
+          "9104113b22824628b852d53fd7d549b5"
         ]
       },
       "extensions": [
@@ -486,35 +486,35 @@
       "text_preview_characters": 240,
       "items": [
         {
-          "id": "fe1c2fe5f0c34b16a7bdd550509a6b05",
+          "id": "8ad602c31e9c450fa4c237364f5a14d6",
           "kind": "shot",
-          "scene_id": "192427c9b06140d4a794925245093bea",
+          "scene_id": "9104113b22824628b852d53fd7d549b5",
           "driver": "drama",
           "parent": {
             "kind": "scene",
-            "id": "192427c9b06140d4a794925245093bea"
+            "id": "9104113b22824628b852d53fd7d549b5"
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=192427c9b06140d4a794925245093bea].shots[id=fe1c2fe5f0c34b16a7bdd550509a6b05]"
+            "field": "director_script.scenes[id=9104113b22824628b852d53fd7d549b5].shots[id=8ad602c31e9c450fa4c237364f5a14d6]"
           },
           "action": "小满握住行李箱拉杆，抬头看向站牌。",
           "composition": "中远景，人物位于画面右侧。",
           "camera_movement": "缓慢推近。",
           "audio_direction": "远处风声和站内电流声。",
           "visible_character_ids": [
-            "3bd5dd7684db41f1a3127c856e59ff15"
+            "216527406be1481db34556330af32b8a"
           ],
           "transition_in": null,
           "segment_ids": [
-            "a2d961ba9af248899d204666a36cdf9b"
+            "338743a81f654ed196ced255541b6e43"
           ]
         }
       ],
       "total": 1,
       "next_cursor": null
     },
-    "segment:192427c9b06140d4a794925245093bea": {
+    "segment:9104113b22824628b852d53fd7d549b5": {
       "projection_version": 1,
       "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "revision": 22,
@@ -522,7 +522,7 @@
       "level": "segment",
       "scope": {
         "scene_ids": [
-          "192427c9b06140d4a794925245093bea"
+          "9104113b22824628b852d53fd7d549b5"
         ]
       },
       "extensions": [
@@ -532,26 +532,26 @@
       "text_preview_characters": 240,
       "items": [
         {
-          "id": "a2d961ba9af248899d204666a36cdf9b",
+          "id": "338743a81f654ed196ced255541b6e43",
           "kind": "segment",
-          "scene_id": "192427c9b06140d4a794925245093bea",
+          "scene_id": "9104113b22824628b852d53fd7d549b5",
           "driver": "drama",
           "parent": {
             "kind": "scene",
-            "id": "192427c9b06140d4a794925245093bea"
+            "id": "9104113b22824628b852d53fd7d549b5"
           },
           "provenance": {
             "source": "project.json",
-            "field": "director_script.scenes[id=192427c9b06140d4a794925245093bea].segments[id=a2d961ba9af248899d204666a36cdf9b]"
+            "field": "director_script.scenes[id=9104113b22824628b852d53fd7d549b5].segments[id=338743a81f654ed196ced255541b6e43]"
           },
           "shot_ids": [
-            "fe1c2fe5f0c34b16a7bdd550509a6b05"
+            "8ad602c31e9c450fa4c237364f5a14d6"
           ],
           "action": "小满抬头看向站牌。",
           "duration_estimate_seconds": 6.0,
           "dialogue_lines": [
             {
-              "character_id": "3bd5dd7684db41f1a3127c856e59ff15",
+              "character_id": "216527406be1481db34556330af32b8a",
               "speaker_label": null,
               "text": "还会来吗？",
               "delivery": "轻声，带一点迟疑"
@@ -585,7 +585,7 @@
       "reference_library": {
         "characters": [
           {
-            "id": "3bd5dd7684db41f1a3127c856e59ff15",
+            "id": "216527406be1481db34556330af32b8a",
             "name": "小满"
           }
         ]
@@ -611,9 +611,9 @@
         "text_preview_characters": 240,
         "items": [
           {
-            "id": "c620b5604b1e43ccaa474b3b93b2ed36",
+            "id": "f1282b5381b24d11929651859324f910",
             "kind": "scene",
-            "scene_id": "c620b5604b1e43ccaa474b3b93b2ed36",
+            "scene_id": "f1282b5381b24d11929651859324f910",
             "driver": "narration",
             "parent": {
               "kind": "project",
@@ -621,7 +621,7 @@
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=c620b5604b1e43ccaa474b3b93b2ed36]"
+              "field": "director_script.scenes[id=f1282b5381b24d11929651859324f910]"
             },
             "title": "潮声之前",
             "summary": "天亮前，海边车站尚无人声。",
@@ -629,7 +629,7 @@
             "segment_count": 2,
             "narration": [
               {
-                "id": "6362e0e66173448e88fa55afb975e80d",
+                "id": "1280418bd9fb4d82ad9a43c198b16615",
                 "zh": {
                   "text": "末班车到来以前，站台仍旧保持着漫长的安静。",
                   "selected_audio_asset_id": "3871797c7759a28ff7844a4a3752c35d",
@@ -647,9 +647,9 @@
             ]
           },
           {
-            "id": "4db4d97c824445058a570ba77b7fbf6f",
+            "id": "0e6b5ae666184c49a6d205b6a57c4ec8",
             "kind": "scene",
-            "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+            "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
             "driver": "drama",
             "parent": {
               "kind": "project",
@@ -657,7 +657,7 @@
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f]"
+              "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8]"
             },
             "title": "沿岸行走",
             "summary": "小满握住行李箱，在海风里等候。",
@@ -666,9 +666,9 @@
             "narration": []
           },
           {
-            "id": "192427c9b06140d4a794925245093bea",
+            "id": "9104113b22824628b852d53fd7d549b5",
             "kind": "scene",
-            "scene_id": "192427c9b06140d4a794925245093bea",
+            "scene_id": "9104113b22824628b852d53fd7d549b5",
             "driver": "drama",
             "parent": {
               "kind": "project",
@@ -676,7 +676,7 @@
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=192427c9b06140d4a794925245093bea]"
+              "field": "director_script.scenes[id=9104113b22824628b852d53fd7d549b5]"
             },
             "title": "远处的灯",
             "summary": "她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。",
@@ -688,7 +688,7 @@
         "total": 3,
         "next_cursor": null
       },
-      "scene:c620b5604b1e43ccaa474b3b93b2ed36": {
+      "scene:f1282b5381b24d11929651859324f910": {
         "projection_version": 1,
         "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "revision": 26,
@@ -696,7 +696,7 @@
         "level": "scene",
         "scope": {
           "scene_ids": [
-            "c620b5604b1e43ccaa474b3b93b2ed36"
+            "f1282b5381b24d11929651859324f910"
           ]
         },
         "extensions": [
@@ -706,9 +706,9 @@
         "text_preview_characters": 240,
         "items": [
           {
-            "id": "c620b5604b1e43ccaa474b3b93b2ed36",
+            "id": "f1282b5381b24d11929651859324f910",
             "kind": "scene",
-            "scene_id": "c620b5604b1e43ccaa474b3b93b2ed36",
+            "scene_id": "f1282b5381b24d11929651859324f910",
             "driver": "narration",
             "parent": {
               "kind": "project",
@@ -716,7 +716,7 @@
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=c620b5604b1e43ccaa474b3b93b2ed36]"
+              "field": "director_script.scenes[id=f1282b5381b24d11929651859324f910]"
             },
             "title": "潮声之前",
             "summary": "天亮前，海边车站尚无人声。",
@@ -724,7 +724,7 @@
             "segment_count": 2,
             "narration": [
               {
-                "id": "6362e0e66173448e88fa55afb975e80d",
+                "id": "1280418bd9fb4d82ad9a43c198b16615",
                 "zh": {
                   "text": "末班车到来以前，站台仍旧保持着漫长的安静。",
                   "selected_audio_asset_id": "3871797c7759a28ff7844a4a3752c35d",
@@ -746,7 +746,7 @@
         "total": 1,
         "next_cursor": null
       },
-      "shot:c620b5604b1e43ccaa474b3b93b2ed36": {
+      "shot:f1282b5381b24d11929651859324f910": {
         "projection_version": 1,
         "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "revision": 26,
@@ -754,7 +754,7 @@
         "level": "shot",
         "scope": {
           "scene_ids": [
-            "c620b5604b1e43ccaa474b3b93b2ed36"
+            "f1282b5381b24d11929651859324f910"
           ]
         },
         "extensions": [
@@ -764,17 +764,17 @@
         "text_preview_characters": 240,
         "items": [
           {
-            "id": "824d0c55aaf5ffdb1ce1cb965d66bc70",
+            "id": "59a11a5fef4db1b1835d90790e80d843",
             "kind": "shot",
-            "scene_id": "c620b5604b1e43ccaa474b3b93b2ed36",
+            "scene_id": "f1282b5381b24d11929651859324f910",
             "driver": "narration",
             "parent": {
               "kind": "scene",
-              "id": "c620b5604b1e43ccaa474b3b93b2ed36"
+              "id": "f1282b5381b24d11929651859324f910"
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=c620b5604b1e43ccaa474b3b93b2ed36].shots[id=824d0c55aaf5ffdb1ce1cb965d66bc70]"
+              "field": "director_script.scenes[id=f1282b5381b24d11929651859324f910].shots[id=59a11a5fef4db1b1835d90790e80d843]"
             },
             "action": "同一镜头连续观察环境",
             "composition": "全景",
@@ -783,15 +783,15 @@
             "visible_character_ids": [],
             "transition_in": null,
             "segment_ids": [
-              "b7cb28604e0808a07b3ba7a6f30006ec",
-              "7dfd13bc8a03d6e9798eaf3ee664c0a4"
+              "88debde5ecda985b335cf9e61412ea44",
+              "48dc90a2bdc079c145009b2bbb8cb6fd"
             ]
           }
         ],
         "total": 1,
         "next_cursor": null
       },
-      "segment:c620b5604b1e43ccaa474b3b93b2ed36": {
+      "segment:f1282b5381b24d11929651859324f910": {
         "projection_version": 1,
         "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "revision": 26,
@@ -799,7 +799,7 @@
         "level": "segment",
         "scope": {
           "scene_ids": [
-            "c620b5604b1e43ccaa474b3b93b2ed36"
+            "f1282b5381b24d11929651859324f910"
           ]
         },
         "extensions": [
@@ -809,20 +809,20 @@
         "text_preview_characters": 240,
         "items": [
           {
-            "id": "b7cb28604e0808a07b3ba7a6f30006ec",
+            "id": "88debde5ecda985b335cf9e61412ea44",
             "kind": "segment",
-            "scene_id": "c620b5604b1e43ccaa474b3b93b2ed36",
+            "scene_id": "f1282b5381b24d11929651859324f910",
             "driver": "narration",
             "parent": {
               "kind": "scene",
-              "id": "c620b5604b1e43ccaa474b3b93b2ed36"
+              "id": "f1282b5381b24d11929651859324f910"
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=c620b5604b1e43ccaa474b3b93b2ed36].segments[id=b7cb28604e0808a07b3ba7a6f30006ec]"
+              "field": "director_script.scenes[id=f1282b5381b24d11929651859324f910].segments[id=88debde5ecda985b335cf9e61412ea44]"
             },
             "shot_ids": [
-              "824d0c55aaf5ffdb1ce1cb965d66bc70"
+              "59a11a5fef4db1b1835d90790e80d843"
             ],
             "action": "连续推进的前半程",
             "duration_estimate_seconds": 8.0,
@@ -831,20 +831,20 @@
             "boundary_from_previous": null
           },
           {
-            "id": "7dfd13bc8a03d6e9798eaf3ee664c0a4",
+            "id": "48dc90a2bdc079c145009b2bbb8cb6fd",
             "kind": "segment",
-            "scene_id": "c620b5604b1e43ccaa474b3b93b2ed36",
+            "scene_id": "f1282b5381b24d11929651859324f910",
             "driver": "narration",
             "parent": {
               "kind": "scene",
-              "id": "c620b5604b1e43ccaa474b3b93b2ed36"
+              "id": "f1282b5381b24d11929651859324f910"
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=c620b5604b1e43ccaa474b3b93b2ed36].segments[id=7dfd13bc8a03d6e9798eaf3ee664c0a4]"
+              "field": "director_script.scenes[id=f1282b5381b24d11929651859324f910].segments[id=48dc90a2bdc079c145009b2bbb8cb6fd]"
             },
             "shot_ids": [
-              "824d0c55aaf5ffdb1ce1cb965d66bc70"
+              "59a11a5fef4db1b1835d90790e80d843"
             ],
             "action": "连续推进的后半程",
             "duration_estimate_seconds": 8.0,
@@ -859,7 +859,7 @@
         "total": 2,
         "next_cursor": null
       },
-      "scene:4db4d97c824445058a570ba77b7fbf6f": {
+      "scene:0e6b5ae666184c49a6d205b6a57c4ec8": {
         "projection_version": 1,
         "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "revision": 26,
@@ -867,7 +867,7 @@
         "level": "scene",
         "scope": {
           "scene_ids": [
-            "4db4d97c824445058a570ba77b7fbf6f"
+            "0e6b5ae666184c49a6d205b6a57c4ec8"
           ]
         },
         "extensions": [
@@ -877,9 +877,9 @@
         "text_preview_characters": 240,
         "items": [
           {
-            "id": "4db4d97c824445058a570ba77b7fbf6f",
+            "id": "0e6b5ae666184c49a6d205b6a57c4ec8",
             "kind": "scene",
-            "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+            "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
             "driver": "drama",
             "parent": {
               "kind": "project",
@@ -887,7 +887,7 @@
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f]"
+              "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8]"
             },
             "title": "沿岸行走",
             "summary": "小满握住行李箱，在海风里等候。",
@@ -900,7 +900,7 @@
         "total": 1,
         "next_cursor": null
       },
-      "shot:4db4d97c824445058a570ba77b7fbf6f": {
+      "shot:0e6b5ae666184c49a6d205b6a57c4ec8": {
         "projection_version": 1,
         "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "revision": 26,
@@ -908,7 +908,7 @@
         "level": "shot",
         "scope": {
           "scene_ids": [
-            "4db4d97c824445058a570ba77b7fbf6f"
+            "0e6b5ae666184c49a6d205b6a57c4ec8"
           ]
         },
         "extensions": [
@@ -918,42 +918,42 @@
         "text_preview_characters": 240,
         "items": [
           {
-            "id": "d8860bf49834411cb85e719929eea017",
+            "id": "71c78eccefa04d5db815071331828259",
             "kind": "shot",
-            "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+            "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
             "driver": "drama",
             "parent": {
               "kind": "scene",
-              "id": "4db4d97c824445058a570ba77b7fbf6f"
+              "id": "0e6b5ae666184c49a6d205b6a57c4ec8"
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f].shots[id=d8860bf49834411cb85e719929eea017]"
+              "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8].shots[id=71c78eccefa04d5db815071331828259]"
             },
             "action": "小满握住行李箱拉杆，抬头看向站牌。",
             "composition": "中远景，人物位于画面右侧。",
             "camera_movement": "缓慢推近。",
             "audio_direction": "远处风声和站内电流声。",
             "visible_character_ids": [
-              "3bd5dd7684db41f1a3127c856e59ff15"
+              "216527406be1481db34556330af32b8a"
             ],
             "transition_in": null,
             "segment_ids": [
-              "0e8373033e754663b4332ebcfcbcb40c"
+              "1f714e67ab0f4edcb5087ff6ecdb1ffb"
             ]
           },
           {
-            "id": "e81f129051f419f389234ea8ca16fe0b",
+            "id": "ed8f31d7e7af8d5e2c53ef74a0e496fa",
             "kind": "shot",
-            "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+            "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
             "driver": "drama",
             "parent": {
               "kind": "scene",
-              "id": "4db4d97c824445058a570ba77b7fbf6f"
+              "id": "0e6b5ae666184c49a6d205b6a57c4ec8"
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f].shots[id=e81f129051f419f389234ea8ca16fe0b]"
+              "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8].shots[id=ed8f31d7e7af8d5e2c53ef74a0e496fa]"
             },
             "action": "同一镜头连续观察环境",
             "composition": "全景",
@@ -962,15 +962,15 @@
             "visible_character_ids": [],
             "transition_in": null,
             "segment_ids": [
-              "ec0a2904ff4b74c4ed062188f24b32dc",
-              "282cfa67407683e2024f607a795ca075"
+              "39a1470eda0f2d0f77d432b2cbc5187e",
+              "651cddcceda393100fbfacf7c49c2906"
             ]
           }
         ],
         "total": 2,
         "next_cursor": null
       },
-      "segment:4db4d97c824445058a570ba77b7fbf6f": {
+      "segment:0e6b5ae666184c49a6d205b6a57c4ec8": {
         "projection_version": 1,
         "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "revision": 26,
@@ -978,7 +978,7 @@
         "level": "segment",
         "scope": {
           "scene_ids": [
-            "4db4d97c824445058a570ba77b7fbf6f"
+            "0e6b5ae666184c49a6d205b6a57c4ec8"
           ]
         },
         "extensions": [
@@ -988,26 +988,26 @@
         "text_preview_characters": 240,
         "items": [
           {
-            "id": "0e8373033e754663b4332ebcfcbcb40c",
+            "id": "1f714e67ab0f4edcb5087ff6ecdb1ffb",
             "kind": "segment",
-            "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+            "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
             "driver": "drama",
             "parent": {
               "kind": "scene",
-              "id": "4db4d97c824445058a570ba77b7fbf6f"
+              "id": "0e6b5ae666184c49a6d205b6a57c4ec8"
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f].segments[id=0e8373033e754663b4332ebcfcbcb40c]"
+              "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8].segments[id=1f714e67ab0f4edcb5087ff6ecdb1ffb]"
             },
             "shot_ids": [
-              "d8860bf49834411cb85e719929eea017"
+              "71c78eccefa04d5db815071331828259"
             ],
             "action": "小满抬头看向站牌。",
             "duration_estimate_seconds": 6.0,
             "dialogue_lines": [
               {
-                "character_id": "3bd5dd7684db41f1a3127c856e59ff15",
+                "character_id": "216527406be1481db34556330af32b8a",
                 "speaker_label": null,
                 "text": "还会来吗？",
                 "delivery": "轻声，带一点迟疑"
@@ -1020,20 +1020,20 @@
             "boundary_from_previous": null
           },
           {
-            "id": "ec0a2904ff4b74c4ed062188f24b32dc",
+            "id": "39a1470eda0f2d0f77d432b2cbc5187e",
             "kind": "segment",
-            "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+            "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
             "driver": "drama",
             "parent": {
               "kind": "scene",
-              "id": "4db4d97c824445058a570ba77b7fbf6f"
+              "id": "0e6b5ae666184c49a6d205b6a57c4ec8"
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f].segments[id=ec0a2904ff4b74c4ed062188f24b32dc]"
+              "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8].segments[id=39a1470eda0f2d0f77d432b2cbc5187e]"
             },
             "shot_ids": [
-              "e81f129051f419f389234ea8ca16fe0b"
+              "ed8f31d7e7af8d5e2c53ef74a0e496fa"
             ],
             "action": "连续推进的前半程",
             "duration_estimate_seconds": 8.0,
@@ -1042,20 +1042,20 @@
             "boundary_from_previous": null
           },
           {
-            "id": "282cfa67407683e2024f607a795ca075",
+            "id": "651cddcceda393100fbfacf7c49c2906",
             "kind": "segment",
-            "scene_id": "4db4d97c824445058a570ba77b7fbf6f",
+            "scene_id": "0e6b5ae666184c49a6d205b6a57c4ec8",
             "driver": "drama",
             "parent": {
               "kind": "scene",
-              "id": "4db4d97c824445058a570ba77b7fbf6f"
+              "id": "0e6b5ae666184c49a6d205b6a57c4ec8"
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=4db4d97c824445058a570ba77b7fbf6f].segments[id=282cfa67407683e2024f607a795ca075]"
+              "field": "director_script.scenes[id=0e6b5ae666184c49a6d205b6a57c4ec8].segments[id=651cddcceda393100fbfacf7c49c2906]"
             },
             "shot_ids": [
-              "e81f129051f419f389234ea8ca16fe0b"
+              "ed8f31d7e7af8d5e2c53ef74a0e496fa"
             ],
             "action": "连续推进的后半程",
             "duration_estimate_seconds": 8.0,
@@ -1070,7 +1070,7 @@
         "total": 3,
         "next_cursor": null
       },
-      "scene:192427c9b06140d4a794925245093bea": {
+      "scene:9104113b22824628b852d53fd7d549b5": {
         "projection_version": 1,
         "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "revision": 26,
@@ -1078,7 +1078,7 @@
         "level": "scene",
         "scope": {
           "scene_ids": [
-            "192427c9b06140d4a794925245093bea"
+            "9104113b22824628b852d53fd7d549b5"
           ]
         },
         "extensions": [
@@ -1088,9 +1088,9 @@
         "text_preview_characters": 240,
         "items": [
           {
-            "id": "192427c9b06140d4a794925245093bea",
+            "id": "9104113b22824628b852d53fd7d549b5",
             "kind": "scene",
-            "scene_id": "192427c9b06140d4a794925245093bea",
+            "scene_id": "9104113b22824628b852d53fd7d549b5",
             "driver": "drama",
             "parent": {
               "kind": "project",
@@ -1098,7 +1098,7 @@
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=192427c9b06140d4a794925245093bea]"
+              "field": "director_script.scenes[id=9104113b22824628b852d53fd7d549b5]"
             },
             "title": "远处的灯",
             "summary": "她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。",
@@ -1111,7 +1111,7 @@
         "total": 1,
         "next_cursor": null
       },
-      "shot:192427c9b06140d4a794925245093bea": {
+      "shot:9104113b22824628b852d53fd7d549b5": {
         "projection_version": 1,
         "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "revision": 26,
@@ -1119,7 +1119,7 @@
         "level": "shot",
         "scope": {
           "scene_ids": [
-            "192427c9b06140d4a794925245093bea"
+            "9104113b22824628b852d53fd7d549b5"
           ]
         },
         "extensions": [
@@ -1129,35 +1129,35 @@
         "text_preview_characters": 240,
         "items": [
           {
-            "id": "fe1c2fe5f0c34b16a7bdd550509a6b05",
+            "id": "8ad602c31e9c450fa4c237364f5a14d6",
             "kind": "shot",
-            "scene_id": "192427c9b06140d4a794925245093bea",
+            "scene_id": "9104113b22824628b852d53fd7d549b5",
             "driver": "drama",
             "parent": {
               "kind": "scene",
-              "id": "192427c9b06140d4a794925245093bea"
+              "id": "9104113b22824628b852d53fd7d549b5"
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=192427c9b06140d4a794925245093bea].shots[id=fe1c2fe5f0c34b16a7bdd550509a6b05]"
+              "field": "director_script.scenes[id=9104113b22824628b852d53fd7d549b5].shots[id=8ad602c31e9c450fa4c237364f5a14d6]"
             },
             "action": "小满握住行李箱拉杆，抬头看向站牌。",
             "composition": "中远景，人物位于画面右侧。",
             "camera_movement": "缓慢推近。",
             "audio_direction": "远处风声和站内电流声。",
             "visible_character_ids": [
-              "3bd5dd7684db41f1a3127c856e59ff15"
+              "216527406be1481db34556330af32b8a"
             ],
             "transition_in": null,
             "segment_ids": [
-              "a2d961ba9af248899d204666a36cdf9b"
+              "338743a81f654ed196ced255541b6e43"
             ]
           }
         ],
         "total": 1,
         "next_cursor": null
       },
-      "segment:192427c9b06140d4a794925245093bea": {
+      "segment:9104113b22824628b852d53fd7d549b5": {
         "projection_version": 1,
         "project_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "revision": 26,
@@ -1165,7 +1165,7 @@
         "level": "segment",
         "scope": {
           "scene_ids": [
-            "192427c9b06140d4a794925245093bea"
+            "9104113b22824628b852d53fd7d549b5"
           ]
         },
         "extensions": [
@@ -1175,26 +1175,26 @@
         "text_preview_characters": 240,
         "items": [
           {
-            "id": "a2d961ba9af248899d204666a36cdf9b",
+            "id": "338743a81f654ed196ced255541b6e43",
             "kind": "segment",
-            "scene_id": "192427c9b06140d4a794925245093bea",
+            "scene_id": "9104113b22824628b852d53fd7d549b5",
             "driver": "drama",
             "parent": {
               "kind": "scene",
-              "id": "192427c9b06140d4a794925245093bea"
+              "id": "9104113b22824628b852d53fd7d549b5"
             },
             "provenance": {
               "source": "project.json",
-              "field": "director_script.scenes[id=192427c9b06140d4a794925245093bea].segments[id=a2d961ba9af248899d204666a36cdf9b]"
+              "field": "director_script.scenes[id=9104113b22824628b852d53fd7d549b5].segments[id=338743a81f654ed196ced255541b6e43]"
             },
             "shot_ids": [
-              "fe1c2fe5f0c34b16a7bdd550509a6b05"
+              "8ad602c31e9c450fa4c237364f5a14d6"
             ],
             "action": "小满抬头看向站牌。",
             "duration_estimate_seconds": 6.0,
             "dialogue_lines": [
               {
-                "character_id": "3bd5dd7684db41f1a3127c856e59ff15",
+                "character_id": "216527406be1481db34556330af32b8a",
                 "speaker_label": null,
                 "text": "还会来吗？",
                 "delivery": "轻声，带一点迟疑"
@@ -1211,9 +1211,9 @@
         "next_cursor": null
       }
     },
-    "shared_boundary_keyframe_id": "16162efb4bba41a59c4ca284244f5b5e",
-    "left_segment_id": "282cfa67407683e2024f607a795ca075",
-    "right_segment_id": "a2d961ba9af248899d204666a36cdf9b",
+    "shared_boundary_keyframe_id": "0eefb15f5edd487eb88e89cebe98f4c3",
+    "left_segment_id": "651cddcceda393100fbfacf7c49c2906",
+    "right_segment_id": "338743a81f654ed196ced255541b6e43",
     "production_snapshot": {
       "status": "reviewing_videos",
       "active_director_run": null,
@@ -1254,6 +1254,7 @@
         "upscale_segment_video",
         "generate_scene_final",
         "edit_narration",
+        "edit_dialogue_audio",
         "generate_dialogue",
         "generate_dialogue_batch",
         "select_dialogue_audio",
@@ -1276,9 +1277,9 @@
             "action": "keyframe.request_proposal",
             "tool": "keyframe_proposal",
             "target_ids": [
-              "824d0c55aaf5ffdb1ce1cb965d66bc70",
-              "d8860bf49834411cb85e719929eea017",
-              "e81f129051f419f389234ea8ca16fe0b"
+              "59a11a5fef4db1b1835d90790e80d843",
+              "71c78eccefa04d5db815071331828259",
+              "ed8f31d7e7af8d5e2c53ef74a0e496fa"
             ],
             "human_only": false,
             "requires_explicit_user_request": true,
@@ -1830,10 +1831,10 @@
       ],
       "generations": [
         {
-          "id": "72aadf8070b94daf9eeff7cb59b679e5",
+          "id": "42e2c716c4d3474894848562af33433c",
           "kind": "narration_audio",
           "operation": "synthesize",
-          "target_id": "6362e0e66173448e88fa55afb975e80d",
+          "target_id": "1280418bd9fb4d82ad9a43c198b16615",
           "phase": "succeeded",
           "progress": 1.0,
           "message": "完成",
@@ -1860,10 +1861,10 @@
           "allowed_actions": []
         },
         {
-          "id": "f30610a32d1740db8893cf8f36d443d1",
+          "id": "579d7324c5fe4dbca58bd48087d95395",
           "kind": "narration_audio",
           "operation": "synthesize",
-          "target_id": "6362e0e66173448e88fa55afb975e80d",
+          "target_id": "1280418bd9fb4d82ad9a43c198b16615",
           "phase": "succeeded",
           "progress": 1.0,
           "message": "完成",
@@ -1894,7 +1895,7 @@
         "reviewed": true,
         "characters": [
           {
-            "id": "3bd5dd7684db41f1a3127c856e59ff15",
+            "id": "216527406be1481db34556330af32b8a",
             "name": "小满",
             "visual_description": "短发，蓝色外套，一直带着红色行李箱",
             "looks": [],
@@ -1904,7 +1905,7 @@
           }
         ],
         "narrator": {
-          "id": "5a8e479deed54b738e18b5320faeae95",
+          "id": "4b820bfb435848a6aaa64be81ef38919",
           "name": "旁白",
           "zh": {
             "voice_description": "克制、温和、纪录片式表达",
@@ -1924,7 +1925,7 @@
         "production_baseline_revision": 7,
         "production_baseline_scenes": [
           {
-            "id": "c620b5604b1e43ccaa474b3b93b2ed36",
+            "id": "f1282b5381b24d11929651859324f910",
             "title": "潮声之前",
             "summary": "天亮前，海边车站尚无人声。",
             "setting": "傍晚，空旷站台，冷蓝色天光。",
@@ -1933,7 +1934,7 @@
             "state_id": null,
             "shots": [
               {
-                "id": "824d0c55aaf5ffdb1ce1cb965d66bc70",
+                "id": "59a11a5fef4db1b1835d90790e80d843",
                 "visible_character_ids": [],
                 "composition": "全景",
                 "camera_movement": "缓慢推进",
@@ -1944,9 +1945,9 @@
             ],
             "segments": [
               {
-                "id": "b7cb28604e0808a07b3ba7a6f30006ec",
+                "id": "88debde5ecda985b335cf9e61412ea44",
                 "shot_ids": [
-                  "824d0c55aaf5ffdb1ce1cb965d66bc70"
+                  "59a11a5fef4db1b1835d90790e80d843"
                 ],
                 "duration_estimate_seconds": 8.0,
                 "action": "连续推进的前半程",
@@ -1954,9 +1955,9 @@
                 "boundary_from_previous": null
               },
               {
-                "id": "7dfd13bc8a03d6e9798eaf3ee664c0a4",
+                "id": "48dc90a2bdc079c145009b2bbb8cb6fd",
                 "shot_ids": [
-                  "824d0c55aaf5ffdb1ce1cb965d66bc70"
+                  "59a11a5fef4db1b1835d90790e80d843"
                 ],
                 "duration_estimate_seconds": 8.0,
                 "action": "连续推进的后半程",
@@ -1969,7 +1970,7 @@
             ],
             "narration_cues": [
               {
-                "id": "6362e0e66173448e88fa55afb975e80d",
+                "id": "1280418bd9fb4d82ad9a43c198b16615",
                 "zh": {
                   "text": "末班车到来以前，站台仍旧保持着漫长的安静。",
                   "seed": 42,
@@ -1990,7 +1991,7 @@
             ]
           },
           {
-            "id": "4db4d97c824445058a570ba77b7fbf6f",
+            "id": "0e6b5ae666184c49a6d205b6a57c4ec8",
             "title": "沿岸行走",
             "summary": "小满握住行李箱，在海风里等候。",
             "setting": "傍晚，空旷站台，冷蓝色天光。",
@@ -1999,9 +2000,9 @@
             "state_id": null,
             "shots": [
               {
-                "id": "d8860bf49834411cb85e719929eea017",
+                "id": "71c78eccefa04d5db815071331828259",
                 "visible_character_ids": [
-                  "3bd5dd7684db41f1a3127c856e59ff15"
+                  "216527406be1481db34556330af32b8a"
                 ],
                 "composition": "中远景，人物位于画面右侧。",
                 "camera_movement": "缓慢推近。",
@@ -2010,7 +2011,7 @@
                 "transition_in": null
               },
               {
-                "id": "e81f129051f419f389234ea8ca16fe0b",
+                "id": "ed8f31d7e7af8d5e2c53ef74a0e496fa",
                 "visible_character_ids": [],
                 "composition": "全景",
                 "camera_movement": "缓慢推进",
@@ -2021,16 +2022,16 @@
             ],
             "segments": [
               {
-                "id": "0e8373033e754663b4332ebcfcbcb40c",
+                "id": "1f714e67ab0f4edcb5087ff6ecdb1ffb",
                 "shot_ids": [
-                  "d8860bf49834411cb85e719929eea017"
+                  "71c78eccefa04d5db815071331828259"
                 ],
                 "duration_estimate_seconds": 6.0,
                 "action": "小满抬头看向站牌。",
                 "dialogue_lines": [
                   {
-                    "id": "11111111111111111111111111111111",
-                    "character_id": "3bd5dd7684db41f1a3127c856e59ff15",
+                    "id": "dc99d3b1214b4149843786bc92214a8a",
+                    "character_id": "216527406be1481db34556330af32b8a",
                     "speaker_label": null,
                     "voice_description": null,
                     "text": "还会来吗？",
@@ -2040,9 +2041,9 @@
                 "boundary_from_previous": null
               },
               {
-                "id": "ec0a2904ff4b74c4ed062188f24b32dc",
+                "id": "39a1470eda0f2d0f77d432b2cbc5187e",
                 "shot_ids": [
-                  "e81f129051f419f389234ea8ca16fe0b"
+                  "ed8f31d7e7af8d5e2c53ef74a0e496fa"
                 ],
                 "duration_estimate_seconds": 8.0,
                 "action": "连续推进的前半程",
@@ -2050,9 +2051,9 @@
                 "boundary_from_previous": null
               },
               {
-                "id": "282cfa67407683e2024f607a795ca075",
+                "id": "651cddcceda393100fbfacf7c49c2906",
                 "shot_ids": [
-                  "e81f129051f419f389234ea8ca16fe0b"
+                  "ed8f31d7e7af8d5e2c53ef74a0e496fa"
                 ],
                 "duration_estimate_seconds": 8.0,
                 "action": "连续推进的后半程",
@@ -2066,7 +2067,7 @@
             "narration_cues": []
           },
           {
-            "id": "192427c9b06140d4a794925245093bea",
+            "id": "9104113b22824628b852d53fd7d549b5",
             "title": "远处的灯",
             "summary": "她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。",
             "setting": "傍晚，空旷站台，冷蓝色天光。",
@@ -2075,9 +2076,9 @@
             "state_id": null,
             "shots": [
               {
-                "id": "fe1c2fe5f0c34b16a7bdd550509a6b05",
+                "id": "8ad602c31e9c450fa4c237364f5a14d6",
                 "visible_character_ids": [
-                  "3bd5dd7684db41f1a3127c856e59ff15"
+                  "216527406be1481db34556330af32b8a"
                 ],
                 "composition": "中远景，人物位于画面右侧。",
                 "camera_movement": "缓慢推近。",
@@ -2088,16 +2089,16 @@
             ],
             "segments": [
               {
-                "id": "a2d961ba9af248899d204666a36cdf9b",
+                "id": "338743a81f654ed196ced255541b6e43",
                 "shot_ids": [
-                  "fe1c2fe5f0c34b16a7bdd550509a6b05"
+                  "8ad602c31e9c450fa4c237364f5a14d6"
                 ],
                 "duration_estimate_seconds": 6.0,
                 "action": "小满抬头看向站牌。",
                 "dialogue_lines": [
                   {
-                    "id": "22222222222222222222222222222222",
-                    "character_id": "3bd5dd7684db41f1a3127c856e59ff15",
+                    "id": "d8c834ff46294f05a9094002d3b4a7b8",
+                    "character_id": "216527406be1481db34556330af32b8a",
                     "speaker_label": null,
                     "voice_description": null,
                     "text": "还会来吗？",
@@ -2112,7 +2113,7 @@
         ],
         "scenes": [
           {
-            "id": "c620b5604b1e43ccaa474b3b93b2ed36",
+            "id": "f1282b5381b24d11929651859324f910",
             "title": "潮声之前",
             "summary": "天亮前，海边车站尚无人声。",
             "setting": "傍晚，空旷站台，冷蓝色天光。",
@@ -2121,7 +2122,7 @@
             "state_id": null,
             "shots": [
               {
-                "id": "824d0c55aaf5ffdb1ce1cb965d66bc70",
+                "id": "59a11a5fef4db1b1835d90790e80d843",
                 "visible_character_ids": [],
                 "composition": "全景",
                 "camera_movement": "缓慢推进",
@@ -2132,9 +2133,9 @@
             ],
             "segments": [
               {
-                "id": "b7cb28604e0808a07b3ba7a6f30006ec",
+                "id": "88debde5ecda985b335cf9e61412ea44",
                 "shot_ids": [
-                  "824d0c55aaf5ffdb1ce1cb965d66bc70"
+                  "59a11a5fef4db1b1835d90790e80d843"
                 ],
                 "duration_estimate_seconds": 8.0,
                 "action": "连续推进的前半程",
@@ -2142,9 +2143,9 @@
                 "boundary_from_previous": null
               },
               {
-                "id": "7dfd13bc8a03d6e9798eaf3ee664c0a4",
+                "id": "48dc90a2bdc079c145009b2bbb8cb6fd",
                 "shot_ids": [
-                  "824d0c55aaf5ffdb1ce1cb965d66bc70"
+                  "59a11a5fef4db1b1835d90790e80d843"
                 ],
                 "duration_estimate_seconds": 8.0,
                 "action": "连续推进的后半程",
@@ -2157,7 +2158,7 @@
             ],
             "narration_cues": [
               {
-                "id": "6362e0e66173448e88fa55afb975e80d",
+                "id": "1280418bd9fb4d82ad9a43c198b16615",
                 "zh": {
                   "text": "末班车到来以前，站台仍旧保持着漫长的安静。",
                   "seed": 42,
@@ -2202,7 +2203,7 @@
             }
           },
           {
-            "id": "4db4d97c824445058a570ba77b7fbf6f",
+            "id": "0e6b5ae666184c49a6d205b6a57c4ec8",
             "title": "沿岸行走",
             "summary": "小满握住行李箱，在海风里等候。",
             "setting": "傍晚，空旷站台，冷蓝色天光。",
@@ -2211,9 +2212,9 @@
             "state_id": null,
             "shots": [
               {
-                "id": "d8860bf49834411cb85e719929eea017",
+                "id": "71c78eccefa04d5db815071331828259",
                 "visible_character_ids": [
-                  "3bd5dd7684db41f1a3127c856e59ff15"
+                  "216527406be1481db34556330af32b8a"
                 ],
                 "composition": "中远景，人物位于画面右侧。",
                 "camera_movement": "缓慢推近。",
@@ -2222,7 +2223,7 @@
                 "transition_in": null
               },
               {
-                "id": "e81f129051f419f389234ea8ca16fe0b",
+                "id": "ed8f31d7e7af8d5e2c53ef74a0e496fa",
                 "visible_character_ids": [],
                 "composition": "全景",
                 "camera_movement": "缓慢推进",
@@ -2233,16 +2234,16 @@
             ],
             "segments": [
               {
-                "id": "0e8373033e754663b4332ebcfcbcb40c",
+                "id": "1f714e67ab0f4edcb5087ff6ecdb1ffb",
                 "shot_ids": [
-                  "d8860bf49834411cb85e719929eea017"
+                  "71c78eccefa04d5db815071331828259"
                 ],
                 "duration_estimate_seconds": 6.0,
                 "action": "小满抬头看向站牌。",
                 "dialogue_lines": [
                   {
-                    "id": "11111111111111111111111111111111",
-                    "character_id": "3bd5dd7684db41f1a3127c856e59ff15",
+                    "id": "dc99d3b1214b4149843786bc92214a8a",
+                    "character_id": "216527406be1481db34556330af32b8a",
                     "speaker_label": null,
                     "voice_description": null,
                     "text": "还会来吗？",
@@ -2252,9 +2253,9 @@
                 "boundary_from_previous": null
               },
               {
-                "id": "ec0a2904ff4b74c4ed062188f24b32dc",
+                "id": "39a1470eda0f2d0f77d432b2cbc5187e",
                 "shot_ids": [
-                  "e81f129051f419f389234ea8ca16fe0b"
+                  "ed8f31d7e7af8d5e2c53ef74a0e496fa"
                 ],
                 "duration_estimate_seconds": 8.0,
                 "action": "连续推进的前半程",
@@ -2262,9 +2263,9 @@
                 "boundary_from_previous": null
               },
               {
-                "id": "282cfa67407683e2024f607a795ca075",
+                "id": "651cddcceda393100fbfacf7c49c2906",
                 "shot_ids": [
-                  "e81f129051f419f389234ea8ca16fe0b"
+                  "ed8f31d7e7af8d5e2c53ef74a0e496fa"
                 ],
                 "duration_estimate_seconds": 8.0,
                 "action": "连续推进的后半程",
@@ -2302,7 +2303,7 @@
             }
           },
           {
-            "id": "192427c9b06140d4a794925245093bea",
+            "id": "9104113b22824628b852d53fd7d549b5",
             "title": "远处的灯",
             "summary": "她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。她沿着同一片海岸望去。",
             "setting": "傍晚，空旷站台，冷蓝色天光。",
@@ -2311,9 +2312,9 @@
             "state_id": null,
             "shots": [
               {
-                "id": "fe1c2fe5f0c34b16a7bdd550509a6b05",
+                "id": "8ad602c31e9c450fa4c237364f5a14d6",
                 "visible_character_ids": [
-                  "3bd5dd7684db41f1a3127c856e59ff15"
+                  "216527406be1481db34556330af32b8a"
                 ],
                 "composition": "中远景，人物位于画面右侧。",
                 "camera_movement": "缓慢推近。",
@@ -2324,16 +2325,16 @@
             ],
             "segments": [
               {
-                "id": "a2d961ba9af248899d204666a36cdf9b",
+                "id": "338743a81f654ed196ced255541b6e43",
                 "shot_ids": [
-                  "fe1c2fe5f0c34b16a7bdd550509a6b05"
+                  "8ad602c31e9c450fa4c237364f5a14d6"
                 ],
                 "duration_estimate_seconds": 6.0,
                 "action": "小满抬头看向站牌。",
                 "dialogue_lines": [
                   {
-                    "id": "22222222222222222222222222222222",
-                    "character_id": "3bd5dd7684db41f1a3127c856e59ff15",
+                    "id": "d8c834ff46294f05a9094002d3b4a7b8",
+                    "character_id": "216527406be1481db34556330af32b8a",
                     "speaker_label": null,
                     "voice_description": null,
                     "text": "还会来吗？",
@@ -2375,15 +2376,15 @@
         "source_script_revision": 7,
         "items": [
           {
-            "dialogue_line_id": "11111111111111111111111111111111",
-            "seed": 101,
+            "dialogue_line_id": "dc99d3b1214b4149843786bc92214a8a",
+            "seed": 2196280314,
             "recipe_params": {},
             "selected_audio_asset_id": null,
             "start_seconds": null
           },
           {
-            "dialogue_line_id": "22222222222222222222222222222222",
-            "seed": 202,
+            "dialogue_line_id": "d8c834ff46294f05a9094002d3b4a7b8",
+            "seed": 2196280314,
             "recipe_params": {},
             "selected_audio_asset_id": null,
             "start_seconds": null
@@ -2427,8 +2428,8 @@
         "source_script_revision": 7,
         "keyframes": [
           {
-            "id": "6f6a24a30cb54b97adabd454ad61d4f7",
-            "owner_segment_id": "b7cb28604e0808a07b3ba7a6f30006ec",
+            "id": "bf885c3a71db47b38540d84d608760af",
+            "owner_segment_id": "88debde5ecda985b335cf9e61412ea44",
             "predecessor_keyframe_id": null,
             "prompt_text": "",
             "visible_character_ids": [],
@@ -2436,17 +2437,17 @@
             "selected_asset_id": null
           },
           {
-            "id": "3f9396bdc71644fdbd7c347fd03b2bba",
-            "owner_segment_id": "b7cb28604e0808a07b3ba7a6f30006ec",
-            "predecessor_keyframe_id": "6f6a24a30cb54b97adabd454ad61d4f7",
+            "id": "13fd51b979344de8beb3735223a48607",
+            "owner_segment_id": "88debde5ecda985b335cf9e61412ea44",
+            "predecessor_keyframe_id": "bf885c3a71db47b38540d84d608760af",
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
             "selected_asset_id": null
           },
           {
-            "id": "42e38618f4e24d04b4fe3ef4a9fa4a30",
-            "owner_segment_id": "7dfd13bc8a03d6e9798eaf3ee664c0a4",
+            "id": "b15263778e2f4fbfa429c7f8147059fe",
+            "owner_segment_id": "48dc90a2bdc079c145009b2bbb8cb6fd",
             "predecessor_keyframe_id": null,
             "prompt_text": "",
             "visible_character_ids": [],
@@ -2454,17 +2455,17 @@
             "selected_asset_id": null
           },
           {
-            "id": "dd2d3cbe80ef45de9718f34b32a00812",
-            "owner_segment_id": "7dfd13bc8a03d6e9798eaf3ee664c0a4",
-            "predecessor_keyframe_id": "42e38618f4e24d04b4fe3ef4a9fa4a30",
+            "id": "c35e4a8b18494ae9a2373496a8a51c6e",
+            "owner_segment_id": "48dc90a2bdc079c145009b2bbb8cb6fd",
+            "predecessor_keyframe_id": "b15263778e2f4fbfa429c7f8147059fe",
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
             "selected_asset_id": null
           },
           {
-            "id": "9b4f202083054ceea945a5a0ac4b8f14",
-            "owner_segment_id": "0e8373033e754663b4332ebcfcbcb40c",
+            "id": "e9ba799036584a808b231524871c55fb",
+            "owner_segment_id": "1f714e67ab0f4edcb5087ff6ecdb1ffb",
             "predecessor_keyframe_id": null,
             "prompt_text": "",
             "visible_character_ids": [],
@@ -2472,17 +2473,17 @@
             "selected_asset_id": null
           },
           {
-            "id": "8a597b02a27f4b39b5121e0a83de5f2e",
-            "owner_segment_id": "0e8373033e754663b4332ebcfcbcb40c",
-            "predecessor_keyframe_id": "9b4f202083054ceea945a5a0ac4b8f14",
+            "id": "3920e65374b14ca89d18252e860951a1",
+            "owner_segment_id": "1f714e67ab0f4edcb5087ff6ecdb1ffb",
+            "predecessor_keyframe_id": "e9ba799036584a808b231524871c55fb",
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
             "selected_asset_id": null
           },
           {
-            "id": "7c06cae9245e4e469c25e51f57241878",
-            "owner_segment_id": "ec0a2904ff4b74c4ed062188f24b32dc",
+            "id": "4e294ecaa8dc4e72bc1f58d1d13c3b64",
+            "owner_segment_id": "39a1470eda0f2d0f77d432b2cbc5187e",
             "predecessor_keyframe_id": null,
             "prompt_text": "",
             "visible_character_ids": [],
@@ -2490,17 +2491,17 @@
             "selected_asset_id": null
           },
           {
-            "id": "bfe1ad17b0e14e2d80bcb4edc9c1a56a",
-            "owner_segment_id": "ec0a2904ff4b74c4ed062188f24b32dc",
-            "predecessor_keyframe_id": "7c06cae9245e4e469c25e51f57241878",
+            "id": "52ace142bfab47c49cb55ce3dcbc5965",
+            "owner_segment_id": "39a1470eda0f2d0f77d432b2cbc5187e",
+            "predecessor_keyframe_id": "4e294ecaa8dc4e72bc1f58d1d13c3b64",
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
             "selected_asset_id": null
           },
           {
-            "id": "c38e2fdca2ae4fe7adcfde3fc6622bbf",
-            "owner_segment_id": "282cfa67407683e2024f607a795ca075",
+            "id": "652b3f766df84573a434933b2354739e",
+            "owner_segment_id": "651cddcceda393100fbfacf7c49c2906",
             "predecessor_keyframe_id": null,
             "prompt_text": "",
             "visible_character_ids": [],
@@ -2508,18 +2509,18 @@
             "selected_asset_id": null
           },
           {
-            "id": "16162efb4bba41a59c4ca284244f5b5e",
-            "owner_segment_id": "282cfa67407683e2024f607a795ca075",
-            "predecessor_keyframe_id": "c38e2fdca2ae4fe7adcfde3fc6622bbf",
+            "id": "0eefb15f5edd487eb88e89cebe98f4c3",
+            "owner_segment_id": "651cddcceda393100fbfacf7c49c2906",
+            "predecessor_keyframe_id": "652b3f766df84573a434933b2354739e",
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
             "selected_asset_id": null
           },
           {
-            "id": "682c55a995374f86903b573e4a59490e",
-            "owner_segment_id": "a2d961ba9af248899d204666a36cdf9b",
-            "predecessor_keyframe_id": "16162efb4bba41a59c4ca284244f5b5e",
+            "id": "21876e04c94f4859abccb913a9f7df08",
+            "owner_segment_id": "338743a81f654ed196ced255541b6e43",
+            "predecessor_keyframe_id": "0eefb15f5edd487eb88e89cebe98f4c3",
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
@@ -2528,9 +2529,9 @@
         ],
         "segments": [
           {
-            "segment_id": "b7cb28604e0808a07b3ba7a6f30006ec",
-            "start_keyframe_id": "6f6a24a30cb54b97adabd454ad61d4f7",
-            "end_keyframe_id": "3f9396bdc71644fdbd7c347fd03b2bba",
+            "segment_id": "88debde5ecda985b335cf9e61412ea44",
+            "start_keyframe_id": "bf885c3a71db47b38540d84d608760af",
+            "end_keyframe_id": "13fd51b979344de8beb3735223a48607",
             "start_enabled": false,
             "end_enabled": false,
             "reference_asset_ids": [],
@@ -2542,70 +2543,70 @@
             }
           },
           {
-            "segment_id": "7dfd13bc8a03d6e9798eaf3ee664c0a4",
-            "start_keyframe_id": "42e38618f4e24d04b4fe3ef4a9fa4a30",
-            "end_keyframe_id": "dd2d3cbe80ef45de9718f34b32a00812",
+            "segment_id": "48dc90a2bdc079c145009b2bbb8cb6fd",
+            "start_keyframe_id": "b15263778e2f4fbfa429c7f8147059fe",
+            "end_keyframe_id": "c35e4a8b18494ae9a2373496a8a51c6e",
             "start_enabled": false,
             "end_enabled": false,
             "reference_asset_ids": [],
             "start_frame_extraction": {
-              "source_segment_id": "b7cb28604e0808a07b3ba7a6f30006ec",
+              "source_segment_id": "88debde5ecda985b335cf9e61412ea44",
               "source_video_asset_id": null,
               "state": "waiting_source_video",
               "message": "上一段还没有采用视频。"
             }
           },
           {
-            "segment_id": "0e8373033e754663b4332ebcfcbcb40c",
-            "start_keyframe_id": "9b4f202083054ceea945a5a0ac4b8f14",
-            "end_keyframe_id": "8a597b02a27f4b39b5121e0a83de5f2e",
+            "segment_id": "1f714e67ab0f4edcb5087ff6ecdb1ffb",
+            "start_keyframe_id": "e9ba799036584a808b231524871c55fb",
+            "end_keyframe_id": "3920e65374b14ca89d18252e860951a1",
             "start_enabled": false,
             "end_enabled": false,
             "reference_asset_ids": [],
             "start_frame_extraction": {
-              "source_segment_id": "7dfd13bc8a03d6e9798eaf3ee664c0a4",
+              "source_segment_id": "48dc90a2bdc079c145009b2bbb8cb6fd",
               "source_video_asset_id": null,
               "state": "waiting_source_video",
               "message": "上一段还没有采用视频。"
             }
           },
           {
-            "segment_id": "ec0a2904ff4b74c4ed062188f24b32dc",
-            "start_keyframe_id": "7c06cae9245e4e469c25e51f57241878",
-            "end_keyframe_id": "bfe1ad17b0e14e2d80bcb4edc9c1a56a",
+            "segment_id": "39a1470eda0f2d0f77d432b2cbc5187e",
+            "start_keyframe_id": "4e294ecaa8dc4e72bc1f58d1d13c3b64",
+            "end_keyframe_id": "52ace142bfab47c49cb55ce3dcbc5965",
             "start_enabled": false,
             "end_enabled": false,
             "reference_asset_ids": [],
             "start_frame_extraction": {
-              "source_segment_id": "0e8373033e754663b4332ebcfcbcb40c",
+              "source_segment_id": "1f714e67ab0f4edcb5087ff6ecdb1ffb",
               "source_video_asset_id": null,
               "state": "waiting_source_video",
               "message": "上一段还没有采用视频。"
             }
           },
           {
-            "segment_id": "282cfa67407683e2024f607a795ca075",
-            "start_keyframe_id": "c38e2fdca2ae4fe7adcfde3fc6622bbf",
-            "end_keyframe_id": "16162efb4bba41a59c4ca284244f5b5e",
+            "segment_id": "651cddcceda393100fbfacf7c49c2906",
+            "start_keyframe_id": "652b3f766df84573a434933b2354739e",
+            "end_keyframe_id": "0eefb15f5edd487eb88e89cebe98f4c3",
             "start_enabled": false,
             "end_enabled": true,
             "reference_asset_ids": [],
             "start_frame_extraction": {
-              "source_segment_id": "ec0a2904ff4b74c4ed062188f24b32dc",
+              "source_segment_id": "39a1470eda0f2d0f77d432b2cbc5187e",
               "source_video_asset_id": null,
               "state": "waiting_source_video",
               "message": "上一段还没有采用视频。"
             }
           },
           {
-            "segment_id": "a2d961ba9af248899d204666a36cdf9b",
-            "start_keyframe_id": "16162efb4bba41a59c4ca284244f5b5e",
-            "end_keyframe_id": "682c55a995374f86903b573e4a59490e",
+            "segment_id": "338743a81f654ed196ced255541b6e43",
+            "start_keyframe_id": "0eefb15f5edd487eb88e89cebe98f4c3",
+            "end_keyframe_id": "21876e04c94f4859abccb913a9f7df08",
             "start_enabled": true,
             "end_enabled": false,
             "reference_asset_ids": [],
             "start_frame_extraction": {
-              "source_segment_id": "282cfa67407683e2024f607a795ca075",
+              "source_segment_id": "651cddcceda393100fbfacf7c49c2906",
               "source_video_asset_id": null,
               "state": "shared_boundary",
               "message": "该首帧与上一段尾帧共享，不能从上一段视频抽取；请先拆开边界。"
@@ -2617,7 +2618,7 @@
         "source_script_revision": 7,
         "segments": [
           {
-            "segment_id": "b7cb28604e0808a07b3ba7a6f30006ec",
+            "segment_id": "88debde5ecda985b335cf9e61412ea44",
             "prompt_text": "",
             "active_recipe": "minimax_h3.fl2va",
             "recipes": {},
@@ -2655,7 +2656,7 @@
             "upscaled_asset_id": null
           },
           {
-            "segment_id": "7dfd13bc8a03d6e9798eaf3ee664c0a4",
+            "segment_id": "48dc90a2bdc079c145009b2bbb8cb6fd",
             "prompt_text": "",
             "active_recipe": "minimax_h3.fl2va",
             "recipes": {},
@@ -2693,7 +2694,7 @@
             "upscaled_asset_id": null
           },
           {
-            "segment_id": "0e8373033e754663b4332ebcfcbcb40c",
+            "segment_id": "1f714e67ab0f4edcb5087ff6ecdb1ffb",
             "prompt_text": "",
             "active_recipe": "minimax_h3.ref2va",
             "recipes": {},
@@ -2752,7 +2753,7 @@
             "upscaled_asset_id": null
           },
           {
-            "segment_id": "ec0a2904ff4b74c4ed062188f24b32dc",
+            "segment_id": "39a1470eda0f2d0f77d432b2cbc5187e",
             "prompt_text": "",
             "active_recipe": "minimax_h3.fl2va",
             "recipes": {},
@@ -2790,7 +2791,7 @@
             "upscaled_asset_id": null
           },
           {
-            "segment_id": "282cfa67407683e2024f607a795ca075",
+            "segment_id": "651cddcceda393100fbfacf7c49c2906",
             "prompt_text": "",
             "active_recipe": "minimax_h3.fl2va",
             "recipes": {},
@@ -2828,7 +2829,7 @@
             "upscaled_asset_id": null
           },
           {
-            "segment_id": "a2d961ba9af248899d204666a36cdf9b",
+            "segment_id": "338743a81f654ed196ced255541b6e43",
             "prompt_text": "",
             "active_recipe": "minimax_h3.ref2va",
             "recipes": {},

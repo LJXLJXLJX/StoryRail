@@ -31,7 +31,7 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
   组合下列协作者；不内联持久化细节。
 - `application_requests.py`：外部命令的原子回执、同 key 回放、生成请求 pending/uncertain 恢复。
 - `media_submission/dialogue.py`：逐句对白 TTS 提交；角色已有参考音色时使用同语言克隆，否则使用角色卡或临时说话者的音色描述做 Voice Design。
-- `mutations/dialogue.py`：人类选择对白 WAV、保存 Segment 内发声起点，并以 WAV 真实时长校准 Segment 时长和失效下游视频。
+- `mutations/dialogue.py`：保存逐句克隆表演参数、由人类选择对白 WAV、保存 Segment 内发声起点，并以 WAV 真实时长校准 Segment 时长和失效下游视频。
 - `production_commands.py`：生成、选择、装配等生产命令到 Service 用例的分发。
 - `workflow_commands.py`：工作流确认（引用确认、脚本确认、视觉生产解锁）；解锁回执附未绑定地点提示。
 - `manual_commands.py`：把 Web 手工编辑值对象翻译成与 Agent 相同的确定性命令（含地点语义、独立图片与人类选图）。

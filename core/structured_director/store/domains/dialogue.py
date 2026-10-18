@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from core.director_commands import CommandReceipt, DialogueTimingUpdate
+from core.model_providers.recipe import RecipeParams
 from core.structured_director.errors import RevisionConflictError
 from core.structured_director.models import StructuredDirectorDocument
 from core.structured_director.mutations import dialogue as _dialogue
@@ -21,6 +22,22 @@ class _DomainBase:
 
 
 class DialogueDomain(_DomainBase):
+    def update_dialogue_recipe_params(
+        self,
+        *,
+        dialogue_line_id: str,
+        recipe_params: RecipeParams,
+        expected_revision: int,
+    ) -> StructuredDirectorDocument:
+        return self._commit(
+            expected_revision,
+            lambda document: _dialogue.update_dialogue_recipe_params(
+                document,
+                dialogue_line_id=dialogue_line_id,
+                recipe_params=recipe_params,
+            ),
+        )
+
     def select_dialogue_audio(
         self,
         *,
@@ -112,9 +129,13 @@ class DialogueDomain(_DomainBase):
                 raise RevisionConflictError("项目已更新，请刷新后重试对白操作。")
             return document
 
+        def apply(document):
+            candidate = mutate(document)
+            return MutationResult(candidate, None, write=candidate is not document)
+
         updated, _receipt = commit_mutation(
             self,
             loader=load,
-            mutator=lambda document: MutationResult(mutate(document), None),
+            mutator=apply,
         )
         return updated
