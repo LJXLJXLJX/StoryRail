@@ -43,6 +43,9 @@
 .dialogue-generation-state.is-failed { border-color: var(--red); background: rgba(216, 75, 53, .07); }
 .dialogue-generation-state p { margin: 5px 0 0; font-size: 12px; line-height: 1.6; }
 .dialogue-audio-candidate { display: grid; grid-template-columns: minmax(220px, 1fr) auto; align-items: center; gap: 10px; margin-top: 10px; }
+.dialogue-audio-candidate-actions, .dialogue-dismiss-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dialogue-dismiss-confirm { grid-column: 1 / -1; padding-top: 7px; border-top: 1px solid var(--line); }
+.dialogue-dismiss-confirm span { flex-basis: 100%; color: var(--muted); font-size: 10px; }
 .story-reader-intro { color: var(--muted); }
 .story-reader-chapter, .story-reader-children button, .story-reader-segments button { display: block; width: 100%; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); padding: 20px 0; color: inherit; }
 .story-reader-chapter:hover, .story-reader-children button:hover { color: var(--red); }

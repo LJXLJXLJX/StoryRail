@@ -509,6 +509,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
                     character={character}
                     onGenerate={props.onGenerateDialogue}
                     onSelect={props.onSelectDialogueAudio}
+                    onDismiss={props.onDismissGeneration}
                     onSetTiming={props.onSetDialogueTiming}
                   />
                 ) : null}
@@ -747,6 +748,7 @@ function DialogueProductionPanel({
   character,
   onGenerate,
   onSelect,
+  onDismiss,
   onSetTiming,
 }: {
   segment: ShotSegment;
@@ -755,12 +757,14 @@ function DialogueProductionPanel({
   character: (id: string) => string;
   onGenerate?: (dialogueLineId: string) => void;
   onSelect?: (dialogueLineId: string, generationId: string) => void;
+  onDismiss?: (generationId: string) => void;
   onSetTiming?: (
     segmentId: string,
     starts: Record<string, number>,
     durationSeconds: number,
   ) => void;
 }) {
+  const [confirmDismiss, setConfirmDismiss] = useState<string | null>(null);
   const plan = new Map(
     (snapshot.dialogue_plan?.items ?? []).map((item) => [
       item.dialogue_line_id,
@@ -850,6 +854,40 @@ function DialogueProductionPanel({
               <div className="dialogue-generation-state is-failed" role="alert">
                 <strong>对白 TTS 失败</strong>
                 <p>{failed.message || failed.error_code || "外部语音模型执行失败。"}</p>
+                {failed.allowed_actions.includes("dismiss_history") ? (
+                  confirmDismiss === failed.id ? (
+                    <div className="dialogue-dismiss-confirm">
+                      <span>隐藏后不再显示；废弃产物可随后在资产中心永久清理。</span>
+                      <button
+                        type="button"
+                        className="delete-button"
+                        disabled={busy || !onDismiss}
+                        onClick={() => {
+                          setConfirmDismiss(null);
+                          onDismiss?.(failed.id);
+                        }}
+                      >
+                        确认隐藏
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => setConfirmDismiss(null)}
+                      >
+                        取消
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="delete-button"
+                      disabled={busy || !onDismiss}
+                      onClick={() => setConfirmDismiss(failed.id)}
+                    >
+                      隐藏失败记录
+                    </button>
+                  )
+                ) : null}
               </div>
             ) : null}
             <button
@@ -872,12 +910,50 @@ function DialogueProductionPanel({
                       src={candidate.content_url}
                     />
                   ) : null}
-                  <button
-                    disabled={busy || !onSelect}
-                    onClick={() => onSelect?.(line.id, generation.id)}
-                  >
-                    选择候选 {generation.id.slice(0, 6)}
-                  </button>
+                  <div className="dialogue-audio-candidate-actions">
+                    <button
+                      disabled={busy || !onSelect}
+                      onClick={() => onSelect?.(line.id, generation.id)}
+                    >
+                      选择候选 {generation.id.slice(0, 6)}
+                    </button>
+                    {generation.allowed_actions.includes("dismiss_history") &&
+                    confirmDismiss !== generation.id ? (
+                      <button
+                        type="button"
+                        className="delete-button"
+                        aria-label={`隐藏候选 ${generation.id.slice(0, 6)}`}
+                        disabled={busy || !onDismiss}
+                        onClick={() => setConfirmDismiss(generation.id)}
+                      >
+                        隐藏
+                      </button>
+                    ) : null}
+                  </div>
+                  {confirmDismiss === generation.id ? (
+                    <div className="dialogue-dismiss-confirm">
+                      <span>隐藏后不再显示；废弃产物可随后在资产中心永久清理。</span>
+                      <button
+                        type="button"
+                        className="delete-button"
+                        aria-label={`确认隐藏候选 ${generation.id.slice(0, 6)}`}
+                        disabled={busy || !onDismiss}
+                        onClick={() => {
+                          setConfirmDismiss(null);
+                          onDismiss?.(generation.id);
+                        }}
+                      >
+                        确认隐藏
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => setConfirmDismiss(null)}
+                      >
+                        取消
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               );
             })}

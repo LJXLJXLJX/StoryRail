@@ -3952,6 +3952,7 @@ it('Scene 正文覆盖全部镜头对白；旁白未规划 Shot 时保持可读�
 });
 it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物',()=>{
  const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;
+ const onDismissGeneration=vi.fn();
  const scene=value.director_script!.scenes[1];
  const segment=scene.segments[0];
  const line=segment.dialogue_lines[0];
@@ -3964,7 +3965,7 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
    allowed_actions:['cancel'] as typeof base.allowed_actions,
  };
  value.generations.push(active);
- const view=renderWorkspace({},value);
+ const view=renderWorkspace({onDismissGeneration},value);
  const nav=screen.getByRole('navigation',{name:'故事层级'});
  fireEvent.click(within(nav).getByRole('button',{name:/场景 2.*戏剧/}));
  const segmentList=within(nav).getByRole('list',{name:'场景 2 的生成片段'});
@@ -3975,11 +3976,15 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
  const failed=structuredClone(value);
  Object.assign(failed.generations.at(-1)!,{
    phase:'failed',progress:.42,message:'Breeze 返回 HTTP 500：Internal Server Error',
-   error_code:'RuntimeError',allowed_actions:[],
+   error_code:'RuntimeError',allowed_actions:['dismiss_history'],
  });
  view.rerenderSnapshot(failed);
  expect(screen.getByRole('alert')).toHaveTextContent('Breeze 返回 HTTP 500');
  expect(screen.getByRole('button',{name:'重新生成对白 TTS'})).toBeEnabled();
+ fireEvent.click(screen.getByRole('button',{name:'隐藏失败记录'}));
+ fireEvent.click(screen.getByRole('button',{name:'确认隐藏'}));
+ expect(onDismissGeneration).toHaveBeenCalledWith('8'.repeat(32));
+ onDismissGeneration.mockClear();
 
  const succeeded=structuredClone(failed);
  const assetId='9'.repeat(32);
@@ -3990,13 +3995,16 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
  });
  Object.assign(succeeded.generations.at(-1)!,{
    phase:'succeeded',progress:1,message:'完成',output_asset_id:assetId,error_code:null,
-   allowed_actions:['select_dialogue_audio'],
+   allowed_actions:['select_dialogue_audio','dismiss_history'],
  });
  succeeded.dialogue_plan!.items.find(item=>item.dialogue_line_id===line.id)!.selected_audio_asset_id=assetId;
  view.rerenderSnapshot(succeeded);
  expect(screen.getByLabelText('试听已选对白 小满')).toHaveAttribute('src','/dialogue.wav');
  expect(screen.getByLabelText('试听对白候选 888888')).toHaveAttribute('src','/dialogue.wav');
  expect(screen.getByRole('button',{name:'选择候选 888888'})).toBeEnabled();
+ fireEvent.click(screen.getByRole('button',{name:'隐藏候选 888888'}));
+ fireEvent.click(screen.getByRole('button',{name:'确认隐藏候选 888888'}));
+ expect(onDismissGeneration).toHaveBeenCalledWith('8'.repeat(32));
 });
 it('引用库编辑作为临时弹窗，关闭后保留当前 Segment 和未保存输入',()=>{
  const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;
