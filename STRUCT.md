@@ -366,7 +366,8 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `agent_launcher/clipboard_input.py`：容器内临时图片校验与剪贴板发布。
 - `storyrail_mcp/README.md`：MCP adapter 说明。
 - `storyrail_mcp/__main__.py`：stdio adapter 启动。
-- `storyrail_mcp/app.py`：公开 24 个受控工具（外加旧别名），另有 Playground scope 的 5 个工具。
+- `storyrail_mcp/app.py`：公开 24 个受控工具（外加旧别名），另有 Playground scope 的 5 个工具；大型 proposal 可从
+  request ID 唯一确定的工作区 JSON 读取，校验大小与 SHA-256 后再走原 Core 命令。
 - `storyrail_mcp/playground_tools.py`：Playground scope 的 5 个工具输入模型与命令翻译。
 - `storyrail_mcp/bridge.py`：固定地址的无状态 HTTP 翻译。
 - `storyrail_mcp/production_tools.py`：生产工具输入 schema 与固定命令翻译。

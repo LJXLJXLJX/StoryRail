@@ -125,7 +125,7 @@ flowchart LR
 | | `read_workflow` | 主流程 + handoff + contract hashes |
 | | `read_media_input` | 受控 Asset 内容（见下文） |
 | | `list_candidates` / `read_run` / `read_request` | 对应读取命令 |
-| 规划 | `submit_proposal` | 统一入口：`capability` + `payload`；schema 按 capability 与 `payload.action` 公开完整字段：request（`raw_user_instruction`；keyframe 另需 `scene_ids` 与 Segment `target_ids`）/ get、cancel（`request_id`）/ submit（`request_id`、`proposal`）/ reject（`request_id`、`reason`） |
+| 规划 | `submit_proposal` | 统一入口：`capability` + `payload`；schema 按 capability 与 `payload.action` 公开完整字段：request（`raw_user_instruction`；keyframe 另需 `scene_ids` 与 Segment `target_ids`）/ get、cancel（`request_id`）/ submit（`request_id` 加内联 `proposal` 或受限 `proposal_source`）/ reject（`request_id`、`reason`） |
 | 编辑 | `edit_script` / `edit_narration` / `edit_locations` / `edit_keyframes` / `edit_looks` | 各自的 `*.apply_operations` / `narration.update_cue` / `reference.apply_look_operations`（`add_look` / `update_look`，字段形状随 `reference_library` 契约下发）；`edit_narration.fields.clear_selected_audio = "zh"\|"en"` 独占一次调用并翻译为 `narration.clear_selection`；`edit_locations` 的 scope 是 `location_ids` / `scene_ids` / `shot_ids`，紧凑 schema 只列操作字段名，字段形状随 `location` 契约下发；`edit_script` 的 `insert_shot` 必须给出 `attach_to_segment_id` 或 `new_segment`，Segment 操作以 `scene_id` 为容器 |
 | | `save_video_prompt` / `save_keyframe_prompt` | 不带 `recipe_inputs` 时 `video.set_prompt`；带 `recipe_inputs: {bindings, params}` 时 `video.update_recipe_inputs`（正文、当前 recipe 绑定与参数整体替换）/ 单项 `update_frame_fields` |
 | | `set_video_recipe` | `video.set_recipe` |
@@ -143,6 +143,10 @@ MCP 约定：
 
 - 读工具的幂等键由 MCP 生成，不暴露给模型；写工具的 `idempotency_key` 必须由模型提供，不同动作不得复用。
 - 为兼容会把可选字段补成 null 的原生连接器，MCP 把非当前 action 的 null 归一为省略；任何非 null 越界值仍拒绝。
+- 大型 submit 可将完整 object JSON 写入 Agent 自己的固定 `/workspace/proposals/<request_id>.json`，调用时只传
+  `proposal_source={kind:"workspace_json", byte_count, sha256}`。MCP 不接受任意路径，只读取 request ID 决定的普通文件并拒绝
+  symlink、非 UTF-8、非 object、超过 1 MiB 或校验变化；文件只是不受信的传输缓冲。解析后仍由 Core 在当前 request/revision 下
+  对完整 proposal 做同一套 schema 与领域校验，成功时一次原子写入，半成品不成为项目 authority。
 - 每个结果的 text content 都是完整 JSON，`structured_content` 携带同一份数据；只读 text 的客户端（如 AGY）与只读
   `structured_content` 的客户端都能直接拿到结果，不需要经 shell 转调 Core。
 - 项目写入被进行中的 Agent 请求锁定时，`action_not_allowed` 错误带出 `active_task`（proposal 请求 ID、类型与可用的

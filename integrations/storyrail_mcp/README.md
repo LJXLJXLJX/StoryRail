@@ -24,7 +24,10 @@ caller 策略（本机一键接入或 `--access-policy-file`）的既有单写�
 
 `tools/list` 发布 24 个工具，逐字节基线是 `tests/fixtures/mcp_project_tools.json`。`read_human_handoff`、`read_workflow_state`、
 `script_proposal`、`reference_proposal`、`location_proposal`、`keyframe_proposal` 仍可调用但不下发 schema；统一提交入口是
-`submit_proposal`（`capability` 为 `script`、`reference_library`、`location` 或 `keyframe`）。地点规划与引用库、脚本一样使用项目 scope：
+`submit_proposal`（`capability` 为 `script`、`reference_library`、`location` 或 `keyframe`）。submit 可直接内联 `proposal`；大型
+proposal 可改用 `proposal_source={kind:"workspace_json", byte_count, sha256}`，adapter 只读取固定
+`/workspace/proposals/<request_id>.json`，不接受模型提供路径。文件必须是 ≤1 MiB 的普通 UTF-8 JSON，大小和 SHA-256 完全匹配；
+adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和完整领域校验，文件本身不是项目事实。地点规划与引用库、脚本一样使用项目 scope：
 `read_professional_workset` / `read_professional_contract` 的 `capability="location"` 不带 `scene_ids`，`location_proposal` 的 request
 只有 `raw_user_instruction`，翻译为 `location.*_proposal`。`edit_script`、`edit_keyframes`、`edit_locations`、`edit_looks` 发布紧凑的操作 schema（只列 `op` 常量与字段名），完整校验
 由 runtime 模型执行；`edit_looks` 翻译为 `reference.apply_look_operations`，字段形状随 reference_library 契约
@@ -41,6 +44,8 @@ caller 策略（本机一键接入或 `--access-policy-file`）的既有单写�
   的项目级/Scene 级能力、`media_batch` 的 kind/start/continue、`assemble_media` 的 scene/final、`manage_generation` 的 wait/单目标；wait 只观察，可省略 `expected_revision` 与 `idempotency_key`）。
 - proposal 按 action 给出互斥字段分支；为兼容会把可选字段补成 null 的原生连接器，非当前 action 的 null 被归一为省略，非 null 越界值仍拒绝，
   且不会传入 Core。非法组合返回固定字段说明，不回显正文、凭据或本机路径。
+- `submit_proposal` 的 submit 必须且只能提供 `proposal` 或 `proposal_source` 之一。工作区文件名由当前 `request_id` 确定，adapter
+  拒绝 symlink、非普通文件、校验变化和非 object JSON；同一文件可配合同一 revision/idempotency key 重放。
 - 读工具的幂等键由 MCP 生成（`mcp-read:<uuid>`）；写工具的 `idempotency_key` 必须由模型提供。
 - 旁白固定中英双语：`edit_narration.fields` 的正文与合成参数放在 `zh` / `en` 子对象；`generate_media` 生成旁白必须指定 `language`；
   `edit_narration.fields.clear_selected_audio = "zh" | "en"` 独占一次调用并翻译为 `narration.clear_selection`。
@@ -52,6 +57,7 @@ caller 策略（本机一键接入或 `--access-policy-file`）的既有单写�
 
 - Agent 写工具走 `/application/commands`，成功时返回 workflow、receipt、new revision、warnings、ApplicationRequest/replay 与紧凑目标 data，
   不夹带 Web 全项目快照。
+- `/application/commands` 接受至多 2 MiB 的 JSON，以容纳 adapter 已验证、重组后的 ≤1 MiB proposal 与命令信封；其它普通 JSON 路由仍保持 64 KiB 上限。
 - text content 始终是完整 JSON，`structured_content` 携带同一份数据；只读 text 的客户端（如 AGY）也能直接拿到结果。
 - `read_professional_contract` / `read_professional_workset` 在完整 JSON 超过 64 KiB 时进入 `json_utf8_chunks` 模式，单页 ≤ 24 KiB；续读必须
   沿用同一 project/revision/capability/scope/target_ids/page_bytes 并携带 `next_cursor`，拼接后校验 `content_sha256` 再解析。

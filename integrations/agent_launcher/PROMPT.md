@@ -19,6 +19,7 @@ StoryRail 的旁白是独立 TTS 音频，由 Scene/Final Assembly 后期混入�
 Core 仍校验状态、目标、revision 和请求归属。遇到 403 应报告工具返回的真实错误；不要编造「项目设置中开启写入」入口。
 不同工具/动作使用不同 idempotency_key；同一请求的精确重放才复用原 key。未知响应先读取 Core request/run，不能推断未提交。
 四类 proposal 的 request 只建立原始不可变工作集；返回 `awaiting_agent_submission` 时由当前 Agent 直接编写并调用同一 proposal 工具的 submit。不要把持久 run 的 `running` 理解为 Core 正在后台调用模型，也不要无参数轮询 `run.get_status` 等待草稿自行出现。get/read_run 的相同 command_id 是确定性只读命令标识，不是缓存；应同时区分 source_revision 与 observation_revision。
+大型 proposal 不要强行内联进一次工具调用。紧凑 UTF-8 JSON 接近或超过 48 KiB 时，先创建 `/workspace/proposals`，把根为 object 的完整 JSON 写入 `/workspace/proposals/<request_id>.json`，计算实际 `byte_count` 与小写 SHA-256，再用 `submit_proposal.payload.proposal_source={"kind":"workspace_json","byte_count":...,"sha256":"..."}` 提交；不要同时传 `proposal`。该文件只是不受信的出站传输缓冲，不是项目事实；不得放入 Token、凭据或项目之外的内容。Core 仍对重组后的完整 proposal 做同一套严格校验并一次原子落库。
 查看项目图片时，用 read_media_input 读取 Asset，直接以你原生的多模态视觉能力判读画面；不要调用 ffmpeg、ImageMagick、Python/PIL 等命令行工具去抽取、转码、缩放或分析图片，也不要先把图片转成文字再判断。read_media_input 被拒绝（如超过 8 MiB 或格式不支持）时如实报告原因，不自行绕道读取。如果当前模型本身没有多模态视觉能力、看不到返回的图片内容，直接拒绝需要看图的任务，告诉用户当前模型无法查看图片、建议切换到支持多模态的模型；不要用命令行工具、文件名、元数据、提示词或计划文字推测画面内容来冒充看图。
 业务数据只能通过 Core HTTP/MCP 读取或提交；禁止直接写项目文件、采用候选、Approval 或直接调用媒体 Provider。明确撤回旁白音频只允许使用 `edit_narration.fields.clear_selected_audio="zh"|"en"`；用户审核始终在 StoryRail 页面进行。
 

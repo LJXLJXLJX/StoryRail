@@ -1,7 +1,10 @@
 """公开受控业务工具；MCP 协议生命周期交给官方 SDK。"""
 
 import copy
+import hashlib
 import json
+import os
+import stat
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -120,6 +123,15 @@ PROPOSAL_ACTION_FIELDS = {
 PROPOSAL_VALUE_FIELDS = frozenset({"raw_user_instruction", "request_id", "proposal", "reason"})
 PLANNING_VALUE_FIELDS = frozenset({"scene_ids", "target_ids"})
 ProposalText = Annotated[str, Field(min_length=1, max_length=20000, pattern=r"\S")]
+_MAX_PROPOSAL_SOURCE_BYTES = 1024 * 1024
+
+
+class ProposalSource(Strict):
+    """固定工作区文件引用；路径由 request_id 推导，不接受模型提供路径。"""
+
+    kind: Literal["workspace_json"]
+    byte_count: Annotated[int, Field(ge=2, le=_MAX_PROPOSAL_SOURCE_BYTES)]
+    sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 
 
 def proposal_fields(name: str, action: ProposalAction) -> set[str]:
@@ -355,24 +367,35 @@ def _submit_proposal_branches() -> list[dict[str, object]]:
     keyframe 的 request 必须带 scene_ids、target_ids；项目级 capability 不接受这两项。
     """
     schema = PlanningProposal.model_json_schema()
+    source_schema = ProposalSource.model_json_schema()
 
     def payload(name: str) -> dict[str, object]:
         branches = []
         for action in ("request", "get", "submit", "reject", "cancel"):
             expected = sorted(proposal_fields(name, action))
-            properties: dict[str, object] = {"action": {"const": action}}
-            for key in expected:
-                value = _non_null_property(schema["properties"][key])
-                if key in PLANNING_VALUE_FIELDS:
-                    value["uniqueItems"] = True
-                properties[key] = value
-            branches.append(
-                {
-                    "additionalProperties": False,
-                    "properties": properties,
-                    "required": ["action", *expected],
-                }
-            )
+            variants = [(expected, None)]
+            if action == "submit":
+                variants.append((["request_id", "proposal_source"], source_schema))
+            for fields, proposal_source_schema in variants:
+                properties: dict[str, object] = {"action": {"const": action}}
+                for key in fields:
+                    if key == "proposal_source":
+                        properties[key] = proposal_source_schema
+                        continue
+                    value = _non_null_property(schema["properties"][key])
+                    if key in PLANNING_VALUE_FIELDS:
+                        value["uniqueItems"] = True
+                    properties[key] = value
+                if action == "submit":
+                    inactive = "proposal_source" if proposal_source_schema is None else "proposal"
+                    properties[inactive] = {"type": "null"}
+                branches.append(
+                    {
+                        "additionalProperties": False,
+                        "properties": properties,
+                        "required": ["action", *fields],
+                    }
+                )
         return {"type": "object", "oneOf": branches}
 
     return [
@@ -621,7 +644,84 @@ def project_models() -> dict[str, object]:
     }
 
 
-def create_server(bridge: CoreBridge):
+def _load_proposal_source(
+    proposal_directory: Path | None,
+    request_id: object,
+    value: object,
+) -> dict[str, object]:
+    """读取 request_id 对应的固定 JSON；不接受任意路径且不回显内容。"""
+    if proposal_directory is None:
+        raise ValueError("当前 MCP 未配置 proposal 工作区。")
+    if (
+        not isinstance(request_id, str)
+        or len(request_id) != 32
+        or any(character not in "0123456789abcdef" for character in request_id)
+    ):
+        raise ValueError("proposal request_id 不合法。")
+    try:
+        source = ProposalSource.model_validate(value)
+    except ValueError as exc:
+        raise ValueError("proposal_source 不符合严格契约。") from exc
+    try:
+        directory_stat = proposal_directory.lstat()
+        if not stat.S_ISDIR(directory_stat.st_mode) or stat.S_ISLNK(directory_stat.st_mode):
+            raise ValueError("proposal 工作区不可用。")
+        path = proposal_directory / f"{request_id}.json"
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(path, flags)
+        try:
+            file_stat = os.fstat(descriptor)
+            if not stat.S_ISREG(file_stat.st_mode) or file_stat.st_size != source.byte_count:
+                raise ValueError("proposal 文件大小不一致。")
+            content = bytearray()
+            while len(content) <= _MAX_PROPOSAL_SOURCE_BYTES:
+                remaining = _MAX_PROPOSAL_SOURCE_BYTES + 1 - len(content)
+                chunk = os.read(descriptor, min(65536, remaining))
+                if not chunk:
+                    break
+                content.extend(chunk)
+        finally:
+            os.close(descriptor)
+    except (OSError, ValueError) as exc:
+        raise ValueError("proposal 工作区文件不可用或已变化。") from exc
+    encoded = bytes(content)
+    if len(encoded) != source.byte_count or hashlib.sha256(encoded).hexdigest() != source.sha256:
+        raise ValueError("proposal 文件校验不一致。")
+
+    def reject_non_finite(_value: str) -> None:
+        raise ValueError("proposal JSON 不能包含非有限数字。")
+
+    try:
+        proposal = json.loads(encoded.decode("utf-8"), parse_constant=reject_non_finite)
+    except (UnicodeError, ValueError) as exc:
+        raise ValueError("proposal 文件不是合法 UTF-8 JSON。") from exc
+    if not isinstance(proposal, dict):
+        raise ValueError("proposal 文件根必须是 object。")
+    return proposal
+
+
+def _resolve_submit_payload(
+    payload: dict[str, object], proposal_directory: Path | None
+) -> dict[str, object]:
+    if payload.get("proposal_source") is None and "proposal_source" in payload:
+        payload = {key: value for key, value in payload.items() if key != "proposal_source"}
+    if payload.get("action") != "submit" or payload.get("proposal_source") is None:
+        return payload
+    supplied = {key for key, value in payload.items() if value is not None}
+    if supplied != {"action", "request_id", "proposal_source"}:
+        raise ValueError("submit 必须且只能提供 proposal 或 proposal_source。")
+    return {
+        "action": "submit",
+        "request_id": payload.get("request_id"),
+        "proposal": _load_proposal_source(
+            proposal_directory,
+            payload.get("request_id"),
+            payload.get("proposal_source"),
+        ),
+    }
+
+
+def create_server(bridge: CoreBridge, *, proposal_directory: Path | None = None):
     models = project_models()
     listed_models = published_models()
     descriptions = {
@@ -629,6 +729,7 @@ def create_server(bridge: CoreBridge):
         "read_workflow": "读取 workflow、handoff 与 contract_hashes；不授予人类权限。",
         "submit_proposal": (
             "proposal 生命周期，payload 按 action 分支；"
+            "submit 可内联 proposal，或引用固定工作区 proposals/<request_id>.json；"
             "keyframe 的 request 另需 scene_ids、target_ids。"
         ),
         "read_media_input": (
@@ -689,12 +790,13 @@ def create_server(bridge: CoreBridge):
             request = models[params.name].model_validate(params.arguments or {})
             if isinstance(request, SubmitProposal):
                 dispatch_name = _PROPOSAL_CAPABILITY_TO_TOOL[request.capability]
+                payload = _resolve_submit_payload(request.payload, proposal_directory)
                 request = models[dispatch_name].model_validate(
                     {
                         "project_id": request.project_id,
                         "expected_revision": request.expected_revision,
                         "idempotency_key": request.idempotency_key,
-                        **request.payload,
+                        **payload,
                     }
                 )
             if isinstance(request, Proposal):
@@ -832,7 +934,7 @@ def create_server(bridge: CoreBridge):
                     "submit_proposal 的 capability 必须是 script、reference_library、"
                     "location 或 keyframe；payload 除 action 外只能提供："
                     "request→raw_user_instruction（keyframe 另需 scene_ids、target_ids），"
-                    "get/cancel→request_id，submit→request_id、proposal，"
+                    "get/cancel→request_id，submit→request_id 加 proposal 或 proposal_source，"
                     "reject→request_id、reason。"
                 )
             elif dispatch_name in models and issubclass(models[dispatch_name], Proposal):
@@ -873,6 +975,9 @@ def create_server(bridge: CoreBridge):
             "不要用命令行工具、文件名、元数据或提示词推测画面来冒充看图。"
             "proposal request 只建立不可变工作集，随后由当前外部 Agent 编写并显式 submit；"
             "没有后台模型任务可轮询。"
+            "大型 proposal 写入 /workspace/proposals/<request_id>.json 后，"
+            "用 proposal_source 的 byte_count 与 sha256 提交，不要内联或传任意路径；"
+            "工作区文件只是不受信传输缓冲，Core 仍完整校验并原子落库。"
             "取消 proposal 使用显式 cancel；传输取消不表示业务回滚。"
             "读取专业契约前先调用 read_workflow 获取 contract_hashes[capability]，"
             "再带 if_hash 调用 read_professional_contract；"

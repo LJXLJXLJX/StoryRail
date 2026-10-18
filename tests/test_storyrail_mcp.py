@@ -79,14 +79,14 @@ def _core_endpoint(tmp_path, store, service, caller, *, full_api=False):
 
 
 @contextmanager
-def endpoint(tmp_path, store, service, caller, *, full_api=False):
+def endpoint(tmp_path, store, service, caller, *, full_api=False, proposal_directory=None):
     """进程内 MCP Client 对接真实 loopback Core；只有管道测试才起 stdio 子进程。"""
     with _core_endpoint(tmp_path, store, service, caller, full_api=full_api) as (
         origin,
         token,
     ):
         bridge = CoreBridge(origin, token)
-        yield create_server(bridge), bridge
+        yield create_server(bridge, proposal_directory=proposal_directory), bridge
 
 
 @contextmanager
@@ -211,6 +211,75 @@ def test_stdio_disconnect_retry_proposal_cancel_and_scope(tmp_path):
     with stdio_endpoint(tmp_path, store, service, caller) as (params, _):
         asyncio.run(run(params))
     assert len(dropped) == 1 and len(store.read().application_requests) == 3
+
+
+def test_large_script_proposal_uses_workspace_file_and_real_http(tmp_path):
+    async def run():
+        store, service = await ready(tmp_path)
+        document = store.read()
+        request = command(
+            "request", document.revision, "large-request", raw_user_instruction="生成完整脚本"
+        )
+        caller = agent(document, request)
+        proposal_directory = tmp_path / "proposals"
+        proposal_directory.mkdir()
+        with endpoint(
+            tmp_path,
+            store,
+            service,
+            caller,
+            proposal_directory=proposal_directory,
+        ) as (server, _):
+            async with Client(server) as client:
+                started = await client.call_tool(
+                    "submit_proposal",
+                    {
+                        "project_id": document.project_id,
+                        "expected_revision": document.revision,
+                        "idempotency_key": "large-request",
+                        "capability": "script",
+                        "payload": {
+                            "action": "request",
+                            "raw_user_instruction": "生成完整脚本",
+                        },
+                    },
+                )
+                assert not started.is_error, started
+                request_id = started.structured_content["data"]["request_id"]
+                proposal = mixed_proposal(document.reference_library.characters[0].id)
+                original_scenes = proposal["scenes"]
+                proposal["scenes"] = [
+                    json.loads(json.dumps(scene, ensure_ascii=False))
+                    for _ in range(24)
+                    for scene in original_scenes
+                ]
+                for scene in proposal["scenes"]:
+                    scene["summary"] += "完整导演调度" * 200
+                encoded = json.dumps(proposal, ensure_ascii=False, separators=(",", ":")).encode()
+                assert 64 * 1024 < len(encoded) < 1024 * 1024
+                (proposal_directory / f"{request_id}.json").write_bytes(encoded)
+                submitted = await client.call_tool(
+                    "submit_proposal",
+                    {
+                        "project_id": document.project_id,
+                        "expected_revision": started.structured_content["receipt"]["new_revision"],
+                        "idempotency_key": "large-submit",
+                        "capability": "script",
+                        "payload": {
+                            "action": "submit",
+                            "request_id": request_id,
+                            "proposal_source": {
+                                "kind": "workspace_json",
+                                "byte_count": len(encoded),
+                                "sha256": hashlib.sha256(encoded).hexdigest(),
+                            },
+                        },
+                    },
+                )
+        assert not submitted.is_error, submitted.structured_content
+        assert len(store.read().director_script.scenes) == len(proposal["scenes"])
+
+    asyncio.run(run())
 
 
 def test_prompt_scope_and_no_generation(tmp_path):

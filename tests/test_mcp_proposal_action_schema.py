@@ -1,7 +1,9 @@
 """proposal 的公开 schema、MCP runtime 与下游 Core 参数保持同一 action 契约。"""
 
 import asyncio
+import hashlib
 import itertools
+import json
 
 import pytest
 from jsonschema import Draft202012Validator
@@ -300,9 +302,80 @@ def test_submit_proposal_publishes_exact_payload_per_action(name, action):
                 "submit_proposal", {**wrapped, "payload": {**payload, "unknown": 1}}
             )
             assert bad.is_error
-            assert "submit→request_id、proposal" in bad.structured_content["error"]["message"]
+            assert (
+                "submit→request_id 加 proposal 或 proposal_source"
+                in (bad.structured_content["error"]["message"])
+            )
             if scope_missing is not None:
                 assert (await client.call_tool("submit_proposal", scope_missing)).is_error
         assert bridge.calls == [expected_core_call(name, action, arguments)]
+
+    asyncio.run(run())
+
+
+def test_submit_proposal_accepts_verified_fixed_workspace_json(tmp_path):
+    from integrations.storyrail_mcp.app import SubmitProposal, published_tool_schema
+
+    request_id = "d" * 32
+    proposal = {"scenes": [{"title": "大型脚本"}]}
+    encoded = json.dumps(proposal, ensure_ascii=False, separators=(",", ":")).encode()
+    source = {
+        "kind": "workspace_json",
+        "byte_count": len(encoded),
+        "sha256": hashlib.sha256(encoded).hexdigest(),
+    }
+    arguments = {
+        **BASE,
+        "capability": "script",
+        "payload": {"action": "submit", "request_id": request_id, "proposal_source": source},
+    }
+    validator = Draft202012Validator(published_tool_schema("submit_proposal", SubmitProposal))
+    assert validator.is_valid(arguments)
+    assert validator.is_valid(
+        {
+            **arguments,
+            "payload": {
+                "action": "submit",
+                "request_id": request_id,
+                "proposal": proposal,
+                "proposal_source": None,
+            },
+        }
+    )
+    assert validator.is_valid({**arguments, "payload": {**arguments["payload"], "proposal": None}})
+    assert not validator.is_valid(
+        {
+            **arguments,
+            "payload": {**arguments["payload"], "proposal": proposal},
+        }
+    )
+    (tmp_path / f"{request_id}.json").write_bytes(encoded)
+
+    async def run():
+        bridge = RecordingBridge()
+        async with Client(create_server(bridge, proposal_directory=tmp_path)) as client:
+            result = await client.call_tool("submit_proposal", arguments)
+            assert not result.is_error, result
+            bad = await client.call_tool(
+                "submit_proposal",
+                {
+                    **arguments,
+                    "idempotency_key": "bad-hash",
+                    "payload": {
+                        **arguments["payload"],
+                        "proposal_source": {**source, "sha256": "0" * 64},
+                    },
+                },
+            )
+            assert bad.is_error
+        assert bridge.calls == [
+            (
+                BASE["project_id"],
+                "script.submit_proposal",
+                BASE["expected_revision"],
+                BASE["idempotency_key"],
+                {"request_id": request_id, "proposal": proposal},
+            )
+        ]
 
     asyncio.run(run())

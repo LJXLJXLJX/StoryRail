@@ -2333,7 +2333,7 @@
     "name": "read_workflow"
   },
   {
-    "description": "proposal 生命周期，payload 按 action 分支；keyframe 的 request 另需 scene_ids、target_ids。",
+    "description": "proposal 生命周期，payload 按 action 分支；submit 可内联 proposal，或引用固定工作区 proposals/<request_id>.json；keyframe 的 request 另需 scene_ids、target_ids。",
     "inputSchema": {
       "additionalProperties": false,
       "oneOf": [
@@ -2392,6 +2392,9 @@
                       "additionalProperties": true,
                       "type": "object"
                     },
+                    "proposal_source": {
+                      "type": "null"
+                    },
                     "request_id": {
                       "pattern": "^[0-9a-f]{32}$",
                       "type": "string"
@@ -2401,6 +2404,50 @@
                     "action",
                     "proposal",
                     "request_id"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "submit"
+                    },
+                    "proposal": {
+                      "type": "null"
+                    },
+                    "proposal_source": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "byte_count": {
+                          "maximum": 1048576,
+                          "minimum": 2,
+                          "type": "integer"
+                        },
+                        "kind": {
+                          "const": "workspace_json",
+                          "type": "string"
+                        },
+                        "sha256": {
+                          "pattern": "^[0-9a-f]{64}$",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "byte_count",
+                        "sha256"
+                      ],
+                      "type": "object"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{32}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "request_id",
+                    "proposal_source"
                   ]
                 },
                 {
@@ -2520,6 +2567,9 @@
                       "additionalProperties": true,
                       "type": "object"
                     },
+                    "proposal_source": {
+                      "type": "null"
+                    },
                     "request_id": {
                       "pattern": "^[0-9a-f]{32}$",
                       "type": "string"
@@ -2529,6 +2579,50 @@
                     "action",
                     "proposal",
                     "request_id"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "submit"
+                    },
+                    "proposal": {
+                      "type": "null"
+                    },
+                    "proposal_source": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "byte_count": {
+                          "maximum": 1048576,
+                          "minimum": 2,
+                          "type": "integer"
+                        },
+                        "kind": {
+                          "const": "workspace_json",
+                          "type": "string"
+                        },
+                        "sha256": {
+                          "pattern": "^[0-9a-f]{64}$",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "byte_count",
+                        "sha256"
+                      ],
+                      "type": "object"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{32}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "request_id",
+                    "proposal_source"
                   ]
                 },
                 {

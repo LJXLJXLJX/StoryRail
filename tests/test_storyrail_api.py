@@ -15,7 +15,12 @@ from core.structured_director import (
     StructuredDirectorService,
 )
 from server.api import StoryRailApi
-from server.http import _accepts_gzip, _parse_byte_range, _request_body_limit
+from server.http import (
+    _MAX_APPLICATION_COMMAND_REQUEST_BYTES,
+    _accepts_gzip,
+    _parse_byte_range,
+    _request_body_limit,
+)
 
 DIRECTOR_PLAN = "# 完整导演方案\n\n小满带着红色行李箱，在雨夜等待末班车。"
 
@@ -175,6 +180,18 @@ class StoryRailApiTests(unittest.IsolatedAsyncioTestCase):
 
     def test_project_creation_uses_json_request_limit(self) -> None:
         self.assertEqual(_request_body_limit("/api/projects"), 256 * 1024)
+        self.assertEqual(
+            _request_body_limit(
+                "/api/projects/" + "a" * 32 + "/structured-director/application/commands"
+            ),
+            _MAX_APPLICATION_COMMAND_REQUEST_BYTES,
+        )
+        self.assertEqual(
+            _request_body_limit(
+                "/api/projects/" + "a" * 31 + "/structured-director/application/commands"
+            ),
+            64 * 1024,
+        )
 
     def test_http_content_encoding_negotiates_gzip(self) -> None:
         self.assertTrue(_accepts_gzip("gzip, deflate, br"))

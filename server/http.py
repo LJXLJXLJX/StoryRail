@@ -23,6 +23,7 @@ from .request_context import current_http_origin
 
 _MAX_REQUEST_BYTES = 64 * 1024
 _MAX_PROJECT_REQUEST_BYTES = 256 * 1024
+_MAX_APPLICATION_COMMAND_REQUEST_BYTES = 2 * 1024 * 1024
 _MAX_ASSET_REQUEST_BYTES = 32 * 1024 * 1024
 _BODYLESS_DELETE = re.compile(r"/api/projects/[0-9a-f]{32}")
 _LOCAL_PATHS = frozenset({"/api/local-connection", "/api/local-session"})
@@ -376,6 +377,11 @@ def _request_body_limit(path: str) -> int:
         return _MAX_ASSET_REQUEST_BYTES
     if route_path == "/api/projects":
         return _MAX_PROJECT_REQUEST_BYTES
+    if re.fullmatch(
+        r"/api/projects/[0-9a-f]{32}/structured-director/application/commands",
+        route_path,
+    ):
+        return _MAX_APPLICATION_COMMAND_REQUEST_BYTES
     return _MAX_REQUEST_BYTES
 
 

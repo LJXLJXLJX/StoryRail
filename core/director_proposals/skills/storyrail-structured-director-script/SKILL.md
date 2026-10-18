@@ -25,6 +25,8 @@ read、bash、shell、jq 或其它发现工具，也不得读取项目目录。`
 保留已有层级 ID，新建 Scene、NarrationCue、Shot 或 ShotSegment 的 `id` 必须为 null，不猜测正式 ID。
 
 结构化脚本契约和质量门由 Core 与本 Skill 一起固定装入 Compiler instructions；直接遵守，不要再次读取文件。
+提交连接若公开 `proposal_source`，大型初稿可以先写入连接指定的固定工作区 JSON，再只用字节数与 SHA-256 引用提交；
+这只是出站传输方式，不能读取旧文件作为项目事实，也不能据此绕过完整 proposal 校验或最终原子提交。
 
 ## 工作顺序
 
