@@ -17,8 +17,7 @@ from core.structured_director.models import (
     DirectorRunKind,
     GenerationOperation,
     ImageAssetCategory,
-    KeyframeEnvironmentMode,
-    LocationKind,
+    LocationImageKind,
     NarrationLanguage,
     ReferenceGenerationKind,
     ReferenceGenerationPhase,
@@ -193,8 +192,7 @@ def snapshot_schemas() -> dict[str, dict]:
         ),
         "MediaType": _enum(MEDIA_TYPES),
         "WorkspaceCapability": _enum(WORKSPACE_CAPABILITIES),
-        "KeyframeEnvironmentMode": _enum(KeyframeEnvironmentMode, "KeyframeEnvironmentMode"),
-        "LocationKind": _enum(LocationKind, "LocationKind"),
+        "LocationImageKind": _enum(LocationImageKind, "LocationImageKind"),
     }
     schemas.update(
         {
@@ -542,7 +540,6 @@ def snapshot_schemas() -> dict[str, dict]:
                     "action": TEXT,
                     "audio_direction": {"type": "string"},
                     "transition_in": _nullable(TEXT),
-                    "view_id": NULL_ID,
                 },
                 [
                     "id",
@@ -552,7 +549,6 @@ def snapshot_schemas() -> dict[str, dict]:
                     "action",
                     "audio_direction",
                     "transition_in",
-                    "view_id",
                 ],
                 **{"x-ts-name": "Shot", "x-guard": "isShot"},
             ),
@@ -691,13 +687,22 @@ def snapshot_schemas() -> dict[str, dict]:
                     "status": TEXT,
                     "status_label": TEXT,
                     "reason": _nullable({"type": "string"}),
-                    "generation_step": _enum(("master", "crop", "refine", "turn")),
+                    "generation_step": _enum(("image", "capture")),
                     "generate_label": TEXT,
                     "active_generation_id": NULL_ID,
                     "candidate_generation_ids": _array(ID),
                     "selectable_generation_ids": _array(ID),
                     "allowed_actions": _array(
-                        _enum(("generate", "select", "edit", "delete", "clear_selection"))
+                        _enum(
+                            (
+                                "generate",
+                                "select",
+                                "edit",
+                                "delete",
+                                "clear_selection",
+                                "preview_panorama",
+                            )
+                        )
                     ),
                 },
                 [
@@ -719,25 +724,49 @@ def snapshot_schemas() -> dict[str, dict]:
                     "id": ID,
                     "name": TEXT,
                     "description": {"type": "string"},
-                    "azimuth_deg": _nullable({"type": "number"}),
                 },
-                ["id", "name", "description", "azimuth_deg", "allowed_actions"],
+                ["id", "name", "description", "allowed_actions"],
                 **{"x-ts-name": "LocationFixture"},
             ),
             "LocationKeyLight": _obj(
-                {"description": TEXT, "azimuth_deg": _nullable({"type": "number"})},
-                ["description", "azimuth_deg"],
+                {"description": TEXT},
+                ["description"],
                 **{"x-ts-name": "LocationKeyLight"},
             ),
-            "LocationMaster": _obj(
+            "PanoramaCaptureSource": _obj(
                 {
-                    "production": {**_ref("LocationProduction"), "x-ts-optional": True},
+                    "panorama_image_id": ID,
+                    "yaw_deg": {"type": "number"},
+                    "pitch_deg": {"type": "number"},
+                    "hfov_deg": {"type": "number"},
+                },
+                ["panorama_image_id", "yaw_deg", "pitch_deg", "hfov_deg"],
+                **{"x-ts-name": "PanoramaCaptureSource"},
+            ),
+            "LocationImage": _obj(
+                {
+                    "id": ID,
+                    "name": TEXT,
+                    "kind": _ref("LocationImageKind"),
+                    "description": TEXT,
                     "prompt_text": {"type": "string", "maxLength": 19000},
                     "reference_asset_ids": _array(ID, uniqueItems=True, maxItems=5),
                     "selected_asset_id": NULL_ID,
+                    "source": _nullable(_ref("PanoramaCaptureSource")),
+                    "production": {**_ref("LocationProduction"), "x-ts-optional": True},
                 },
-                ["prompt_text", "reference_asset_ids", "selected_asset_id", "production"],
-                **{"x-ts-name": "LocationMaster"},
+                [
+                    "id",
+                    "name",
+                    "kind",
+                    "description",
+                    "prompt_text",
+                    "reference_asset_ids",
+                    "selected_asset_id",
+                    "source",
+                    "production",
+                ],
+                **{"x-ts-name": "LocationImage"},
             ),
             "LocationState": _obj(
                 {
@@ -749,75 +778,32 @@ def snapshot_schemas() -> dict[str, dict]:
                 ["id", "name", "description", "allowed_actions"],
                 **{"x-ts-name": "LocationState"},
             ),
-            "LocationView": _obj(
-                {
-                    "production": {**_ref("LocationProduction"), "x-ts-optional": True},
-                    "has_valid_crop": {**BOOL, "x-ts-optional": True},
-                    "id": ID,
-                    "name": TEXT,
-                    "purpose": TEXT,
-                    "azimuth_deg": _nullable({"type": "number"}),
-                    "look_at_fixture_id": NULL_ID,
-                    "yaw_offset_deg": _nullable({"type": "number"}),
-                    "pitch_deg": {"type": "number"},
-                    "hfov_deg": {"type": "number"},
-                    "state_id": NULL_ID,
-                    "refine_prompt_text": {"type": "string", "maxLength": 19000},
-                    "reference_view_ids": _array(ID, uniqueItems=True),
-                    "crop_asset_id": NULL_ID,
-                    "selected_asset_id": NULL_ID,
-                },
-                [
-                    "id",
-                    "name",
-                    "purpose",
-                    "azimuth_deg",
-                    "look_at_fixture_id",
-                    "yaw_offset_deg",
-                    "pitch_deg",
-                    "hfov_deg",
-                    "state_id",
-                    "refine_prompt_text",
-                    "reference_view_ids",
-                    "crop_asset_id",
-                    "selected_asset_id",
-                    "production",
-                    "has_valid_crop",
-                ],
-                **{"x-ts-name": "LocationView"},
-            ),
             "Location": _obj(
                 {
                     "allowed_actions": {
                         **_array(
                             _enum(
-                                ("edit", "delete", "create_view", "create_fixture", "create_state")
+                                ("edit", "delete", "create_image", "create_fixture", "create_state")
                             )
                         ),
                         "x-ts-optional": True,
                     },
                     "id": ID,
                     "name": TEXT,
-                    "kind": _ref("LocationKind"),
                     "description": {"type": "string", "maxLength": 4000},
                     "fixtures": _array(_ref("LocationFixture"), maxItems=40),
                     "key_light": _nullable(_ref("LocationKeyLight")),
-                    "master": _ref("LocationMaster"),
-                    "calibrated_master_asset_id": NULL_ID,
                     "states": _array(_ref("LocationState"), maxItems=10),
-                    "views": _array(_ref("LocationView"), maxItems=30),
+                    "images": _array(_ref("LocationImage"), maxItems=200),
                 },
                 [
                     "id",
                     "name",
-                    "kind",
                     "description",
                     "fixtures",
                     "key_light",
-                    "master",
-                    "calibrated_master_asset_id",
                     "states",
-                    "views",
+                    "images",
                     "allowed_actions",
                 ],
                 **{"x-ts-name": "Location"},
@@ -826,7 +812,7 @@ def snapshot_schemas() -> dict[str, dict]:
                 {
                     "locations": _array(_ref("Location"), maxItems=200),
                     "allowed_actions": {
-                        **_array(_enum(("create_location", "bind_scene", "bind_shot"))),
+                        **_array(_enum(("create_location", "bind_scene"))),
                         "x-ts-optional": True,
                     },
                 },
@@ -842,9 +828,6 @@ def snapshot_schemas() -> dict[str, dict]:
                     "visible_character_ids": _array(ID, uniqueItems=True),
                     "character_references": _array(_ref("KeyframeCharacterReference")),
                     "selected_asset_id": NULL_ID,
-                    "environment_mode": _ref("KeyframeEnvironmentMode"),
-                    "environment_view_id": NULL_ID,
-                    "environment_none_reason": _nullable({"type": "string", "maxLength": 500}),
                 },
                 [
                     "id",
@@ -854,9 +837,6 @@ def snapshot_schemas() -> dict[str, dict]:
                     "visible_character_ids",
                     "character_references",
                     "selected_asset_id",
-                    "environment_mode",
-                    "environment_view_id",
-                    "environment_none_reason",
                 ],
                 **{"x-ts-name": "Keyframe"},
             ),
@@ -1108,7 +1088,7 @@ def snapshot_schemas() -> dict[str, dict]:
                     "display_name": {"type": "string"},
                     "content_url": {"type": "string"},
                     "role": _enum(("source_image", "reference_image")),
-                    # 本图在实际输入中的角色名（地点视图、角色参考、前置帧、辅助参考）与用途说明。
+                    # 本图在实际输入中的角色名（角色参考、前置帧、辅助参考等）与用途说明。
                     "input_roles": _array({"type": "string"}),
                     "purpose": {"type": "string"},
                 },

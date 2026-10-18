@@ -112,9 +112,6 @@ def _saved_keyframe_plan(document, scene_ids):
                 "prompt_text": item.prompt_text,
                 "visible_character_ids": list(item.visible_character_ids),
                 "character_references": serialize_character_references(item),
-                "environment_mode": item.environment_mode.value,
-                "environment_view_id": item.environment_view_id,
-                "environment_none_reason": item.environment_none_reason,
                 "selected_asset_id": item.selected_asset_id,
                 "bindings": frame_bindings[item.id],
             }
@@ -125,43 +122,39 @@ def _saved_keyframe_plan(document, scene_ids):
 
 
 def _location_library_facts(document):
-    """完整地点库加上派生状态：主图是否已选、是否已按当前主图标定、视图裁切/选图是否就绪。"""
+    """完整地点库加上每个独立图片条目的选图状态。"""
     result = []
     for location in document.location_library.locations:
         item = _json_value(location)
-        item["master_selected"] = location.master.selected_asset_id is not None
-        item["calibrated"] = location.calibrated
-        for view, value in zip(location.views, item["views"], strict=True):
-            value["has_crop"] = view.crop_asset_id is not None
-            value["has_selected_image"] = view.selected_asset_id is not None
+        for image, value in zip(location.images, item["images"], strict=True):
+            value["has_selected_image"] = image.selected_asset_id is not None
         result.append(item)
     return result
 
 
-def _keyframe_location_views(document):
-    """Keyframe 规划可引用的全部地点视图（Keyframe 可覆盖 Shot 的视图建议）。
-
-    每项带所属地点名与状态、purpose 和已选图；`selected_asset_id` 为 null 时可以规划，
-    但生成前必须先选图或把帧改为 none。
-    """
+def _keyframe_location_images(document):
+    """Keyframe 规划可由人显式加入辅助参考的地点图片及其强制说明。"""
     result = []
     for location in document.location_library.locations:
-        states = {item.id: item.name for item in location.states}
         result.extend(
             {
-                "view_id": view.id,
-                "name": view.name,
-                "purpose": view.purpose,
+                "image_id": image.id,
+                "name": image.name,
+                "kind": image.kind.value,
+                "description": image.description,
                 "location_id": location.id,
                 "location_name": location.name,
-                "location_kind": location.kind.value,
-                "state_id": view.state_id,
-                "state_name": None if view.state_id is None else states.get(view.state_id),
-                "selected_asset_id": view.selected_asset_id,
+                "selected_asset_id": image.selected_asset_id,
             }
-            for view in location.views
+            for image in location.images
         )
     return result
+
+
+def _keyframe_location_library(document, scenes):
+    """只投影当前 Scene 使用的地点语义；图片说明用于理解，不构成自动输入。"""
+    location_ids = {scene.location_id for scene in scenes if scene.location_id is not None}
+    return [item for item in _location_library_facts(document) if item["id"] in location_ids]
 
 
 def contract_read(document, arguments):
@@ -295,7 +288,8 @@ def workset_read(
                 "required_shared_boundaries": _json_value(boundaries),
                 "aspect_ratio": document.aspect_ratio.value,
                 "saved_keyframe_plan": _saved_keyframe_plan(document, scene_ids),
-                "location_views": _keyframe_location_views(document),
+                "location_library": _keyframe_location_library(document, scenes),
+                "location_images": _keyframe_location_images(document),
                 "image_prompt": image_prompt_guide(provider_catalog),
             }
             schema = keyframe_schema(scenes)

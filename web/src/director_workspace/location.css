@@ -1,4 +1,4 @@
-/* 地点库：左侧地点索引，右侧当前地点详情（主图 → 陈设与状态 → 机位视图）。 */
+/* 地点库：左侧地点索引，右侧当前地点详情（语义 → 陈设与状态 → 独立图片）。 */
 .global-references-dialog.location-library-dialog {
   width: min(1180px, 100%);
 }

@@ -49,17 +49,17 @@ async def _execute_production_command_handler(
                 )
         else:
             updated = await service.generate_keyframe_batch(expected_revision=updated.revision)
-    elif command.name in {"location.generate_master", "location.generate_view"}:
+    elif command.name in {"location.generate_image", "location.capture_panorama"}:
         if not target_ids:
             raise ValueError(f"{command.name} 必须指定目标 ID。")
         for target_id in target_ids:
             updated = await (
-                service.generate_location_master(
-                    location_id=target_id, expected_revision=updated.revision
+                service.generate_location_image(
+                    image_id=target_id, expected_revision=updated.revision
                 )
-                if command.name == "location.generate_master"
-                else service.generate_location_view(
-                    view_id=target_id, expected_revision=updated.revision
+                if command.name == "location.generate_image"
+                else service.generate_location_capture(
+                    image_id=target_id, expected_revision=updated.revision
                 )
             )
     elif command.name == "video.generate":

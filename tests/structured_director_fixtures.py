@@ -8,7 +8,7 @@ import wave
 from dataclasses import replace
 from uuid import uuid4
 
-from core.director_commands import LocationViewSelection, parse_location_operations_patch
+from core.director_commands import LocationImageSelection, parse_location_operations_patch
 from core.director_proposals import (
     CharacterCardProposal,
     DialogueLineProposal,
@@ -41,7 +41,6 @@ from core.structured_director import (
     StructuredDirectorStore,
 )
 from core.structured_director.models import (
-    LocationKind,
     NarrationLanguage,
     ReferenceGenerationKind,
     Shot,
@@ -403,9 +402,6 @@ class ContinuousKeyframePlanner:
     async def propose(self, **kwargs: object) -> KeyframePlanProposal:
         scene = kwargs["scenes"][0]
         first, second = scene.segments
-        # 首个 Segment 的覆盖 Shot 绑定了地点视图时两帧都以视图为编辑底图。
-        view_id = first.start_view_id
-        mode = "edit" if view_id is not None else None
         # 这个静态边界只出现 Segment 可见角色中的第一个；其余角色不得被带入生图输入。
         character_ids = tuple(item.id for item in first.visible_characters[:1])
         second_character_ids = tuple(item.id for item in second.visible_characters[:1])
@@ -417,12 +413,8 @@ class ContinuousKeyframePlanner:
                     frame_strategy="both",
                     start_prompt_text="小满站在站牌旁，手扶行李箱，尚未抬头。",
                     start_visible_character_ids=character_ids,
-                    start_environment_mode=mode,
-                    start_environment_view_id=view_id,
                     end_prompt_text="小满已经抬头看向站牌，手仍扶住行李箱。",
                     end_visible_character_ids=character_ids,
-                    end_environment_mode=mode,
-                    end_environment_view_id=view_id,
                 ),
                 KeyframeSegmentProposal(
                     segment_id=second.id,
@@ -432,8 +424,6 @@ class ContinuousKeyframePlanner:
                     start_visible_character_ids=(),
                     end_prompt_text="远处车灯已经进入画面，近景中没有角色。",
                     end_visible_character_ids=second_character_ids,
-                    end_environment_mode=mode,
-                    end_environment_view_id=second.end_view_id,
                 ),
             )
         )
@@ -695,42 +685,31 @@ def install_location(
     *,
     view_asset_id: str | None = None,
     scene_ids: tuple[str, ...] = (),
-    kind: LocationKind = LocationKind.INTERIOR,
+    kind: object | None = None,
     name: str = "共享客厅",
 ) -> StructuredDirectorDocument:
-    """经正式地点操作建一个地点和一个视图，可选绑定 Scene 及其全部 Shot；
-    视图图片走人类候选选择入口。"""
+    """经正式地点操作建一个地点和一张独立图片，可选绑定 Scene。"""
     document = store.read()
-    shot_ids = [
-        shot.id
-        for scene in (() if document.director_script is None else document.director_script.scenes)
-        if scene.id in scene_ids
-        for shot in scene.shots
-    ]
+    del kind
     patch = parse_location_operations_patch(
         {
-            "scope": {"location_ids": [], "scene_ids": list(scene_ids), "shot_ids": shot_ids},
+            "scope": {"location_ids": [], "scene_ids": list(scene_ids)},
             "operations": [
                 {
                     "op": "create_location",
                     "key": "place",
                     "name": name,
-                    "kind": kind.value,
                     "description": "固定空间、陈设和光线。",
                 },
                 {
-                    "op": "update_location",
-                    "location_id": "place",
-                    "fields": {"master_prompt_text": "空间全景，无人物。"},
-                },
-                {
-                    "op": "create_view",
+                    "op": "create_image",
                     "location_id": "place",
                     "key": "main",
                     "fields": {
                         "name": "主机位",
-                        "purpose": "人眼高中景，覆盖本地点的主要对话",
-                        "azimuth_deg": 0.0,
+                        "kind": "image",
+                        "description": "人眼高中景，覆盖本地点的主要对话。",
+                        "prompt_text": "固定空间，无人物。",
                     },
                 },
                 *(
@@ -742,10 +721,6 @@ def install_location(
                     }
                     for scene_id in scene_ids
                 ),
-                *(
-                    {"op": "bind_shot", "shot_id": shot_id, "view_id": "main"}
-                    for shot_id in shot_ids
-                ),
             ],
         }
     )
@@ -756,15 +731,15 @@ def install_location(
         # 局部导入：tests/build_*_fixture.py 在 pytest 之外运行，那里 scripts 包不在导入路径上。
         from scripts.harness.fixtures.candidates import register_image_candidate
 
-        view_id = data["created_ids"]["main"]
+        image_id = data["created_ids"]["main"]
         register_image_candidate(
             store,
-            kind=ReferenceGenerationKind.LOCATION_VIEW_IMAGE,
-            target_id=view_id,
+            kind=ReferenceGenerationKind.LOCATION_IMAGE,
+            target_id=image_id,
             asset_id=view_asset_id,
         )
-        store.select_location_view(
-            LocationViewSelection(view_id, view_asset_id),
+        store.select_location_image(
+            LocationImageSelection(image_id, view_asset_id),
             expected_revision=store.read().revision,
             command_id=uuid4().hex,
         )

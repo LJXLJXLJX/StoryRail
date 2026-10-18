@@ -663,13 +663,13 @@ GENERATION_CASES = [
         "image_ratio_vocabulary",
         IMAGE_BASE,
         dict(aspect_ratio="7:5"),
-        "只有造型设定图与地点主图可以指定受支持的图片比例。",
+        "只有造型设定图与地点图片可以指定受支持的图片比例。",
     ),
     (
         "keyframe_has_no_ratio",
         dict(kind=ReferenceGenerationKind.KEYFRAME_IMAGE, operation=GenerationOperation.GENERATE),
         dict(aspect_ratio="1:1"),
-        "只有造型设定图与地点主图可以指定受支持的图片比例。",
+        "只有造型设定图与地点图片可以指定受支持的图片比例。",
     ),
     (
         "image_no_narration_params",

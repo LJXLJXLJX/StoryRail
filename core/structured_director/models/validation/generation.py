@@ -36,11 +36,11 @@ def _validate_common_fields(generation) -> None:
         generation.kind
         not in {
             ReferenceGenerationKind.CHARACTER_LOOK_SHEET,
-            ReferenceGenerationKind.LOCATION_MASTER_IMAGE,
+            ReferenceGenerationKind.LOCATION_IMAGE,
         }
         or generation.aspect_ratio not in IMAGE_ASPECT_RATIOS
     ):
-        raise ValueError("只有造型设定图与地点主图可以指定受支持的图片比例。")
+        raise ValueError("只有造型设定图与地点图片可以指定受支持的图片比例。")
     if generation.kind in LANGUAGE_GENERATION_KINDS:
         if not isinstance(generation.language, NarrationLanguage):
             raise ValueError("旁白音色、旁白音频与成片 Generation 必须标明语言。")
@@ -51,10 +51,10 @@ def _validate_common_fields(generation) -> None:
         and generation.kind is not ReferenceGenerationKind.VIDEO_FRAME
     ):
         raise ValueError("只有抽帧任务可包含 video_frame_request。")
-    if (generation.location_crop_request is not None) != (
-        generation.kind is ReferenceGenerationKind.LOCATION_VIEW_CROP
+    if (generation.panorama_capture_request is not None) != (
+        generation.kind is ReferenceGenerationKind.PANORAMA_CAPTURE
     ):
-        raise ValueError("全景裁切必须且只有全景裁切保存 location_crop_request。")
+        raise ValueError("全景取景必须且只有全景取景保存 panorama_capture_request。")
     if (
         generation.video_input_snapshot is not None
         and generation.kind is not ReferenceGenerationKind.SEGMENT_VIDEO
@@ -187,11 +187,11 @@ def _validate_kind_contract(generation) -> None:
             )
         ):
             raise ValueError("抽帧不能包含生成参数。")
-    elif generation.kind is ReferenceGenerationKind.LOCATION_VIEW_CROP:
+    elif generation.kind is ReferenceGenerationKind.PANORAMA_CAPTURE:
         if generation.operation is not GenerationOperation.PROCESS:
             raise ValueError("全景裁切必须使用 process 操作。")
-        if generation.input_asset_ids != (generation.location_crop_request.master_asset_id,):
-            raise ValueError("全景裁切输入必须等于冻结的主图。")
+        if generation.input_asset_ids != (generation.panorama_capture_request.panorama_asset_id,):
+            raise ValueError("全景取景输入必须等于冻结的源全景图。")
         if any(
             x is not None
             for x in (generation.seed, generation.sample_text, generation.duration_seconds)

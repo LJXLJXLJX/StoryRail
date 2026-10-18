@@ -41,8 +41,7 @@ def validate_image_import(media_type: str, category: ImageAssetCategory) -> str:
         raise ValueError("图片资产分类不合法。")
     directory = {
         ImageAssetCategory.CHARACTER_REFERENCE: "images/characters",
-        ImageAssetCategory.LOCATION_MASTER: "images/locations/master",
-        ImageAssetCategory.LOCATION_VIEW: "images/locations/views",
+        ImageAssetCategory.LOCATION_IMAGE: "images/locations",
         ImageAssetCategory.KEYFRAME: "images/keyframes",
     }.get(category)
     if directory is None:

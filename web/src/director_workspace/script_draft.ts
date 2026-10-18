@@ -20,7 +20,6 @@ export function newSceneDraft(): Scene {
         action: "请补充镜头内发生的动作。",
         audio_direction: "",
         transition_in: null,
-        view_id: null,
       },
     ],
     segments: [

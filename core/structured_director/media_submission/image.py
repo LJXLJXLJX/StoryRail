@@ -27,14 +27,11 @@ from ..keyframe_requests import (
     _keyframe_generation_inputs,
 )
 from ..location_requests import (
-    location_master_plan,
-    location_master_prompt,
-    location_view_plan,
-    location_view_prompt,
+    location_image_plan,
+    location_image_prompt,
 )
 from ..models import (
     GenerationOperation,
-    LocationKind,
     ReferenceGeneration,
     ReferenceGenerationKind,
     ReferenceGenerationPhase,
@@ -240,37 +237,36 @@ class ImageSubmission:
         )
         return self._store.update_generation(queued)
 
-    async def generate_location_master(
+    async def generate_location_image(
         self,
         *,
-        location_id: str,
+        image_id: str,
         expected_revision: int,
         _retry_of: ReferenceGeneration | None = None,
     ) -> StructuredDirectorDocument:
-        """提交地点主图候选：室内 2:1 等距柱状全景，室外项目画幅；成功只保存候选。"""
+        """提交独立地点图片候选；成功只保存候选，由人类选择。"""
         async with self._lock:
             document = self._store.read()
             if document.revision != expected_revision:
                 raise ValueError("项目已被更新，请重新读取后再生成。")
-            return await self._submit_location_master(
-                document, location_id=location_id, retry_of=_retry_of
+            return await self._submit_location_image(
+                document, image_id=image_id, retry_of=_retry_of
             )
 
-    async def _submit_location_master(
+    async def _submit_location_image(
         self,
         document: StructuredDirectorDocument,
         *,
-        location_id: str,
+        image_id: str,
         retry_of: ReferenceGeneration | None = None,
     ) -> StructuredDirectorDocument:
-        """在调用方持有的服务锁内提交主图；单项入口与成套批次共用。"""
-        plan = location_master_plan(document, location_id)
-        _reject_active_location_generation(document, location_id, "该地点已有进行中的主图任务。")
-        kind = ReferenceGenerationKind.LOCATION_MASTER_IMAGE
+        plan = location_image_plan(document, image_id)
+        _reject_active_location_generation(document, image_id, "该地点图片已有进行中的任务。")
+        kind = ReferenceGenerationKind.LOCATION_IMAGE
         operation = GenerationOperation.GENERATE
         prepared, style = _prepare_image(self, operation)
-        prompt = location_master_prompt(document, plan, style)
-        seed = _image_seed(document, prepared, kind, location_id, retry_of)
+        prompt = location_image_prompt(document, plan, style)
+        seed = _image_seed(document, prepared, kind, image_id, retry_of)
         request, recipe_params = _image_recipe(
             self,
             document,
@@ -284,13 +280,13 @@ class ImageSubmission:
         generation = _image_generation(
             kind,
             operation,
-            location_id,
+            image_id,
             prompt,
             plan.inputs.asset_ids,
             seed,
             prepared,
             recipe_params,
-            message="正在提交地点主图任务。",
+            message="正在提交地点图片任务。",
             aspect_ratio=plan.aspect_ratio,
         )
         return await _commit_submission(
@@ -299,75 +295,8 @@ class ImageSubmission:
             generation,
             expected_revision=document.revision,
             submit=lambda: prepared.submit(request),
-            capability="地点主图",
-            queued_message="地点主图任务已提交。",
-            retry_of=retry_of,
-        )
-
-    async def generate_location_view(
-        self,
-        *,
-        view_id: str,
-        expected_revision: int,
-        _retry_of: ReferenceGeneration | None = None,
-    ) -> StructuredDirectorDocument:
-        """生成一个视图的下一步。
-
-        室内视图没有与当前主图、几何一致的裁切时只提交确定性裁切并返回；裁切完成后需要再次
-        显式调用才提交细化。室外视图直接以主图为底图 edit 转向。回调不自动续提交。
-        """
-        async with self._lock:
-            document = self._store.read()
-            if document.revision != expected_revision:
-                raise ValueError("项目已被更新，请重新读取后再生成。")
-            return await self._submit_location_view(document, view_id=view_id, retry_of=_retry_of)
-
-    async def _submit_location_view(
-        self,
-        document: StructuredDirectorDocument,
-        *,
-        view_id: str,
-        retry_of: ReferenceGeneration | None = None,
-    ) -> StructuredDirectorDocument:
-        """在调用方持有的服务锁内提交视图的下一步；单项入口与成套批次共用。"""
-        plan = location_view_plan(document, view_id)
-        _reject_active_location_generation(document, view_id, "该视图已有进行中的生成任务。")
-        retry_kind = None if retry_of is None else retry_of.kind
-        if plan.crop is not None:
-            if retry_kind is ReferenceGenerationKind.LOCATION_VIEW_IMAGE:
-                raise ValueError("该视图的全景裁切已失效，不能直接重试细化；请重新生成视图。")
-            return await self._submit_location_crop(document, view_id, plan.crop, retry_of=retry_of)
-        if retry_kind is ReferenceGenerationKind.LOCATION_VIEW_CROP:
-            raise ValueError("该视图已有与当前主图和几何一致的裁切，无需重试裁切。")
-        assert plan.inputs is not None
-        kind = ReferenceGenerationKind.LOCATION_VIEW_IMAGE
-        operation = GenerationOperation.EDIT
-        prepared, style = _prepare_image(self, operation)
-        prompt = location_view_prompt(document, plan, style)
-        seed = _image_seed(document, prepared, kind, view_id, retry_of)
-        request, recipe_params = _image_recipe(
-            self, document, prepared, operation, prompt, plan.inputs.asset_ids, seed
-        )
-        interior = plan.location.kind is LocationKind.INTERIOR
-        generation = _image_generation(
-            kind,
-            operation,
-            view_id,
-            prompt,
-            plan.inputs.asset_ids,
-            seed,
-            prepared,
-            recipe_params,
-            message=f"正在提交地点视图{'细化' if interior else '转向'}任务。",
-        )
-        return await _commit_submission(
-            self,
-            document,
-            generation,
-            expected_revision=document.revision,
-            submit=lambda: prepared.submit(request),
-            capability="地点视图",
-            queued_message=f"地点视图{'细化' if interior else '转向'}任务已提交。",
+            capability="地点图片",
+            queued_message="地点图片任务已提交。",
             retry_of=retry_of,
         )
 
@@ -386,9 +315,8 @@ def _reject_active_location_generation(document, target_id: str, message: str) -
         item.target_id == target_id
         and item.kind
         in {
-            ReferenceGenerationKind.LOCATION_MASTER_IMAGE,
-            ReferenceGenerationKind.LOCATION_VIEW_CROP,
-            ReferenceGenerationKind.LOCATION_VIEW_IMAGE,
+            ReferenceGenerationKind.PANORAMA_CAPTURE,
+            ReferenceGenerationKind.LOCATION_IMAGE,
         }
         and item.phase not in _TERMINAL_PHASES
         for item in document.generations

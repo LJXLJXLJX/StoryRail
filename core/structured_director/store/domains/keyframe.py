@@ -64,7 +64,6 @@ from core.structured_director.store.pipeline import commit_mutation as commit_mu
 from ...script_index import (
     scene_segments,
     segment_continues_previous,
-    segment_view_ids,
     segment_visible_character_ids,
 )
 
@@ -217,8 +216,6 @@ def _translate_keyframe_plan_to_operations(
                 bindings[segment.id].end_keyframe_id,
                 segment.id in allowed_segment_ids,
                 segment.id in locked_segment_ids,
-                segment_view_ids(scene, segment.id)[0],
-                segment_view_ids(scene, segment.id)[1],
                 segment_continues_previous(scene, segment.id),
             )
             for segment in scene.segments
@@ -409,21 +406,10 @@ class KeyframeDomain(_DomainBase):
                 for segment in scene_segments(scene):
                     start_keyframe_id = uuid4().hex
                     end_keyframe_id = uuid4().hex
-                    start_view_id, end_view_id = segment_view_ids(scene, segment.id)
                     keyframes.extend(
                         (
-                            blank_keyframe(
-                                start_keyframe_id,
-                                segment.id,
-                                None,
-                                view_id=start_view_id,
-                            ),
-                            blank_keyframe(
-                                end_keyframe_id,
-                                segment.id,
-                                start_keyframe_id,
-                                view_id=end_view_id,
-                            ),
+                            blank_keyframe(start_keyframe_id, segment.id, None),
+                            blank_keyframe(end_keyframe_id, segment.id, start_keyframe_id),
                         )
                     )
                     bindings.append(

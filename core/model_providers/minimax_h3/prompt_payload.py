@@ -57,7 +57,6 @@ def h3_prompt_payload(context: H3PromptContext, input_labels=None) -> dict[str, 
                 "action": shot.action,
                 "audio_direction": shot.audio_direction,
                 "visible_character_names": list(shot.visible_character_names),
-                "view_name": shot.view_name,
             }
             for shot in context.shots
         ],

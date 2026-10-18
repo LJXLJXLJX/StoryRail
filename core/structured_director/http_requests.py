@@ -111,7 +111,6 @@ def _parse_narration_track(
 
 def _parse_shot(value: object) -> EditableShotProposal:
     item = _exact_object(value, _SHOT_FIELDS, "shot")
-    _optional_id(item["view_id"], "view_id")
     character_ids = item["visible_character_ids"]
     if not isinstance(character_ids, list):
         raise ValueError("shot.visible_character_ids 必须是数组。")

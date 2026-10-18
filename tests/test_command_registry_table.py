@@ -59,8 +59,7 @@ def test_external_and_domain_commands_share_one_registry_table():
         "project.apply_repair_patch",
         "keyframe.apply_operations",
         "location.apply_operations",
-        "location.select_master",
-        "location.select_view",
+        "location.select_image",
     ):
         assert name in _COMMAND_SPECS
         assert _COMMAND_SPECS[name].scope_rule
@@ -70,4 +69,4 @@ def test_location_candidate_selection_is_human_only():
     from core.application.caller import _AGENT_OPERATIONS
 
     assert "location.apply_operations" in _AGENT_OPERATIONS
-    assert not {"location.select_master", "location.select_view"} & _AGENT_OPERATIONS
+    assert "location.select_image" not in _AGENT_OPERATIONS

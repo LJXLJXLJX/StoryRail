@@ -5,7 +5,6 @@ from .keyframe_requests import (
     _keyframe_existing_result,
     _keyframe_generation_inputs,
     _keyframe_label,
-    keyframe_pending_view,
 )
 from .manual_commands import (
     keyframe_edit_command,
@@ -89,11 +88,6 @@ async def execute_keyframe_wave(
                     "本轮未自动重试；请明确重试对应 Generation。"
                 )
                 continue
-            pending_view = keyframe_pending_view(document, keyframe)
-            if pending_view is not None:
-                location, view = pending_view
-                deferred.append((target_id, f"等待地点「{location.name}」视图「{view.name}」选图"))
-                continue
             inputs = _keyframe_generation_inputs(document, target_id)
             if inputs is None:
                 assert keyframe.predecessor_keyframe_id is not None
@@ -152,7 +146,7 @@ async def execute_keyframe_wave(
                 for target_id, waiting in deferred
             ]
             next_step = (
-                "本次批次范围已保存。前置候选完成或地点视图选图后，"
+                "本次批次范围已保存。前置候选或角色造型图等依赖就绪后，"
                 "请明确说“继续生成关键帧”；"
                 "Core 只检查该批次中尚未完成且依赖已满足的帧，不会重复生成已有结果。"
             )

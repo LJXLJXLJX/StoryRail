@@ -47,14 +47,15 @@ def test_prompt_fixture_before_real_calls(tmp_path, kind):
                 },
             },
         )
-        # 只有 fixture 登记的视图候选，没有任何真实 Provider 调用。
+        # 只有 fixture 登记的图片/音频候选，没有任何真实 Provider 调用。
         assert {item.plugin_id for item in store.read().generations} <= {
             "fixture.image",
             "fixture.audio",
         }
         if kind == "keyframe":
             assert result["workset"]["operation"] == "edit"
-            assert len(result["reference_images"]) == 5
+            # 地点图片不再自动绑定或提交给 Keyframe；这里只含显式帧输入。
+            assert len(result["reference_images"]) == 4
         else:
             assert result["context"]["mode"] == kind
             assert len(result["context"]["dialogue"]) == (2 if kind == "ref2va" else 0)

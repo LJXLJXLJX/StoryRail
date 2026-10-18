@@ -114,13 +114,9 @@ class Shot:
     action: str
     audio_direction: str
     transition_in: str | None
-    # 地点视图建议（软参考）；必须属于所在 Scene 的 Location。
-    view_id: str | None = None
 
     def __post_init__(self) -> None:
         _require_id(self.id, "shot.id")
-        if self.view_id is not None:
-            _require_id(self.view_id, "shot.view_id")
         for character_id in self.visible_character_ids:
             _require_id(character_id, "shot.visible_character_ids")
         if len(self.visible_character_ids) != len(set(self.visible_character_ids)):
@@ -156,8 +152,6 @@ class Scene:
             _require_id(self.state_id, "scene.state_id")
             if self.location_id is None:
                 raise ValueError("Scene 未绑定地点时不能指定地点状态。")
-        if self.location_id is None and any(shot.view_id is not None for shot in self.shots):
-            raise ValueError("Scene 未绑定地点时 Shot 不能绑定地点视图。")
         _require_text(self.title, "scene.title", 300)
         _require_text(self.summary, "scene.summary", 4_000)
         _require_text(self.setting, "scene.setting", 4_000)

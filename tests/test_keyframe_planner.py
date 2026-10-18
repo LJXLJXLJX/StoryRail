@@ -44,9 +44,7 @@ class KeyframePlannerTests(unittest.IsolatedAsyncioTestCase):
             "frame_strategy":"both",
             "start_prompt_text":"起始状态。",
             "start_visible_character_ids":[],"start_character_references":[],
-            "start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
-            "end_prompt_text":"结束状态。","end_visible_character_ids":[],"end_character_references":[],
-            "end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null{extra}}}]}}'''
+            "end_prompt_text":"结束状态。","end_visible_character_ids":[],"end_character_references":[]{extra}}}]}}'''
 
         with self.assertRaisesRegex(ProposalError, "未声明"):
             parse_keyframe_plan(raw(',"model":"video_prompt"', "false"))
@@ -59,9 +57,8 @@ def _one_segment_response(segment_id: str) -> str:
     "continues_from_previous":false,
     "frame_strategy":"start",
     "start_prompt_text":"起始状态。",
-    "start_visible_character_ids":[],"start_character_references":[],"start_environment_mode":null,"start_environment_view_id":null,"start_environment_none_reason":null,
-    "end_prompt_text":"结束状态。","end_visible_character_ids":[],"end_character_references":[],
-    "end_environment_mode":null,"end_environment_view_id":null,"end_environment_none_reason":null}}]}}'''
+    "start_visible_character_ids":[],"start_character_references":[],
+    "end_prompt_text":"结束状态。","end_visible_character_ids":[],"end_character_references":[]}}]}}'''
 
 
 def _one_segment_scene(

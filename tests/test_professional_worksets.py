@@ -19,7 +19,6 @@ from core.director_commands import DirectorCommand, DirectorCommandRegistry
 from core.director_proposals.professional_contracts import CONTRACTS, read_contract
 from core.structured_director.models import (
     ImageAssetCategory,
-    LocationView,
     SegmentBoundary,
     SegmentBoundaryReason,
 )
@@ -263,8 +262,6 @@ def test_saved_keyframe_plan_is_complete_scoped_and_independent_of_executable_in
         first_start = bindings[first_segment.id].start_keyframe_id
         shared = bindings[first_segment.id].end_keyframe_id
         second_end = bindings[second_segment.id].end_keyframe_id
-        # 规划允许引用尚未选图的视图；生成时才校验视图图片。
-        views = [location.views[0] for location in doc.location_library.locations]
         doc = await service.import_image_asset(
             media_type="image/png",
             content=b"\x89PNG\r\n\x1a\nsaved-plan",
@@ -285,9 +282,6 @@ def test_saved_keyframe_plan_is_complete_scoped_and_independent_of_executable_in
                             "fields": {
                                 "prompt_text": "已保存首帧正文。",
                                 "visible_character_ids": [scene.shots[0].visible_character_ids[0]],
-                                "environment_mode": "edit",
-                                "environment_view_id": views[0].id,
-                                "environment_none_reason": None,
                             },
                         },
                         {
@@ -296,9 +290,6 @@ def test_saved_keyframe_plan_is_complete_scoped_and_independent_of_executable_in
                             "fields": {
                                 "prompt_text": "已保存共享边界正文。",
                                 "visible_character_ids": [],
-                                "environment_mode": "reference",
-                                "environment_view_id": views[1].id,
-                                "environment_none_reason": None,
                             },
                         },
                         {
@@ -307,9 +298,6 @@ def test_saved_keyframe_plan_is_complete_scoped_and_independent_of_executable_in
                             "fields": {
                                 "prompt_text": "已保存尾帧正文。",
                                 "visible_character_ids": [],
-                                "environment_mode": "none",
-                                "environment_none_reason": "Shot 未绑定地点视图",
-                                "environment_view_id": None,
                             },
                         },
                         {
@@ -345,6 +333,9 @@ def test_saved_keyframe_plan_is_complete_scoped_and_independent_of_executable_in
         }
         before = store.path.read_bytes()
         result = execute_project_read(doc, "project.get_workset", request)
+        location_facts = result["core_facts"]["location_library"]
+        assert [item["id"] for item in location_facts] == [scene.location_id]
+        assert result["core_facts"]["scenes"][0]["state_id"] == scene.state_id
         saved = result["core_facts"]["saved_keyframe_plan"]
         assert saved["status"] == "established"
         assert saved["source_script_revision"] == doc.keyframe_plan.source_script_revision
@@ -359,11 +350,9 @@ def test_saved_keyframe_plan_is_complete_scoped_and_independent_of_executable_in
         frames = {item["id"]: item for item in saved["keyframes"]}
         assert frames[first_start]["prompt_text"] == "已保存首帧正文。"
         assert frames[first_start]["selected_asset_id"] == aux
-        assert frames[first_start]["environment_mode"] == "edit"
-        assert frames[first_start]["environment_view_id"] == views[0].id
-        assert frames[shared]["environment_mode"] == "reference"
-        assert frames[second_end]["environment_mode"] == "none"
-        assert frames[second_end]["environment_none_reason"] == "Shot 未绑定地点视图"
+        assert "environment_mode" not in frames[first_start]
+        assert "environment_view_id" not in frames[first_start]
+        assert "environment_none_reason" not in frames[second_end]
         assert frames[second_end]["predecessor_keyframe_id"] == shared
         assert frames[shared]["bindings"] == [
             {"segment_id": first_segment.id, "slot": "end"},
@@ -458,39 +447,12 @@ def test_mcp_professional_reads_need_no_mutation_grant(tmp_path):
     assert store.path.read_bytes() == before
 
 
-def test_keyframe_inputs_multi_shot_segment_union_and_segment_view_defaults(tmp_path):
+def test_keyframe_inputs_multi_shot_segment_union_without_location_image_defaults(tmp_path):
     _store, _service, document, _route = asyncio.run(_location_project(str(tmp_path)))
     scene = document.director_script.scenes[0]
     first, second = scene.shots[:2]
-    location = next(
-        item for item in document.location_library.locations if item.id == scene.location_id
-    )
-    first_view = location.views[0].id
-    second_view = "b" * 32
-    location = replace(
-        location,
-        views=(
-            *location.views,
-            LocationView(second_view, "反打", "正反打背景", azimuth_deg=180.0),
-        ),
-    )
-    document = replace(
-        document,
-        location_library=replace(
-            document.location_library,
-            locations=tuple(
-                location if item.id == location.id else item
-                for item in document.location_library.locations
-            ),
-        ),
-    )
     updated_scene = replace(
         scene,
-        shots=(
-            replace(first, view_id=first_view),
-            replace(second, view_id=second_view),
-            *scene.shots[2:],
-        ),
         segments=(
             scene.segments[0],
             replace(
@@ -519,8 +481,8 @@ def test_keyframe_inputs_multi_shot_segment_union_and_segment_view_defaults(tmp_
         first.visible_character_ids[0],
         second.visible_character_ids[0],
     ]
-    assert segment.start_view_id == first_view
-    assert segment.end_view_id == second_view
+    assert not hasattr(segment, "start_view_id")
+    assert not hasattr(segment, "end_view_id")
     assert segment.continues_from_previous is True
     assert scenes[0].segments[0].planning_enabled is False
     assert segment.planning_enabled is True

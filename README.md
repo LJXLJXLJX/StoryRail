@@ -65,7 +65,7 @@ AI 视频做叙事，最难的是让同一个人、同一个房间在几十个�
 → 建立角色、造型与声音引用库，由你确认
 → Agent 生成 Scene / Shot / Segment 结构化脚本
 → 合成并选定旁白，按真实时长校时
-→ 可选：规划地点库，生成全景主图与机位视图，由你选择
+→ 可选：规划地点库，按需生成普通图或全景图；全景可在 3D 预览中手动取景
 → 规划关键帧并生成，由你挑选
 → 生成 Segment 视频与超分，由你挑选
 → 生成 Scene 成片与全片，由你 Approval
@@ -102,7 +102,7 @@ Docker Desktop 或 OrbStack。之后可以直接问 Agent“现在该做什么�
 
 ## 技术边界
 
-- `.stories/<项目名>-<project_id>/project.json` 是唯一业务事实源（当前 schema v34），`assets/` 保存不可变媒体；
+- `.stories/<项目名>-<project_id>/project.json` 是唯一业务事实源（当前 schema v35），`assets/` 保存不可变媒体；
   更早版本不迁移，需新建项目。删除项目只移入 `.stories/.trash/`。
 - Core 是 ID、revision、scope、授权、失效、血缘、幂等和状态迁移的唯一 authority；Web 只消费 Core 返回的
   状态与 `allowed_actions`，不复制状态机。

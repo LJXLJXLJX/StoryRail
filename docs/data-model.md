@@ -1,6 +1,6 @@
 # 数据模型
 
-`.stories/<项目名>-<project_id>/project.json` 是项目唯一权威结构化状态，当前 `schema_version = 33`。
+`.stories/<项目名>-<project_id>/project.json` 是项目唯一权威结构化状态，当前 `schema_version = 35`。
 更早版本按开发期规则不迁移，一律拒绝读取，需要新建项目。代码位置：
 `core/structured_director/models/`（值对象与不变量）、`codec/`（严格 JSON）、`schema.py`（版本号）。
 
@@ -38,14 +38,13 @@ erDiagram
     NARRATION_CUE ||--|| TRACK_EN : en
 
     LOCATION_LIBRARY ||--o{ LOCATION : locations
+    LOCATION ||--o{ LOCATION_IMAGE : images
     SCENE }o--o| LOCATION : location_id
-    SHOT }o--o| LOCATION_VIEW : view_id
 
     KEYFRAME_PLAN ||--|{ KEYFRAME : keyframes
     KEYFRAME_PLAN ||--|{ SEGMENT_KEYFRAMES : "segments (每个 Segment 一条)"
     SEGMENT_KEYFRAMES }o--|| KEYFRAME : start_keyframe_id
     SEGMENT_KEYFRAMES }o--|| KEYFRAME : end_keyframe_id
-    KEYFRAME }o--o| LOCATION_VIEW : environment_view_id
     KEYFRAME }o--o| KEYFRAME : predecessor_keyframe_id
 
     VIDEO_PLAN ||--|{ SEGMENT_VIDEO : "segments (每个 Segment 一条)"
@@ -237,102 +236,60 @@ Segment 改变时清除受影响选择/时序；历史 Asset 与 Generation 保�
 
 ## 地点库
 
-地点（Location）是跨 Scene 共享的固定空间。主图给出完整空间，视图（LocationView）是 Keyframe 可参考的机位；
-Shot 的 `view_id` 只是给 Keyframe Planner 的空间参考建议，不强制、也不是底图；
-同一空间的昼夜、天气、布置或破坏变化是状态（LocationState），不是新地点。代码位置：`models/location.py`。
+地点（Location）是跨 Scene 共享的固定空间。同一空间的昼夜、天气、布置或破坏变化是状态（LocationState），不是新地点。
+每个地点可保存一组扁平、彼此独立的图片（LocationImage）；没有必需主图，也没有从主图派生视图的层级。
+Shot 与 Keyframe 不引用地点图片。代码位置：`models/location.py`。
 
 ```mermaid
 erDiagram
     LOCATION_LIBRARY ||--o{ LOCATION : "locations (≤200)"
     LOCATION ||--o{ FIXTURE : "fixtures (≤40)"
     LOCATION ||--o| KEY_LIGHT : key_light
-    LOCATION ||--|| MASTER : master
     LOCATION ||--o{ LOCATION_STATE : "states (≤10)"
-    LOCATION ||--o{ LOCATION_VIEW : "views (≤30)"
-    LOCATION_VIEW }o--o| FIXTURE : look_at_fixture_id
-    LOCATION_VIEW }o--o| LOCATION_STATE : state_id
-    LOCATION_VIEW }o--o{ LOCATION_VIEW : reference_view_ids
+    LOCATION ||--o{ LOCATION_IMAGE : "images (≤200)"
+    LOCATION_IMAGE }o--o| LOCATION_IMAGE : "frozen panorama source"
     SCENE }o--o| LOCATION : location_id
     SCENE }o--o| LOCATION_STATE : state_id
-    SHOT }o--o| LOCATION_VIEW : view_id
-    KEYFRAME }o--o| LOCATION_VIEW : environment_view_id
 ```
 
-地点、陈设、状态、视图的 ID 都由 Core 分配，在项目内全局唯一。方位统一以主图为准：0° 为全景正中，顺时针递增，
-取值 [0, 360)。
+地点、陈设、状态和图片 ID 都由 Core 分配，在项目内全局唯一。
 
 ### Location
 
 | 字段 | 约束 |
 | --- | --- |
 | `id`、`name` | name 1–200 字；改名不失效 |
-| `kind` | `interior`（主图是 2:1 等距柱状全景，视图 = 全景裁切 + 细化）/ `exterior`（主图是项目画幅，视图 = 主图转向编辑） |
 | `description` | 固定空间：结构、材质、固定陈设、风格；≤ 4,000 |
-| `fixtures[]` | `{id, name ≤200, description ≤2,000, azimuth_deg?}`；只放固定陈设，不放人物或临时道具 |
-| `key_light` | `{description ≤1,000, azimuth_deg?}` 或 null |
-| `master` | `{prompt_text ≤19,000, reference_asset_ids ≤5, selected_asset_id?}`；画幅由 `kind` 决定 |
-| `calibrated_master_asset_id` | 方位标定所基于的主图；不等于 `master.selected_asset_id` 即未标定 |
+| `fixtures[]` | `{id, name ≤200, description ≤2,000}`；只放固定陈设，不放人物或临时道具 |
+| `key_light` | `{description ≤1,000}` 或 null |
 | `states[]` | `{id, name ≤200, description ≤2,000}`；description 写相对固定空间的可见差量 |
-| `views[]` | 见下表 |
+| `images[]` | ≤ 200；见下表 |
 
-### LocationView
+### LocationImage
 
 | 字段 | 约束 |
 | --- | --- |
-| `id`、`name`、`purpose` | purpose ≤ 1,000，写机位用途与对应关系（例如“朝壁炉·人眼高·中景，A/B 对话正打背景”） |
-| 朝向 | 二选一：`azimuth_deg`，或 `look_at_fixture_id` + `yaw_offset_deg`（[-180, 180]，相对陈设偏转，顺时针为正） |
-| `pitch_deg` / `hfov_deg` | pitch ∈ [-60, 60]，hfov ∈ [20, 120]；画幅恒等于项目画幅 |
-| `state_id` | 可空；必须属于同一 Location |
-| `refine_prompt_text` | 室外转向正文，≤ 19,000；室内细化只做清晰化，不使用该字段 |
-| `reference_view_ids` | 同一 Location 的其它视图，不含自身、无环；底图（室内为裁切图、室外为主图）+ 参考视图合计 ≤ 5 张输入 |
-| `crop_asset_id` | 只属于室内视图；Core 按当前几何写入的全景裁切图，不是候选 |
-| `selected_asset_id` | 人选定的视图图片 |
+| `id`、`name` | name 1–200 字 |
+| `kind` | `image`：普通地点图，跟随项目画幅；`panorama`：2:1 等距柱状全景，可进入 3D 查看器 |
+| `description` | 1–4,000 字；人或 Agent 根据实际画面填写的强制纯文本说明，不等同于生成提示词 |
+| `prompt_text` | ≤ 19,000；下一次生成正文，可空 |
+| `reference_asset_ids` | 0–5 张任意项目图片，稳定有序且不重复 |
+| `selected_asset_id` | 人类从该图片条目的成功、未隐藏候选中选择；全景取景子图完成时由 Core 直接选中确定性产物 |
+| `source` | 仅普通图片可有：`{panorama_image_id,yaw_deg,pitch_deg,hfov_deg}`；记录创建时来源，不形成活依赖 |
 
-相对陈设定义的视图，其绝对方位 = 陈设方位 + 偏转（mod 360）；地点未标定或陈设没有方位时无法解析，不能裁切。
-室内视图的“当前裁切输入”是 `{主图已选 Asset, 绝对方位, pitch, hfov, 项目画幅}`；`crop_asset_id` 只有在产出它的
-裁切 Generation 的快照（`location_crop_request`）等于当前裁切输入时才算有效。
+Scene 保存可选 `location_id` / `state_id`，state 必须属于该 Location；没有 Location 时 state 必须为空。Shot 与 Keyframe
+没有地点字段。Keyframe Planner 工作集把当前 Scene 的地点、状态和图片说明作为语义上下文，但 Provider 图片输入仍只来自角色造型、
+前置帧和人类显式加入的辅助图。
 
-### 脚本与 Keyframe 的绑定
-
-| 位置 | 字段 | 约束 |
-| --- | --- | --- |
-| Scene | `location_id?`、`state_id?` | state 必须属于该 Location；没有 Location 时 state 必须为空 |
-| Shot | `view_id?` | 空间参考建议：必须属于所在 Scene 的 Location；Scene 没有 Location 时必须为空；删除该视图或地点时清空为 null，已规划 Keyframe 不因此改写 |
-| Keyframe | `environment_view_id?`、`environment_mode`、`environment_none_reason?` | `none` ⇔ 视图为 null；`none` 时理由可选（null 或 1–500 字，空白归一为 null），`edit`/`reference` 时理由必须为空；视图必须存在于地点库 |
-
-Keyframe 的环境字段只在建帧时按 Segment 首帧/尾帧的默认视图写成显式值：首帧取首个覆盖 Shot 的视图、尾帧取末个覆盖 Shot 的视图，
-有视图 → `reference`，无视图 → `none`（无理由）
-（规则见 [生产工作流](production-workflow.md#keyframe-使用地点视图)）；之后 Scene/Shot 改绑不回写已有帧。
-
-### 失效规则
-
-`location.apply_operations` 先在工作副本上应用全部操作，再对比新旧地点库决定失效；影响预览调用同一纯函数。
-
-| 变化 | 失效 |
-| --- | --- |
-| 改名（地点/陈设/状态/视图）、视图 purpose、地点 description、陈设描述、主光描述与方位、主图计划（`prompt_text`、`reference_asset_ids`） | 无：已选主图是人确认的空间事实，要重做就生成新候选再改选 |
-| 主图改选或清除；`kind` 修改 | 清空标定、该地点全部视图的裁切与选择，以及下游 Keyframe |
-| 标定修改（陈设 `azimuth_deg` 变化） | 朝向该陈设（`look_at_fixture_id`）的视图的裁切与选择，以及下游 Keyframe |
-| 视图几何（方位、朝向陈设、偏转、pitch、hfov） | 该视图的裁切与选择、经 `reference_view_ids` 依赖它的视图的选择、下游 Keyframe |
-| 视图细化计划、参考视图、所属状态，或该状态描述 | 该视图的选择（裁切保留）、依赖它的视图、下游 Keyframe |
-| 视图改选或清除 | 依赖它的视图、下游 Keyframe |
-| Scene/Shot 改绑 | 不改写已建立的 Keyframe；Scene 换地点时清空其 Shot 的 `view_id`；同步生产基线中同 ID 的 Scene/Shot |
-| 删除 View | 只被 Shot 软引用时允许删除，同一操作清空引用它的全部 Shot `view_id`（当前脚本与生产基线）；被 Keyframe `environment_view_id` 或其它视图 `reference_view_ids` 引用时拒绝，错误列出引用者 |
-| 删除 Location | 其全部视图按 View 的规则处理，同时清空这些视图对 Shot 的软引用；Scene 仍绑定该地点时拒绝 |
-| 删除 State / Fixture | 仍被 Scene 或视图引用时拒绝，错误列出引用者 |
-
-软引用清空不是失效级联：只删除视图并清空 Shot 的 `view_id`，不改变已规划 Keyframe 的 `environment_view_id` 与已选图；
-影响预览用 `soft_reference_clears` 列出被清空的 Shot，与 `invalidated` 分开。
-
-“下游 Keyframe”指 `environment_view_id` 指向受影响视图的帧：清除其已选图，并沿用 Keyframe 级联继续清除启用的后继帧、
-相关 Segment 的视频与超分选择和最终装配。任一失效目标（地点、视图、帧、Segment、Scene、项目）有非终态 Generation
-时整笔拒绝。历史 Asset 与 Generation 永远保留。
+`location.apply_operations` 以原子 patch 编辑地点事实。名称、说明、图片计划、参考图或选图变化都不级联失效 Keyframe、视频、
+超分或装配；删除图片也不删除历史 Asset/Generation 或已取景子图。删除仍被 Scene 绑定的 Location、仍被 Scene 使用的 State 会拒绝。
+活动中的同目标 Generation 仍阻止冲突编辑。
 
 ## Keyframe 计划
 
 | 实体 | 字段与约束 |
 | --- | --- |
-| `Keyframe` | `id`；`owner_segment_id`；`predecessor_keyframe_id`（时间上前一个边界帧，图必须无环）；`prompt_text` ≤ 18,000；`visible_character_ids`；`character_references`（`[{character_id, look_id}]`：只针对本帧可见角色、每角色一项，`look_id` 必须是该角色当前造型；`look_id = null` = 不提交该角色图；未列出时只有一套造型默认使用它，多套造型必须显式选择才能生成；所选造型没有造型图时不能生成）；`environment_mode` ∈ `edit` / `reference` / `none`、`environment_view_id` 与 `environment_none_reason`（见[地点库](#脚本与-keyframe-的绑定)）；`selected_asset_id` |
+| `Keyframe` | `id`；`owner_segment_id`；`predecessor_keyframe_id`（时间上前一个边界帧，图必须无环）；`prompt_text` ≤ 18,000；`visible_character_ids`；`character_references`（`[{character_id, look_id}]`：只针对本帧可见角色、每角色一项，`look_id` 必须是该角色当前造型；`look_id = null` = 不提交该角色图；未列出时只有一套造型默认使用它，多套造型必须显式选择才能生成；所选造型没有造型图时不能生成）；`selected_asset_id` |
 | `SegmentKeyframes` | `segment_id`；`start_keyframe_id` ≠ `end_keyframe_id`；`start_enabled` / `end_enabled`（默认都关闭）；`reference_asset_ids` 手工辅助图 ≤ 4 张 |
 
 - Keyframe 计划以 Segment 为单位：当前脚本的每个 Segment 恰好一条 `SegmentKeyframes`，脚本回改后 Core 立即重建，
@@ -414,9 +371,8 @@ assets/
 │   ├── library/          通用导入
 │   ├── characters/       → image_category = character_reference
 │   ├── locations/
-│   │   ├── master/       → location_master
-│   │   ├── crops/        → location_crop（只能由全景裁切产生，不接受导入）
-│   │   └── views/        → location_view
+│   │   └── captures/     → panorama_capture（只能由全景取景产生，不接受导入）
+│   │                      其它地点图 → location_image
 │   ├── keyframes/        → keyframe
 │   └── video-frames/     → video_frame（只能由抽帧产生，不接受导入）
 ├── audio/
@@ -467,8 +423,8 @@ stateDiagram-v2
 | `dismissed` | 从候选列表隐藏；不删除记录或 Asset |
 | `language` | 仅 `narrator_voice`、`narration_audio`、`scene_final_video`、`final_video` 为 `zh` / `en`，其余必须为 null |
 | `video_frame_request` | 抽帧来源视频、帧号、帧数、来源 Segment |
-| `aspect_ratio` | 图片比例；角色参考图可指定 `IMAGE_ASPECT_RATIOS` 中的比例，造型设定图与室内地点主图为 `2:1`，其余为 null（跟随项目画幅）；重试沿用 |
-| `location_crop_request` | 仅 `location_view_crop`：主图 Asset、绝对方位、pitch、hfov、项目画幅的冻结快照，进入重试签名 |
+| `aspect_ratio` | 图片比例；角色参考图可指定 `IMAGE_ASPECT_RATIOS` 中的比例，造型设定图与地点全景图为 `2:1`，其余为 null（跟随项目画幅）；重试沿用 |
+| `panorama_capture_request` | 仅 `panorama_capture`：全景 Asset、yaw、pitch、hfov 与项目画幅的冻结快照，进入重试签名 |
 | `video_input_snapshot` | Segment 视频提交时的输入签名与首尾帧 Asset，用于判定 `inputs_outdated` 软提示 |
 | `created_at` / `updated_at` | Generation 自身的 UTC 生命周期时间 |
 
@@ -484,9 +440,8 @@ stateDiagram-v2
 | `audio_effect`、`audio_trim` | process | 源 Asset | Core 本地同步处理，记录为隐藏 Generation |
 | `video_audio_voice`、`video_audio_background` | separate | 源视频 | 成对创建，共享规范化 `batch_id` |
 | `video_audio_remix` | remix | 源视频 | 两条 WAV 各自增益后重新封装 MP4 |
-| `location_master_image` | generate | 地点 | 主图；室内固定 `aspect_ratio = 2:1`，室外跟随项目画幅 |
-| `location_view_crop` | process | 地点视图 | 室内全景裁切，Core 确定性工具，产物型，不是候选；必须带 `location_crop_request` |
-| `location_view_image` | edit | 地点视图 | 室内细化（底图为裁切图）或室外转向（底图为主图） |
+| `location_image` | generate / edit | 地点图片 | 普通图跟随项目画幅，全景图固定 2:1；输入为该条目显式保存的任意图片参考 |
+| `panorama_capture` | process | 新建普通地点图片 | 从已选全景图确定性取景；必须带 `panorama_capture_request`，成功时直接选中产物 |
 | `keyframe_image` | generate / edit / attach | Keyframe | `attach` 用于把抽帧产物登记为候选 |
 | `video_frame` | process | 源视频 | 按帧号抽帧，产物型，不是候选 |
 | `segment_video` | render / attach | Segment | `render` 记录 1–17 个输入、时长不短于 0.2 秒；`attach` 从资产库挂接 MP4，无输入、无 seed |

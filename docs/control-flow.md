@@ -189,10 +189,9 @@ sequenceDiagram
 - **未知提交绝不自动重试**：`submission_uncertain` 只能由人或 Agent 先核查，再显式 `generation.retry`。
 - 同一应用请求产生的多个 Generation（如批次一轮）全部记入同一回执；用原 key 重试只回放。
 - Provider 网络调用不持有项目业务写锁。
-- **Core 确定性工具**（抽帧 `VIDEO_FRAME`、全景裁切 `PANO_VIEW`）走同一套 submit/observe/cancel/read_artifact 生命周期，
-  `provider_snapshot` 为 null，产物不是候选。全景裁切以视图为 target、记录 `location_crop_request` 快照；成功回调只在快照仍等于
-  视图当前的主图与几何时写入 `crop_asset_id`，否则只保留历史。室内视图因此是两次显式提交：第一次只裁切，裁切完成后再次
-  `location.generate_view` 才提交细化。
+- **Core 确定性工具**（抽帧 `VIDEO_FRAME`、全景取景 `PANO_VIEW`）走同一套 submit/observe/cancel/read_artifact 生命周期，
+  `provider_snapshot` 为 null。全景取景先创建普通地点图片，以新图片为 target 并记录 `panorama_capture_request`；成功回调导入
+  不可变 Asset 并直接设为该子图的选择。父全景图与角度只作为冻结 provenance，不形成活依赖。
 
 ### 观察与产物回收
 
@@ -257,13 +256,12 @@ stateDiagram-v2
 - 迟到的 submit（已取消/拒绝/完成/过期）被拒绝。
 - 已有引用库不能被首次请求覆盖；脚本 request 只用于无脚本的冷启动。
 - 地点 request 是项目级 scope，要求已有结构化脚本（否则 409）；规划期间 `location_plan` run 锁住其它业务写入。submit 把 proposal
-  编译为与 `location.apply_operations` 相同的操作（新建项用局部 `key` 互引，视图按被参考者先落库排序），在同一次提交里落库、
-  按地点失效规则级联并结束 run；当前事实不允许的归属、成环或已选主图地点的方位修改整体拒绝为 `invalid_proposal`。
+  编译为与 `location.apply_operations` 相同的操作（新建地点、陈设、状态与图片用局部 `key` 互引），在同一次提交里落库并结束 run；
+  图片说明为空、来源不属于同一地点或 Scene/状态归属不合法时整体拒绝为 `invalid_proposal`。
 - Keyframe 请求可读目标 Segment 所属完整 Scene 作上下文，但 proposal 只能覆盖原请求的 `target_ids`（Segment；给 Scene
   表示其全部 Segment）；触及跨范围共享边界时拒绝，并给出最小扩展范围让用户重新授权。
-- 地点删除按引用类型区分：Shot 的 `view_id` 是软参考，删除视图或地点时允许删除，并在同一事务清空当前脚本与生产基线里
-  引用它的 Shot `view_id`；Keyframe `environment_view_id`、其它视图 `reference_view_ids` 与 Scene 的地点绑定是硬引用，
-  仍拒绝并列出引用者。影响预览把被清空的 Shot 放在 `soft_reference_clears`，不混入 `invalidated`。
+- 地点仍被 Scene 绑定时拒绝删除并列出引用者；地点图片没有 Shot/Keyframe 硬引用，删除条目只保留历史 Asset、Generation 与
+  已生成的全景子图。地点修改不产生 Keyframe、视频或装配失效。
 - 观察投影 `proposal_observation` 同时给出 `source_revision` 与本次 `observation_revision`，以及同一 request_id 的精确工具动作。
 
 ## 7. Keyframe 批次
@@ -281,7 +279,7 @@ sequenceDiagram
     loop 本轮依赖已满足的帧
         C->>P: 提交（逐个持久化 Generation）
     end
-    C-->>A: batch_id + execution_run_id + 本轮提交 / 等待前置帧或视图选图的帧
+    C-->>A: batch_id + execution_run_id + 本轮提交 / 等待前置帧或角色造型图的帧
     Note over C: 本轮提交结束 → 执行 run completed<br/>（≠ 批次完成）
     A->>C: generation.wait / read_run …
     U->>A: “继续生成关键帧”
@@ -291,39 +289,36 @@ sequenceDiagram
 
 - 每个 start 建立独立稳定 `batch_id`；每轮使用新的 `execution_run_id`，在原回执中保存 root/previous 关联与原目标。
   continue 不能携带新范围，也不能凭目标相同合并两个独立批次。
-- 依赖包括前置帧已有成功候选，以及 `edit`/`reference` 所用地点视图已选图。未满足的帧留作等待项，回复写明
-  “等待 … 的候选完成”或“等待地点「X」视图「Y」选图”；满足后同样需要显式 continue。单帧入口与批次共用
-  `keyframe_requests.keyframe_pending_view` 判定，单帧遇到视图未选图直接拒绝。视图已不存在或输入超过名额属于计划错误，整轮报错。
+- 依赖包括前置帧已有成功候选，以及每个显式选择的角色造型已有造型图。未满足的帧留作等待项并写明原因；满足后同样需要
+  显式 continue。地点图片不是 Keyframe 绑定或批次依赖；只有人类已加入 Segment 辅助参考的 Asset 才作为普通显式输入。
 - 批次跳过已有成功候选或已选 Asset 的帧；要为这类帧追加候选，使用单帧 `keyframe.generate`。
 - 空提示词的帧被拒绝；不存在内置 Planner 兜底补写。
 - `batch_observation` 从原范围、各轮回执与当前 Generation 动态派生逐目标状态，区分：等待 Generation、等待显式 continue、
-  依赖阻塞（`dependency_blocked`，`dependency_kind` 为 `predecessor_keyframe` 或 `location_view_unselected`，
-  `dependency_target_id` 为前置 Keyframe 或视图 ID）、失败/取消/提交不确定、全部成功。读取从不提交下一波或自动重试。
+  依赖阻塞（例如 `dependency_kind = predecessor_keyframe`，`dependency_target_id` 为前置 Keyframe ID）、失败/取消/
+  提交不确定、全部成功。读取从不提交下一波或自动重试。
 - 中断时先读 request 与 run；原 run 未结束时必须先显式取消它，再以原 batch 身份继续，不扩大范围、不重复已有提交。
 
 ### 地点成套批次
 
 `location.generate_set` 复用同一批次骨架（单活跃 run、`begin_production_instruction` 建立 `director` run、回执关联、`batch_observation`），
-一个命令两种参数：`{target_ids: [location_id…]}` 启动，`{run_id}`（`batch_id` 或任一 `execution_run_id`）继续；MCP 都经
-`media_batch`（`kind=location`）。范围持久化为 `location:<id>`，开始时校验地点存在且不重复。
+一个命令两种参数：`{target_ids: [image_id…]}` 启动，`{run_id}`（`batch_id` 或任一 `execution_run_id`）继续；MCP 都经
+`media_batch`（`kind=location`）。范围持久化为 `location-image:<id>`，开始时校验图片存在且不重复。
 
 ```mermaid
 flowchart TB
-    start[start / continue] --> items[location_set_items：逐个主图与视图分类]
+    start[start / continue] --> items[location_set_items：逐个独立图片分类]
     items --> ready{ready?}
-    ready -- master --> m[提交主图]
-    ready -- crop --> c[提交全景裁切]
-    ready -- view --> v[提交细化 / 转向]
-    ready -- 否 --> why[in_progress · awaiting_selection · awaiting_master ·<br/>awaiting_calibration · awaiting_reference_view · failed · target_missing …]
-    m & c & v & why --> done[本轮结束，执行 run completed<br/>继续须再次显式 generate_set(run_id)]
+    ready -- 是 --> g[按图片 kind 和显式参考图提交 generate / edit]
+    ready -- 否 --> why[in_progress · awaiting_selection · selected ·<br/>failed · target_missing …]
+    g & why --> done[本轮结束，执行 run completed<br/>继续须再次显式 generate_set(run_id)]
 ```
 
 - 分类函数 `location_requests.location_set_items` 同时服务提交与观察；判定顺序与 Keyframe 批次一致：进行中 → 提交不确定 →
   已有成功候选（等待选择）→ 失败/取消不自动重试 → 前置校验。
-- 批次只调用单项入口的锁内提交函数，seed、`provider_snapshot`、重试签名与裁切快照逻辑与单项生成相同。
-- 每轮结束自己的 run，不进入 `waiting_user`：等待的正是人类选择主图/视图，活跃 run 会挡住选择。等待由观察 phase
+- 批次只调用单项入口的锁内提交函数，seed、`provider_snapshot` 与重试签名逻辑与单项生成相同；全景取景不进入成套批次。
+- 每轮结束自己的 run，不进入 `waiting_user`：等待的正是人类选择图片，活跃 run 会挡住选择。等待由观察 phase
   （`awaiting_selection`、`blocked_on_dependency`、`awaiting_explicit_continue`）表达；批次观察带 `batch_kind = location`，与 Keyframe 批次不混淆。
-- 地点被删除时该项报告 `target_missing`，范围不扩大。
+- 图片或所属地点被删除时该项报告 `target_missing`，范围不扩大。
 
 ## 8. DirectorRun 状态
 

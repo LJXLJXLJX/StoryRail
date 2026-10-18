@@ -189,7 +189,6 @@ describe("StoryRail App", () => {
           action: "人物停下",
           audio_direction: "环境声",
           transition_in: null,
-          view_id: null,
         }],
       segments: [{ shot_ids: ["2".repeat(32)],
               id: segmentId,
@@ -282,7 +281,7 @@ describe("StoryRail App", () => {
     const progress = summarizeGenerationProgress([
       generation("narration_audio", "succeeded"),
       generation("keyframe_image", "running"),
-      generation("location_master_image", "failed"),
+      generation("location_image", "failed"),
       generation("segment_video", "queued"),
       generation("video_upscale", "cancelled"),
       { ...generation("character_look_sheet", "succeeded"), dismissed: true },
@@ -414,29 +413,27 @@ describe("StoryRail App", () => {
       window.sessionStorage.clear();
     }
   }, 15000);
-  it("接受空提示词的地点主图计划，但仍拒绝非文本提示词", async () => {
+  it("接受空提示词的地点图片计划，但仍拒绝非文本提示词", async () => {
     const plan = {
       allowed_actions: ["create_location"],
       locations: [
         {
           id: "c".repeat(32),
           name: "项目地点",
-          kind: "exterior",
           description: "",
           allowed_actions: ["edit"],
           fixtures: [],
           key_light: null,
-          master: {
-            prompt_text: "", reference_asset_ids: [], selected_asset_id: null,
+          states: [],
+          images: [{
+            id: "d".repeat(32), name: "外景", kind: "image", description: "地点外景。",
+            prompt_text: "", reference_asset_ids: [], selected_asset_id: null, source: null,
             production: {
-              status: "blocked", status_label: "被阻止", reason: "请填写主图提示词。",
-              generation_step: "master", generate_label: "生成主图", active_generation_id: null,
+              status: "blocked", status_label: "被阻止", reason: "请填写图片提示词。",
+              generation_step: "image", generate_label: "生成图片", active_generation_id: null,
               candidate_generation_ids: [], selectable_generation_ids: [], allowed_actions: ["edit"],
             },
-          },
-          calibrated_master_asset_id: null,
-          states: [],
-          views: [],
+          }],
         },
       ],
     };
@@ -447,7 +444,7 @@ describe("StoryRail App", () => {
       }),
     );
     const restored = await structuredDirectorApi.get(projectId);
-    expect(restored.location_library.locations[0].master.prompt_text).toBe("");
+    expect(restored.location_library.locations[0].images[0].prompt_text).toBe("");
     fetchMock.mockResolvedValueOnce(
       response({
         ...reviewingSnapshot,
@@ -456,7 +453,7 @@ describe("StoryRail App", () => {
           locations: [
             {
               ...plan.locations[0],
-              master: { ...plan.locations[0].master, prompt_text: null },
+              images: [{ ...plan.locations[0].images[0], prompt_text: null }],
             },
           ],
         },
@@ -505,7 +502,6 @@ describe("StoryRail App", () => {
                 action: "测试动作。",
                 audio_direction: "环境声。",
                 transition_in: null,
-                view_id: null,
               }],
             segments: [{ shot_ids: [shotId],
                     id: segmentId,
@@ -527,9 +523,6 @@ describe("StoryRail App", () => {
             prompt_text: "",
             visible_character_ids: [], character_references: [],
             selected_asset_id: null,
-            environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
           },
           {
             id: endId,
@@ -538,9 +531,6 @@ describe("StoryRail App", () => {
             prompt_text: "",
             visible_character_ids: [], character_references: [],
             selected_asset_id: null,
-            environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
           },
         ],
         segments: [
@@ -643,7 +633,6 @@ describe("StoryRail App", () => {
           action: "人物停下",
           audio_direction: "环境声",
           transition_in: null,
-          view_id: null,
         }],
       segments: [{ shot_ids: ["2".repeat(32)],
               id: "3".repeat(32),
@@ -701,7 +690,6 @@ describe("StoryRail App", () => {
           action: "人物停下",
           audio_direction: "环境声",
           transition_in: null,
-          view_id: null,
         }],
       segments: [{ shot_ids: ["2".repeat(32)],
               id: "3".repeat(32),
@@ -739,9 +727,6 @@ describe("StoryRail App", () => {
               prompt_text: "首帧",
               visible_character_ids: [], character_references: [],
               selected_asset_id: null,
-              environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
             },
             {
               id: "5".repeat(32),
@@ -750,9 +735,6 @@ describe("StoryRail App", () => {
               prompt_text: "尾帧",
               visible_character_ids: [], character_references: [],
               selected_asset_id: null,
-              environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
             },
           ],
           segments: [
@@ -1139,7 +1121,6 @@ function productionSnapshot(overrides: Record<string, unknown> = {}) {
         action: "人物停下",
         audio_direction: "环境声",
         transition_in: null,
-        view_id: null,
       }],
     segments: [{ shot_ids: [shotId],
             id: segmentId,
@@ -1174,9 +1155,6 @@ function productionSnapshot(overrides: Record<string, unknown> = {}) {
           prompt_text: "首帧",
           visible_character_ids: [], character_references: [],
           selected_asset_id: null,
-          environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
         },
         {
           id: endId,
@@ -1185,9 +1163,6 @@ function productionSnapshot(overrides: Record<string, unknown> = {}) {
           prompt_text: "尾帧",
           visible_character_ids: [], character_references: [],
           selected_asset_id: null,
-          environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
         },
       ],
       segments: [

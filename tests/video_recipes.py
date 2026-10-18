@@ -233,11 +233,6 @@ def build_h3_context(
     has_start = actual.start_asset_id is not None
     has_end = actual.end_asset_id is not None
     characters = {item.id: item for item in document.reference_library.characters}
-    view_names = {
-        view.id: view.name
-        for location in document.location_library.locations
-        for view in location.views
-    }
     if plan_item.active_recipe == "minimax_h3.ref2va":
         mode = H3PromptMode.REF2VA
     elif has_start and has_end:
@@ -264,7 +259,6 @@ def build_h3_context(
                     characters[character_id].name if character_id in characters else character_id
                     for character_id in shot.visible_character_ids
                 ),
-                view_name=None if shot.view_id is None else view_names.get(shot.view_id),
             )
             for shot in shots
         ),

@@ -51,7 +51,6 @@ from .script_index import (
     scene_segments,
     script_segments,
     segment_shots,
-    segment_view_ids,
 )
 
 
@@ -161,7 +160,6 @@ def _materialize_script_revision(
         known_scene_ids | known_shot_ids | known_segment_ids | known_cue_ids | known_dialogue_ids
     )
     previous_cues = {cue.id: cue for scene in previous for cue in scene.narration_cues}
-    previous_views = _shot_views(previous)
 
     def resolved(value: str | None, expected: set[str], label: str) -> str:
         if value is None:
@@ -212,31 +210,12 @@ def _materialize_script_revision(
                 summary=scene.summary.strip(),
                 setting=scene.setting.strip(),
                 driver=scene.driver,
-                shots=tuple(
-                    replace(shot, view_id=_kept_view_id(previous_views.get(shot.id), location_id))
-                    for shot in shot_values
-                ),
+                shots=shot_values,
                 segments=segments,
                 narration_cues=tuple(cues),
             )
         )
     return tuple(scenes)
-
-
-def _shot_views(scenes: tuple[Scene, ...]) -> dict[str, tuple[str | None, str]]:
-    return {
-        shot.id: (scene.location_id, shot.view_id)
-        for scene in scenes
-        for shot in scene.shots
-        if shot.view_id is not None
-    }
-
-
-def _kept_view_id(view: tuple[str | None, str] | None, location_id: str | None) -> str | None:
-    """Shot 回改后只在仍处于同一地点的 Scene 时保留原视图绑定。"""
-    if view is None or location_id is None or view[0] != location_id:
-        return None
-    return view[1]
 
 
 def _apply_script_scene_operations(
@@ -659,8 +638,6 @@ class _ScriptShotDraft:
     action: str
     audio_direction: str
     transition_in: str | None
-    # 原绑定（所在地点, 视图）；Shot 移到其它地点的 Scene 后不再保留。
-    view: tuple[str | None, str] | None = None
 
 
 @dataclass(slots=True)
@@ -1000,7 +977,6 @@ def _script_scene_draft(scene: Scene) -> _ScriptSceneDraft:
                 shot.action,
                 shot.audio_direction,
                 shot.transition_in,
-                None if shot.view_id is None else (scene.location_id, shot.view_id),
             )
             for shot in scene.shots
         ],
@@ -1178,7 +1154,6 @@ def _materialize_script_scene_draft(scene: _ScriptSceneDraft) -> Scene:
             shot.action,
             shot.audio_direction,
             shot.transition_in,
-            view_id=_kept_view_id(shot.view, scene.location_id),
         )
         for shot in scene.shots
     )
@@ -1238,7 +1213,6 @@ def _rebase_keyframe_plan(
     for scene in scenes:
         previous_end_id: str | None = None
         for segment in scene_segments(scene):
-            start_view_id, end_view_id = segment_view_ids(scene, segment.id)
             old_binding = old_bindings.get(segment.id)
             reuse_binding = (
                 old_binding is not None
@@ -1247,9 +1221,7 @@ def _rebase_keyframe_plan(
             )
             if not reuse_binding:
                 start_id = uuid4().hex
-                keyframes[start_id] = blank_keyframe(
-                    start_id, segment.id, None, view_id=start_view_id
-                )
+                keyframes[start_id] = blank_keyframe(start_id, segment.id, None)
             elif old_binding.start_keyframe_id == previous_end_id:
                 start_id = old_binding.start_keyframe_id
             elif old_binding.start_keyframe_id in keyframes or any(
@@ -1267,9 +1239,7 @@ def _rebase_keyframe_plan(
                 )
             if not reuse_binding:
                 end_id = uuid4().hex
-                keyframes[end_id] = blank_keyframe(
-                    end_id, segment.id, start_id, view_id=end_view_id
-                )
+                keyframes[end_id] = blank_keyframe(end_id, segment.id, start_id)
             elif old_binding.end_keyframe_id in keyframes:
                 # 已被前面某个 Segment 作为首帧占用，说明原共享边界已不再紧邻。
                 end_id = clone(old_binding.end_keyframe_id, segment.id, start_id)

@@ -102,11 +102,6 @@ export function NodeEditor({
     target.level === "segment"
       ? snapshot.dialogue_timing_warnings.find((item) => item.segment_id === target.id)
       : undefined;
-  const sceneLocation = snapshot.location_library.locations.find(
-    (location) => location.id === scene.location_id,
-  );
-  const locationViews = sceneLocation?.views ?? [];
-  const shotViewId = value.shot?.view_id ?? null;
   const segmentShotIds = value.segment?.shot_ids ?? [];
   const segmentStart = segmentShotIds.length
     ? Math.max(
@@ -279,37 +274,6 @@ export function NodeEditor({
                 })
               }
             />
-            <label className="card-field">
-              <span>空间参考建议（view_id，不强制）</span>
-              <select
-                value={shotViewId ?? ""}
-                disabled={locationViews.length === 0}
-                onChange={(e) =>
-                  setShot({
-                    ...value.shot!,
-                    view_id: e.target.value || null,
-                  })
-                }
-              >
-                <option value="">不使用</option>
-                {shotViewId !== null &&
-                !locationViews.some((view) => view.id === shotViewId) ? (
-                  <option value={shotViewId}>当前视图（不属于本 Scene 地点）</option>
-                ) : null}
-                {locationViews.map((view) => (
-                  <option key={view.id} value={view.id}>
-                    {view.name} · {view.purpose}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="muted-copy">
-              {sceneLocation === undefined
-                ? "本 Scene 尚未绑定地点，镜头只能不使用空间参考视图。"
-                : locationViews.length === 0
-                  ? "该地点还没有机位视图，镜头只能不使用空间参考视图。"
-                  : "视图只提供空间关系建议（布局、陈设方位、主光方向），不强制构图与机位，也不直接生成图片。"}
-            </p>
           </>
         ) : null}
         {target.level === "segment" && value.segment ? (

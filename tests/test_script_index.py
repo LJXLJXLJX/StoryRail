@@ -15,7 +15,6 @@ from core.structured_director.script_index import (
     segment_continues_next,
     segment_continues_previous,
     segment_shots,
-    segment_view_ids,
     segment_visible_character_ids,
     shot_segments,
 )
@@ -38,7 +37,7 @@ def _segment(label: str, *shots: str, continues: bool = False) -> ShotSegment:
     )
 
 
-def _shot(label: str, characters=(), view=None) -> Shot:
+def _shot(label: str, characters=()) -> Shot:
     return Shot(
         _id(label),
         tuple(_id(item) for item in characters),
@@ -47,7 +46,6 @@ def _shot(label: str, characters=(), view=None) -> Shot:
         f"{label} 动作",
         "",
         None,
-        view_id=None if view is None else _id(view),
     )
 
 
@@ -56,10 +54,10 @@ def _scene(label: str, shots: tuple[Shot, ...], segments: tuple[ShotSegment, ...
 
 
 # g1 段内切镜覆盖 s1–s2；s3 长镜头拆成 g2、g3、g4；g4 延续 s3 后段内切到 s4；s5 独立。
-S1 = _shot("s1", characters=("alice",), view="v1")
-S2 = _shot("s2", characters=("bob", "alice"), view="v2")
+S1 = _shot("s1", characters=("alice",))
+S2 = _shot("s2", characters=("bob", "alice"))
 S3 = _shot("s3", characters=("carol",))
-S4 = _shot("s4", view="v4")
+S4 = _shot("s4")
 S5 = _shot("s5")
 G1 = _segment("g1", "s1", "s2")
 G2 = _segment("g2", "s3")
@@ -86,12 +84,10 @@ def test_shot_and_segment_coverage_lookup() -> None:
     assert segment_shots(SCENE_A, G5.id) == ()
 
 
-def test_segment_visible_characters_and_views_come_from_covering_shots() -> None:
+def test_segment_visible_characters_come_from_covering_shots() -> None:
     assert segment_visible_character_ids(SCENE_A, G1.id) == (_id("alice"), _id("bob"))
     assert segment_visible_character_ids(SCENE_B, G5.id) == ()
-    assert segment_view_ids(SCENE_A, G1.id) == (_id("v1"), _id("v2"))
-    assert segment_view_ids(SCENE_A, G4.id) == (None, _id("v4"))
-    assert segment_view_ids(SCENE_B, G1.id) == (None, None)
+    assert all(not hasattr(shot, "view_id") for shot in segment_shots(SCENE_A, G1.id))
 
 
 def test_find_segment_locates_owning_scene() -> None:

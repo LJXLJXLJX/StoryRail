@@ -17,24 +17,27 @@ def test_external_and_inline_skill_deliver_same_constraint_resolution():
     assert "正文约束复核" in keyframe and "无字幕、无水印" in keyframe
 
 
-def test_keyframe_contract_carries_view_usage_and_user_boundary():
-    """地点视图使用方式与“不得新增用户未要求的排除项”进入契约。"""
+def test_keyframe_contract_carries_location_decoupling_and_user_boundary():
+    """地点图片不形成隐藏输入，且不得新增用户未要求的排除项。"""
     text = "\n".join(r["text"] for r in read_contract("keyframe")["resources"])
     for required in (
-        "三项都写 null",
+        "不会自动进入生图调用",
         "不得借机新增用户没有要求的排除项",
     ):
         assert required in text
-    # 默认不再把环境视图当编辑底图。
-    assert "默认不使用环境参考" not in text
+    assert "environment_view_id" not in text
 
 
-def test_keyframe_contract_treats_views_as_soft_reference():
-    """机位图是软参考：可自由改选或不用，改写不需理由，edit 只在用户明确要求时使用。"""
+def test_keyframe_contract_treats_location_images_as_explicit_auxiliary_references():
+    """地点图片只在用户显式加入辅助参考后才进入实际输入。"""
     skill = read_contract("keyframe")["resources"][0]["text"]
-    for required in ("软参考", "自由选择", "改写继承值不需要说明理由", "`edit` 只在用户明确要求"):
+    for required in (
+        "地点语义与图片",
+        "显式放入 Segment 辅助参考",
+        "不假设任何地点图片会自动作为生图输入",
+    ):
         assert required in skill
-    assert "只在以下情况改写" not in skill
+    assert "地点视图的使用" not in skill
 
 
 def test_script_skill_designs_shots_before_packing_them_into_segments():
@@ -146,19 +149,28 @@ def test_script_contract_keeps_external_speakers_and_planned_music():
     assert "对白写 `character_id: null` 加 `speaker_label`" in script
 
 
-def test_location_contract_treats_shot_bindings_as_suggestions():
-    """Location Planner 按空间需求规划视图；Shot 绑定只是给 Keyframe Planner 的建议。"""
+def test_location_contract_keeps_images_optional_and_decoupled_from_shots():
+    """Location Planner 只规划可选独立图片，不给 Shot 或 Keyframe 建绑定。"""
     resources = read_contract("location")["resources"]
     text = {item["name"]: item["text"] for item in resources}
     skill = text["SKILL.md"]
-    for required in ("空间参考建议", "不必为每个 Shot 建视图", "改选或不用"):
+    for required in (
+        "图片不是“主图 → 视图”的树",
+        "不要默认创建全景图",
+        "Shot 不保存地点或图片引用",
+    ):
         assert required in skill
     coverage = text["references/view-coverage.md"]
-    for required in ("空间参考", "绑定只是建议", "不必强求有 Shot 绑定"):
+    for required in (
+        "不是必须覆盖全部 Shot 的机位表",
+        "不为每个 Shot 预建一张图",
+        "全景图适合需要环视",
+    ):
         assert required in coverage
-    # 删除视图区分软引用与硬引用，且规划本身不能删除。
+    # 图片说明强制、全景取景子图独立，且规划本身不能删除。
     bible = text["references/location-bible.md"]
-    assert "只被 Shot 软引用时允许删除" in bible and "被 Keyframe 或其它视图引用时拒绝" in bible
+    assert "每张图片必须有强制 `description`" in bible
+    assert "子图的字节和说明从此独立" in bible
 
 
 def test_script_contract_requires_plan_coverage_and_duration_reconciliation():

@@ -19,7 +19,6 @@ from video_recipes import video_wire_dict
 from core.director_commands import parse_director_command
 from core.structured_director import Asset
 from core.structured_director.models import (
-    KeyframeEnvironmentMode,
     NarrationCue,
     NarrationTrack,
     Scene,
@@ -744,45 +743,27 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
                 },
             )
 
-    async def test_location_previews_lock_noop_rename_and_view_reselect(self) -> None:
+    async def test_location_previews_lock_noop_rename_and_image_reselect(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store, _service, document, _route = await _visual_project(directory)
             image = add_image_asset(store)
             document = install_location(store, view_asset_id=image)
             location = document.location_library.locations[0]
-            view = location.views[0]
-            frame = document.keyframe_plan.keyframes[0]
-            binding = document.keyframe_plan.segments[0]
-            # 首帧使用该视图且已选图：视图改选沿 Keyframe 级联。
-            document = replace(
-                document,
-                revision=document.revision + 1,
-                keyframe_plan=replace(
-                    document.keyframe_plan,
-                    segments=(
-                        replace(binding, start_enabled=True),
-                        *document.keyframe_plan.segments[1:],
-                    ),
-                    keyframes=(
-                        replace(
-                            frame,
-                            selected_asset_id=image,
-                            environment_mode=KeyframeEnvironmentMode.EDIT,
-                            environment_view_id=view.id,
-                            environment_none_reason=None,
-                        ),
-                        *document.keyframe_plan.keyframes[1:],
-                    ),
-                ),
-            )
-            scope = {"location_ids": [location.id], "scene_ids": [], "shot_ids": []}
+            location_image = location.images[0]
+            scope = {"location_ids": [location.id], "scene_ids": []}
 
             noop = self._preview(
                 document,
                 "location.apply_operations",
                 {
                     "scope": scope,
-                    "operations": [{"op": "clear_master_selection", "location_id": location.id}],
+                    "operations": [
+                        {
+                            "op": "update_image",
+                            "image_id": location_image.id,
+                            "fields": {"description": location_image.description},
+                        }
+                    ],
                 },
                 "char-location-noop",
             )
@@ -806,7 +787,11 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
                 {
                     "scope": scope,
                     "operations": [
-                        {"op": "update_view", "view_id": view.id, "fields": {"name": "新机位"}}
+                        {
+                            "op": "update_image",
+                            "image_id": location_image.id,
+                            "fields": {"name": "新图片名"},
+                        }
                     ],
                 },
                 "char-location-rename",
@@ -817,7 +802,7 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
                     "revision": document.revision,
                     "command_name": "location.apply_operations",
                     "will_write": True,
-                    "changed_ids": [view.id],
+                    "changed_ids": [location_image.id],
                     "invalidated": [],
                     "preserved": ["asset_history", "generation_history"],
                     "high_impact": False,
@@ -830,7 +815,7 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
                 "location.apply_operations",
                 {
                     "scope": scope,
-                    "operations": [{"op": "clear_view_selection", "view_id": view.id}],
+                    "operations": [{"op": "clear_image_selection", "image_id": location_image.id}],
                 },
                 "char-location-clear-view",
             )
@@ -840,11 +825,8 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
                     "revision": document.revision,
                     "command_name": "location.apply_operations",
                     "will_write": True,
-                    "changed_ids": sorted([view.id, frame.id]),
-                    "invalidated": [
-                        f"keyframe_selection:{frame.id}",
-                        f"location_view_selection:{view.id}",
-                    ],
+                    "changed_ids": [location_image.id],
+                    "invalidated": [f"location_image_selection:{location_image.id}"],
                     "preserved": ["asset_history", "generation_history"],
                     "high_impact": True,
                     "soft_reference_clears": [],
@@ -853,13 +835,13 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
 
             select = self._preview(
                 document,
-                "location.select_view",
-                {"view_id": view.id, "asset_id": image},
+                "location.select_image",
+                {"image_id": location_image.id, "asset_id": image},
                 "char-location-select-same",
             )
             self.assertFalse(select["will_write"])
 
-    async def test_delete_view_preview_lists_cleared_shot_soft_references(self) -> None:
+    async def test_delete_image_preview_has_no_shot_or_keyframe_reference_clears(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store, _service, document, _route = await _visual_project(directory)
             assert document.director_script is not None
@@ -867,7 +849,7 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
             image = add_image_asset(store)
             document = install_location(store, view_asset_id=image, scene_ids=(scene.id,))
             location = document.location_library.locations[0]
-            view = location.views[0]
+            location_image = location.images[0]
             preview = self._preview(
                 document,
                 "location.apply_operations",
@@ -875,24 +857,16 @@ class ImpactPreviewCharacterizationTests(unittest.IsolatedAsyncioTestCase):
                     "scope": {
                         "location_ids": [location.id],
                         "scene_ids": [],
-                        "shot_ids": [],
                     },
-                    "operations": [{"op": "delete_view", "view_id": view.id}],
+                    "operations": [{"op": "delete_image", "image_id": location_image.id}],
                 },
                 "char-location-delete-view",
             )
+            self.assertEqual(preview["soft_reference_clears"], [])
             self.assertEqual(
-                preview["soft_reference_clears"],
-                [
-                    {
-                        "shot_id": shot.id,
-                        "scene_id": scene.id,
-                        "label": f"Scene「{scene.title}」第 {index} 个 Shot",
-                    }
-                    for index, shot in enumerate(scene.shots, start=1)
-                ],
+                preview["invalidated"],
+                [f"location_image_selection:{location_image.id}"],
             )
-            self.assertEqual(preview["invalidated"], [f"location_view_selection:{view.id}"])
             self.assertTrue(preview["high_impact"])
 
     async def test_read_only_and_unsupported_commands_raise(self) -> None:

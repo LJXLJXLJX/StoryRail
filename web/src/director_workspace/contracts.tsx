@@ -41,8 +41,15 @@ export interface WorkspaceActions {
     change: import("../api").ScriptChange,
     revision: number,
   ) => Promise<boolean>;
-  onGenerateLocationMaster?: (locationId: string) => void;
-  onGenerateLocationView?: (viewId: string) => void;
+  onGenerateLocationImage?: (imageId: string) => void;
+  onCaptureLocationPanorama?: (
+    panoramaImageId: string,
+    name: string,
+    description: string,
+    yawDeg: number,
+    pitchDeg: number,
+    hfovDeg: number,
+  ) => void;
   onCloseGlobalReferences?: () => void;
   onConfirmReferences: () => void;
   onSaveScript: (scenes: Scene[], expectedRevision?: number) => void;
@@ -82,9 +89,6 @@ export interface WorkspaceActions {
     visibleCharacterIds: string[],
     characterReferences: KeyframeCharacterReference[],
     referenceAssetIds: string[],
-    environmentMode: "edit" | "reference" | "none",
-    environmentViewId: string | null,
-    environmentNoneReason: string | null,
   ) => void;
   onGenerateKeyframe: (keyframeId: string) => void;
   onSelectKeyframe: (keyframeId: string, assetId: string) => void;

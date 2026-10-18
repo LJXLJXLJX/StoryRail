@@ -20,8 +20,7 @@ from storyrail_contracts.errors import error_payload
 
 _IMPORTABLE_IMAGE_CATEGORIES = {
     "character_reference": ImageAssetCategory.CHARACTER_REFERENCE,
-    "location_master": ImageAssetCategory.LOCATION_MASTER,
-    "location_view": ImageAssetCategory.LOCATION_VIEW,
+    "location_image": ImageAssetCategory.LOCATION_IMAGE,
     "keyframe": ImageAssetCategory.KEYFRAME,
 }
 
@@ -103,8 +102,7 @@ async def copy_playground_asset_to_project(
                 return _error(
                     400,
                     "invalid_request",
-                    "图片必须选择 character_reference、location_master、location_view "
-                    "或 keyframe 分类。",
+                    "图片必须选择 character_reference、location_image 或 keyframe 分类。",
                 )
             document = await project.import_image_asset(
                 media_type=asset.media_type,

@@ -257,9 +257,13 @@ def _selection(document, kind, node_id):
         return {
             "location_id": location_id,
             "state_id": None if scene is None else scene.state_id,
-            "location_master_asset_id": None
+            "location_image_asset_ids": []
             if location is None
-            else location.master.selected_asset_id,
+            else [
+                image.selected_asset_id
+                for image in location.images
+                if image.selected_asset_id is not None
+            ],
         }
     if kind == "shot":
         return {"detail_level": "segment"}

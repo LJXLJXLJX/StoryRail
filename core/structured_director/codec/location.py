@@ -1,4 +1,4 @@
-"""文档编解码：location 域的 parse/serialize 函数对；未声明字段一律拒绝。"""
+"""地点库严格 JSON 编解码。"""
 
 from __future__ import annotations
 
@@ -7,109 +7,79 @@ from typing import Any
 from ..models import (
     Location,
     LocationFixture,
+    LocationImage,
+    LocationImageKind,
     LocationKeyLight,
-    LocationKind,
     LocationLibrary,
-    LocationMaster,
     LocationState,
-    LocationView,
+    PanoramaCaptureSource,
 )
 from ._shared import (
     _exact_object,
     _number,
     _object_list,
-    _optional_number,
     _optional_string,
     _string,
     _string_list,
 )
 
 _LIBRARY_FIELDS = {"locations"}
-_LOCATION_FIELDS = {
+_LOCATION_FIELDS = {"id", "name", "description", "fixtures", "key_light", "states", "images"}
+_FIXTURE_FIELDS = {"id", "name", "description"}
+_KEY_LIGHT_FIELDS = {"description"}
+_STATE_FIELDS = {"id", "name", "description"}
+_IMAGE_FIELDS = {
     "id",
     "name",
     "kind",
     "description",
-    "fixtures",
-    "key_light",
-    "master",
-    "calibrated_master_asset_id",
-    "states",
-    "views",
-}
-_FIXTURE_FIELDS = {"id", "name", "description", "azimuth_deg"}
-_KEY_LIGHT_FIELDS = {"description", "azimuth_deg"}
-_MASTER_FIELDS = {"prompt_text", "reference_asset_ids", "selected_asset_id"}
-_STATE_FIELDS = {"id", "name", "description"}
-_VIEW_FIELDS = {
-    "id",
-    "name",
-    "purpose",
-    "azimuth_deg",
-    "look_at_fixture_id",
-    "yaw_offset_deg",
-    "pitch_deg",
-    "hfov_deg",
-    "state_id",
-    "refine_prompt_text",
-    "reference_view_ids",
-    "crop_asset_id",
+    "prompt_text",
+    "reference_asset_ids",
     "selected_asset_id",
+    "source",
 }
+_SOURCE_FIELDS = {"panorama_image_id", "yaw_deg", "pitch_deg", "hfov_deg"}
 
 
 def serialize_location(location: Location) -> dict[str, Any]:
     return {
         "id": location.id,
         "name": location.name,
-        "kind": location.kind.value,
         "description": location.description,
         "fixtures": [
-            {
-                "id": item.id,
-                "name": item.name,
-                "description": item.description,
-                "azimuth_deg": item.azimuth_deg,
-            }
+            {"id": item.id, "name": item.name, "description": item.description}
             for item in location.fixtures
         ],
         "key_light": (
-            None
-            if location.key_light is None
-            else {
-                "description": location.key_light.description,
-                "azimuth_deg": location.key_light.azimuth_deg,
-            }
+            None if location.key_light is None else {"description": location.key_light.description}
         ),
-        "master": {
-            "prompt_text": location.master.prompt_text,
-            "reference_asset_ids": list(location.master.reference_asset_ids),
-            "selected_asset_id": location.master.selected_asset_id,
-        },
-        "calibrated_master_asset_id": location.calibrated_master_asset_id,
         "states": [
             {"id": item.id, "name": item.name, "description": item.description}
             for item in location.states
         ],
-        "views": [serialize_location_view(item) for item in location.views],
+        "images": [serialize_location_image(item) for item in location.images],
     }
 
 
-def serialize_location_view(view: LocationView) -> dict[str, Any]:
+def serialize_location_image(image: LocationImage) -> dict[str, Any]:
     return {
-        "id": view.id,
-        "name": view.name,
-        "purpose": view.purpose,
-        "azimuth_deg": view.azimuth_deg,
-        "look_at_fixture_id": view.look_at_fixture_id,
-        "yaw_offset_deg": view.yaw_offset_deg,
-        "pitch_deg": view.pitch_deg,
-        "hfov_deg": view.hfov_deg,
-        "state_id": view.state_id,
-        "refine_prompt_text": view.refine_prompt_text,
-        "reference_view_ids": list(view.reference_view_ids),
-        "crop_asset_id": view.crop_asset_id,
-        "selected_asset_id": view.selected_asset_id,
+        "id": image.id,
+        "name": image.name,
+        "kind": image.kind.value,
+        "description": image.description,
+        "prompt_text": image.prompt_text,
+        "reference_asset_ids": list(image.reference_asset_ids),
+        "selected_asset_id": image.selected_asset_id,
+        "source": (
+            None
+            if image.source is None
+            else {
+                "panorama_image_id": image.source.panorama_image_id,
+                "yaw_deg": image.source.yaw_deg,
+                "pitch_deg": image.source.pitch_deg,
+                "hfov_deg": image.source.hfov_deg,
+            }
+        ),
     }
 
 
@@ -127,16 +97,11 @@ def _parse_location(value: object) -> Location:
     return Location(
         id=_string(fields["id"], "location.id"),
         name=_string(fields["name"], "location.name"),
-        kind=LocationKind(_string(fields["kind"], "location.kind")),
         description=_string(fields["description"], "location.description"),
         fixtures=_object_list(fields["fixtures"], _parse_fixture),
         key_light=None if fields["key_light"] is None else _parse_key_light(fields["key_light"]),
-        master=_parse_master(fields["master"]),
-        calibrated_master_asset_id=_optional_string(
-            fields["calibrated_master_asset_id"], "location.calibrated_master_asset_id"
-        ),
         states=_object_list(fields["states"], _parse_state),
-        views=_object_list(fields["views"], _parse_view),
+        images=_object_list(fields["images"], _parse_image),
     )
 
 
@@ -146,28 +111,13 @@ def _parse_fixture(value: object) -> LocationFixture:
         id=_string(fields["id"], "location.fixture.id"),
         name=_string(fields["name"], "location.fixture.name"),
         description=_string(fields["description"], "location.fixture.description"),
-        azimuth_deg=_optional_number(fields["azimuth_deg"], "location.fixture.azimuth_deg"),
     )
 
 
 def _parse_key_light(value: object) -> LocationKeyLight:
     fields = _exact_object(value, _KEY_LIGHT_FIELDS)
     return LocationKeyLight(
-        description=_string(fields["description"], "location.key_light.description"),
-        azimuth_deg=_optional_number(fields["azimuth_deg"], "location.key_light.azimuth_deg"),
-    )
-
-
-def _parse_master(value: object) -> LocationMaster:
-    fields = _exact_object(value, _MASTER_FIELDS)
-    return LocationMaster(
-        prompt_text=_string(fields["prompt_text"], "location.master.prompt_text"),
-        reference_asset_ids=_string_list(
-            fields["reference_asset_ids"], "location.master.reference_asset_ids"
-        ),
-        selected_asset_id=_optional_string(
-            fields["selected_asset_id"], "location.master.selected_asset_id"
-        ),
+        description=_string(fields["description"], "location.key_light.description")
     )
 
 
@@ -180,28 +130,31 @@ def _parse_state(value: object) -> LocationState:
     )
 
 
-def _parse_view(value: object) -> LocationView:
-    fields = _exact_object(value, _VIEW_FIELDS)
-    return LocationView(
-        id=_string(fields["id"], "location.view.id"),
-        name=_string(fields["name"], "location.view.name"),
-        purpose=_string(fields["purpose"], "location.view.purpose"),
-        azimuth_deg=_optional_number(fields["azimuth_deg"], "location.view.azimuth_deg"),
-        look_at_fixture_id=_optional_string(
-            fields["look_at_fixture_id"], "location.view.look_at_fixture_id"
+def _parse_image(value: object) -> LocationImage:
+    fields = _exact_object(value, _IMAGE_FIELDS)
+    return LocationImage(
+        id=_string(fields["id"], "location.image.id"),
+        name=_string(fields["name"], "location.image.name"),
+        kind=LocationImageKind(_string(fields["kind"], "location.image.kind")),
+        description=_string(fields["description"], "location.image.description"),
+        prompt_text=_string(fields["prompt_text"], "location.image.prompt_text"),
+        reference_asset_ids=_string_list(
+            fields["reference_asset_ids"], "location.image.reference_asset_ids"
         ),
-        yaw_offset_deg=_optional_number(fields["yaw_offset_deg"], "location.view.yaw_offset_deg"),
-        pitch_deg=_number(fields["pitch_deg"], "location.view.pitch_deg"),
-        hfov_deg=_number(fields["hfov_deg"], "location.view.hfov_deg"),
-        state_id=_optional_string(fields["state_id"], "location.view.state_id"),
-        refine_prompt_text=_string(
-            fields["refine_prompt_text"], "location.view.refine_prompt_text"
-        ),
-        reference_view_ids=_string_list(
-            fields["reference_view_ids"], "location.view.reference_view_ids"
-        ),
-        crop_asset_id=_optional_string(fields["crop_asset_id"], "location.view.crop_asset_id"),
         selected_asset_id=_optional_string(
-            fields["selected_asset_id"], "location.view.selected_asset_id"
+            fields["selected_asset_id"], "location.image.selected_asset_id"
         ),
+        source=None if fields["source"] is None else _parse_source(fields["source"]),
+    )
+
+
+def _parse_source(value: object) -> PanoramaCaptureSource:
+    fields = _exact_object(value, _SOURCE_FIELDS)
+    return PanoramaCaptureSource(
+        panorama_image_id=_string(
+            fields["panorama_image_id"], "location.image.source.panorama_image_id"
+        ),
+        yaw_deg=_number(fields["yaw_deg"], "location.image.source.yaw_deg"),
+        pitch_deg=_number(fields["pitch_deg"], "location.image.source.pitch_deg"),
+        hfov_deg=_number(fields["hfov_deg"], "location.image.source.hfov_deg"),
     )

@@ -140,16 +140,16 @@ Web 不复制状态机：按钮是否可用只看 Core 返回的 `allowed_action
 
 ## Core 确定性工具与地点生成链路
 
-装配、Animatic、抽帧（`Tool.VIDEO_FRAME`）、全景裁切（`Tool.PANO_VIEW`）与混音是 Core 的确定性工具：同输入必得同字节，没有可选实现，
-产物不是候选。它们和模型插件一样经 `provider_ports.py` 的窄 Protocol 提交、观察、取消与回收产物，只做媒体协议，不认识项目语义。
+装配、Animatic、抽帧（`Tool.VIDEO_FRAME`）、全景取景（`Tool.PANO_VIEW`）与混音是 Core 的确定性工具：同输入必得同字节，
+没有可选实现。它们和模型插件一样经 `provider_ports.py` 的窄 Protocol 提交、观察、取消与回收产物，只做媒体协议，不认识项目语义。
 
 ```mermaid
 flowchart LR
     subgraph sd[core/structured_director]
         lr[location_requests.py<br/>前置校验 · 输入名额 · 提示词编译]
-        img[media_submission/image.py<br/>主图 · 细化 · 转向]
-        pv[media_submission/pano_view.py<br/>裁切 + location_crop_request 快照]
-        cb[mutations/generation.py<br/>裁切回调写 crop_asset_id]
+        img[media_submission/image.py<br/>独立地点图片 generate / edit]
+        pv[media_submission/pano_view.py<br/>全景取景 + 冻结快照]
+        cb[mutations/generation.py<br/>回调选中子图 Asset]
     end
     subgraph mp[core/model_providers]
         rec[图片 recipe 插件<br/>image.generate / image.edit]
@@ -160,8 +160,8 @@ flowchart LR
     fpv -. 观察 / 产物 .-> cb
 ```
 
-- 室内地点：主图是 2:1 等距柱状全景；视图先由 `PANO_VIEW` 按视图几何裁成项目画幅透视图（Core 直接写入 `crop_asset_id`），
-  再由图片插件以裁切图为底图细化。室外地点：视图由图片插件以主图为底图转向编辑。两条路径都只新增候选，选择由人类完成。
+- 普通地点图跟随项目画幅；全景图固定 2:1 等距柱状。二者都是可选的独立条目，图片插件只为当前条目新增候选，人类选择。
+- 已选全景图可在 Web 3D 查看器中调整角度并显式取景；Core 创建普通子图，`PANO_VIEW` 产物直接成为该子图选图，来源只作 provenance。
 - `PanoViewRequest` 在 Core 与媒体服务两侧各校验一次：源图 PNG/JPEG、宽高 2:1（±1px）、宽 1024–16384、≤ 64 MiB；
   yaw ∈ [0, 360)、pitch ∈ [-60, 60]、hfov ∈ [20, 120]、画幅 ∈ `16:9` / `9:16` / `2:1`。Playground 的 `image.pano_view` 复用同一校验。
 
@@ -188,7 +188,7 @@ flowchart LR
 ```text
 .stories/
 ├── <项目名>-<project_id>/
-│   ├── project.json            唯一项目 authority（schema v34）
+│   ├── project.json            唯一项目 authority（schema v35）
 │   └── assets/                 不可变媒体字节（路径规则见数据模型）
 ├── .playground/
 │   ├── playground.json         唯一 Playground authority（schema v2）

@@ -322,8 +322,8 @@ async def execute_application_command(service, caller, command):
     generation_methods = {
         "keyframe.generate": (service.generate_keyframe, {"keyframe_id"}),
         "video.generate": (service._media.generate_segment_video, {"segment_id"}),
-        "location.generate_master": (service.generate_location_master, {"location_id"}),
-        "location.generate_view": (service.generate_location_view, {"view_id"}),
+        "location.generate_image": (service.generate_location_image, {"image_id"}),
+        "location.capture_panorama": (service.generate_location_capture, {"image_id"}),
         "video.upscale": (service._media.upscale_segment_video, {"segment_id"}),
         "narration.generate": (service.generate_narration, {"cue_id", "language"}),
         "dialogue.generate": (service.generate_dialogue, {"dialogue_line_id"}),

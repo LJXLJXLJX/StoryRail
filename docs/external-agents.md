@@ -126,11 +126,11 @@ flowchart LR
 | | `read_media_input` | 受控 Asset 内容（见下文） |
 | | `list_candidates` / `read_run` / `read_request` | 对应读取命令 |
 | 规划 | `submit_proposal` | 统一入口：`capability` + `payload`；schema 按 capability 与 `payload.action` 公开完整字段：request（`raw_user_instruction`；keyframe 另需 `scene_ids` 与 Segment `target_ids`）/ get、cancel（`request_id`）/ submit（`request_id` 加内联 `proposal` 或受限 `proposal_source`）/ reject（`request_id`、`reason`） |
-| 编辑 | `edit_script` / `edit_narration` / `edit_locations` / `edit_keyframes` / `edit_looks` | 各自的 `*.apply_operations` / `narration.update_cue` / `reference.apply_look_operations`（`add_look` / `update_look`，字段形状随 `reference_library` 契约下发）；`edit_narration.fields.clear_selected_audio = "zh"\|"en"` 独占一次调用并翻译为 `narration.clear_selection`；`edit_locations` 的 scope 是 `location_ids` / `scene_ids` / `shot_ids`，紧凑 schema 只列操作字段名，字段形状随 `location` 契约下发；`edit_script` 的 `insert_shot` 必须给出 `attach_to_segment_id` 或 `new_segment`，Segment 操作以 `scene_id` 为容器 |
+| 编辑 | `edit_script` / `edit_narration` / `edit_locations` / `edit_keyframes` / `edit_looks` | 各自的 `*.apply_operations` / `narration.update_cue` / `reference.apply_look_operations`（`add_look` / `update_look`，字段形状随 `reference_library` 契约下发）；`edit_narration.fields.clear_selected_audio = "zh"\|"en"` 独占一次调用并翻译为 `narration.clear_selection`；`edit_locations` 的 scope 是 `location_ids` / `scene_ids`，可编辑地点、状态、陈设、独立图片和 Scene 绑定，字段形状随 `location` 契约下发；`edit_script` 的 `insert_shot` 必须给出 `attach_to_segment_id` 或 `new_segment`，Segment 操作以 `scene_id` 为容器 |
 | | `save_video_prompt` / `save_keyframe_prompt` | 不带 `recipe_inputs` 时 `video.set_prompt`；带 `recipe_inputs: {bindings, params}` 时 `video.update_recipe_inputs`（正文、当前 recipe 绑定与参数整体替换）/ 单项 `update_frame_fields` |
 | | `set_video_recipe` | `video.set_recipe` |
 | | `unlock_production` | `visual_production.unlock` |
-| 生产 | `generate_media` | 单目标 `narration.generate`（必须给 `language`）/ `location.generate_master`（`location_master`）/ `location.generate_view`（`location_view`，室内无有效裁切时只先裁切）/ `keyframe.generate` / `video.generate` / `video.upscale` / `reference.generate_look_sheet`（`look_sheet`：`target_id` 为造型 ID，必须给 0–4 张 `identity_asset_ids` 身份参考） |
+| 生产 | `generate_media` | 单目标 `narration.generate`（必须给 `language`）/ `location.generate_image`（`location_image`）/ `location.capture_panorama`（`panorama_capture`，创建带说明的普通子图）/ `keyframe.generate` / `video.generate` / `video.upscale` / `reference.generate_look_sheet`（`look_sheet`：`target_id` 为造型 ID，必须给 0–4 张 `identity_asset_ids` 身份参考） |
 | | `media_batch` | 必填 `kind`：`keyframe` 的 `start` / `continue` 翻译为 `keyframe.generate_batch` / `keyframe.continue_batch`；`location` 的两种 action 都翻译为 `location.generate_set`（`target_ids` 启动、`run_id` 继续） |
 | | `assemble_media` | `animatic.generate_scene` / `final.assemble_scene` / `final.assemble` |
 | | `manage_generation` | `generation.wait`（只观察，可省略 `expected_revision` 与 `idempotency_key`）/ `cancel` / `retry` / `dismiss` |
@@ -163,8 +163,8 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
 | `reference_library` | `storyrail-reference-library` | 项目 | 角色卡与旁白身份 proposal |
 | `script` | `storyrail-structured-director-script` | 项目 | 结构化脚本 proposal：先设计 Shot 列表再打包 Segment；含模型无关的 cinematic director intent 契约 |
 | `narration` | `storyrail-narration-review` | `scene_ids`，可指定 Cue | 中英旁白正文、seed 与 recipe_params（经 `edit_narration` 保存） |
-| `location` | `storyrail-location-planner`（参考 `location-bible.md`、`view-coverage.md`） | 项目（要求已有脚本） | 地点、陈设、主光、状态、视图，以及 Scene 绑定与 Shot 空间参考建议的增补 proposal |
-| `keyframe` | `storyrail-keyframe-planner` | `scene_ids` + 可写 Segment `target_ids` | Keyframe 计划 proposal：`segments[]` 首尾计划、承接关系与地点视图使用方式 |
+| `location` | `storyrail-location-planner`（参考 `location-bible.md`、`view-coverage.md`） | 项目（要求已有脚本） | 地点、陈设、主光、状态、可选独立图片与 Scene 绑定的增补 proposal |
+| `keyframe` | `storyrail-keyframe-planner` | `scene_ids` + 可写 Segment `target_ids` | Keyframe 计划 proposal：`segments[]` 首尾计划、角色造型与承接关系；地点只作语义上下文 |
 | `video_prompt` | `storyrail-video-prompt` + 当前插件的专业 Skill | 恰好一个 Segment | 视频正文，以及用户要求时的 recipe 参考素材与机制参数（经 `save_video_prompt` 保存） |
 
 - 六个契约共同附带 `storyrail-consistency-review`：修改前预检授权范围内的上下层联动，提交后重读核对；只读校对不修改；
@@ -172,14 +172,15 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
 - 工作集返回当前 revision 的事实、输出 schema 与 provenance：
   - Keyframe 工作集读取目标 Segment 所属完整 Scene 作上下文，并明确 `context_segment_ids` / `writable_segment_ids`
     （`target_segment_ids` 与后者相同）、锁定节点、辅助图映射，以及按 Scene 裁剪的 `saved_keyframe_plan`（未建立时为
-    `not_established`）。`scenes[].segments[]` 按顺序给出覆盖的 `shots[]`、派生可见角色、`start_view_id` / `end_view_id`
-    与 `continues_from_previous`；proposal 只写 `segments[]`，每个 Segment 给 `start` / `end` 计划与
+    `not_established`）。`scenes[].segments[]` 按顺序给出覆盖的 `shots[]`、派生可见角色与 `continues_from_previous`；
+    Scene 给出可选 `location_id` / `state_id`，proposal 只写 `segments[]`，每个 Segment 给 `start` / `end` 计划与
     `continues_from_previous`。每个可见角色的造型条目给出 `look_id`、名称、使用场合、已选造型图 `selected_asset_id` 和派生的
     `has_image`，Agent 可将该 Asset ID 直接交给 `read_media_input` 查看受控原图。
-  - 地点工作集给出完整导演方案、画幅、每个 Scene 的标题/梗概/设定与当前地点/状态，全部 Shot 的构图、运镜、动作、可见角色与
-    当前视图，完整地点库（派生 `master_selected`、`calibrated`，视图 `has_crop`、`has_selected_image`），以及图片插件的
+  - 地点工作集给出完整导演方案、画幅、每个 Scene 的标题/梗概/设定与当前地点/状态，全部 Shot 的构图、运镜、动作与可见角色，
+    以及完整地点库（每张独立图片带 kind、强制说明、生成计划、参考图与选图状态）和图片插件的
     `image_prompt` 约定。request 回执内嵌的冻结工作集不带 `image_prompt`，以 `read_professional_workset` 为准。
-  - Keyframe 工作集另给出扁平 `location_views`（视图 ID、名称、purpose、所属地点与类型、状态、已选图）；Shot 带 `view_id`。
+  - Keyframe 工作集另给出当前 Scene 使用的 `location_library` 语义与扁平 `location_images`（图片 ID、名称、kind、强制说明、
+    所属地点和已选图）；这些只帮助 Agent 理解空间，不会自动成为 Provider 图片输入。
   - 视频工作集给出当前 `video_recipe`（槽位与参数声明、`editable_params`）、`context`（含 `scene.driver`，决定无对白时是否声明预留旁白通道；
     `context.shots` 按覆盖顺序列出 Segment 的每个 Shot（构图、运镜、动作、声音、可见角色名与视图建议名）；
     `segment.continues_from_previous_segment` / `continues_into_next_segment` 表示相邻 Segment 共享边界 Shot 的延续关系；
@@ -232,7 +233,7 @@ WAV、MP3，单项 ≤ 8 MiB，逐项核对 MIME、长度与 SHA-256；拒绝任
 2. 写入始终携带当前 revision 与新的幂等键；冲突时重读，只有用户意图仍适用才发起新的写请求。
 3. 断连后先 `read_workflow` / `task_discovery` 发现任务，再 `read_request` / `read_run` 细查；丢响应只用原参数、原 revision、原 key 重放。
 4. 不对 `submission_uncertain` 自动重试；不靠新生成绕过未确认的取消。
-5. 生成、选择、批准是三件事：Agent 只做生成与观察，提醒用户在 Web 中采用与批准；地点主图与视图同样只能由人类选择。
+5. 生成、选择、批准是三件事：Agent 只做生成与观察，提醒用户在 Web 中采用与批准；地点图片同样只能由人类选择。
 6. Segment 视频的参考素材与机制参数只在用户明确要求时增删或替换；未改动的已有绑定原样回传。
 7. 查看项目图片只用 `read_media_input`，直接以 Agent 原生多模态视觉能力判读；不调用 ffmpeg、ImageMagick、Python/PIL 等命令行工具
    抽取、转码或分析图片。读取被拒绝时如实报告原因，不自行绕道。当前模型本身没有多模态视觉能力时，直接拒绝需要看图的任务并建议

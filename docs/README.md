@@ -42,7 +42,7 @@ flowchart LR
 | 术语 | 含义 |
 | --- | --- |
 | Core | 进程内业务核心，所有业务事实的唯一 authority |
-| Project / `project.json` | 一个视频项目及其唯一权威结构化状态（schema v34） |
+| Project / `project.json` | 一个视频项目及其唯一权威结构化状态（schema v35） |
 | Scene / Shot / Segment | 叙事块 / 创作层连续镜头 / 生产层单次视频生成切片；一个 Segment 可覆盖多个 Shot，一个 Shot 可跨多个相邻 Segment |
 | Cue | Scene 旁白，按项目所选中文或英文语言建立轨道 |
 | Location / State / View | 跨 Scene 共享的固定空间 / 同一空间的可见状态变体 / 供 Keyframe 参考的机位视图（Shot 绑定只是建议） |

@@ -749,13 +749,12 @@ def test_location_recommendations_follow_bindings_and_stay_optional(tmp_path):
     document = asyncio.run(prepare_dialogue_tts(store, service, document))
     script = document.director_script
     first, second = script.scenes
-    # 解开一个 Scene 的地点绑定与一个 Shot 的视图绑定。
+    # 解开一个 Scene 的地点绑定；Shot 不持有地点事实。
     patch = parse_location_operations_patch(
         {
             "scope": {
                 "location_ids": [],
                 "scene_ids": [second.id],
-                "shot_ids": [first.shots[0].id],
             },
             "operations": [
                 {
@@ -764,7 +763,6 @@ def test_location_recommendations_follow_bindings_and_stay_optional(tmp_path):
                     "location_id": None,
                     "state_id": None,
                 },
-                {"op": "bind_shot", "shot_id": first.shots[0].id, "view_id": None},
             ],
         }
     )
@@ -784,14 +782,9 @@ def test_location_recommendations_follow_bindings_and_stay_optional(tmp_path):
     assert planning["requires_explicit_user_request"]
     # 推荐只带数量；完整 ID 列表只在 unlock 影响预览的 location_advisory 里。
     assert planning["unbound_scene_count"] == 1
-    assert planning["shots_without_view_count"] == 1
     assert "unbound_scene_ids" not in planning
-    assert "shot_ids_without_view" not in planning
     assert "1 个 Scene 尚未绑定地点" in planning["message"]
-    assert "1 个 Shot 尚未绑定机位视图" in planning["message"]
     assert "背景一致性" in planning["message"] and "可选" in planning["message"]
-    # 主图未选定：同时推荐成套生成。
-    assert any(item["action"] == "location.generate_set" for item in recommended)
     assert all(
         not item["action"].startswith("location.") for item in state["required_next_actions"]
     )
@@ -808,7 +801,7 @@ def test_location_recommendations_follow_bindings_and_stay_optional(tmp_path):
     )
     assert workflow_state(unreviewed)["recommended_next_actions"] == []
 
-    # D6：解锁本身就是跳过；解锁后不再推荐规划与成套生成（此时主图仍未选定）。
+    # D6：解锁本身就是跳过；解锁后不再推荐规划与地点图片成套生成。
     unlocked = asyncio.run(
         service.unlock_visual_production(expected_revision=store.read().revision)
     )
@@ -837,116 +830,98 @@ def test_location_recommendations_wait_for_production_baseline(tmp_path):
 
 
 def test_location_recommendations_cover_generation_and_disappear_when_complete(tmp_path):
-    """绑定齐全但图片未选齐时推荐成套生成；主图与视图全部选定后推荐消失。"""
+    """绑定齐全但独立图片未选齐时推荐成套生成；全部选定后推荐消失。"""
 
     from structured_director_fixtures import add_image_asset, prepare_dialogue_tts
     from test_director_commands import _location_project
     from test_external_production import assert_workflow_tools_exist
 
-    from core.director_commands import LocationMasterSelection, LocationViewSelection
+    from core.director_commands import LocationImageSelection, parse_location_operations_patch
     from core.structured_director.models import ReferenceGenerationKind
     from core.structured_director.reads.workflow_state import workflow_state
     from scripts.harness.fixtures.candidates import register_image_candidate
 
     store, service, document, _ = asyncio.run(_location_project(str(tmp_path)))
     document = asyncio.run(prepare_dialogue_tts(store, service, document))
+    pending_image_ids = []
+    for index, location in enumerate(document.location_library.locations):
+        patch = parse_location_operations_patch(
+            {
+                "scope": {"location_ids": [location.id], "scene_ids": []},
+                "operations": [
+                    {
+                        "op": "create_image",
+                        "location_id": location.id,
+                        "key": f"extra-{index}",
+                        "fields": {
+                            "name": "补充角度",
+                            "kind": "image",
+                            "description": "补充展示该地点的空间关系。",
+                            "prompt_text": "地点补充角度，无人物。",
+                        },
+                    }
+                ],
+            }
+        )
+        document, _receipt, data = store.apply_location_operations(
+            patch,
+            expected_revision=store.read().revision,
+            command_id=f"add-image-{index}",
+        )
+        pending_image_ids.append(data["created_ids"][f"extra-{index}"])
     state = workflow_state(store.read())
     assert state["required_next_actions"][0]["action"] == "visual_production.unlock"
     recommended = state["recommended_next_actions"]
     # Scene/Shot 绑定已由 _location_project 完成：不再推荐规划。
     assert not any(item["action"] == "location.request_proposal" for item in recommended)
-    # 主图未选定：推荐成套生成，范围 = 未选齐的地点。
+    # 独立图片未选定：推荐成套生成，范围直接是图片 ID。
     generate = next(item for item in recommended if item["action"] == "location.generate_set")
     assert generate["tool"] == "media_batch"
     assert generate["tool_action"] == "start"
     assert generate["kind"] == "location"
     assert generate["requires_explicit_user_request"]
-    assert set(generate["target_ids"]) == {
-        location.id for location in document.location_library.locations
-    }
+    assert set(generate["target_ids"]) == set(pending_image_ids)
     assert_workflow_tools_exist(state)
 
-    for location in store.read().location_library.locations:
+    for image_id in pending_image_ids:
         asset_id = add_image_asset(store)
         register_image_candidate(
             store,
-            kind=ReferenceGenerationKind.LOCATION_MASTER_IMAGE,
-            target_id=location.id,
+            kind=ReferenceGenerationKind.LOCATION_IMAGE,
+            target_id=image_id,
             asset_id=asset_id,
         )
-        store.select_location_master(
-            LocationMasterSelection(location.id, asset_id),
+        store.select_location_image(
+            LocationImageSelection(image_id, asset_id),
             expected_revision=store.read().revision,
-            command_id=f"select-master-{location.id[:8]}",
+            command_id=f"select-image-{image_id[:8]}",
         )
-    # 主图选定使此前选定的视图失效；重新选择后地点成套完成。
-    for location in store.read().location_library.locations:
-        for view in location.views:
-            if view.selected_asset_id is not None:
-                continue
-            asset_id = add_image_asset(store)
-            register_image_candidate(
-                store,
-                kind=ReferenceGenerationKind.LOCATION_VIEW_IMAGE,
-                target_id=view.id,
-                asset_id=asset_id,
-            )
-            store.select_location_view(
-                LocationViewSelection(view.id, asset_id),
-                expected_revision=store.read().revision,
-                command_id=f"select-view-{view.id[:8]}",
-            )
     assert workflow_state(store.read())["recommended_next_actions"] == []
 
 
-def test_unlock_impact_preview_lists_unbound_scenes_and_shots(tmp_path):
-    """visual_production.unlock 的影响预览列出未绑定地点的 Scene 与未绑定视图的 Shot。"""
+def test_unlock_impact_preview_lists_unbound_scenes(tmp_path):
+    """visual_production.unlock 的影响预览只列未绑定地点的 Scene。"""
 
     from test_director_commands import _location_project, _visual_project
 
     from core.director_commands import (
         DirectorCommand,
         DirectorCommandRegistry,
-        parse_location_operations_patch,
     )
     from core.structured_director.reads.impact import preview_command_impact
 
-    # 已绑定 Scene 但 Shot 未绑定视图：预览分开列出两类缺口。
+    # 只绑定一个 Scene；Shot 不持有地点事实。
     unbound = tmp_path / "unbound"
     unbound.mkdir()
     store, _, document, _ = asyncio.run(_visual_project(str(unbound)))
-    scene = document.director_script.scenes[0]
-    patch = parse_location_operations_patch(
-        {
-            "scope": {"location_ids": [], "scene_ids": [scene.id], "shot_ids": []},
-            "operations": [
-                {
-                    "op": "create_location",
-                    "key": "roof",
-                    "name": "天台",
-                    "kind": "exterior",
-                    "description": "空旷天台。",
-                },
-                {
-                    "op": "bind_scene",
-                    "scene_id": scene.id,
-                    "location_id": "roof",
-                    "state_id": None,
-                },
-            ],
-        }
-    )
-    document, _receipt, _data = store.apply_location_operations(
-        patch, expected_revision=document.revision, command_id="bind-scene-only"
-    )
     command = DirectorCommand("visual_production.unlock", document.revision, "preview", {})
     preview = preview_command_impact(document, command)
     assert preview["command_name"] == "visual_production.unlock"
     advisory = preview["location_advisory"]
     assert advisory["scenes_without_location"] == [
-        item.id for item in document.director_script.scenes if item.id != scene.id
+        item.id for item in document.director_script.scenes
     ]
-    assert advisory["shots_without_view"] == [shot.id for shot in scene.shots]
+    assert "shots_without_view" not in advisory
     assert "解锁不受影响" in advisory["message"]
 
     # 绑定齐全的项目：预览不列缺口；正式执行回执携带同一份提示。
@@ -958,8 +933,7 @@ def test_unlock_impact_preview_lists_unbound_scenes_and_shots(tmp_path):
     assert preview["will_write"] is True
     assert preview["location_advisory"] == {
         "scenes_without_location": [],
-        "shots_without_view": [],
-        "message": "全部 Scene 已绑定地点、已绑定地点的 Shot 均有机位视图。",
+        "message": "全部 Scene 已绑定地点。",
     }
     execution = DirectorCommandRegistry(store).execute(
         DirectorCommand("visual_production.unlock", document.revision, "unlock", {})
@@ -970,4 +944,4 @@ def test_unlock_impact_preview_lists_unbound_scenes_and_shots(tmp_path):
         DirectorCommand("visual_production.unlock", store.read().revision, "unlock-again", {})
     )
     assert again.receipt.status == "noop"
-    assert again.data["location_advisory"]["shots_without_view"] == []
+    assert again.data["location_advisory"]["scenes_without_location"] == []

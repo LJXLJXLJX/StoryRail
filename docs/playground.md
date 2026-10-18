@@ -182,7 +182,7 @@ sequenceDiagram
     H->>T: Playground → 项目（asset_id, image_category?）
     T->>PG: 读取 Asset
     alt 图片
-        T->>PJ: 必须选 character_reference / location_master / location_view / keyframe，走项目图片导入
+        T->>PJ: 必须选 character_reference / location_image / keyframe，走项目图片导入
     else 音频 / 视频
         T->>PJ: image_category 必须为 null，走项目媒体导入
     end

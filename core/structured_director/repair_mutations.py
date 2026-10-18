@@ -151,37 +151,12 @@ def _repair_operation_from_alert(
     )
 
 
-def _location_master_selections(document: StructuredDirectorDocument) -> dict[str, str]:
+def _location_image_selections(document: StructuredDirectorDocument) -> dict[str, str]:
     return {
-        item.id: item.master.selected_asset_id
+        image.id: image.selected_asset_id
         for item in document.location_library.locations
-        if item.master.selected_asset_id is not None
-    }
-
-
-def _location_view_selections(document: StructuredDirectorDocument) -> dict[str, str]:
-    return {
-        view.id: view.selected_asset_id
-        for item in document.location_library.locations
-        for view in item.views
-        if view.selected_asset_id is not None
-    }
-
-
-def _location_view_crops(document: StructuredDirectorDocument) -> dict[str, str]:
-    return {
-        view.id: view.crop_asset_id
-        for item in document.location_library.locations
-        for view in item.views
-        if view.crop_asset_id is not None
-    }
-
-
-def _location_calibrations(document: StructuredDirectorDocument) -> dict[str, str]:
-    return {
-        item.id: item.calibrated_master_asset_id
-        for item in document.location_library.locations
-        if item.calibrated_master_asset_id is not None
+        for image in item.images
+        if image.selected_asset_id is not None
     }
 
 
@@ -190,12 +165,7 @@ def _repair_invalidated_items(
     current: StructuredDirectorDocument,
 ) -> tuple[str, ...]:
     invalidated: set[str] = set()
-    for prefix, selections in (
-        ("location_master_selection", _location_master_selections),
-        ("location_view_selection", _location_view_selections),
-        ("location_view_crop", _location_view_crops),
-        ("location_calibration", _location_calibrations),
-    ):
+    for prefix, selections in (("location_image_selection", _location_image_selections),):
         previous_selected = selections(previous)
         current_selected = selections(current)
         invalidated.update(

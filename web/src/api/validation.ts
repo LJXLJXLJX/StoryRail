@@ -55,20 +55,18 @@ import type {
   ImageSubmissionPreview,
   Keyframe,
   KeyframeCharacterReference,
-  KeyframeEnvironmentMode,
   KeyframePlan,
   KeyframePlanProposal,
   KeyframeSubmissionPreview,
   Location,
   LocationFixture,
+  LocationImage,
+  LocationImageKind,
   LocationKeyLight,
-  LocationKind,
   LocationLibrary,
-  LocationMaster,
   LocationPlanProposal,
   LocationProduction,
   LocationState,
-  LocationView,
   ManifestField,
   ManifestOption,
   ManifestRecipe,
@@ -81,6 +79,7 @@ import type {
   NarrationTrack,
   NarratorProfile,
   NarratorVoice,
+  PanoramaCaptureSource,
   PlaygroundAsset,
   PlaygroundAssetAction,
   PlaygroundAssetOrigin,
@@ -365,8 +364,7 @@ const schemas: Record<string, JsonSchema> = {
       "narrator_voice_reference",
       "narration_audio",
       "dialogue_audio",
-      "location_master_image",
-      "location_view_image",
+      "location_image",
       "keyframe_reference_image",
       "keyframe_selected_asset",
       "segment_video_selected",
@@ -383,9 +381,8 @@ const schemas: Record<string, JsonSchema> = {
   "ImageAssetCategory": {
     "enum": [
       "character_reference",
-      "location_master",
-      "location_crop",
-      "location_view",
+      "location_image",
+      "panorama_capture",
       "keyframe",
       "video_frame"
     ]
@@ -421,9 +418,8 @@ const schemas: Record<string, JsonSchema> = {
       "video_audio_voice",
       "video_audio_background",
       "video_audio_remix",
-      "location_master_image",
-      "location_view_crop",
-      "location_view_image",
+      "location_image",
+      "panorama_capture",
       "keyframe_image",
       "segment_video",
       "video_frame",
@@ -491,17 +487,10 @@ const schemas: Record<string, JsonSchema> = {
       "final"
     ]
   },
-  "KeyframeEnvironmentMode": {
+  "LocationImageKind": {
     "enum": [
-      "edit",
-      "reference",
-      "none"
-    ]
-  },
-  "LocationKind": {
-    "enum": [
-      "interior",
-      "exterior"
+      "image",
+      "panorama"
     ]
   },
   "ProjectSummary": {
@@ -1497,17 +1486,6 @@ const schemas: Record<string, JsonSchema> = {
             "type": "null"
           }
         ]
-      },
-      "view_id": {
-        "anyOf": [
-          {
-            "type": "string",
-            "pattern": "^[0-9a-f]{32}$"
-          },
-          {
-            "type": "null"
-          }
-        ]
       }
     },
     "required": [
@@ -1517,8 +1495,7 @@ const schemas: Record<string, JsonSchema> = {
       "camera_movement",
       "action",
       "audio_direction",
-      "transition_in",
-      "view_id"
+      "transition_in"
     ],
     "additionalProperties": false
   },
@@ -1927,10 +1904,8 @@ const schemas: Record<string, JsonSchema> = {
       },
       "generation_step": {
         "enum": [
-          "master",
-          "crop",
-          "refine",
-          "turn"
+          "image",
+          "capture"
         ]
       },
       "generate_label": {
@@ -1971,7 +1946,8 @@ const schemas: Record<string, JsonSchema> = {
             "select",
             "edit",
             "delete",
-            "clear_selection"
+            "clear_selection",
+            "preview_panorama"
           ]
         }
       }
@@ -2012,23 +1988,12 @@ const schemas: Record<string, JsonSchema> = {
       },
       "description": {
         "type": "string"
-      },
-      "azimuth_deg": {
-        "anyOf": [
-          {
-            "type": "number"
-          },
-          {
-            "type": "null"
-          }
-        ]
       }
     },
     "required": [
       "id",
       "name",
       "description",
-      "azimuth_deg",
       "allowed_actions"
     ],
     "additionalProperties": false
@@ -2040,29 +2005,57 @@ const schemas: Record<string, JsonSchema> = {
         "type": "string",
         "minLength": 1,
         "x-trimmed-nonempty": true
-      },
-      "azimuth_deg": {
-        "anyOf": [
-          {
-            "type": "number"
-          },
-          {
-            "type": "null"
-          }
-        ]
       }
     },
     "required": [
-      "description",
-      "azimuth_deg"
+      "description"
     ],
     "additionalProperties": false
   },
-  "LocationMaster": {
+  "PanoramaCaptureSource": {
     "type": "object",
     "properties": {
-      "production": {
-        "$ref": "LocationProduction"
+      "panorama_image_id": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{32}$"
+      },
+      "yaw_deg": {
+        "type": "number"
+      },
+      "pitch_deg": {
+        "type": "number"
+      },
+      "hfov_deg": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "panorama_image_id",
+      "yaw_deg",
+      "pitch_deg",
+      "hfov_deg"
+    ],
+    "additionalProperties": false
+  },
+  "LocationImage": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{32}$"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "x-trimmed-nonempty": true
+      },
+      "kind": {
+        "$ref": "LocationImageKind"
+      },
+      "description": {
+        "type": "string",
+        "minLength": 1,
+        "x-trimmed-nonempty": true
       },
       "prompt_text": {
         "type": "string",
@@ -2087,12 +2080,30 @@ const schemas: Record<string, JsonSchema> = {
             "type": "null"
           }
         ]
+      },
+      "source": {
+        "anyOf": [
+          {
+            "$ref": "PanoramaCaptureSource"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "production": {
+        "$ref": "LocationProduction"
       }
     },
     "required": [
+      "id",
+      "name",
+      "kind",
+      "description",
       "prompt_text",
       "reference_asset_ids",
       "selected_asset_id",
+      "source",
       "production"
     ],
     "additionalProperties": false
@@ -2132,131 +2143,6 @@ const schemas: Record<string, JsonSchema> = {
     ],
     "additionalProperties": false
   },
-  "LocationView": {
-    "type": "object",
-    "properties": {
-      "production": {
-        "$ref": "LocationProduction"
-      },
-      "has_valid_crop": {
-        "type": "boolean"
-      },
-      "id": {
-        "type": "string",
-        "pattern": "^[0-9a-f]{32}$"
-      },
-      "name": {
-        "type": "string",
-        "minLength": 1,
-        "x-trimmed-nonempty": true
-      },
-      "purpose": {
-        "type": "string",
-        "minLength": 1,
-        "x-trimmed-nonempty": true
-      },
-      "azimuth_deg": {
-        "anyOf": [
-          {
-            "type": "number"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "look_at_fixture_id": {
-        "anyOf": [
-          {
-            "type": "string",
-            "pattern": "^[0-9a-f]{32}$"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "yaw_offset_deg": {
-        "anyOf": [
-          {
-            "type": "number"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "pitch_deg": {
-        "type": "number"
-      },
-      "hfov_deg": {
-        "type": "number"
-      },
-      "state_id": {
-        "anyOf": [
-          {
-            "type": "string",
-            "pattern": "^[0-9a-f]{32}$"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "refine_prompt_text": {
-        "type": "string",
-        "maxLength": 19000
-      },
-      "reference_view_ids": {
-        "type": "array",
-        "items": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{32}$"
-        },
-        "uniqueItems": true
-      },
-      "crop_asset_id": {
-        "anyOf": [
-          {
-            "type": "string",
-            "pattern": "^[0-9a-f]{32}$"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "selected_asset_id": {
-        "anyOf": [
-          {
-            "type": "string",
-            "pattern": "^[0-9a-f]{32}$"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      }
-    },
-    "required": [
-      "id",
-      "name",
-      "purpose",
-      "azimuth_deg",
-      "look_at_fixture_id",
-      "yaw_offset_deg",
-      "pitch_deg",
-      "hfov_deg",
-      "state_id",
-      "refine_prompt_text",
-      "reference_view_ids",
-      "crop_asset_id",
-      "selected_asset_id",
-      "production",
-      "has_valid_crop"
-    ],
-    "additionalProperties": false
-  },
   "Location": {
     "type": "object",
     "properties": {
@@ -2266,7 +2152,7 @@ const schemas: Record<string, JsonSchema> = {
           "enum": [
             "edit",
             "delete",
-            "create_view",
+            "create_image",
             "create_fixture",
             "create_state"
           ]
@@ -2280,9 +2166,6 @@ const schemas: Record<string, JsonSchema> = {
         "type": "string",
         "minLength": 1,
         "x-trimmed-nonempty": true
-      },
-      "kind": {
-        "$ref": "LocationKind"
       },
       "description": {
         "type": "string",
@@ -2305,20 +2188,6 @@ const schemas: Record<string, JsonSchema> = {
           }
         ]
       },
-      "master": {
-        "$ref": "LocationMaster"
-      },
-      "calibrated_master_asset_id": {
-        "anyOf": [
-          {
-            "type": "string",
-            "pattern": "^[0-9a-f]{32}$"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
       "states": {
         "type": "array",
         "items": {
@@ -2326,25 +2195,22 @@ const schemas: Record<string, JsonSchema> = {
         },
         "maxItems": 10
       },
-      "views": {
+      "images": {
         "type": "array",
         "items": {
-          "$ref": "LocationView"
+          "$ref": "LocationImage"
         },
-        "maxItems": 30
+        "maxItems": 200
       }
     },
     "required": [
       "id",
       "name",
-      "kind",
       "description",
       "fixtures",
       "key_light",
-      "master",
-      "calibrated_master_asset_id",
       "states",
-      "views",
+      "images",
       "allowed_actions"
     ],
     "additionalProperties": false
@@ -2364,8 +2230,7 @@ const schemas: Record<string, JsonSchema> = {
         "items": {
           "enum": [
             "create_location",
-            "bind_scene",
-            "bind_shot"
+            "bind_scene"
           ]
         }
       }
@@ -2426,31 +2291,6 @@ const schemas: Record<string, JsonSchema> = {
             "type": "null"
           }
         ]
-      },
-      "environment_mode": {
-        "$ref": "KeyframeEnvironmentMode"
-      },
-      "environment_view_id": {
-        "anyOf": [
-          {
-            "type": "string",
-            "pattern": "^[0-9a-f]{32}$"
-          },
-          {
-            "type": "null"
-          }
-        ]
-      },
-      "environment_none_reason": {
-        "anyOf": [
-          {
-            "type": "string",
-            "maxLength": 500
-          },
-          {
-            "type": "null"
-          }
-        ]
       }
     },
     "required": [
@@ -2460,10 +2300,7 @@ const schemas: Record<string, JsonSchema> = {
       "prompt_text",
       "visible_character_ids",
       "character_references",
-      "selected_asset_id",
-      "environment_mode",
-      "environment_view_id",
-      "environment_none_reason"
+      "selected_asset_id"
     ],
     "additionalProperties": false
   },
@@ -6099,43 +5936,6 @@ const schemas: Record<string, JsonSchema> = {
                 "pattern": "^[0-9a-f]{32}$"
               }
             },
-            "start_environment_mode": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "enum": [
-                    "edit",
-                    "reference",
-                    "none"
-                  ]
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "start_environment_view_id": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{32}$"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "start_environment_none_reason": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "maxLength": 500
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
             "start_character_references": {
               "type": "array",
               "items": {
@@ -6163,43 +5963,6 @@ const schemas: Record<string, JsonSchema> = {
                 ],
                 "additionalProperties": false
               }
-            },
-            "end_environment_mode": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "enum": [
-                    "edit",
-                    "reference",
-                    "none"
-                  ]
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "end_environment_view_id": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{32}$"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "end_environment_none_reason": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "maxLength": 500
-                },
-                {
-                  "type": "null"
-                }
-              ]
             },
             "end_character_references": {
               "type": "array",
@@ -6238,13 +6001,7 @@ const schemas: Record<string, JsonSchema> = {
             "start_visible_character_ids",
             "end_prompt_text",
             "end_visible_character_ids",
-            "start_environment_mode",
-            "start_environment_view_id",
-            "start_environment_none_reason",
             "start_character_references",
-            "end_environment_mode",
-            "end_environment_view_id",
-            "end_environment_none_reason",
             "end_character_references"
           ],
           "additionalProperties": false
@@ -6267,12 +6024,6 @@ const schemas: Record<string, JsonSchema> = {
             "name": {
               "type": "string"
             },
-            "kind": {
-              "enum": [
-                "interior",
-                "exterior"
-              ]
-            },
             "description": {
               "type": "string"
             },
@@ -6283,21 +6034,10 @@ const schemas: Record<string, JsonSchema> = {
                   "properties": {
                     "description": {
                       "type": "string"
-                    },
-                    "azimuth_deg": {
-                      "anyOf": [
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
                     }
                   },
                   "required": [
-                    "description",
-                    "azimuth_deg"
+                    "description"
                   ],
                   "additionalProperties": false
                 },
@@ -6305,9 +6045,6 @@ const schemas: Record<string, JsonSchema> = {
                   "type": "null"
                 }
               ]
-            },
-            "master_prompt_text": {
-              "type": "string"
             },
             "fixtures": {
               "type": "array",
@@ -6319,16 +6056,6 @@ const schemas: Record<string, JsonSchema> = {
                   },
                   "description": {
                     "type": "string"
-                  },
-                  "azimuth_deg": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
                   },
                   "id": {
                     "anyOf": [
@@ -6353,8 +6080,7 @@ const schemas: Record<string, JsonSchema> = {
                 },
                 "required": [
                   "name",
-                  "description",
-                  "azimuth_deg"
+                  "description"
                 ],
                 "additionalProperties": false
               }
@@ -6398,7 +6124,7 @@ const schemas: Record<string, JsonSchema> = {
                 "additionalProperties": false
               }
             },
-            "views": {
+            "images": {
               "type": "array",
               "items": {
                 "type": "object",
@@ -6406,63 +6132,51 @@ const schemas: Record<string, JsonSchema> = {
                   "name": {
                     "type": "string"
                   },
-                  "purpose": {
+                  "kind": {
                     "type": "string"
                   },
-                  "azimuth_deg": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "look_at_fixture_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "yaw_offset_deg": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "pitch_deg": {
-                    "type": "number"
-                  },
-                  "hfov_deg": {
-                    "type": "number"
-                  },
-                  "state_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "refine_prompt_text": {
+                  "description": {
                     "type": "string"
                   },
-                  "reference_view_ids": {
+                  "prompt_text": {
+                    "type": "string"
+                  },
+                  "reference_asset_ids": {
                     "type": "array",
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "source": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "panorama_image_id": {
+                            "type": "string"
+                          },
+                          "yaw_deg": {
+                            "type": "number"
+                          },
+                          "pitch_deg": {
+                            "type": "number"
+                          },
+                          "hfov_deg": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "panorama_image_id",
+                          "yaw_deg",
+                          "pitch_deg",
+                          "hfov_deg"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "id": {
                     "anyOf": [
@@ -6472,7 +6186,8 @@ const schemas: Record<string, JsonSchema> = {
                       {
                         "type": "null"
                       }
-                    ]
+                    ],
+                    "pattern": "^[0-9a-f]{32}$"
                   },
                   "key": {
                     "anyOf": [
@@ -6487,15 +6202,11 @@ const schemas: Record<string, JsonSchema> = {
                 },
                 "required": [
                   "name",
-                  "purpose",
-                  "azimuth_deg",
-                  "look_at_fixture_id",
-                  "yaw_offset_deg",
-                  "pitch_deg",
-                  "hfov_deg",
-                  "state_id",
-                  "refine_prompt_text",
-                  "reference_view_ids"
+                  "kind",
+                  "description",
+                  "prompt_text",
+                  "reference_asset_ids",
+                  "source"
                 ],
                 "additionalProperties": false
               }
@@ -6524,13 +6235,11 @@ const schemas: Record<string, JsonSchema> = {
           },
           "required": [
             "name",
-            "kind",
             "description",
             "key_light",
-            "master_prompt_text",
             "fixtures",
             "states",
-            "views"
+            "images"
           ],
           "additionalProperties": false
         }
@@ -6572,39 +6281,11 @@ const schemas: Record<string, JsonSchema> = {
           ],
           "additionalProperties": false
         }
-      },
-      "shot_bindings": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "shot_id": {
-              "type": "string",
-              "pattern": "^[0-9a-f]{32}$"
-            },
-            "view_id": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "required": [
-            "shot_id",
-            "view_id"
-          ],
-          "additionalProperties": false
-        }
       }
     },
     "required": [
       "locations",
-      "scene_bindings",
-      "shot_bindings"
+      "scene_bindings"
     ],
     "additionalProperties": false
   },

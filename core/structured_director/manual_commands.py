@@ -53,9 +53,6 @@ def keyframe_edit_command(
                     {"character_id": item.character_id, "look_id": item.look_id}
                     for item in keyframe.character_references
                 ],
-                "environment_mode": keyframe.environment_mode.value,
-                "environment_view_id": keyframe.environment_view_id,
-                "environment_none_reason": keyframe.environment_none_reason,
             },
         }
     ]
@@ -142,46 +139,15 @@ def location_operations_command(
     )
 
 
-def location_calibration_command(
-    *,
-    location_id: str,
-    fixture_azimuths: object,
-    key_light_azimuth_deg: object,
-    expected_revision: int,
-) -> DirectorCommand:
-    return DirectorCommand(
-        "location.apply_operations",
-        expected_revision,
-        f"ui-location-calibrate:{expected_revision}:{location_id}",
-        {
-            "scope": {"location_ids": [location_id], "scene_ids": [], "shot_ids": []},
-            "operations": [
-                {
-                    "op": "calibrate",
-                    "location_id": location_id,
-                    "fixture_azimuths": fixture_azimuths,
-                    "key_light_azimuth_deg": key_light_azimuth_deg,
-                }
-            ],
-        },
-    )
-
-
 def location_selection_command(
     *,
-    target: str,
-    target_id: str,
+    image_id: str,
     asset_id: str,
     expected_revision: int,
 ) -> DirectorCommand:
-    """人类候选选择：`target` 为 master（地点 ID）或 view（视图 ID）。"""
-    name, field = {
-        "master": ("location.select_master", "location_id"),
-        "view": ("location.select_view", "view_id"),
-    }[target]
     return DirectorCommand(
-        name,
+        "location.select_image",
         expected_revision,
-        f"ui-{name}:{expected_revision}:{target_id}",
-        {field: target_id, "asset_id": asset_id},
+        f"ui-location.select_image:{expected_revision}:{image_id}",
+        {"image_id": image_id, "asset_id": asset_id},
     )

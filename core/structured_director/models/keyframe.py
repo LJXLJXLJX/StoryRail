@@ -3,27 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from enum import StrEnum
 
-from ._shared import _require_id, _require_text
+from ._shared import _require_id
 from .reference import ReferenceLibrary
-
-
-class KeyframeEnvironmentMode(StrEnum):
-    """Keyframe 使用地点视图的方式：edit 作为编辑底图，reference 仅作参考，none 不提交。"""
-
-    EDIT = "edit"
-    REFERENCE = "reference"
-    NONE = "none"
-
-
-def normalize_environment_none_reason(value: str | None) -> str | None:
-    """none 理由可选：空白归一为 None，其余去掉首尾空白，超过 500 字拒绝。"""
-    if value is None or not value.strip():
-        return None
-    if len(value.strip()) > 500:
-        raise ValueError("keyframe.environment_none_reason 不能超过 500 字符。")
-    return value.strip()
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,26 +29,11 @@ class Keyframe:
     prompt_text: str
     visible_character_ids: tuple[str, ...]
     selected_asset_id: str | None = None
-    environment_mode: KeyframeEnvironmentMode = KeyframeEnvironmentMode.NONE
-    environment_view_id: str | None = None
-    # none 时可选（0–500 字或 None），edit/reference 时必须为 None。
-    environment_none_reason: str | None = None
     # 未列出的可见角色按默认规则：角色只有一套造型时使用它，多套造型必须显式选择。
     character_references: tuple[KeyframeCharacterReference, ...] = ()
 
     def __post_init__(self) -> None:
         _require_id(self.id, "keyframe.id")
-        if self.environment_view_id is not None:
-            _require_id(self.environment_view_id, "keyframe.environment_view_id")
-        if (self.environment_mode is KeyframeEnvironmentMode.NONE) != (
-            self.environment_view_id is None
-        ):
-            raise ValueError("Keyframe none 必须不指定地点视图；edit/reference 必须显式指定视图。")
-        if self.environment_mode is KeyframeEnvironmentMode.NONE:
-            if self.environment_none_reason is not None:
-                _require_text(self.environment_none_reason, "keyframe.environment_none_reason", 500)
-        elif self.environment_none_reason is not None:
-            raise ValueError("Keyframe 使用地点视图时不能保存 none 理由。")
         _require_id(self.owner_segment_id, "keyframe.owner_segment_id")
         if self.predecessor_keyframe_id is not None:
             _require_id(self.predecessor_keyframe_id, "keyframe.predecessor_keyframe_id")
@@ -91,28 +58,9 @@ def blank_keyframe(
     keyframe_id: str,
     owner_segment_id: str,
     predecessor_keyframe_id: str | None,
-    *,
-    view_id: str | None,
 ) -> Keyframe:
-    """新建空 Keyframe，环境字段按本槽位的默认视图写成显式值。
-
-    默认视图由调用方从 `segment_view_ids` 取：首帧用首个覆盖 Shot、尾帧用最后一个覆盖 Shot。
-    有视图 → `reference` + 该视图；无视图 → `none`、无理由。视图只作空间参考，
-    `edit` 只在用户明确要求画面严格贴合视图时使用。只在建立和重建帧时调用；
-    之后 Shot 改绑不回写已有帧，失效级联因此只需看帧上显式的 `environment_view_id`。
-    """
-    if view_id is None:
-        return Keyframe(keyframe_id, owner_segment_id, predecessor_keyframe_id, "", ())
-    return Keyframe(
-        keyframe_id,
-        owner_segment_id,
-        predecessor_keyframe_id,
-        "",
-        (),
-        environment_mode=KeyframeEnvironmentMode.REFERENCE,
-        environment_view_id=view_id,
-        environment_none_reason=None,
-    )
+    """新建空 Keyframe；地点图片只在具体生成调用中显式选择。"""
+    return Keyframe(keyframe_id, owner_segment_id, predecessor_keyframe_id, "", ())
 
 
 @dataclass(frozen=True, slots=True)

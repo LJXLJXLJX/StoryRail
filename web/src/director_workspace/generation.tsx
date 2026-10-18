@@ -109,9 +109,8 @@ export function GenerationCandidates({
             </header>
             {promptAsset !== null ? <ZoomableImage className="reference-detail-image"
               src={promptAsset.content_url} alt="生成图片候选大图" /> : null}
-            <p className="muted-copy">{promptGeneration.kind === "location_master_image" ||
-                promptGeneration.kind === "location_view_crop" ||
-                promptGeneration.kind === "location_view_image"
+            <p className="muted-copy">{promptGeneration.kind === "location_image" ||
+                promptGeneration.kind === "panorama_capture"
               ? "这是提交给图片插件并持久化的完整提示词，包含 Core 编译的地点空间约束。"
               : "这是 Core 持久化并原样提交给图片插件的创意提示词，没有自动优化。"}</p>
             <pre className="generation-prompt-text">{promptGeneration.prompt_text}</pre>

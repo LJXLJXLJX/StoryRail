@@ -13,9 +13,8 @@ from core.director_commands import (
     parse_generation_target,
     parse_generation_wait,
     parse_keyframe_operations,
-    parse_location_master_selection,
+    parse_location_image_selection,
     parse_location_operations_patch,
-    parse_location_view_selection,
     parse_narration_cue_update,
     parse_narration_selection_clear,
     parse_repair_patch,
@@ -30,8 +29,7 @@ from ..keyframe_mutations import _apply_keyframe_operations
 from ..location_mutations import (
     apply_location_operations,
     cleared_shot_views,
-    select_location_master,
-    select_location_view,
+    select_location_image,
 )
 from ..models import StructuredDirectorDocument
 from ..mutations.narration import clear_narration_selection, update_narration_cue
@@ -121,19 +119,15 @@ def preview_command_impact(
         invalidated.update(result.invalidated)
         if result.document != document:
             preserved.update(result.preserved)
-    elif name in {"location.apply_operations", "location.select_master", "location.select_view"}:
+    elif name in {"location.apply_operations", "location.select_image"}:
         # 与写入共用纯函数 mutation 与失效级联，预览即实际影响。
         if name == "location.apply_operations":
             result = apply_location_operations(
                 document, parse_location_operations_patch(command.arguments)
             )
-        elif name == "location.select_master":
-            result = select_location_master(
-                document, parse_location_master_selection(command.arguments)
-            )
         else:
-            result = select_location_view(
-                document, parse_location_view_selection(command.arguments)
+            result = select_location_image(
+                document, parse_location_image_selection(command.arguments)
             )
         if result.document == document:
             preserved.add("location_selection")
@@ -275,19 +269,17 @@ def preview_command_impact(
 
 
 def location_unlock_advisory(document) -> dict[str, object]:
-    """解锁视觉生产前的地点绑定提示：不阻塞解锁，只列出尚未绑定的 Scene 与 Shot。"""
-    scenes_without_location, shots_without_view = location_binding_gaps(document)
-    if scenes_without_location or shots_without_view:
+    """解锁视觉生产前的地点绑定提示：不阻塞解锁，只列出尚未绑定的 Scene。"""
+    scenes_without_location = location_binding_gaps(document)
+    if scenes_without_location:
         message = (
-            f"{len(scenes_without_location)} 个 Scene 尚未绑定地点、"
-            f"{len(shots_without_view)} 个 Shot 尚未绑定机位视图；"
+            f"{len(scenes_without_location)} 个 Scene 尚未绑定地点；"
             "解锁不受影响，可稍后再规划地点以提升背景一致性。"
         )
     else:
-        message = "全部 Scene 已绑定地点、已绑定地点的 Shot 均有机位视图。"
+        message = "全部 Scene 已绑定地点。"
     return {
         "scenes_without_location": list(scenes_without_location),
-        "shots_without_view": list(shots_without_view),
         "message": message,
     }
 

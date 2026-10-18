@@ -106,7 +106,6 @@ async def prepare(store, value):
         )
     registry = DirectorCommandRegistry(store)
     doc = _bind_location(store, registry, doc, scene, assets["scene.png"])
-    view_id = doc.location_library.locations[0].views[0].id
     doc = await service.unlock_visual_production(expected_revision=doc.revision)
     binding = doc.keyframe_plan.segments[0]
     ops = [
@@ -132,9 +131,6 @@ async def prepare(store, value):
                     if f.id == binding.start_keyframe_id
                     else "乙接稳白杯，甲已松手。",
                     "visible_character_ids": [a.id, b.id],
-                    "environment_mode": "edit",
-                    "environment_view_id": view_id,
-                    "environment_none_reason": None,
                 },
             }
         )
@@ -258,36 +254,32 @@ async def prepare(store, value):
 
 
 def _bind_location(store, registry, doc, scene, asset_id):
-    """白墙房间：经正式地点操作建库并绑定 Scene 与其 Shot；视图由人类选择入口选用合成图片。"""
-    shot_ids = [shot.id for shot in scene.shots]
+    """白墙房间：经正式地点操作建库、创建独立图片并绑定 Scene。"""
     created = registry.execute(
         DirectorCommand(
             "location.apply_operations",
             doc.revision,
             "location",
             {
-                "scope": {"location_ids": [], "scene_ids": [scene.id], "shot_ids": shot_ids},
+                "scope": {"location_ids": [], "scene_ids": [scene.id]},
                 "operations": [
                     {
                         "op": "create_location",
                         "key": "room",
                         "name": "白墙房间",
-                        "kind": "interior",
                         "description": "白墙房间，右侧方窗，中央木桌。",
                     },
                     {
-                        "op": "update_location",
+                        "op": "create_image",
                         "location_id": "room",
-                        "fields": {"master_prompt_text": "白墙房间全景。"},
-                    },
-                    {
-                        "op": "create_view",
-                        "location_id": "room",
-                        "key": "table",
+                        "key": "main",
                         "fields": {
                             "name": "桌边中景",
-                            "purpose": "固定中景，甲左乙右",
-                            "azimuth_deg": 0.0,
+                            "kind": "image",
+                            "description": (
+                                "固定中景，甲在左侧、乙在右侧，中央木桌和右侧方窗清晰可见。"
+                            ),
+                            "prompt_text": "白墙房间桌边固定中景，无人物。",
                         },
                     },
                     {
@@ -296,26 +288,22 @@ def _bind_location(store, registry, doc, scene, asset_id):
                         "location_id": "room",
                         "state_id": None,
                     },
-                    *(
-                        {"op": "bind_shot", "shot_id": item, "view_id": "table"}
-                        for item in shot_ids
-                    ),
                 ],
             },
         )
     )
-    view_id = created.data["created_ids"]["table"]
+    image_id = created.data["created_ids"]["main"]
     register_image_candidate(
         store,
-        kind=ReferenceGenerationKind.LOCATION_VIEW_IMAGE,
-        target_id=view_id,
+        kind=ReferenceGenerationKind.LOCATION_IMAGE,
+        target_id=image_id,
         asset_id=asset_id,
     )
     return registry.execute(
         DirectorCommand(
-            "location.select_view",
+            "location.select_image",
             store.read().revision,
             "location-view",
-            {"view_id": view_id, "asset_id": asset_id},
+            {"image_id": image_id, "asset_id": asset_id},
         )
     ).document

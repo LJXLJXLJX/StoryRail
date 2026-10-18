@@ -598,7 +598,7 @@
     "name": "edit_keyframes"
   },
   {
-    "description": "编辑地点库与Scene/Shot绑定；新建项以key互引，不能选候选。",
+    "description": "编辑地点语义、独立图片条目与可选Scene关系；新建项以key互引，不能选候选。",
     "inputSchema": {
       "$defs": {
         "bind_scene": {
@@ -619,65 +619,35 @@
           ],
           "type": "object"
         },
-        "bind_shot": {
+        "clear_image_selection": {
           "additionalProperties": false,
           "properties": {
+            "image_id": {},
             "op": {
-              "const": "bind_shot"
-            },
-            "shot_id": {},
-            "view_id": {}
+              "const": "clear_image_selection"
+            }
           },
           "required": [
             "op",
-            "shot_id",
-            "view_id"
+            "image_id"
           ],
           "type": "object"
         },
-        "calibrate": {
+        "create_image": {
           "additionalProperties": false,
           "properties": {
-            "fixture_azimuths": {},
-            "key_light_azimuth_deg": {},
+            "fields": {},
+            "key": {},
             "location_id": {},
             "op": {
-              "const": "calibrate"
+              "const": "create_image"
             }
           },
           "required": [
             "op",
             "location_id",
-            "fixture_azimuths",
-            "key_light_azimuth_deg"
-          ],
-          "type": "object"
-        },
-        "clear_master_selection": {
-          "additionalProperties": false,
-          "properties": {
-            "location_id": {},
-            "op": {
-              "const": "clear_master_selection"
-            }
-          },
-          "required": [
-            "op",
-            "location_id"
-          ],
-          "type": "object"
-        },
-        "clear_view_selection": {
-          "additionalProperties": false,
-          "properties": {
-            "op": {
-              "const": "clear_view_selection"
-            },
-            "view_id": {}
-          },
-          "required": [
-            "op",
-            "view_id"
+            "key",
+            "fields"
           ],
           "type": "object"
         },
@@ -686,7 +656,6 @@
           "properties": {
             "description": {},
             "key": {},
-            "kind": {},
             "name": {},
             "op": {
               "const": "create_location"
@@ -696,26 +665,7 @@
             "op",
             "key",
             "name",
-            "kind",
             "description"
-          ],
-          "type": "object"
-        },
-        "create_view": {
-          "additionalProperties": false,
-          "properties": {
-            "fields": {},
-            "key": {},
-            "location_id": {},
-            "op": {
-              "const": "create_view"
-            }
-          },
-          "required": [
-            "op",
-            "location_id",
-            "key",
-            "fields"
           ],
           "type": "object"
         },
@@ -732,6 +682,20 @@
             "op",
             "location_id",
             "fixture_id"
+          ],
+          "type": "object"
+        },
+        "delete_image": {
+          "additionalProperties": false,
+          "properties": {
+            "image_id": {},
+            "op": {
+              "const": "delete_image"
+            }
+          },
+          "required": [
+            "op",
+            "image_id"
           ],
           "type": "object"
         },
@@ -765,17 +729,19 @@
           ],
           "type": "object"
         },
-        "delete_view": {
+        "update_image": {
           "additionalProperties": false,
           "properties": {
+            "fields": {},
+            "image_id": {},
             "op": {
-              "const": "delete_view"
-            },
-            "view_id": {}
+              "const": "update_image"
+            }
           },
           "required": [
             "op",
-            "view_id"
+            "image_id",
+            "fields"
           ],
           "type": "object"
         },
@@ -795,26 +761,9 @@
           ],
           "type": "object"
         },
-        "update_view": {
-          "additionalProperties": false,
-          "properties": {
-            "fields": {},
-            "op": {
-              "const": "update_view"
-            },
-            "view_id": {}
-          },
-          "required": [
-            "op",
-            "view_id",
-            "fields"
-          ],
-          "type": "object"
-        },
         "upsert_fixture": {
           "additionalProperties": false,
           "properties": {
-            "azimuth_deg": {},
             "description": {},
             "fixture": {},
             "location_id": {},
@@ -828,8 +777,7 @@
             "location_id",
             "fixture",
             "name",
-            "description",
-            "azimuth_deg"
+            "description"
           ],
           "type": "object"
         },
@@ -898,28 +846,19 @@
                 "$ref": "#/$defs/delete_state"
               },
               {
-                "$ref": "#/$defs/create_view"
+                "$ref": "#/$defs/create_image"
               },
               {
-                "$ref": "#/$defs/update_view"
+                "$ref": "#/$defs/update_image"
               },
               {
-                "$ref": "#/$defs/delete_view"
-              },
-              {
-                "$ref": "#/$defs/calibrate"
+                "$ref": "#/$defs/delete_image"
               },
               {
                 "$ref": "#/$defs/bind_scene"
               },
               {
-                "$ref": "#/$defs/bind_shot"
-              },
-              {
-                "$ref": "#/$defs/clear_master_selection"
-              },
-              {
-                "$ref": "#/$defs/clear_view_selection"
+                "$ref": "#/$defs/clear_image_selection"
               }
             ]
           },
@@ -938,14 +877,6 @@
           },
           "maxItems": 100,
           "type": "array"
-        },
-        "shot_ids": {
-          "items": {
-            "pattern": "^[0-9a-f]{32}$",
-            "type": "string"
-          },
-          "maxItems": 100,
-          "type": "array"
         }
       },
       "required": [
@@ -954,7 +885,6 @@
         "idempotency_key",
         "location_ids",
         "scene_ids",
-        "shot_ids",
         "operations"
       ],
       "type": "object"
@@ -1044,7 +974,7 @@
     "name": "edit_looks"
   },
   {
-    "description": "只生成明确目标的新候选，需精确用户授权；室内 location_view 无有效裁切时只先裁切。",
+    "description": "只生成明确地点图片候选或执行一次全景取景，需精确用户授权。",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1080,8 +1010,8 @@
             "video",
             "upscale",
             "look_sheet",
-            "location_master",
-            "location_view"
+            "location_image",
+            "panorama_capture"
           ],
           "type": "string"
         },
@@ -1587,8 +1517,8 @@
             "narrator_voice",
             "narration_audio",
             "dialogue_audio",
-            "location_master_image",
-            "location_view_image",
+            "location_image",
+            "panorama_capture",
             "keyframe_image",
             "segment_video",
             "video_upscale",

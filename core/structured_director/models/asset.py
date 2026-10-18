@@ -23,10 +23,9 @@ if TYPE_CHECKING:
 
 class ImageAssetCategory(StrEnum):
     CHARACTER_REFERENCE = "character_reference"
-    LOCATION_MASTER = "location_master"
+    LOCATION_IMAGE = "location_image"
     # 全景裁切产物；由 Core 生成，不接受用户导入。
-    LOCATION_CROP = "location_crop"
-    LOCATION_VIEW = "location_view"
+    PANORAMA_CAPTURE = "panorama_capture"
     KEYFRAME = "keyframe"
     # 视频抽帧产物；由 Core 生成，不接受用户导入。
     VIDEO_FRAME = "video_frame"
@@ -45,8 +44,7 @@ class AssetUsageReason(StrEnum):
     NARRATOR_VOICE_REFERENCE = "narrator_voice_reference"
     NARRATION_AUDIO = "narration_audio"
     DIALOGUE_AUDIO = "dialogue_audio"
-    LOCATION_MASTER_IMAGE = "location_master_image"
-    LOCATION_VIEW_IMAGE = "location_view_image"
+    LOCATION_IMAGE = "location_image"
     KEYFRAME_REFERENCE_IMAGE = "keyframe_reference_image"
     KEYFRAME_SELECTED_ASSET = "keyframe_selected_asset"
     SEGMENT_VIDEO_SELECTED = "segment_video_selected"
@@ -67,8 +65,7 @@ class AssetUsageReason(StrEnum):
             AssetUsageReason.NARRATOR_VOICE_REFERENCE: "旁白参考音色",
             AssetUsageReason.NARRATION_AUDIO: "旁白已选音频",
             AssetUsageReason.DIALOGUE_AUDIO: "对白已选音频",
-            AssetUsageReason.LOCATION_MASTER_IMAGE: "地点主图",
-            AssetUsageReason.LOCATION_VIEW_IMAGE: "地点视图图片",
+            AssetUsageReason.LOCATION_IMAGE: "地点图片",
             AssetUsageReason.KEYFRAME_REFERENCE_IMAGE: "Keyframe 辅助参考图",
             AssetUsageReason.KEYFRAME_SELECTED_ASSET: "Keyframe 已选图片",
             AssetUsageReason.SEGMENT_VIDEO_SELECTED: "Segment 已选视频",
@@ -104,9 +101,11 @@ class Asset:
         directory = self.relative_path.rsplit("/", 1)[0].removeprefix("assets/images/")
         return {
             "characters": ImageAssetCategory.CHARACTER_REFERENCE,
-            "locations/master": ImageAssetCategory.LOCATION_MASTER,
-            "locations/crops": ImageAssetCategory.LOCATION_CROP,
-            "locations/views": ImageAssetCategory.LOCATION_VIEW,
+            "locations": ImageAssetCategory.LOCATION_IMAGE,
+            "locations/captures": ImageAssetCategory.PANORAMA_CAPTURE,
+            "locations/master": ImageAssetCategory.LOCATION_IMAGE,
+            "locations/crops": ImageAssetCategory.PANORAMA_CAPTURE,
+            "locations/views": ImageAssetCategory.LOCATION_IMAGE,
             "keyframes": ImageAssetCategory.KEYFRAME,
             "video-frames": ImageAssetCategory.VIDEO_FRAME,
         }.get(directory)
@@ -191,21 +190,11 @@ def asset_project_usage_reasons(
         reasons.append(AssetUsageReason.DIALOGUE_AUDIO)
     locations = document.location_library.locations
     if any(
-        asset_id
-        in (
-            *item.master.reference_asset_ids,
-            item.master.selected_asset_id,
-            item.calibrated_master_asset_id,
-        )
+        asset_id in (*image.reference_asset_ids, image.selected_asset_id)
         for item in locations
+        for image in item.images
     ):
-        reasons.append(AssetUsageReason.LOCATION_MASTER_IMAGE)
-    if any(
-        asset_id in (view.crop_asset_id, view.selected_asset_id)
-        for item in locations
-        for view in item.views
-    ):
-        reasons.append(AssetUsageReason.LOCATION_VIEW_IMAGE)
+        reasons.append(AssetUsageReason.LOCATION_IMAGE)
     if document.keyframe_plan is not None and any(
         asset_id in item.reference_asset_ids for item in document.keyframe_plan.segments
     ):
@@ -282,7 +271,7 @@ def _generation_output_is_selectable_candidate(
         in {
             ReferenceGenerationKind.GENERATED_AUDIO,
             ReferenceGenerationKind.VIDEO_FRAME,
-            ReferenceGenerationKind.LOCATION_VIEW_CROP,
+            ReferenceGenerationKind.PANORAMA_CAPTURE,
         }
         and generation.phase is ReferenceGenerationPhase.SUCCEEDED
     )

@@ -119,36 +119,32 @@ Core 分配。不支持单独移动 Shot：重排或跨 Scene 迁移 Shot 时，
 
 ## 地点
 
-`location.apply_operations`（A）：在 `scope = {location_ids, scene_ids, shot_ids}` 内按顺序原子执行操作。scope 内 ID 必须存在；
-地点级操作要求地点在 scope 内或由本 patch 新建，视图操作按所属地点判定，`bind_scene` / `bind_shot` 要求目标 Scene / Shot 在 scope 内。
-同一 patch 新建的地点、陈设、状态、视图用局部 `key`（`[a-z][a-z0-9_-]{0,63}`，不能是 32 位 hex）互相引用，回执
-`data.created_ids` 返回 key → 正式 ID。上限、角度范围、二选一朝向、无环等全部由地点模型校验；失效按
-[数据模型 · 失效规则](data-model.md#失效规则)。
+`location.apply_operations`（A）：在 `scope = {location_ids, scene_ids}` 内按顺序原子执行操作。scope 内 ID 必须存在；
+地点级操作要求地点在 scope 内或由本 patch 新建，图片操作按所属地点判定，`bind_scene` 要求目标 Scene 在 scope 内。
+同一 patch 新建的地点、陈设、状态、图片用局部 `key`（`[a-z][a-z0-9_-]{0,63}`，不能是 32 位 hex）互相引用，回执
+`data.created_ids` 返回 key → 正式 ID。
 
 | 操作 | 要点 |
 | --- | --- |
-| `create_location` | `key`、`name`、`kind`（interior / exterior）、`description` |
-| `update_location` | `fields` 是 `name`、`kind`、`description`、`master_prompt_text`、`master_reference_asset_ids`、`key_light`（`{description, azimuth_deg}` 或 null）的非空子集 |
-| `delete_location` | Scene 仍绑定该地点时拒绝；其全部视图按 `delete_view` 规则处理，同时清空这些视图对 Shot 的软引用；被 Scene 引用的状态与陈设仍拒绝删除 |
-| `upsert_fixture` / `delete_fixture` | `fixture` 为已有 ID（整体替换）或 key（新建）；`name`、`description`、`azimuth_deg` |
+| `create_location` | `key`、`name`、`description` |
+| `update_location` | `fields` 是 `name`、`description`、`key_light`（`{description}` 或 null）的非空子集 |
+| `delete_location` | Scene 仍绑定该地点时拒绝；历史图片 Asset、Generation 与全景取景子图保留 |
+| `upsert_fixture` / `delete_fixture` | `fixture` 为已有 ID（整体替换）或 key（新建）；`name`、`description` |
 | `upsert_state` / `delete_state` | `state` 为已有 ID 或 key；`name`、`description` |
-| `create_view` / `update_view` | `fields`：`name`、`purpose`、`azimuth_deg` 或 `look_at_fixture_id` + `yaw_offset_deg`、`pitch_deg`、`hfov_deg`、`state_id`、`refine_prompt_text`、`reference_view_ids`；create 必含 name、purpose 与一种朝向 |
-| `delete_view` | 只被 Shot 软引用时允许删除，同一操作清空当前脚本与生产基线中这些 Shot 的 `view_id`；被 Keyframe `environment_view_id` 或其它视图 `reference_view_ids` 引用时拒绝并列出引用者；影响预览在 `soft_reference_clears` 列出被清空的 Shot |
-| `calibrate` | `fixture_azimuths`（陈设 ID → 方位）与 `key_light_azimuth_deg`；记录基于当前已选主图，不触发裁切 |
-| `bind_scene` | `scene_id`、`location_id`、`state_id`（可空）；换地点时清空该 Scene 所有 Shot 的 `view_id` |
-| `bind_shot` | `shot_id`、`view_id`（可空）；只记录给 Keyframe Planner 的空间参考建议，视图必须属于 Shot 所在 Scene 的地点，不改写已规划 Keyframe |
-| `clear_master_selection` / `clear_view_selection` | 清除主图 / 视图的已选图，按失效规则级联 |
+| `create_image` / `update_image` | `fields`：`name`、`kind`（image / panorama）、强制 `description`、`prompt_text`、`reference_asset_ids`（≤5）、可选冻结 `source`；create 必含前三项 |
+| `delete_image` | 删除地点中的图片条目；历史 Asset/Generation 与已生成子图保留 |
+| `bind_scene` | `scene_id`、`location_id`、`state_id`（可空） |
+| `clear_image_selection` | 清除该独立地点图片的已选图，不级联 Keyframe/视频 |
 
 | 命令 | 调用方 | 要点 |
 | --- | --- | --- |
-| `location.generate_master` | A | `location_id`；室内 2:1 全景、室外项目画幅；需先填写主图正文 |
-| `location.generate_view` | A | `view_id`；要求主图已选、参考视图已选、朝向可解析。室内无有效裁切时只提交全景裁切，裁切完成后再次调用才提交细化；室外一步转向 |
-| `location.generate_set` | A | `target_ids`（地点 ID）启动成套批次，或 `run_id`（`batch_id` 或任一 `execution_run_id`）继续；每轮只提交依赖已满足的项 |
-| `location.select_master` | H | `location_id`、`asset_id`：只接受该地点成功、未隐藏的图片候选；室内还须是 2:1 PNG/JPEG、宽 1024–16384 |
-| `location.select_view` | H | `view_id`、`asset_id`：只接受该视图成功、未隐藏的图片候选 |
+| `location.generate_image` | A | `image_id`；普通图跟随项目画幅，全景图固定 2:1；使用该条目保存的任意显式图片参考 |
+| `location.capture_panorama` | A/H | `image_id`（全景）、新子图 `name` / 强制 `description`、yaw/pitch/hfov；创建普通图片并提交确定性取景 |
+| `location.generate_set` | A | `target_ids`（地点图片 ID）启动批次，或 `run_id` 继续；全景取景不进入批次 |
+| `location.select_image` | H | `image_id`、`asset_id`：只接受该图片条目成功、未隐藏的候选 |
 
-人类 HTTP 另有：`POST locations/operations`、`POST locations/{id}/master/generate`、`POST locations/{id}/master/select`、
-`POST locations/{id}/calibrate`、`POST location-views/{id}/generate`、`POST location-views/{id}/select`，都构造同一命令执行。
+人类 HTTP 另有：`POST locations/operations`、`POST location-images/{id}/generate`、`POST location-images/{id}/select`、
+`POST location-images/{id}/capture`，都构造同一命令执行。
 
 ## Keyframe
 
@@ -158,7 +154,7 @@ Core 分配。不支持单独移动 Shot：重排或跨 Scene 迁移 Shot 时，
 | 操作 | 要点 |
 | --- | --- |
 | `set_activation` | 同时设置 Segment 首尾槽位是否启用 |
-| `update_frame_fields` | 画面正文、可见角色、每个可见角色本帧使用的造型（`character_references`，`look_id` 或 null）、地点视图 `environment_view_id` 与 `environment_mode`（`edit/reference/none`）；`none` 的 `environment_none_reason` 可选（null 或最多 500 字，空白归一为 null） |
+| `update_frame_fields` | 画面正文、可见角色、每个可见角色本帧使用的造型（`character_references`，`look_id` 或 null）；不含地点或地点图片绑定 |
 | `set_aux_references` | 替换 Segment 手工辅助图集合（≤4） |
 | `bind_slot` | 把已有 Keyframe 绑定到某首帧或尾帧槽位 |
 | `share_boundary` | 让真实相邻 Segment 的左尾与右首共享一个 Keyframe；可给 `source_keyframe_id` 复用现有对象及其血缘，否则 Core 从边界事实中挑选可复用对象，没有时才新建 |

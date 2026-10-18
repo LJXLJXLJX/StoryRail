@@ -117,7 +117,7 @@ describe("资产库候选弹窗", () => {
           asset(2, {
             display_name: "地点视图.png",
             media_type: "image/png",
-            image_category: "location_view",
+            image_category: "location_image",
             content_url: "/scene.png",
           }),
         ]}

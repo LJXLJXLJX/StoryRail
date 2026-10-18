@@ -43,7 +43,7 @@ Read `references/ref-en.txt` for label rules, retention analysis, and complete e
 手工绑定只在用户本轮明确要求时进行（例如“再参考这段环境声”“参考那条视频的运镜”），通过 `save_video_prompt` 的 `recipe_inputs` 保存；以工作集 `recipe_inputs` 为起点，未被要求的绑定原样保留。对白 TTS WAV 是 Core 根据当前 DialoguePlan 自动注入的系统输入，不写入 `recipe_inputs`，也不需要用户再次授权绑定。
 
 - FL2VA 没有可显式绑定的槽位；需要参考素材时先经用户同意切到 `minimax_h3.ref2va`。切回 FL2VA 前必须先清空下列槽位。
-- `additional_images`：最多 4 张图片，例如角色参考图、地点视图；说明写它定义的主体或环境。
+- `additional_images`：最多 4 张图片，例如角色参考图、用户显式选择的地点图片；说明写它定义的主体或环境。
 - `reference_audios`：最多 8 条 WAV。已选对白 TTS 按剧本顺序占用前面的 Audio 标签；其余名额才用于用户显式添加的音色、环境声或原声参考。系统对白音频来自 DialoguePlan，不从角色卡参考音色直接推导。
 - `reference_videos`：最多 3 条 2–15 秒 MP4，只参考画面；说明运镜、节奏或动作用途。
 - 每项说明必填且 Asset 不重复；Ref2VA 可无图片，但五类媒体槽至少一项；`params` 传 `{}`。
@@ -74,12 +74,12 @@ StoryRail 的 Scene 旁白由独立 TTS 音频资产承载，并在 Scene/Final 
 - 有多项时，按数组顺序写 `[Shot 1]`、`[Shot 2] At MM:SS.mmm …`。切点按各 Shot 的构图、动作与 `duration_seconds` 的比例估算；它只是软约束：Core 不按 Shot 切视频、不记录段内切点，生成后切点漂移仍是合格候选，由人挑选或重生成，不因此判定失败。
 - 首尾 Picture 只锚定第一个 Shot 的开头与最后一个 Shot 的结尾；中间 Shot 的人物身份、服装与空间关系靠参考图与已批准关键帧维持。Ref2VA 时优先建议用户为可见角色绑定造型图，但只在用户明确要求时修改绑定。
 - 同一个 Segment 的段内切镜数当前不超过 3 个；需要更多切镜时先向用户说明并建议拆成多个 Segment。
-- 每个 `shots[]` 带 `visible_character_names` 与 `view_name`。前者决定该镜谁入画；后者只是地点视图建议（空间参考），不强制复刻机位与构图，画面以已批准关键帧和 Shot 描述为准。
+- 每个 `shots[]` 带 `visible_character_names`；由它决定该镜谁入画。空间以已批准关键帧、Shot 描述和 Scene 地点语义为准，不存在 Shot 级地点图片绑定。
 - `segment.continues_from_previous_segment` / `continues_into_next_segment` 表示相邻 Segment 共享边界 Shot（延续同一镜头）：开头或结尾沿用同一空间、人物状态与光线，不重新建立场景；两者都为 false 时按独立剪辑处理。
 - 同一句台词跨越段内剪辑时用 `<scenetrans>` 连接两侧并写明音频连续；具体写法以官方 guide 为准。
 - 运镜按官方 Motion Type + Amplitude + Speed 写清，节拍与 `duration_seconds` 匹配，结尾落在可剪辑状态。
 - 年代、实体与材质按已确认设定正向锚定；最容易被替换的实体可在正文尾部写与已确认设定一致的排除句，但不得新增用户没有要求的排除项。空泛形容词不得代替可见事实。
-- 关键帧阶段已决定的景别与地点视图使用方式不在视频提示词里重新发明；视频只描述连续变化。
+- 关键帧阶段已决定的景别与空间关系不在视频提示词里重新发明；视频只描述连续变化。
 
 ## 提交前核对
 

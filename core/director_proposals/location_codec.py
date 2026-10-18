@@ -1,63 +1,42 @@
-"""地点规划 proposal 的严格 schema、parser 与编译。
-
-编译把增补式 proposal 翻译成 `location.apply_operations` 的同一组类型化操作；落库、局部 key 映射与
-失效级联全部复用地点库唯一 mutation，这里不另写写入或失效逻辑。
-"""
+"""地点 proposal 的严格 schema、parser 与命令编译。"""
 
 from __future__ import annotations
 
 from core.director_commands import (
     BindScene,
-    BindShot,
     CreateLocation,
-    CreateView,
+    CreateLocationImage,
     LocationKeyLightInput,
     LocationOperation,
     LocationOperationsPatch,
+    PanoramaCaptureSourceInput,
     UpdateLocation,
-    UpdateView,
+    UpdateLocationImage,
     UpsertFixture,
     UpsertState,
     is_location_key,
 )
 from core.director_proposals.location import (
     ExistingLocationInput,
+    LocationImageProposal,
     LocationPlanProposal,
-    LocationProposal,
     LocationSceneInput,
-    LocationViewProposal,
 )
 from core.director_proposals.schema_gen import ProposalError, generate_schema, parse_proposal
 
 _ID_PATTERN = {"pattern": "^[0-9a-f]{32}$"}
-_IDENTITY = {
-    "description": "已有项给正式 id，新建项给局部 key（小写字母开头的 [a-z0-9_-]），二者恰好其一。"
-}
-_AZIMUTH = {
-    "description": (
-        "大致方位，0° 为全景正中、顺时针；已有项给 null 表示保持现值。"
-        "已选主图的地点以标定为准，不能改动。"
-    )
-}
 _OUTPUT_SCHEMA = generate_schema(
     LocationPlanProposal,
     {
-        "locations[].id": {**_ID_PATTERN, **_IDENTITY},
-        "locations[].fixtures[].azimuth_deg": _AZIMUTH,
-        "locations[].key_light.azimuth_deg": _AZIMUTH,
-        "locations[].master_prompt_text": {
-            "description": "主图静态环境正文；不写图号、画幅、人物或剧情动作。"
+        "locations[].id": _ID_PATTERN,
+        "locations[].images[].id": _ID_PATTERN,
+        "locations[].images[].description": {
+            "description": "根据实际画面填写的强制纯文本说明；不得只复制生成提示词。"
         },
-        "locations[].views[].azimuth_deg": {
-            "description": (
-                "视图朝向（标定前优先使用）；与 look_at_fixture_id + yaw_offset_deg 二选一。"
-            )
-        },
-        "locations[].views[].refine_prompt_text": {
-            "description": "室外转向的静态环境正文；室内细化只做清晰化，留空。不写图号与画幅。"
+        "locations[].images[].prompt_text": {
+            "description": "生成正文；不写图号与画幅。全景图片明确描述空间，不派生 Shot 视图。"
         },
         "scene_bindings[].scene_id": _ID_PATTERN,
-        "shot_bindings[].shot_id": _ID_PATTERN,
     },
 )
 
@@ -80,7 +59,6 @@ def compile_location_proposal(
     scenes: tuple[LocationSceneInput, ...],
     existing: tuple[ExistingLocationInput, ...],
 ) -> LocationOperationsPatch:
-    """按当前事实校验归属后编译为单个原子 patch；任何问题都在写入前拒绝。"""
     try:
         return _Compiler(scenes, existing).compile(proposal)
     except ValueError as exc:
@@ -88,210 +66,113 @@ def compile_location_proposal(
 
 
 class _Compiler:
-    def __init__(
-        self,
-        scenes: tuple[LocationSceneInput, ...],
-        existing: tuple[ExistingLocationInput, ...],
-    ) -> None:
+    def __init__(self, scenes, existing) -> None:
         self.scenes = {scene.id: scene for scene in scenes}
-        self.shot_scene = {shot.id: scene for scene in scenes for shot in scene.shots}
         self.existing = {item.id: item for item in existing}
         self.operations: list[LocationOperation] = []
 
     def compile(self, proposal: LocationPlanProposal) -> LocationOperationsPatch:
-        entries = {}
         for location in proposal.locations:
-            ref = location.id or location.key
-            entries[ref] = location
-            self._location(location, ref)
-        scene_targets: dict[str, str | None] = {}
+            self._location(location)
         for binding in proposal.scene_bindings:
             if binding.scene_id not in self.scenes:
                 raise ValueError(f"Scene 不存在：{binding.scene_id}。")
-            location = binding.location_id
-            if location is not None and not is_location_key(location):
-                self._existing(location)
-            state = binding.state_id
-            if state is not None and not is_location_key(state):
-                owner = None if is_location_key(location) else self.existing[location]
-                if owner is None or state not in owner.state_ids:
-                    raise ValueError(f"Scene 绑定的状态不属于所绑定的地点：{state}。")
-            scene_targets[binding.scene_id] = location
-            self.operations.append(BindScene(binding.scene_id, location, state))
-        for binding in proposal.shot_bindings:
-            scene = self.shot_scene.get(binding.shot_id)
-            if scene is None:
-                raise ValueError(f"Shot 不存在：{binding.shot_id}。")
-            view = binding.view_id
-            if view is not None:
-                target = scene_targets.get(scene.id, scene.location_id)
-                if target is None:
-                    raise ValueError(
-                        f"Shot {binding.shot_id} 所在 Scene 没有绑定地点，不能绑定视图。"
-                    )
-                if not self._view_in(view, target, entries):
-                    raise ValueError(
-                        f"Shot {binding.shot_id} 的视图必须属于所在 Scene 绑定的地点。"
-                    )
-            self.operations.append(BindShot(binding.shot_id, view))
+            if binding.location_id is not None and not is_location_key(binding.location_id):
+                if binding.location_id not in self.existing:
+                    raise ValueError(f"地点不存在：{binding.location_id}。")
+                if (
+                    binding.state_id is not None
+                    and not is_location_key(binding.state_id)
+                    and binding.state_id not in self.existing[binding.location_id].state_ids
+                ):
+                    raise ValueError("Scene 状态不属于所选地点。")
+            self.operations.append(
+                BindScene(binding.scene_id, binding.location_id, binding.state_id)
+            )
         return LocationOperationsPatch(
             scope_location_ids=tuple(item.id for item in proposal.locations if item.id),
             scope_scene_ids=tuple(item.scene_id for item in proposal.scene_bindings),
-            scope_shot_ids=tuple(item.shot_id for item in proposal.shot_bindings),
             operations=tuple(self.operations),
         )
 
-    def _existing(self, location_id: str) -> ExistingLocationInput:
-        found = self.existing.get(location_id)
-        if found is None:
-            raise ValueError(f"地点不存在：{location_id}。")
-        return found
-
-    def _view_in(self, view: str, location: str, entries: dict[str, LocationProposal]) -> bool:
-        if is_location_key(view):
-            entry = entries.get(location)
-            return entry is not None and any(item.key == view for item in entry.views)
-        current = self.existing.get(location)
-        return current is not None and view in current.view_ids
-
-    def _location(self, location: LocationProposal, ref: str) -> None:
-        current = None if location.key else self._existing(location.id)
-        fixture_azimuths = {} if current is None else dict(current.fixture_azimuths)
-        owned = {
-            "fixture": set(fixture_azimuths),
-            "state": set(() if current is None else current.state_ids),
-            "view": set(() if current is None else current.view_ids),
-        }
-        for items, kind in (
-            (location.fixtures, "fixture"),
-            (location.states, "state"),
-            (location.views, "view"),
-        ):
-            for item in items:
-                if item.id is not None and item.id not in owned[kind]:
-                    raise ValueError(f"{_LABELS[kind]}不属于地点「{location.name}」：{item.id}。")
-        master_selected = current is not None and current.master_selected
-        key_light = None
-        if location.key_light is not None:
-            key_light = LocationKeyLightInput(
-                location.key_light.description.strip(),
-                _azimuth(
-                    location.key_light.azimuth_deg,
-                    None if current is None else current.key_light_azimuth_deg,
-                    master_selected,
-                    f"地点「{location.name}」的主光",
-                ),
-            )
-        plan = {"key_light": key_light, "master_prompt_text": location.master_prompt_text.strip()}
+    def _location(self, location) -> None:
+        current = None if location.key else self.existing.get(location.id)
+        if location.id is not None and current is None:
+            raise ValueError(f"地点不存在：{location.id}。")
+        ref = location.id or location.key
         if current is None:
             self.operations.append(
-                CreateLocation(
-                    location.key,
-                    location.name.strip(),
-                    location.kind,
-                    location.description.strip(),
-                )
+                CreateLocation(location.key, location.name.strip(), location.description.strip())
             )
-            self.operations.append(UpdateLocation(location.key, plan))
         else:
             self.operations.append(
                 UpdateLocation(
                     location.id,
                     {
                         "name": location.name.strip(),
-                        "kind": location.kind,
                         "description": location.description.strip(),
-                        **plan,
+                        "key_light": (
+                            None
+                            if location.key_light is None
+                            else LocationKeyLightInput(location.key_light.description.strip())
+                        ),
                     },
                 )
             )
+        if current is None and location.key_light is not None:
+            self.operations.append(
+                UpdateLocation(
+                    location.key,
+                    {"key_light": LocationKeyLightInput(location.key_light.description.strip())},
+                )
+            )
+        owned_fixtures = set() if current is None else set(current.fixture_ids)
+        owned_states = set() if current is None else set(current.state_ids)
+        owned_images = set() if current is None else set(current.image_ids)
         for fixture in location.fixtures:
+            if fixture.id is not None and fixture.id not in owned_fixtures:
+                raise ValueError("陈设不属于指定地点。")
             self.operations.append(
                 UpsertFixture(
                     ref,
                     fixture.id or fixture.key,
                     fixture.name.strip(),
                     fixture.description.strip(),
-                    _azimuth(
-                        fixture.azimuth_deg,
-                        fixture_azimuths.get(fixture.id),
-                        master_selected,
-                        f"陈设「{fixture.name}」",
-                    ),
                 )
             )
         for state in location.states:
+            if state.id is not None and state.id not in owned_states:
+                raise ValueError("状态不属于指定地点。")
             self.operations.append(
                 UpsertState(
                     ref, state.id or state.key, state.name.strip(), state.description.strip()
                 )
             )
-        for view in _ordered_views(location):
-            for target, kind in (
-                (view.look_at_fixture_id, "fixture"),
-                (view.state_id, "state"),
-                *((item, "view") for item in view.reference_view_ids),
-            ):
-                if target is not None and not is_location_key(target) and target not in owned[kind]:
-                    raise ValueError(
-                        f"视图「{view.name}」引用的{_LABELS[kind]}不属于地点「{location.name}」：{target}。"
-                    )
-            fields = _view_fields(view)
-            if view.key is not None:
-                self.operations.append(CreateView(ref, view.key, fields))
+        for image in location.images:
+            if image.id is not None and image.id not in owned_images:
+                raise ValueError("图片不属于指定地点。")
+            fields = _image_fields(image)
+            if image.key is not None:
+                self.operations.append(CreateLocationImage(ref, image.key, fields))
             else:
-                self.operations.append(UpdateView(view.id, fields))
+                self.operations.append(UpdateLocationImage(image.id, fields))
 
 
-def _azimuth(
-    proposed: float | None, current: float | None, master_selected: bool, label: str
-) -> float | None:
-    """已有项给 null 保持现值；已选主图的地点以标定方位为准，不接受规划改动。"""
-    if proposed is None:
-        return current
-    if master_selected and proposed != current:
-        raise ValueError(f"{label}所在地点已选主图，方位以标定为准，请通过标定修改。")
-    return proposed
-
-
-def _view_fields(view: LocationViewProposal) -> dict[str, object]:
+def _image_fields(image: LocationImageProposal) -> dict[str, object]:
     return {
-        "name": view.name.strip(),
-        "purpose": view.purpose.strip(),
-        "azimuth_deg": view.azimuth_deg,
-        "look_at_fixture_id": view.look_at_fixture_id,
-        "yaw_offset_deg": view.yaw_offset_deg,
-        "pitch_deg": view.pitch_deg,
-        "hfov_deg": view.hfov_deg,
-        "state_id": view.state_id,
-        "refine_prompt_text": view.refine_prompt_text.strip(),
-        "reference_view_ids": view.reference_view_ids,
+        "name": image.name.strip(),
+        "kind": image.kind,
+        "description": image.description.strip(),
+        "prompt_text": image.prompt_text.strip(),
+        "reference_asset_ids": image.reference_asset_ids,
+        "source": (
+            None
+            if image.source is None
+            else PanoramaCaptureSourceInput(
+                image.source.panorama_image_id,
+                image.source.yaw_deg,
+                image.source.pitch_deg,
+                image.source.hfov_deg,
+            )
+        ),
     }
-
-
-def _ordered_views(location: LocationProposal) -> list[LocationViewProposal]:
-    """被参考的视图先落库，让同一 patch 内的 key 引用总能解析；成环直接拒绝。"""
-    by_ref = {view.id or view.key: view for view in location.views}
-    ordered: list[LocationViewProposal] = []
-    visiting: set[str] = set()
-    done: set[str] = set()
-
-    def visit(ref: str) -> None:
-        if ref in done:
-            return
-        if ref in visiting:
-            raise ValueError(f"地点「{location.name}」的视图参考依赖不能形成环。")
-        visiting.add(ref)
-        for dependency in by_ref[ref].reference_view_ids:
-            if dependency in by_ref:
-                visit(dependency)
-        visiting.remove(ref)
-        done.add(ref)
-        ordered.append(by_ref[ref])
-
-    for ref in by_ref:
-        visit(ref)
-    return ordered
-
-
-_LABELS = {"fixture": "陈设", "state": "状态", "view": "视图"}

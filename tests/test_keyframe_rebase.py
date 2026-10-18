@@ -9,7 +9,7 @@ A, B, C, D = ("a" * 32, "b" * 32, "c" * 32, "d" * 32)
 
 
 def _scenes(*segment_ids):
-    shot = SimpleNamespace(id="e" * 32, view_id=None)
+    shot = SimpleNamespace(id="e" * 32)
     segments = tuple(SimpleNamespace(id=item, shot_ids=(shot.id,)) for item in segment_ids)
     return (SimpleNamespace(shots=(shot,), segments=segments),)
 
@@ -80,11 +80,9 @@ def test_share_partner_deleted_keeps_original_keyframe_identity():
     assert "1" * 32 not in frames
 
 
-def test_new_segment_defaults_follow_first_and_last_covered_shot_views():
-    from core.structured_director.models import KeyframeEnvironmentMode
-
-    first = SimpleNamespace(id="e" * 32, view_id="6" * 32)
-    second = SimpleNamespace(id="f" * 32, view_id="7" * 32)
+def test_new_segment_slots_do_not_embed_location_references():
+    first = SimpleNamespace(id="e" * 32)
+    second = SimpleNamespace(id="f" * 32)
     segment = SimpleNamespace(id=D, shot_ids=(first.id, second.id))
     scenes = (SimpleNamespace(shots=(first, second), segments=(segment,)),)
     plan = _rebase_keyframe_plan(_plan(), source_script_revision=2, scenes=scenes)
@@ -92,13 +90,7 @@ def test_new_segment_defaults_follow_first_and_last_covered_shot_views():
     frames = {item.id: item for item in plan.keyframes}
     start = frames[binding.start_keyframe_id]
     end = frames[binding.end_keyframe_id]
-    assert (
-        start.environment_mode,
-        start.environment_view_id,
-        start.environment_none_reason,
-    ) == (KeyframeEnvironmentMode.REFERENCE, first.view_id, None)
-    assert (
-        end.environment_mode,
-        end.environment_view_id,
-        end.environment_none_reason,
-    ) == (KeyframeEnvironmentMode.REFERENCE, second.view_id, None)
+    assert not hasattr(start, "environment_mode")
+    assert not hasattr(start, "environment_view_id")
+    assert not hasattr(end, "environment_mode")
+    assert not hasattr(end, "environment_view_id")

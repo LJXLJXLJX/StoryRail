@@ -24,7 +24,6 @@ from .script_index import (
     scene_segments,
     segment_continues_previous,
     segment_shots,
-    segment_view_ids,
     segment_visible_character_ids,
 )
 
@@ -78,9 +77,6 @@ def keyframe_inputs(document, target_ids=(), user_message=""):
         and item.output_asset_id is not None
         and not item.dismissed
     }
-    available_view_ids = tuple(
-        view.id for location in document.location_library.locations for view in location.views
-    )
     character_by_id = {item.id: item.name for item in document.reference_library.characters}
     card_by_id = {item.id: item for item in document.reference_library.characters}
 
@@ -106,7 +102,7 @@ def keyframe_inputs(document, target_ids=(), user_message=""):
             setting=scene.setting,
             summary=scene.summary,
             location_id=scene.location_id,
-            available_view_ids=available_view_ids,
+            state_id=scene.state_id,
             segments=tuple(
                 KeyframeSegmentInput(
                     id=segment.id,
@@ -123,7 +119,6 @@ def keyframe_inputs(document, target_ids=(), user_message=""):
                                 if item in character_by_id
                             ),
                             audio_direction=shot.audio_direction,
-                            view_id=shot.view_id,
                         )
                         for shot in segment_shots(scene, segment.id)
                     ),
@@ -165,8 +160,6 @@ def keyframe_inputs(document, target_ids=(), user_message=""):
                         for item in segment_visible_character_ids(scene, segment.id)
                         if item in character_by_id
                     ),
-                    start_view_id=segment_view_ids(scene, segment.id)[0],
-                    end_view_id=segment_view_ids(scene, segment.id)[1],
                     continues_from_previous=segment_continues_previous(scene, segment.id),
                 )
                 for segment in scene_segments(scene)
@@ -214,7 +207,6 @@ def location_inputs(document):
                         for item in shot.visible_character_ids
                         if item in names
                     ),
-                    view_id=shot.view_id,
                 )
                 for shot in scene.shots
             ),
@@ -224,13 +216,9 @@ def location_inputs(document):
     existing = tuple(
         ExistingLocationInput(
             id=location.id,
-            fixture_azimuths=tuple((item.id, item.azimuth_deg) for item in location.fixtures),
+            fixture_ids=tuple(item.id for item in location.fixtures),
             state_ids=tuple(item.id for item in location.states),
-            view_ids=tuple(item.id for item in location.views),
-            key_light_azimuth_deg=(
-                None if location.key_light is None else location.key_light.azimuth_deg
-            ),
-            master_selected=location.master.selected_asset_id is not None,
+            image_ids=tuple(item.id for item in location.images),
         )
         for location in document.location_library.locations
     )

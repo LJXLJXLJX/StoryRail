@@ -32,7 +32,7 @@ SHOT_FIELDS = SHOT_CONTENT_FIELDS
 SCENE_EDITOR_FIELDS = _names(EditableSceneProposal) | {"location_id", "state_id"}
 # 整卡手工保存与 proposal 一样用本 Scene 新 shots 数组的序号。
 SEGMENT_EDITOR_FIELDS = _names(EditableShotSegmentProposal) | {"id"}
-SHOT_EDITOR_FIELDS = SHOT_FIELDS | {"id", "view_id"}
+SHOT_EDITOR_FIELDS = SHOT_FIELDS | {"id"}
 # Cue 覆盖整个 Scene，没有 Cue 级字段；正文与合成参数在 zh / en 两条轨道里。
 NARRATION_LANGUAGE_KEYS = frozenset({"zh", "en"})
 NARRATION_TRACK_EDIT_FIELDS = frozenset({"text", "recipe_params", "seed"})

@@ -18,13 +18,11 @@ from core.director_commands import (
 from .models import (
     Keyframe,
     KeyframeCharacterReference,
-    KeyframeEnvironmentMode,
     KeyframePlan,
     ReferenceGenerationKind,
     ReferenceGenerationPhase,
     SegmentKeyframes,
     StructuredDirectorDocument,
-    normalize_environment_none_reason,
 )
 from .script_index import (
     scene_segments,
@@ -229,16 +227,6 @@ def _apply_keyframe_operations(
                 if operation.visible_character_ids is None
                 else operation.visible_character_ids
             )
-            if operation.environment_changed:
-                environment_mode = KeyframeEnvironmentMode(operation.environment_mode)
-                environment_view_id = operation.environment_view_id
-                environment_none_reason = normalize_environment_none_reason(
-                    operation.environment_none_reason
-                )
-            else:
-                environment_mode = keyframe.environment_mode
-                environment_view_id = keyframe.environment_view_id
-                environment_none_reason = keyframe.environment_none_reason
             character_references = (
                 tuple(
                     item
@@ -251,11 +239,8 @@ def _apply_keyframe_operations(
                     for item in operation.character_references
                 )
             )
-            # none 理由只解释退出原因，不进入提交，修改它不清除已选图片。
             generation_changed = (
-                environment_view_id != keyframe.environment_view_id
-                or prompt_text != keyframe.prompt_text
-                or environment_mode is not keyframe.environment_mode
+                prompt_text != keyframe.prompt_text
                 or character_references != keyframe.character_references
             )
             replacement = replace(
@@ -263,9 +248,6 @@ def _apply_keyframe_operations(
                 prompt_text=prompt_text,
                 visible_character_ids=visible_character_ids,
                 character_references=character_references,
-                environment_mode=environment_mode,
-                environment_view_id=environment_view_id,
-                environment_none_reason=environment_none_reason,
                 selected_asset_id=None if generation_changed else keyframe.selected_asset_id,
             )
             if replacement != keyframe:
@@ -563,8 +545,3 @@ def _validate_keyframe_operation_context(
             allowed_characters.update(visible_character_ids)
         if not set(keyframe.visible_character_ids) <= allowed_characters:
             raise ValueError("Keyframe 可见角色必须属于使用该边界的相邻 Segment 角色并集。")
-        if (
-            keyframe.environment_view_id is not None
-            and document.location_library.view_owner(keyframe.environment_view_id) is None
-        ):
-            raise ValueError("关键帧显式引用了未知地点视图。")

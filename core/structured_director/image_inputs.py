@@ -1,6 +1,6 @@
 """单次图片调用的实际输入：名额优先级、同一 Asset 合并用途、超额拒绝。
 
-Keyframe 与地点主图/视图共用；上限只有 `models.MAX_IMAGE_INPUTS` 一个事实源。
+Keyframe 与独立地点图片共用；上限只有 `models.MAX_IMAGE_INPUTS` 一个事实源。
 调用方按名额优先级给出输入，超过上限时拒绝并按顺序列出会被挤掉的输入，不静默丢弃。
 编辑底图（`source_asset_id`）在提交时排第一，不改变名额优先级。
 """
@@ -16,7 +16,7 @@ from .models import MAX_IMAGE_INPUTS, GenerationOperation, StructuredDirectorDoc
 @dataclass(frozen=True, slots=True)
 class ImageInput:
     asset_id: str
-    # 拒绝信息里的短角色名，例如“地点视图”“前置帧”。
+    # 拒绝信息里的短角色名，例如“角色参考”“前置帧”。
     role: str
     # 写进输入图对应关系的用途说明。
     description: str

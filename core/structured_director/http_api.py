@@ -5,6 +5,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlsplit
+from uuid import uuid4
 
 from core.application.caller import READ_OPERATIONS, AccessDenied
 from core.audio_effects import AudioEffectRequest, AudioTrimRequest
@@ -96,7 +97,6 @@ from .http_requests import (
     _string as _string,
 )
 from .manual_commands import (
-    location_calibration_command,
     location_operations_command,
     location_selection_command,
 )
@@ -107,14 +107,12 @@ from .models import (
     GenerationOperation,
     ImageAssetCategory,
     Keyframe,
-    KeyframeEnvironmentMode,
     NarrationCue,
     NarrationLanguage,
     NarrationTrack,
     NarratorProfile,
     NarratorVoice,
     StructuredDirectorDocument,
-    normalize_environment_none_reason,
 )
 from .reads.proposal_observation import proposal_observation
 from .reads.read_tools import ReadResultTooLarge
@@ -151,11 +149,8 @@ _SEGMENT_VIDEO_RESOURCE = re.compile(
     r"/segments/(?P<segment_id>[0-9a-f]{32})/videos"
     r"(?P<action>/inputs-preview|/inputs|/recipe|/generate|/attach-candidate|/select|/clear-selection|/upscale)?"
 )
-_LOCATION_RESOURCE = re.compile(
-    r"/locations/(?P<location_id>[0-9a-f]{32})/(?P<action>master/select|master/generate|calibrate)"
-)
-_LOCATION_VIEW_RESOURCE = re.compile(
-    r"/location-views/(?P<view_id>[0-9a-f]{32})/(?P<action>select|generate)"
+_LOCATION_IMAGE_RESOURCE = re.compile(
+    r"/location-images/(?P<image_id>[0-9a-f]{32})/(?P<action>select|generate|capture)"
 )
 _AUDIO_GENERATIONS_RESOURCE = "/audio-generations"
 _ASSET_RESOURCE = re.compile(r"/assets/(?P<asset_id>[0-9a-f]{32})")
@@ -779,9 +774,6 @@ class StructuredDirectorHttpApi:
                     "visible_character_ids",
                     "character_references",
                     "reference_asset_ids",
-                    "environment_mode",
-                    "environment_view_id",
-                    "environment_none_reason",
                 }
             )
         request = _parse_request(body, required=required)
@@ -813,7 +805,6 @@ class StructuredDirectorHttpApi:
                         request["character_references"]
                     ),
                     selected_asset_id=current.selected_asset_id,
-                    **_keyframe_environment(request),
                 ),
                 expected_revision=_required_revision(request),
                 segment_id=_id(request["segment_id"], "segment_id"),
@@ -830,7 +821,6 @@ class StructuredDirectorHttpApi:
                     request["character_references"]
                 ),
                 reference_asset_ids=_id_list(request["reference_asset_ids"]),
-                **_keyframe_environment(request),
                 expected_revision=_required_revision(request),
             )
             return JsonResponse(
@@ -1142,35 +1132,6 @@ class StructuredDirectorHttpApi:
         result = (await self._service.execute_director_command(command)).document
         return JsonResponse(200, self._serialize_snapshot(result))
 
-    async def _location_action(self, location_id: str, action: str, body: bytes) -> JsonResponse:
-        if action == "master/generate":
-            return await self._generate_location("location.generate_master", location_id, body)
-        if action == "calibrate":
-            request = _parse_request(
-                body,
-                required={"expected_revision", "fixture_azimuths", "key_light_azimuth_deg"},
-            )
-            if isinstance(request, JsonResponse):
-                return request
-            command = location_calibration_command(
-                location_id=location_id,
-                fixture_azimuths=request["fixture_azimuths"],
-                key_light_azimuth_deg=request["key_light_azimuth_deg"],
-                expected_revision=_required_revision(request),
-            )
-        else:
-            request = _parse_request(body, required={"expected_revision", "asset_id"})
-            if isinstance(request, JsonResponse):
-                return request
-            command = location_selection_command(
-                target="master",
-                target_id=location_id,
-                asset_id=_id(request["asset_id"], "asset_id"),
-                expected_revision=_required_revision(request),
-            )
-        result = (await self._service.execute_director_command(command)).document
-        return JsonResponse(200, self._serialize_snapshot(result))
-
     async def _generate_location(self, name: str, target_id: str, body: bytes) -> JsonResponse:
         """卡片单项生成按钮：与 Agent 的 location.generate_* 同一用例，只提交该目标。"""
         request = _parse_request(body, required={"expected_revision"})
@@ -1181,15 +1142,68 @@ class StructuredDirectorHttpApi:
         )
         return JsonResponse(202, self._serialize_snapshot(result))
 
-    async def _location_view_action(self, view_id: str, action: str, body: bytes) -> JsonResponse:
+    async def _location_image_action(self, image_id: str, action: str, body: bytes) -> JsonResponse:
         if action == "generate":
-            return await self._generate_location("location.generate_view", view_id, body)
+            return await self._generate_location("location.generate_image", image_id, body)
+        if action == "capture":
+            request = _parse_request(
+                body,
+                required={
+                    "expected_revision",
+                    "name",
+                    "description",
+                    "yaw_deg",
+                    "pitch_deg",
+                    "hfov_deg",
+                },
+            )
+            if isinstance(request, JsonResponse):
+                return request
+            current = self._service._store.read()
+            owner = current.location_library.image_owner(image_id)
+            if owner is None or owner[1].kind.value != "panorama":
+                raise ValueError("全景取景来源必须是地点库中的全景图。")
+            before = {item.id for item in owner[0].images}
+            operation = {
+                "op": "create_image",
+                "location_id": owner[0].id,
+                "key": f"capture-{uuid4().hex[:12]}",
+                "fields": {
+                    "name": _plain_string(request["name"], "name").strip(),
+                    "kind": "image",
+                    "description": _plain_string(request["description"], "description").strip(),
+                    "prompt_text": "",
+                    "reference_asset_ids": [],
+                    "source": {
+                        "panorama_image_id": image_id,
+                        "yaw_deg": _number(request["yaw_deg"], "yaw_deg"),
+                        "pitch_deg": _number(request["pitch_deg"], "pitch_deg"),
+                        "hfov_deg": _number(request["hfov_deg"], "hfov_deg"),
+                    },
+                },
+            }
+            created = (
+                await self._service.execute_director_command(
+                    location_operations_command(
+                        scope={"location_ids": [owner[0].id], "scene_ids": []},
+                        operations=[operation],
+                        expected_revision=_required_revision(request),
+                    )
+                )
+            ).document
+            new_owner = created.location_library.location(owner[0].id)
+            assert new_owner is not None
+            child = next(item for item in new_owner.images if item.id not in before)
+            result = await self._service.generate_location_capture(
+                image_id=child.id,
+                expected_revision=created.revision,
+            )
+            return JsonResponse(202, self._serialize_snapshot(result))
         request = _parse_request(body, required={"expected_revision", "asset_id"})
         if isinstance(request, JsonResponse):
             return request
         command = location_selection_command(
-            target="view",
-            target_id=view_id,
+            image_id=image_id,
             asset_id=_id(request["asset_id"], "asset_id"),
             expected_revision=_required_revision(request),
         )
@@ -1836,35 +1850,19 @@ def _director_run_yielded(active_run: object) -> bool:
     return status in {DirectorRunStatus.WAITING_USER, DirectorRunStatus.WAITING_JOBS}
 
 
-def _keyframe_environment(request: dict[str, Any]) -> dict[str, object]:
-    """Keyframe 地点视图三项；none 理由可选，只解释退出原因、不进入提交，空白归一为 null。"""
-    mode = KeyframeEnvironmentMode(_string(request, "environment_mode"))
-    reason = request["environment_none_reason"]
-    if reason is not None:
-        reason = normalize_environment_none_reason(_plain_string(reason, "environment_none_reason"))
-    return {
-        "environment_mode": mode,
-        "environment_view_id": _optional_id(request["environment_view_id"], "environment_view_id"),
-        "environment_none_reason": reason,
-    }
-
-
 def _reject_location_binding_changes(document, scenes: list[dict[str, Any]]) -> None:
-    """脚本整卡回传的地点绑定只读；修改绑定走地点操作。"""
+    """脚本整卡回传的 Scene 语义地点只读；修改绑定走地点操作。"""
     current = {
         scene.id: (
             scene.location_id,
             scene.state_id,
-            {shot.id: shot.view_id for shot in scene.shots},
         )
         for scene in (() if document.director_script is None else document.director_script.scenes)
     }
     for scene in scenes:
-        location_id, state_id, views = current.get(scene["id"], (None, None, {}))
-        if (scene["location_id"], scene["state_id"]) != (location_id, state_id) or any(
-            shot["view_id"] != views.get(shot["id"]) for shot in scene["shots"]
-        ):
-            raise ValueError("Scene 地点、状态与 Shot 视图绑定请通过地点操作修改。")
+        location_id, state_id = current.get(scene["id"], (None, None))
+        if (scene["location_id"], scene["state_id"]) != (location_id, state_id):
+            raise ValueError("Scene 地点与状态请通过地点操作修改。")
 
 
 def _recovery_path(resource_path: str, active_run: object) -> str | None:
@@ -2123,14 +2121,8 @@ _ROUTES: tuple[_Route, ...] = (
     ),
     _Route(
         frozenset({"POST"}),
-        _LOCATION_RESOURCE,
-        _group_route("_location_action", "location_id", "action"),
-        "project.write",
-    ),
-    _Route(
-        frozenset({"POST"}),
-        _LOCATION_VIEW_RESOURCE,
-        _group_route("_location_view_action", "view_id", "action"),
+        _LOCATION_IMAGE_RESOURCE,
+        _group_route("_location_image_action", "image_id", "action"),
         "project.write",
     ),
     _Route(

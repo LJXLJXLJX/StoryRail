@@ -22,7 +22,6 @@ _SHOT_FIELDS = {
     "action",
     "audio_direction",
     "transition_in",
-    "view_id",
 }
 _SEGMENT_FIELDS = {
     "id",

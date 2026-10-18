@@ -26,15 +26,15 @@ export const ImageOperation = ["generate", "edit"] as const;
 export type ImageOperation = (typeof ImageOperation)[number];
 export const ImageAspectRatio = ["16:9", "9:16", "2:1", "1:2", "1:1", "3:2", "2:3", "4:3", "3:4", "5:4", "4:5", "21:9", "9:21", "3:1", "1:3"] as const;
 export type ImageAspectRatio = (typeof ImageAspectRatio)[number];
-export const AssetUsageReasonCode = ["character_reference_image", "character_voice_reference", "narrator_voice_reference", "narration_audio", "dialogue_audio", "location_master_image", "location_view_image", "keyframe_reference_image", "keyframe_selected_asset", "segment_video_selected", "segment_video_upscaled", "segment_video_input_image", "segment_video_input_audio", "segment_video_input_video", "final_assembly", "visible_candidate", "unfinished_generation_input", "director_wait"] as const;
+export const AssetUsageReasonCode = ["character_reference_image", "character_voice_reference", "narrator_voice_reference", "narration_audio", "dialogue_audio", "location_image", "keyframe_reference_image", "keyframe_selected_asset", "segment_video_selected", "segment_video_upscaled", "segment_video_input_image", "segment_video_input_audio", "segment_video_input_video", "final_assembly", "visible_candidate", "unfinished_generation_input", "director_wait"] as const;
 export type AssetUsageReasonCode = (typeof AssetUsageReasonCode)[number];
-export const ImageAssetCategory = ["character_reference", "location_master", "location_crop", "location_view", "keyframe", "video_frame"] as const;
+export const ImageAssetCategory = ["character_reference", "location_image", "panorama_capture", "keyframe", "video_frame"] as const;
 export type ImageAssetCategory = (typeof ImageAssetCategory)[number];
 export const AssetAction = ["audio_trim", "audio_effect", "audio_editor", "video_frame", "delete"] as const;
 export type AssetAction = (typeof AssetAction)[number];
 export const AudioEffectPreset = ["walkie_talkie", "military_radio", "weak_signal", "bad_signal", "dying_transmission"] as const;
 export type AudioEffectPreset = (typeof AudioEffectPreset)[number];
-export const ReferenceGenerationKind = ["character_look_sheet", "character_voice", "narrator_voice", "narration_audio", "dialogue_audio", "generated_audio", "audio_effect", "audio_trim", "video_audio_voice", "video_audio_background", "video_audio_remix", "location_master_image", "location_view_crop", "location_view_image", "keyframe_image", "segment_video", "video_frame", "video_upscale", "final_video", "scene_final_video", "scene_animatic"] as const;
+export const ReferenceGenerationKind = ["character_look_sheet", "character_voice", "narrator_voice", "narration_audio", "dialogue_audio", "generated_audio", "audio_effect", "audio_trim", "video_audio_voice", "video_audio_background", "video_audio_remix", "location_image", "panorama_capture", "keyframe_image", "segment_video", "video_frame", "video_upscale", "final_video", "scene_final_video", "scene_animatic"] as const;
 export type ReferenceGenerationKind = (typeof ReferenceGenerationKind)[number];
 export const GenerationOperation = ["generate", "edit", "attach", "voice_design", "synthesize", "render", "upscale", "assemble", "process", "separate", "remix"] as const;
 export type GenerationOperation = (typeof GenerationOperation)[number];
@@ -42,10 +42,8 @@ export const ReferenceGenerationPhase = ["submitting", "submission_uncertain", "
 export type ReferenceGenerationPhase = (typeof ReferenceGenerationPhase)[number];
 export const ReferenceGenerationAction = ["attach_output", "select_look_sheet", "select_output", "select_narration_audio", "select_dialogue_audio", "select_segment_video", "attach_upscaled_video", "select_final_video", "dismiss_history", "cancel", "retry"] as const;
 export type ReferenceGenerationAction = (typeof ReferenceGenerationAction)[number];
-export const KeyframeEnvironmentMode = ["edit", "reference", "none"] as const;
-export type KeyframeEnvironmentMode = (typeof KeyframeEnvironmentMode)[number];
-export const LocationKind = ["interior", "exterior"] as const;
-export type LocationKind = (typeof LocationKind)[number];
+export const LocationImageKind = ["image", "panorama"] as const;
+export type LocationImageKind = (typeof LocationImageKind)[number];
 export type PlaygroundCapabilityId = string;
 export const PlaygroundRunPhase = ["submitting", "submission_uncertain", "queued", "running", "succeeded", "failed", "cancelled"] as const;
 export type PlaygroundRunPhase = (typeof PlaygroundRunPhase)[number];
@@ -251,7 +249,6 @@ export interface Shot {
   action: string;
   audio_direction: string;
   transition_in: string | null;
-  view_id: string | null;
 }
 
 export interface SceneAnimaticState {
@@ -320,12 +317,12 @@ export interface LocationProduction {
   status: string;
   status_label: string;
   reason: string | null;
-  generation_step: "master" | "crop" | "refine" | "turn";
+  generation_step: "image" | "capture";
   generate_label: string;
   active_generation_id: string | null;
   candidate_generation_ids: string[];
   selectable_generation_ids: string[];
-  allowed_actions: ("generate" | "select" | "edit" | "delete" | "clear_selection")[];
+  allowed_actions: ("generate" | "select" | "edit" | "delete" | "clear_selection" | "preview_panorama")[];
 }
 
 export interface LocationFixture {
@@ -333,19 +330,29 @@ export interface LocationFixture {
   id: string;
   name: string;
   description: string;
-  azimuth_deg: number | null;
 }
 
 export interface LocationKeyLight {
   description: string;
-  azimuth_deg: number | null;
 }
 
-export interface LocationMaster {
-  production?: LocationProduction;
+export interface PanoramaCaptureSource {
+  panorama_image_id: string;
+  yaw_deg: number;
+  pitch_deg: number;
+  hfov_deg: number;
+}
+
+export interface LocationImage {
+  id: string;
+  name: string;
+  kind: LocationImageKind;
+  description: string;
   prompt_text: string;
   reference_asset_ids: string[];
   selected_asset_id: string | null;
+  source: PanoramaCaptureSource | null;
+  production?: LocationProduction;
 }
 
 export interface LocationState {
@@ -355,41 +362,20 @@ export interface LocationState {
   allowed_actions?: ("edit" | "delete")[];
 }
 
-export interface LocationView {
-  production?: LocationProduction;
-  has_valid_crop?: boolean;
-  id: string;
-  name: string;
-  purpose: string;
-  azimuth_deg: number | null;
-  look_at_fixture_id: string | null;
-  yaw_offset_deg: number | null;
-  pitch_deg: number;
-  hfov_deg: number;
-  state_id: string | null;
-  refine_prompt_text: string;
-  reference_view_ids: string[];
-  crop_asset_id: string | null;
-  selected_asset_id: string | null;
-}
-
 export interface Location {
-  allowed_actions?: ("edit" | "delete" | "create_view" | "create_fixture" | "create_state")[];
+  allowed_actions?: ("edit" | "delete" | "create_image" | "create_fixture" | "create_state")[];
   id: string;
   name: string;
-  kind: LocationKind;
   description: string;
   fixtures: LocationFixture[];
   key_light: LocationKeyLight | null;
-  master: LocationMaster;
-  calibrated_master_asset_id: string | null;
   states: LocationState[];
-  views: LocationView[];
+  images: LocationImage[];
 }
 
 export interface LocationLibrary {
   locations: Location[];
-  allowed_actions?: ("create_location" | "bind_scene" | "bind_shot")[];
+  allowed_actions?: ("create_location" | "bind_scene")[];
 }
 
 export interface Keyframe {
@@ -400,9 +386,6 @@ export interface Keyframe {
   visible_character_ids: string[];
   character_references: KeyframeCharacterReference[];
   selected_asset_id: string | null;
-  environment_mode: KeyframeEnvironmentMode;
-  environment_view_id: string | null;
-  environment_none_reason: string | null;
 }
 
 export interface KeyframeCharacterReference {
@@ -1046,13 +1029,7 @@ export interface KeyframeSegmentProposal {
   start_visible_character_ids: string[];
   end_prompt_text: string;
   end_visible_character_ids: string[];
-  start_environment_mode: "edit" | "reference" | "none" | null;
-  start_environment_view_id: string | null;
-  start_environment_none_reason: string | null;
   start_character_references: KeyframeCharacterReferenceProposal[];
-  end_environment_mode: "edit" | "reference" | "none" | null;
-  end_environment_view_id: string | null;
-  end_environment_none_reason: string | null;
   end_character_references: KeyframeCharacterReferenceProposal[];
 }
 
@@ -1064,31 +1041,26 @@ export interface KeyframeCharacterReferenceProposal {
 export interface LocationPlanProposal {
   locations: LocationProposal[];
   scene_bindings: SceneLocationBindingProposal[];
-  shot_bindings: ShotViewBindingProposal[];
 }
 
 export interface LocationProposal {
   name: string;
-  kind: "interior" | "exterior";
   description: string;
   key_light: LocationKeyLightProposal | null;
-  master_prompt_text: string;
   fixtures: LocationFixtureProposal[];
   states: LocationStateProposal[];
-  views: LocationViewProposal[];
+  images: LocationImageProposal[];
   id?: string | null;
   key?: string | null;
 }
 
 export interface LocationKeyLightProposal {
   description: string;
-  azimuth_deg: number | null;
 }
 
 export interface LocationFixtureProposal {
   name: string;
   description: string;
-  azimuth_deg: number | null;
   id?: string | null;
   key?: string | null;
 }
@@ -1100,30 +1072,28 @@ export interface LocationStateProposal {
   key?: string | null;
 }
 
-export interface LocationViewProposal {
+export interface LocationImageProposal {
   name: string;
-  purpose: string;
-  azimuth_deg: number | null;
-  look_at_fixture_id: string | null;
-  yaw_offset_deg: number | null;
-  pitch_deg: number;
-  hfov_deg: number;
-  state_id: string | null;
-  refine_prompt_text: string;
-  reference_view_ids: string[];
+  kind: string;
+  description: string;
+  prompt_text: string;
+  reference_asset_ids: string[];
+  source: PanoramaCaptureSourceProposal | null;
   id?: string | null;
   key?: string | null;
+}
+
+export interface PanoramaCaptureSourceProposal {
+  panorama_image_id: string;
+  yaw_deg: number;
+  pitch_deg: number;
+  hfov_deg: number;
 }
 
 export interface SceneLocationBindingProposal {
   scene_id: string;
   location_id: string | null;
   state_id: string | null;
-}
-
-export interface ShotViewBindingProposal {
-  shot_id: string;
-  view_id: string | null;
 }
 
 export interface VideoPromptProposal {

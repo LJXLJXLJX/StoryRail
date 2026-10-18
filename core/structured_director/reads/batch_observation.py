@@ -4,8 +4,8 @@
 不提交或轮询 Provider；供 reads 包与 external_batches 模块级复用，
 避免 reads ↔ external_batches 互相 import 成环。
 
-两类批次共用回执/run/执行轮次骨架：Keyframe 批次（target = Keyframe）与地点成套批次
-（`location.generate_set`，target = Location，内部按主图/视图生成单元分类）。
+两类批次共用回执/run/执行轮次骨架：Keyframe 批次（target = Keyframe）与地点图片批次
+（`location.generate_set`，target = LocationImage）。
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ from core.application.caller import current_caller
 from ..keyframe_requests import (
     _find_keyframe,
     _keyframe_generation_inputs,
-    keyframe_pending_view,
 )
 from ..location_requests import LOCATION_SET_TERMINAL, location_set_items
 from ..models import ReferenceGenerationKind, ReferenceGenerationPhase
@@ -285,22 +284,13 @@ def _keyframe_batch_observation(document, batch_id: str) -> dict[str, object]:
             }:
                 status = current.phase.value
             else:
-                # 依赖判定与批次提交共用 keyframe_pending_view / _keyframe_generation_inputs。
                 try:
-                    pending_view = keyframe_pending_view(document, keyframe)
-                    ready = (
-                        pending_view is None
-                        and _keyframe_generation_inputs(document, target_id) is not None
-                    )
+                    ready = _keyframe_generation_inputs(document, target_id) is not None
                 except ValueError:
                     status = "input_blocked"
                 else:
                     if ready:
                         status = "unsubmitted"
-                    elif pending_view is not None:
-                        status = "dependency_blocked"
-                        dependency_kind = "location_view_unselected"
-                        dependency_target_id = pending_view[1].id
                     else:
                         status = "dependency_blocked"
                         dependency_kind = "predecessor_keyframe"
@@ -350,9 +340,8 @@ def _keyframe_batch_observation(document, batch_id: str) -> dict[str, object]:
 
 
 _LOCATION_ITEM_KINDS = {
-    ReferenceGenerationKind.LOCATION_MASTER_IMAGE,
-    ReferenceGenerationKind.LOCATION_VIEW_CROP,
-    ReferenceGenerationKind.LOCATION_VIEW_IMAGE,
+    ReferenceGenerationKind.LOCATION_IMAGE,
+    ReferenceGenerationKind.PANORAMA_CAPTURE,
 }
 # 地点聚合状态的优先级：数值越小越优先代表该地点的当前状态。
 _LOCATION_AGGREGATE_PRIORITY = (
@@ -363,9 +352,6 @@ _LOCATION_AGGREGATE_PRIORITY = (
     "blocked",
     "awaiting_selection",
     "ready",
-    "awaiting_calibration",
-    "awaiting_reference_view",
-    "awaiting_master",
     "already_selected",
 )
 
@@ -398,7 +384,7 @@ def _location_set_observation(document, batch_id: str) -> dict[str, object]:
         )
         return {
             "target_id": item.target_id,
-            "view_id": item.view_id,
+            "image_id": item.image_id,
             "label": item.label,
             "status": item.status,
             "reason": item.reason,
@@ -411,24 +397,18 @@ def _location_set_observation(document, batch_id: str) -> dict[str, object]:
     target_results = []
     for location_id in target_ids:
         location_items = by_location[location_id]
-        master = location_items[0]
-        views = location_items[1:]
-        if master.status == "target_missing":
-            status = "target_missing"
-        elif master.status != "already_selected":
-            status = master.status
-        else:
-            status = min(
-                (view.status for view in views),
-                key=lambda value: _LOCATION_AGGREGATE_PRIORITY.index(value),
-                default="already_selected",
-            )
+        status = min(
+            (item.status for item in location_items),
+            key=lambda value: _LOCATION_AGGREGATE_PRIORITY.index(value),
+            default="already_selected",
+        )
         target_results.append(
             {
                 "target_id": location_id,
                 "status": status,
-                "master": detail(master) if master.status != "target_missing" else None,
-                "views": [detail(view) for view in views],
+                "images": [
+                    detail(item) for item in location_items if item.status != "target_missing"
+                ],
                 "generation_ids": [
                     generation_id
                     for item in location_items

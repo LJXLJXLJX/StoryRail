@@ -25,7 +25,6 @@ from core.structured_director.models import (
     ImageAssetCategory,
     Keyframe,
     KeyframeCharacterReference,
-    KeyframeEnvironmentMode,
 )
 from core.structured_director.reads.read_tools import execute_project_read
 
@@ -407,9 +406,6 @@ def test_manual_dialog_save_and_preview_use_the_same_selection(tmp_path):
             visible_character_ids=(character.id,),
             character_references=chosen,
             reference_asset_ids=(),
-            environment_mode=KeyframeEnvironmentMode.NONE,
-            environment_view_id=None,
-            environment_none_reason="Shot 未绑定地点视图",
             expected_revision=document.revision,
         )
         assert [item.id for item in preview.input_assets] == [character.looks[1].selected_asset_id]
@@ -422,9 +418,6 @@ def test_manual_dialog_save_and_preview_use_the_same_selection(tmp_path):
                 visible_character_ids=(character.id,),
                 character_references=(KeyframeCharacterReference(character.id, "f" * 32),),
                 reference_asset_ids=(),
-                environment_mode=KeyframeEnvironmentMode.NONE,
-                environment_view_id=None,
-                environment_none_reason="Shot 未绑定地点视图",
                 expected_revision=document.revision,
             )
         current = _frame(document, keyframe_id)

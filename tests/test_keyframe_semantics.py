@@ -57,8 +57,6 @@ def _segment_plan(
     start_ids: tuple[str, ...] = (),
     end_prompt: str = "结束状态。",
     end_ids: tuple[str, ...] = (),
-    mode: str | None = None,
-    view_id: str | None = None,
 ) -> dict:
     return {
         "segment_id": segment_id,
@@ -67,15 +65,9 @@ def _segment_plan(
         "start_prompt_text": "" if continues else start_prompt,
         "start_visible_character_ids": [] if continues else list(start_ids),
         "start_character_references": [],
-        "start_environment_mode": None if continues else mode,
-        "start_environment_view_id": None if continues else view_id,
-        "start_environment_none_reason": None,
         "end_prompt_text": end_prompt,
         "end_visible_character_ids": list(end_ids),
         "end_character_references": [],
-        "end_environment_mode": mode,
-        "end_environment_view_id": view_id,
-        "end_environment_none_reason": None,
     }
 
 

@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 from enum import StrEnum
 
-# 单次图片生成/编辑调用的输入图上限；Keyframe 与地点主图/视图共用这一个事实源。
+# 单次图片生成/编辑调用的输入图上限；Keyframe 与独立地点图片共用这一个事实源。
 MAX_IMAGE_INPUTS = 5
 
 _ID = re.compile(r"[0-9a-f]{32}")
@@ -17,7 +17,7 @@ _COMMAND_NAME = re.compile(r"[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+")
 
 _ASSET_PATH = re.compile(
     r"assets/(?:"
-    r"images/(?:library|characters|locations/(?:master|crops|views)|keyframes|video-frames)|"
+    r"images/(?:library|characters|locations(?:/(?:captures|master|crops|views))?|keyframes|video-frames)|"
     r"audio/(?:voice-references|narration|dialogue|generated|effects|trims|stems|imported)|"
     r"videos/(?:segments|upscaled|final|scene-final|animatics|audio-remixes|imported)"
     r")/[^/\\\x00-\x1f]+\.(?:png|jpg|webp|wav|mp4)"
@@ -95,9 +95,8 @@ class ReferenceGenerationKind(StrEnum):
     VIDEO_AUDIO_VOICE = "video_audio_voice"
     VIDEO_AUDIO_BACKGROUND = "video_audio_background"
     VIDEO_AUDIO_REMIX = "video_audio_remix"
-    LOCATION_MASTER_IMAGE = "location_master_image"
-    LOCATION_VIEW_CROP = "location_view_crop"
-    LOCATION_VIEW_IMAGE = "location_view_image"
+    LOCATION_IMAGE = "location_image"
+    PANORAMA_CAPTURE = "panorama_capture"
     KEYFRAME_IMAGE = "keyframe_image"
     SEGMENT_VIDEO = "segment_video"
     VIDEO_FRAME = "video_frame"

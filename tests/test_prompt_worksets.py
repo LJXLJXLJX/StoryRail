@@ -100,10 +100,7 @@ async def fixture(tmp_path):
             "op": "update_frame_fields",
             "keyframe_id": f.id,
             "fields": {
-                "environment_view_id": None,
                 "prompt_text": f"静态边界{index}",
-                "environment_mode": "none",
-                "environment_none_reason": "Shot 未绑定地点视图",
             },
         }
         for index, f in enumerate(doc.keyframe_plan.keyframes)
@@ -260,10 +257,9 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
         assert all(item.kind.value == "dialogue_audio" for item in store.read().generations)
         # 单 Shot Segment：工作集只列一个 Shot，且不延续相邻 Segment。
         single = workset["context"]
-        assert [
-            (item["action"], item["visible_character_names"], item["view_name"])
-            for item in single["shots"]
-        ] == [(scene.shots[0].action, ["甲", "乙"], None)]
+        assert [(item["action"], item["visible_character_names"]) for item in single["shots"]] == [
+            (scene.shots[0].action, ["甲", "乙"])
+        ]
         assert single["segment"]["continues_from_previous_segment"] is False
         assert single["segment"]["continues_into_next_segment"] is False
         provider = RecordingProvider(media_type="video/mp4", content=b"fake")
@@ -1072,7 +1068,7 @@ def test_video_workset_lists_all_covering_shots_and_continuation_flags(tmp_path)
         scene = document.director_script.scenes[0]
         first, second = scene.shots
         segment, next_segment = scene.segments
-        # 地点视图建议按 Shot 名进入工作集；绑定本身仍是软参考。
+        # 地点只作为 Scene 语义上下文；Shot 工作集不再带地点图片建议。
         document = install_location(store, scene_ids=(scene.id,))
         scene = document.director_script.scenes[0]
         characters = document.reference_library.characters
@@ -1103,7 +1099,7 @@ def test_video_workset_lists_all_covering_shots_and_continuation_flags(tmp_path)
             [characters[0].name],
             [characters[1].name],
         ]
-        assert [item["view_name"] for item in context["shots"]] == ["主机位", "主机位"]
+        assert all("view_name" not in item for item in context["shots"])
         assert "shot" not in context
         # 对白说话者只要在任一覆盖 Shot 可见即为 on_screen；这里两句都属于并集。
         assert [item["on_screen"] for item in context["segment"]["dialogue"]] == [

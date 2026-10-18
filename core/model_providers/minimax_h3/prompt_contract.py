@@ -31,8 +31,6 @@ class H3ShotInput:
     action: str
     audio_direction: str
     visible_character_names: tuple[str, ...]
-    # Shot 的地点视图建议名；只是空间参考，不强制复刻机位。
-    view_name: str | None
 
     def __post_init__(self) -> None:
         required = (self.composition, self.camera_movement, self.action)
@@ -44,8 +42,6 @@ class H3ShotInput:
             not item.strip() or len(item) > 200 for item in self.visible_character_names
         ):
             raise ValueError("H3 prompt Shot 可见角色名不合法或过多。")
-        if self.view_name is not None and (not self.view_name.strip() or len(self.view_name) > 200):
-            raise ValueError("H3 prompt Shot 视图建议名不合法或过长。")
 
 
 @dataclass(frozen=True, slots=True)

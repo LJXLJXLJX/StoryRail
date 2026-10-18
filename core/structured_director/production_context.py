@@ -285,17 +285,16 @@ def _director_state_json(
             else {
                 "id": location.id,
                 "name": location.name,
-                "kind": location.kind.value,
                 "state_id": scene.state_id,
-                "master_selected_asset_id": location.master.selected_asset_id,
-                "views": [
+                "images": [
                     {
-                        "id": view.id,
-                        "name": view.name,
-                        "purpose": view.purpose,
-                        "selected_asset_id": view.selected_asset_id,
+                        "id": image.id,
+                        "name": image.name,
+                        "kind": image.kind.value,
+                        "description": image.description,
+                        "selected_asset_id": image.selected_asset_id,
                     }
-                    for view in location.views
+                    for image in location.images
                 ],
                 **({"description": location.description} if include_text else {}),
             }
@@ -395,8 +394,6 @@ def _production_keyframe_state(
             "visible_character_ids": list(item.visible_character_ids),
             "character_references": serialize_character_references(item),
             "selected_asset_id": item.selected_asset_id,
-            "environment_mode": item.environment_mode.value,
-            "environment_view_id": item.environment_view_id,
         }
 
     return {

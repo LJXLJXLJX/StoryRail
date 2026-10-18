@@ -130,7 +130,7 @@ LAYER_MAP = {
 # 保持按钮与写入规则同源；不允许借此调用 Store 写入或 Provider。
 DIRECTION_WHITELIST = [
     (
-        "core.structured_director.reads.location_view",
+        "core.structured_director.reads.location_image",
         "core.structured_director.location_requests",
         "地点卡与单项/批次提交复用依赖检查与裁切有效性",
     ),

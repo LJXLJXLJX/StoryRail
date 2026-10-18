@@ -11,23 +11,21 @@ from datetime import UTC, datetime
 
 from core.director_commands import (
     CommandReceipt,
-    LocationMasterSelection,
+    LocationImageSelection,
     LocationOperationsPatch,
-    LocationViewSelection,
 )
 from core.model_providers.contracts import validate_pano_source
 from core.structured_director.errors import RevisionConflictError
 from core.structured_director.location_mutations import (
     LocationMutation,
     apply_location_operations,
-    select_location_master,
-    select_location_view,
+    select_location_image,
 )
 from core.structured_director.models import (
     CapabilityGapStatus,
     DirectorRunKind,
     DirectorRunStatus,
-    LocationKind,
+    LocationImageKind,
     StructuredDirectorDocument,
     StructuredDirectorStatus,
 )
@@ -98,9 +96,9 @@ class LocationDomain(_DomainBase):
                 warnings=tuple(
                     f"CAPABILITY_GAP_CLOSED:{item.missing_command}" for item in open_gaps
                 ),
-                summary="已原子保存地点库编辑与 Scene/Shot 绑定。",
+                summary="已原子保存地点库、独立图片与 Scene 语义地点。",
                 applied={"operations": len(patch.operations), "created": len(result.created_ids)},
-                next_actions=("location.generate_master", "location.generate_view"),
+                next_actions=("location.generate_image", "location.capture_panorama"),
             )
 
         document, receipt = commit_mutation(
@@ -221,54 +219,34 @@ class LocationDomain(_DomainBase):
         updated, _receipt = commit_mutation(self, loader=load, mutator=mutate)
         return updated
 
-    def select_location_master(
+    def select_location_image(
         self,
-        selection: LocationMasterSelection,
+        selection: LocationImageSelection,
         *,
         expected_revision: int,
         command_id: str,
     ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
         def mutate(document: StructuredDirectorDocument) -> MutationResult:
-            result = select_location_master(document, selection)
-            location = document.location_library.location(selection.location_id)
-            if location is not None and location.kind is LocationKind.INTERIOR:
-                # 室内主图是后续裁切的唯一来源，必须满足全景裁切的输入契约。
+            result = select_location_image(document, selection)
+            owner = document.location_library.image_owner(selection.image_id)
+            if owner is not None and owner[1].kind is LocationImageKind.PANORAMA:
                 _asset, content = self.read_asset(selection.asset_id)
                 try:
                     validate_pano_source(content)
                 except ValueError as exc:
-                    raise ValueError(f"室内地点主图必须是 2:1 等距柱状全景：{exc}") from exc
+                    raise ValueError(f"全景地点图片必须是 2:1 等距柱状全景：{exc}") from exc
             return _receipt(
                 document,
                 result,
                 command_id,
-                summary="已选择地点主图；标定与该地点视图按主图改选失效。",
-                next_actions=("location.generate_view",),
+                summary="已选择地点图片；其它地点图片与生产内容保持不变。",
+                next_actions=("location.generate_image", "location.capture_panorama"),
             )
 
         return commit_mutation(
             self,
             loader=lambda: self._unlocked_document(expected_revision),
             mutator=mutate,
-        )
-
-    def select_location_view(
-        self,
-        selection: LocationViewSelection,
-        *,
-        expected_revision: int,
-        command_id: str,
-    ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
-        return commit_mutation(
-            self,
-            loader=lambda: self._unlocked_document(expected_revision),
-            mutator=lambda document: _receipt(
-                document,
-                select_location_view(document, selection),
-                command_id,
-                summary="已选择地点视图；依赖它的视图与 Keyframe 按改选失效。",
-                next_actions=("location.generate_view",),
-            ),
         )
 
 

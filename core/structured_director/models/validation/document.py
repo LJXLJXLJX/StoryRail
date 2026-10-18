@@ -451,24 +451,16 @@ def _validate_dialogue_plan(document, asset_by_id) -> None:
 
 
 def _validate_locations(document, asset_by_id) -> None:
-    """地点资产必须是本项目图片；Scene/Shot/Keyframe 引用必须落在正确的地点内。
-
-    历史 Generation 保留原目标；当前目标有效性由 create_generation 校验。
-    """
+    """地点图片只能引用本项目图片；Scene 只保留可选的语义地点/状态关系。"""
     library = document.location_library
     for location in library.locations:
-        for asset_id in (
-            *location.master.reference_asset_ids,
-            location.master.selected_asset_id,
-            location.calibrated_master_asset_id,
-            *(view.crop_asset_id for view in location.views),
-            *(view.selected_asset_id for view in location.views),
-        ):
-            if asset_id is None:
-                continue
-            asset = asset_by_id.get(asset_id)
-            if not isinstance(asset, Asset) or not asset.media_type.startswith("image/"):
-                raise ValueError("地点只能使用本项目图片 Asset。")
+        for image in location.images:
+            for asset_id in (*image.reference_asset_ids, image.selected_asset_id):
+                if asset_id is None:
+                    continue
+                asset = asset_by_id.get(asset_id)
+                if not isinstance(asset, Asset) or not asset.media_type.startswith("image/"):
+                    raise ValueError("地点图片只能使用本项目图片 Asset。")
     location_by_id = {item.id: item for item in library.locations}
     for scene in document.director_script.scenes if document.director_script else ():
         location = None if scene.location_id is None else location_by_id.get(scene.location_id)
@@ -478,16 +470,6 @@ def _validate_locations(document, asset_by_id) -> None:
             location is None or all(state.id != scene.state_id for state in location.states)
         ):
             raise ValueError("Scene 的地点状态必须属于该 Scene 的地点。")
-        for shot in scene.shots:
-            if shot.view_id is not None and (
-                location is None or location.view(shot.view_id) is None
-            ):
-                raise ValueError("Shot 的地点视图必须属于所在 Scene 的地点。")
-    for frame in document.keyframe_plan.keyframes if document.keyframe_plan else ():
-        if frame.environment_view_id is not None and (
-            library.view_owner(frame.environment_view_id) is None
-        ):
-            raise ValueError("Keyframe 引用的地点视图不存在。")
 
 
 def _validate_keyframe_plan(document, asset_by_id) -> None:

@@ -37,7 +37,7 @@ describe("人工内容修改事件", () => {
     const scene = after.director_script!.scenes.find(s => s.narration_cues.length)!;
     const cue = scene.narration_cues[0]; cue.zh!.seed++;
     after.video_plan!.segments[0].active_recipe = "minimax_h3.ref2va";
-    after.keyframe_plan!.keyframes[0].environment_mode = "none";
+    after.keyframe_plan!.keyframes[0].character_references = [];
     for (const save of [{ kind: "cue", id: cue.id }, { kind: "video_prompt", id: after.video_plan!.segments[0].segment_id }, { kind: "keyframe", id: after.keyframe_plan!.keyframes[0].id }] as const) {
       expect(savedContentChanges(captureContentSave(before, save), before.revision, after)).toEqual([]);
     }

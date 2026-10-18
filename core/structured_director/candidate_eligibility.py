@@ -96,12 +96,10 @@ def generation_is_reviewable(document, generation) -> bool:
             and target_id == document.project_id
             and asset.media_type == "video/mp4"
         )
-    if kind is ReferenceGenerationKind.LOCATION_MASTER_IMAGE:
-        return document.location_library.location(
-            target_id
-        ) is not None and asset.media_type.startswith("image/")
-    if kind is ReferenceGenerationKind.LOCATION_VIEW_IMAGE:
-        return document.location_library.view_owner(
+    if kind in {
+        ReferenceGenerationKind.LOCATION_IMAGE,
+    }:
+        return document.location_library.image_owner(
             target_id
         ) is not None and asset.media_type.startswith("image/")
     if kind is ReferenceGenerationKind.CHARACTER_LOOK_SHEET:

@@ -31,12 +31,10 @@ from .final_commands import (
 )
 from .generation_commands import GenerationTarget, parse_generation_target
 from .location_operations import (
-    LocationMasterSelection,
+    LocationImageSelection,
     LocationOperationsPatch,
-    LocationViewSelection,
-    parse_location_master_selection,
+    parse_location_image_selection,
     parse_location_operations_patch,
-    parse_location_view_selection,
 )
 from .models import (
     CommandExecution,
@@ -112,17 +110,9 @@ class DirectorCommandStore(Protocol):
         command_id: str,
     ) -> tuple[StructuredDirectorDocument, CommandReceipt, dict[str, object]]: ...
 
-    def select_location_master(
+    def select_location_image(
         self,
-        selection: LocationMasterSelection,
-        *,
-        expected_revision: int,
-        command_id: str,
-    ) -> tuple[StructuredDirectorDocument, CommandReceipt]: ...
-
-    def select_location_view(
-        self,
-        selection: LocationViewSelection,
+        selection: LocationImageSelection,
         *,
         expected_revision: int,
         command_id: str,
@@ -416,11 +406,8 @@ _COMMAND_SPECS: dict[str, _CommandSpec] = {
         _parse(parse_look_operations_patch), "apply_look_operations"
     ),
     # 候选选择只开放给人类：不在 Agent 操作白名单（core.application.caller）。
-    "location.select_master": _CommandSpec(
-        _parse(parse_location_master_selection), "select_location_master"
-    ),
-    "location.select_view": _CommandSpec(
-        _parse(parse_location_view_selection), "select_location_view"
+    "location.select_image": _CommandSpec(
+        _parse(parse_location_image_selection), "select_location_image"
     ),
 }
 

@@ -207,18 +207,11 @@ FrameFields = object_model(
         "visible_character_ids": IDs,
         # 本帧每个可见角色提交的角色卡参考图；空 asset_ids 表示不提交该角色图片。
         "character_references": list[CharacterReference],
-        # 地点视图使用方式；none 时 environment_view_id 为 null 且必须写理由（1–500 字）。
-        "environment_mode": Literal["none", "edit", "reference"],
-        "environment_view_id": ID | None,
-        "environment_none_reason": Annotated[str, Field(min_length=1, max_length=500)] | None,
     },
     (
         "prompt_text",
         "visible_character_ids",
         "character_references",
-        "environment_mode",
-        "environment_view_id",
-        "environment_none_reason",
     ),
 )
 FrameOperation = reduce(
@@ -252,29 +245,31 @@ Ref = Annotated[str, Field(pattern=r"^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$")]
 Key = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_-]{0,63}$")]
 Degrees = Annotated[float, Field(allow_inf_nan=False)]
 Name = Annotated[str, Field(min_length=1, max_length=200)]
-KeyLight = object_model("KeyLight", {"description": Text, "azimuth_deg": Degrees | None})
+KeyLight = object_model("KeyLight", {"description": Text})
 location_fields = {
     "name": Name,
-    "kind": Literal["interior", "exterior"],
     "description": Text,
     "key_light": KeyLight | None,
-    "master_prompt_text": Text,
-    "master_reference_asset_ids": Annotated[list[ID], Field(max_length=5)],
 }
 LocationFields = object_model("LocationFields", location_fields, location_fields)
-view_fields = {
+CaptureSource = object_model(
+    "CaptureSource",
+    {
+        "panorama_image_id": Ref,
+        "yaw_deg": Degrees,
+        "pitch_deg": Degrees,
+        "hfov_deg": Degrees,
+    },
+)
+image_fields = {
     "name": Name,
-    "purpose": Text,
-    "azimuth_deg": Degrees | None,
-    "look_at_fixture_id": Ref | None,
-    "yaw_offset_deg": Degrees | None,
-    "pitch_deg": Degrees,
-    "hfov_deg": Degrees,
-    "state_id": Ref | None,
-    "refine_prompt_text": Text,
-    "reference_view_ids": Annotated[list[Ref], Field(max_length=3)],
+    "kind": Literal["image", "panorama"],
+    "description": Text,
+    "prompt_text": Text,
+    "reference_asset_ids": Annotated[list[ID], Field(max_length=5)],
+    "source": CaptureSource | None,
 }
-ViewFields = object_model("ViewFields", view_fields, view_fields)
+ImageFields = object_model("ImageFields", image_fields, image_fields)
 LocationOperation = reduce(
     or_,
     tuple(
@@ -283,7 +278,6 @@ LocationOperation = reduce(
             "create_location": {
                 "key": Key,
                 "name": Name,
-                "kind": Literal["interior", "exterior"],
                 "description": Text,
             },
             "update_location": {"location_id": Ref, "fields": LocationFields},
@@ -293,23 +287,15 @@ LocationOperation = reduce(
                 "fixture": Ref,
                 "name": Name,
                 "description": Text,
-                "azimuth_deg": Degrees | None,
             },
             "delete_fixture": {"location_id": Ref, "fixture_id": ID},
             "upsert_state": {"location_id": Ref, "state": Ref, "name": Name, "description": Text},
             "delete_state": {"location_id": Ref, "state_id": ID},
-            "create_view": {"location_id": Ref, "key": Key, "fields": ViewFields},
-            "update_view": {"view_id": Ref, "fields": ViewFields},
-            "delete_view": {"view_id": ID},
-            "calibrate": {
-                "location_id": Ref,
-                "fixture_azimuths": dict[Ref, Degrees],
-                "key_light_azimuth_deg": Degrees | None,
-            },
+            "create_image": {"location_id": Ref, "key": Key, "fields": ImageFields},
+            "update_image": {"image_id": Ref, "fields": ImageFields},
+            "delete_image": {"image_id": ID},
             "bind_scene": {"scene_id": ID, "location_id": Ref | None, "state_id": Ref | None},
-            "bind_shot": {"shot_id": ID, "view_id": Ref | None},
-            "clear_master_selection": {"location_id": ID},
-            "clear_view_selection": {"view_id": ID},
+            "clear_image_selection": {"image_id": ID},
         }.items()
     ),
 )
@@ -327,7 +313,6 @@ class FrameEdit(Request):
 class LocationEdit(Request):
     location_ids: IDs
     scene_ids: IDs
-    shot_ids: IDs
     operations: Annotated[list[LocationOperation], Field(min_length=1, max_length=100)]
 
 
@@ -398,8 +383,8 @@ class Generate(Request):
         "video",
         "upscale",
         "look_sheet",
-        "location_master",
-        "location_view",
+        "location_image",
+        "panorama_capture",
     ]
     target_id: ID
     language: Annotated[
@@ -499,8 +484,8 @@ class Candidates(ReadRequest):
         "narrator_voice",
         "narration_audio",
         "dialogue_audio",
-        "location_master_image",
-        "location_view_image",
+        "location_image",
+        "panorama_capture",
         "keyframe_image",
         "segment_video",
         "video_upscale",
@@ -554,9 +539,9 @@ DESCRIPTIONS = {
             "局部脚本类型化编辑，Core分配新ID。",
             "局部更新旁白正文/参数，或解除当前音频引用；不自动生成。",
             "更新 Keyframe 计划/辅助图/边界，不生成。",
-            "编辑地点库与Scene/Shot绑定；新建项以key互引，不能选候选。",
+            "编辑地点语义、独立图片条目与可选Scene关系；新建项以key互引，不能选候选。",
             "新增/修改角色造型（外观、使用场合），不生成、不删除。",
-            "只生成明确目标的新候选，需精确用户授权；室内 location_view 无有效裁切时只先裁切。",
+            "只生成明确地点图片候选或执行一次全景取景，需精确用户授权。",
             "观察/取消/重试/隐藏明确Generation。",
             "成套生成批次：keyframe 波次或 location 成套参考图；continue 带原批次 ID。",
             "解锁视觉生产，建立 Keyframe 与视频计划；不生成。",
@@ -580,7 +565,7 @@ def translate(name, request):
         exclude={"project_id", "expected_revision", "idempotency_key"}, exclude_unset=True
     )
     if isinstance(request, LocationEdit):
-        args["scope"] = {key: args.pop(key) for key in ("location_ids", "scene_ids", "shot_ids")}
+        args["scope"] = {key: args.pop(key) for key in ("location_ids", "scene_ids")}
     elif "scene_ids" in args:
         args["scope"] = {"scene_ids": args.pop("scene_ids")}
     if isinstance(request, NarrationEdit):
@@ -614,8 +599,8 @@ def translate(name, request):
             "video": ("video.generate", "segment_id"),
             "upscale": ("video.upscale", "segment_id"),
             "look_sheet": ("reference.generate_look_sheet", "look_id"),
-            "location_master": ("location.generate_master", "location_id"),
-            "location_view": ("location.generate_view", "view_id"),
+            "location_image": ("location.generate_image", "image_id"),
+            "panorama_capture": ("location.capture_panorama", "image_id"),
         }[request.kind]
         if request.kind == "narration":
             return command, {target: request.target_id, "language": request.language}

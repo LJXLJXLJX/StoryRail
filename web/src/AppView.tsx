@@ -25,8 +25,8 @@ import { captureContentSave, savedContentChanges, mergeContentChanges, type Cont
 import { useSnapshotScheduler } from "./director_workspace/useSnapshotScheduler";
 type PendingAction =
   | "edit_location"
-  | "generate_location_master"
-  | "generate_location_view"
+  | "generate_location_image"
+  | "capture_location_panorama"
   | "list"
   | "create"
   | "open"
@@ -419,9 +419,6 @@ export function App() {
     visibleCharacterIds: string[],
     characterReferences: KeyframeCharacterReference[],
     referenceAssetIds: string[],
-    environmentMode: "edit" | "reference" | "none",
-    environmentViewId: string | null,
-    environmentNoneReason: string | null,
   ) {
     if (selectedProject === null || structuredSnapshot === null) return;
     await mutateStructuredDirector(
@@ -435,9 +432,6 @@ export function App() {
           visibleCharacterIds,
           characterReferences,
           referenceAssetIds,
-          environmentMode,
-          environmentViewId,
-          environmentNoneReason,
         ),
       "edit_keyframe_references",
       { kind: "keyframe", id: keyframeId },
@@ -1046,13 +1040,13 @@ export function App() {
               );
               return result !== false;
             }}
-            onGenerateLocationMaster={(id) => void mutateStructuredDirector(
-              () => structuredDirectorApi.generateLocationMaster(selectedProject.id, structuredSnapshot.revision, id),
-              "generate_location_master",
+            onGenerateLocationImage={(id) => void mutateStructuredDirector(
+              () => structuredDirectorApi.generateLocationImage(selectedProject.id, structuredSnapshot.revision, id),
+              "generate_location_image",
             )}
-            onGenerateLocationView={(id) => void mutateStructuredDirector(
-              () => structuredDirectorApi.generateLocationView(selectedProject.id, structuredSnapshot.revision, id),
-              "generate_location_view",
+            onCaptureLocationPanorama={(id, name, description, yaw, pitch, hfov) => void mutateStructuredDirector(
+              () => structuredDirectorApi.captureLocationPanorama(selectedProject.id, structuredSnapshot.revision, id, name, description, yaw, pitch, hfov),
+              "capture_location_panorama",
             )}
             onConfirmReferences={() => void confirmReferences()}
             onSaveScript={(scenes, revision) => void saveScript(scenes, revision)}
@@ -1099,9 +1093,6 @@ export function App() {
               visibleCharacterIds,
               characterReferences,
               referenceAssetIds,
-              environmentMode,
-              environmentViewId,
-              environmentNoneReason,
             ) =>
               void saveKeyframe(
                 keyframeId,
@@ -1110,9 +1101,6 @@ export function App() {
                 visibleCharacterIds,
                 characterReferences,
                 referenceAssetIds,
-                environmentMode,
-                environmentViewId,
-                environmentNoneReason,
               )
             }
             onSelectKeyframe={(keyframeId, assetId) =>
@@ -1409,9 +1397,8 @@ export function summarizeGenerationProgress(
       generation.kind === "generated_audio"
         ? "tts"
         : generation.kind === "character_look_sheet" ||
-            generation.kind === "location_master_image" ||
-            generation.kind === "location_view_crop" ||
-            generation.kind === "location_view_image" ||
+            generation.kind === "location_image" ||
+            generation.kind === "panorama_capture" ||
             generation.kind === "keyframe_image"
           ? "image"
           : "video";

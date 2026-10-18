@@ -66,7 +66,7 @@ Playground 从同一声明生成完整参数表单与输入校验。
 
 | 能力 | 插件实例（recipe） | 默认部署位置 | 用途 |
 | --- | --- | --- | --- |
-| `image.generate` / `image.edit` | `codex_image`（`codex_image.generate/edit`，默认）或 `agy_image`（`agy_image.generate/edit`），分别绑定 | Mac :8792 | 角色参考图与造型设定图、地点主图与视图、Keyframe |
+| `image.generate` / `image.edit` | `codex_image`（`codex_image.generate/edit`，默认）或 `agy_image`（`agy_image.generate/edit`），分别绑定 | Mac :8792 | 角色参考图与造型设定图、独立地点图片、Keyframe |
 | `image.generate` / `image.edit` | `qwen_image`（`qwen_image.generate/edit`，Qwen Image 2.1 · NoctQ V4，备选） | Windows :8791 | 同上 |
 | `voice.design` / `speech.synthesize` | `breeze_tts2`（`breeze_tts2.voice_design` / `breeze_tts2.clone`） | Windows :8791（按需拉起） | 音色设计、旁白 TTS、Voice Clone / Direction |
 | `speech.synthesize` | `indextts2`（`indextts2.synthesize`） | Windows :8791（按需拉起 WSL） | 参考 WAV 克隆，语速与八维情感 |
@@ -170,7 +170,7 @@ recipe 参数：`prompt` / `aspect_ratio` / `seed` 由 Core 按领域事实填�
 ### 图片比例
 
 图片插件的 `aspect_ratio` 参数取自 `IMAGE_ASPECT_RATIOS`（16:9、9:16、2:1、1:2、1:1、3:2、2:3、4:3、3:4、5:4、4:5、21:9、
-9:21、3:1、1:3）。Keyframe 与地点视图始终使用项目画幅；角色参考图可以指定其中任一比例；造型设定图与室内地点主图固定 2:1，室外地点主图跟随项目画幅。
+9:21、3:1、1:3）。Keyframe 与普通地点图使用项目画幅；角色参考图可以指定其中任一比例；造型设定图与地点全景图固定 2:1。
 造型设定图在 Codex / AGY 的提示词里另写 4K（4096×2048）分辨率要求，Qwen 沿用全局分辨率档位。Codex / AGY 把比例写进提示词，
 并把产物裁成该比例内最大的区域（不缩放像素）；Qwen 按比例与分辨率档位计算画布。
 

@@ -31,12 +31,11 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 `read_professional_workset` / `read_professional_contract` 的 `capability="location"` 不带 `scene_ids`，`location_proposal` 的 request
 只有 `raw_user_instruction`，翻译为 `location.*_proposal`。`edit_script`、`edit_keyframes`、`edit_locations`、`edit_looks` 发布紧凑的操作 schema（只列 `op` 常量与字段名），完整校验
 由 runtime 模型执行；`edit_looks` 翻译为 `reference.apply_look_operations`，字段形状随 reference_library 契约
-（`references/look-sheets.md`）下发；`edit_locations` 各操作的字段形状随 location 专业契约（`references/location-bible.md` 附录）下发。`edit_locations` 翻译为 `location.apply_operations`，顶层 `location_ids`、`scene_ids`、`shot_ids`
-组成 scope；不提供主图/视图候选选择。`generate_media` 的 `look_sheet` 翻译为 `reference.generate_look_sheet`（`identity_asset_ids` 为 0–4 张身份参考）；`location_master` / `location_view` 分别翻译为
-`location.generate_master` / `location.generate_view`；室内视图没有与当前主图和几何一致的裁切时只提交全景裁切，
-裁切完成后需再次调用才提交细化。`media_batch` 的 `kind` 选择批次类型：`keyframe` 翻译为
+（`references/look-sheets.md`）下发；`edit_locations` 各操作的字段形状随 location 专业契约（`references/location-bible.md` 附录）下发。`edit_locations` 翻译为 `location.apply_operations`，顶层 `location_ids`、`scene_ids`
+组成 scope；不提供地点图片候选选择。`generate_media` 的 `look_sheet` 翻译为 `reference.generate_look_sheet`（`identity_asset_ids` 为 0–4 张身份参考）；
+`location_image` / `panorama_capture` 分别翻译为 `location.generate_image` / `location.capture_panorama`。`media_batch` 的 `kind` 选择批次类型：`keyframe` 翻译为
 `keyframe.generate_batch` / `keyframe.continue_batch`，`location` 翻译为 `location.generate_set`
-（start 带 `target_ids` 固定地点范围，continue 带原 `batch_id` 或关联 `execution_run_id`）。
+（start 带 `target_ids` 固定地点图片范围，continue 带原 `batch_id` 或关联 `execution_run_id`）。
 
 参数规则：
 

@@ -59,7 +59,6 @@ _SHOT_FIELDS = {
     "action",
     "audio_direction",
     "transition_in",
-    "view_id",
 }
 
 _SCENE_FIELDS = {
@@ -158,7 +157,6 @@ def _serialize_shot(shot: Shot) -> dict[str, Any]:
         "action": shot.action,
         "audio_direction": shot.audio_direction,
         "transition_in": shot.transition_in,
-        "view_id": shot.view_id,
     }
 
 
@@ -339,7 +337,6 @@ def _parse_shot(value: object) -> Shot:
         action=_string(fields["action"], "shot.action"),
         audio_direction=_string(fields["audio_direction"], "shot.audio_direction"),
         transition_in=_optional_string(fields["transition_in"], "shot.transition_in"),
-        view_id=_optional_string(fields["view_id"], "shot.view_id"),
     )
 
 

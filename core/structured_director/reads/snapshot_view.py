@@ -29,7 +29,7 @@ from ..models import (
 )
 from ..narration_timing import narration_timing_language, narration_timing_seconds
 from ..video_inputs import start_frame_extraction_source, video_inputs_unchanged
-from .location_view import location_library_projection
+from .location_image import location_library_projection
 from .video_recipes import video_recipe_state
 from .workflow_state import production_baseline_issue, references_reviewed, workflow_state
 
@@ -52,7 +52,7 @@ class _ProviderAvailabilityView(Protocol):
 
     provider_catalog: object
 
-    def location_master_candidate_valid(self, asset: Asset) -> bool: ...
+    def panorama_candidate_valid(self, asset: Asset) -> bool: ...
 
     def provider_recipe_views(self) -> list[dict]: ...
 
@@ -63,8 +63,7 @@ _STRING_SEED_KINDS = frozenset(
     {
         ReferenceGenerationKind.SEGMENT_VIDEO,
         ReferenceGenerationKind.CHARACTER_LOOK_SHEET,
-        ReferenceGenerationKind.LOCATION_MASTER_IMAGE,
-        ReferenceGenerationKind.LOCATION_VIEW_IMAGE,
+        ReferenceGenerationKind.LOCATION_IMAGE,
         ReferenceGenerationKind.KEYFRAME_IMAGE,
     }
 )
@@ -355,7 +354,6 @@ def _serialize_scene(
                 "action": shot.action,
                 "audio_direction": shot.audio_direction,
                 "transition_in": shot.transition_in,
-                "view_id": shot.view_id,
             }
             for shot in scene.shots
         ],
@@ -580,10 +578,7 @@ def _generation_allowed_actions(
     referenced_asset_ids.update(
         asset_id
         for item in document.location_library.locations
-        for asset_id in (
-            item.master.selected_asset_id,
-            *(view.selected_asset_id for view in item.views),
-        )
+        for asset_id in tuple(image.selected_asset_id for image in item.images)
         if asset_id is not None
     )
     if document.keyframe_plan is not None:
@@ -602,7 +597,7 @@ def _generation_allowed_actions(
         return ()
     if generation.kind in {
         ReferenceGenerationKind.VIDEO_FRAME,
-        ReferenceGenerationKind.LOCATION_VIEW_CROP,
+        ReferenceGenerationKind.PANORAMA_CAPTURE,
     }:
         return ()
     if generation.kind is ReferenceGenerationKind.KEYFRAME_IMAGE:
@@ -642,8 +637,7 @@ def _generation_allowed_actions(
             else ("dismiss_history",)
         )
     if generation.kind in {
-        ReferenceGenerationKind.LOCATION_MASTER_IMAGE,
-        ReferenceGenerationKind.LOCATION_VIEW_IMAGE,
+        ReferenceGenerationKind.LOCATION_IMAGE,
         ReferenceGenerationKind.GENERATED_AUDIO,
         ReferenceGenerationKind.SCENE_FINAL_VIDEO,
         ReferenceGenerationKind.SCENE_ANIMATIC,
@@ -940,9 +934,6 @@ def serialize_snapshot(
                         "visible_character_ids": list(item.visible_character_ids),
                         "character_references": serialize_character_references(item),
                         "selected_asset_id": item.selected_asset_id,
-                        "environment_mode": item.environment_mode.value,
-                        "environment_view_id": item.environment_view_id,
-                        "environment_none_reason": item.environment_none_reason,
                     }
                     for item in document.keyframe_plan.keyframes
                 ],

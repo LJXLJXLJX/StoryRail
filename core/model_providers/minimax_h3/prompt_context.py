@@ -16,7 +16,6 @@ def context_from_workset(value):
             action=item["action"],
             audio_direction=item["audio_direction"],
             visible_character_names=tuple(item["visible_character_names"]),
-            view_name=item["view_name"],
         )
         for item in ctx["shots"]
     )

@@ -17,7 +17,7 @@ from ._shared import (
 
 if TYPE_CHECKING:
     from ..video_contracts import VideoFrameRequest, VideoInputSnapshot
-    from .location import LocationCropRequest
+    from .location import PanoramaCaptureRequest
 
 
 _GENERATION_TRANSITIONS = {
@@ -74,10 +74,10 @@ class ReferenceGeneration:
     provider_snapshot: ProviderSnapshot | None = None
     # 实际提交的插件机制参数（按 provider_snapshot.recipe_id 记录一条）；重试按原值提交。
     recipe_params: RecipeParams = RecipeParams()
-    # 角色参考图可指定非项目画幅的比例，室内地点主图固定 2:1；None 表示跟随项目画幅。
+    # 角色参考图可指定非项目画幅的比例，地点全景图固定 2:1；None 表示跟随项目画幅。
     aspect_ratio: str | None = None
-    # 仅地点视图全景裁切：提交时的主图与绝对机位；回调据此判断裁切是否过期。
-    location_crop_request: LocationCropRequest | None = None
+    # 仅全景取景：提交时冻结源全景 Asset 与绝对机位。
+    panorama_capture_request: PanoramaCaptureRequest | None = None
 
     def __post_init__(self) -> None:
         validate_reference_generation(self)

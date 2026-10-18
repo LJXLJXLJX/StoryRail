@@ -221,7 +221,6 @@ describe("StructuredDirectorWorkspace", () => {
                 action: "等待",
                 audio_direction: "风声",
                 transition_in: null,
-                view_id: null,
               }],
             segments: [{ shot_ids: ["d".repeat(32)],
                     id: "f".repeat(32),
@@ -1433,7 +1432,7 @@ describe("StructuredDirectorWorkspace", () => {
     const sceneAsset = {
       ...snapshot.assets[0],
       id: "f".repeat(32),
-      image_category: "location_view" as const,
+      image_category: "location_image" as const,
       display_name: "场景图.png",
     };
     renderWorkspace(
@@ -1484,7 +1483,7 @@ describe("StructuredDirectorWorkspace", () => {
       "请先选择图片分类，再导入图片。",
     );
     fireEvent.change(within(dialog).getByLabelText("本地图片分类"), {
-      target: { value: "location_view" },
+      target: { value: "location_image" },
     });
     fireEvent.paste(dialog, { clipboardData });
     expect(onImportImage).toHaveBeenCalledTimes(1);
@@ -1492,7 +1491,7 @@ describe("StructuredDirectorWorkspace", () => {
     expect(file).toBeInstanceOf(File);
     expect(file.name).toBe("剪贴板图片.png");
     expect(file.type).toBe("image/png");
-    expect(category).toBe("location_view");
+    expect(category).toBe("location_image");
     expect(
       within(dialog).getByText("或按 ⌘V / Ctrl+V 粘贴图片"),
     ).toBeInTheDocument();
@@ -1797,7 +1796,6 @@ describe("StructuredDirectorWorkspace", () => {
                 action: "小满抬头看站牌。",
                 audio_direction: "风声。",
                 transition_in: null,
-                view_id: null,
               }],
             segments: [{ shot_ids: ["d".repeat(32)],
                     id: "e".repeat(32),
@@ -1880,7 +1878,6 @@ describe("StructuredDirectorWorkspace", () => {
           action: "角色穿过客厅。",
           audio_direction: "室内声。",
           transition_in: null,
-          view_id: null,
         },
         {
           id: "8".repeat(32),
@@ -1890,7 +1887,6 @@ describe("StructuredDirectorWorkspace", () => {
           action: "动作延续到下一个 Shot。",
           audio_direction: "室内声连续。",
           transition_in: null,
-          view_id: null,
         }],
       segments: [{ ...makeSegment("e".repeat(32)), shot_ids: ["d".repeat(32)] }, { ...makeSegment("7".repeat(32), {
               reason: "continuity_anchor",
@@ -1940,28 +1936,20 @@ describe("StructuredDirectorWorkspace", () => {
             {
               id: "6".repeat(32),
               name: "合成地点",
-              kind: "interior",
               description: "固定客厅空间。",
               fixtures: [],
               key_light: null,
-              master: { prompt_text: "固定客厅空间。", reference_asset_ids: [], selected_asset_id: sceneAssetId },
-              calibrated_master_asset_id: null,
               states: [],
-              views: [
+              images: [
                 {
                   id: "0".repeat(32),
                   name: "客厅正面",
-                  purpose: "中景背景",
-                  azimuth_deg: 0,
-                  look_at_fixture_id: null,
-                  yaw_offset_deg: null,
-                  pitch_deg: 0,
-                  hfov_deg: 60,
-                  state_id: null,
-                  refine_prompt_text: "",
-                  reference_view_ids: [],
-                  crop_asset_id: null,
+                  kind: "image",
+                  description: "客厅正面中景背景。",
+                  prompt_text: "固定客厅空间。",
+                  reference_asset_ids: [],
                   selected_asset_id: sceneAssetId,
+                  source: null,
                 },
               ],
             },
@@ -1977,9 +1965,6 @@ describe("StructuredDirectorWorkspace", () => {
               prompt_text: "角色尚未迈步。",
               visible_character_ids: [], character_references: [],
               selected_asset_id: sceneAssetId,
-              environment_mode: "edit",
-              environment_view_id: "0".repeat(32),
-              environment_none_reason: null,
             },
             {
               id: "2".repeat(32),
@@ -1988,9 +1973,6 @@ describe("StructuredDirectorWorkspace", () => {
               prompt_text: "角色走到客厅中央。",
               visible_character_ids: [], character_references: [],
               selected_asset_id: null,
-              environment_mode: "edit",
-              environment_view_id: "0".repeat(32),
-              environment_none_reason: null,
             },
             {
               id: "3".repeat(32),
@@ -1999,9 +1981,6 @@ describe("StructuredDirectorWorkspace", () => {
               prompt_text: "角色走到门边。",
               visible_character_ids: [], character_references: [],
               selected_asset_id: null,
-              environment_mode: "reference",
-              environment_view_id: "0".repeat(32),
-              environment_none_reason: null,
             },
             {
               id: "4".repeat(32),
@@ -2010,9 +1989,6 @@ describe("StructuredDirectorWorkspace", () => {
               prompt_text: "角色停在门边。",
               visible_character_ids: [], character_references: [],
               selected_asset_id: null,
-              environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
             },
           ],
           segments: [
@@ -2065,31 +2041,21 @@ describe("StructuredDirectorWorkspace", () => {
       "src",
       "/scene.png",
     );
-    const sceneReferenceMode =
-      within(manualPlan).getByLabelText("地点视图使用方式");
-    expect(sceneReferenceMode).toHaveValue("edit");
-    expect(
-      within(sceneReferenceMode).getByRole("option", { name: "不使用（none）" }),
-    ).toBeEnabled();
-    expect(
-      within(sceneReferenceMode).getByRole("option", {
-        name: "仅作参考（reference）",
-      }),
-    ).toBeEnabled();
-    fireEvent.change(sceneReferenceMode, { target: { value: "reference" } });
+    expect(within(manualPlan).queryByLabelText("地点视图使用方式")).toBeNull();
+    fireEvent.change(
+      within(manualPlan).getByLabelText("静态画面提示词（自由编写）"),
+      { target: { value: "角色尚未迈步，海风掠过。" } },
+    );
     fireEvent.click(
       within(manualPlan).getByRole("button", { name: "保存关键帧计划" }),
     );
     expect(onSaveKeyframe).toHaveBeenCalledWith(
       "1".repeat(32),
       "e".repeat(32),
-      "角色尚未迈步。",
+      "角色尚未迈步，海风掠过。",
       [],
       [],
       [sceneAssetId],
-      "reference",
-      "0".repeat(32),
-      null,
     );
     fireEvent.click(within(manualPlan).getByRole("button", { name: "关闭" }));
     fireEvent.click(
@@ -2266,7 +2232,6 @@ describe("StructuredDirectorWorkspace", () => {
                 action: "哥哥寻找零食。",
                 audio_direction: "室内底声。",
                 transition_in: null,
-                view_id: null,
               }],
             segments: [{ shot_ids: [shotId],
                     id: "e".repeat(32),
@@ -2416,7 +2381,6 @@ describe("StructuredDirectorWorkspace", () => {
           action: "角色离开。",
           audio_direction: "环境声。",
           transition_in: null,
-          view_id: null,
         }],
       segments: [{ shot_ids: ["d".repeat(32)],
               id: segmentId,
@@ -2575,7 +2539,6 @@ describe("StructuredDirectorWorkspace", () => {
           action: "角色前进。",
           audio_direction: "脚步声。",
           transition_in: null,
-          view_id: null,
         }],
       segments: [{ shot_ids: ["d".repeat(32)],
               id: segmentId,
@@ -2782,9 +2745,6 @@ describe("StructuredDirectorWorkspace", () => {
               prompt_text: "起点",
               visible_character_ids: [], character_references: [],
               selected_asset_id: startAssetId,
-              environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
             },
             {
               id: endId,
@@ -2793,9 +2753,6 @@ describe("StructuredDirectorWorkspace", () => {
               prompt_text: "终点",
               visible_character_ids: [], character_references: [],
               selected_asset_id: null,
-              environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
             },
           ],
           segments: [
@@ -2930,9 +2887,6 @@ describe("StructuredDirectorWorkspace", () => {
       ["b".repeat(32)],
       [],
       ["a".repeat(32)],
-      "none",
-      null,
-      "Shot 未绑定地点视图",
     );
     await waitFor(() =>
       expect(previewKeyframe).toHaveBeenCalledWith(
@@ -2944,9 +2898,6 @@ describe("StructuredDirectorWorkspace", () => {
         ["b".repeat(32)],
         [],
         ["a".repeat(32)],
-        "none",
-        null,
-        "Shot 未绑定地点视图",
       ),
     );
     expect(
@@ -3133,7 +3084,6 @@ describe("StructuredDirectorWorkspace", () => {
           action: "两只猫对话。",
           audio_direction: "安静室内。",
           transition_in: null,
-          view_id: null,
         }],
       segments: [{ shot_ids: [shotId],
               id: segmentId,
@@ -3253,9 +3203,6 @@ describe("StructuredDirectorWorkspace", () => {
               prompt_text: "起点",
               visible_character_ids: [], character_references: [],
               selected_asset_id: null,
-              environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
             },
             {
               id: endId,
@@ -3264,9 +3211,6 @@ describe("StructuredDirectorWorkspace", () => {
               prompt_text: "终点",
               visible_character_ids: [], character_references: [],
               selected_asset_id: endAssetId,
-              environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
             },
           ],
           segments: [
@@ -3341,7 +3285,6 @@ describe("StructuredDirectorWorkspace", () => {
           action: "画面停下。",
           audio_direction: "环境声。",
           transition_in: null,
-          view_id: null,
         }],
       segments: [{ shot_ids: ["d".repeat(32)],
               id: segmentId,
@@ -3396,9 +3339,6 @@ describe("StructuredDirectorWorkspace", () => {
               prompt_text: "起点",
               visible_character_ids: [], character_references: [],
               selected_asset_id: null,
-              environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
             },
             {
               id: endId,
@@ -3407,9 +3347,6 @@ describe("StructuredDirectorWorkspace", () => {
               prompt_text: "终点",
               visible_character_ids: [], character_references: [],
               selected_asset_id: null,
-              environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
             },
           ],
           segments: [
@@ -3457,7 +3394,6 @@ describe("StructuredDirectorWorkspace", () => {
           action: "角色停下。",
           audio_direction: "环境声。",
           transition_in: null,
-          view_id: null,
         }],
       segments: [{ shot_ids: ["d".repeat(32)],
               id: segmentId,
@@ -3521,7 +3457,6 @@ describe("StructuredDirectorWorkspace", () => {
           action: "角色前进。",
           audio_direction: "脚步声。",
           transition_in: null,
-          view_id: null,
         }],
       segments: [{ shot_ids: [shotId],
               id: segmentId,
@@ -3600,9 +3535,6 @@ describe("StructuredDirectorWorkspace", () => {
             prompt_text: "走廊起点。",
             visible_character_ids: [], character_references: [],
             selected_asset_id: assetId,
-            environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
           },
           {
             id: endKeyframeId,
@@ -3611,9 +3543,6 @@ describe("StructuredDirectorWorkspace", () => {
             prompt_text: "走廊终点。",
             visible_character_ids: [], character_references: [],
             selected_asset_id: null,
-            environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
           },
         ],
         segments: [
@@ -3691,7 +3620,6 @@ describe("StructuredDirectorWorkspace", () => {
           action: "观察海面。",
           audio_direction: "海浪。",
           transition_in: null,
-          view_id: null,
         }],
       segments: [{ shot_ids: ["d".repeat(32)],
               id: segmentId,
@@ -3736,9 +3664,6 @@ describe("StructuredDirectorWorkspace", () => {
               prompt_text: "海岸。",
               visible_character_ids: [], character_references: [],
               selected_asset_id: null,
-              environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
             },
             {
               id: endId,
@@ -3747,9 +3672,6 @@ describe("StructuredDirectorWorkspace", () => {
               prompt_text: "海面。",
               visible_character_ids: [], character_references: [],
               selected_asset_id: null,
-              environment_mode: "none",
-      environment_view_id: null,
-      environment_none_reason: "Shot 未绑定地点视图",
             },
           ],
           segments: [
@@ -3844,7 +3766,6 @@ function renderWorkspace(
       visibleCharacterIds: string[],
       characterReferences: KeyframeCharacterReference[],
       referenceAssetIds: string[],
-      sceneReferenceMode: "edit" | "reference" | "none",
     ) => void;
     onSaveSegmentKeyframeReferences?: (
       segmentId: string,
@@ -4278,38 +4199,26 @@ function withLocation(
       {
         id: locationId,
         name: "站台",
-        kind: "interior" as const,
         description: "站台。",
         fixtures: [],
         key_light: null,
-        master: {
-          prompt_text: "",
-          reference_asset_ids: [],
-          selected_asset_id: null,
-        },
-        calibrated_master_asset_id: null,
         states: [],
-        views: [
+        images: [
           {
             id: viewId,
             name: "正打",
-            purpose: "中景",
-            azimuth_deg: 0,
-            look_at_fixture_id: null,
-            yaw_offset_deg: null,
-            pitch_deg: 0,
-            hfov_deg: 75,
-            state_id: null,
-            refine_prompt_text: "",
-            reference_view_ids: [],
-            crop_asset_id: null,
+            kind: "image",
+            description: "正打中景。",
+            prompt_text: "",
+            reference_asset_ids: [],
             selected_asset_id: null,
+            source: null,
           },
         ],
-        allowed_actions: ["edit", "create_view", "create_fixture", "create_state"],
+        allowed_actions: ["edit", "create_image", "create_fixture", "create_state"],
       },
     ],
-    allowed_actions: ["create_location", "bind_scene", "bind_shot"],
+    allowed_actions: ["create_location", "bind_scene"],
   };
   return { locationId, viewId };
 }
@@ -4362,38 +4271,31 @@ it("Scene 镜头设计列出覆盖片段，Segment 页列出覆盖镜头描述",
   expect(within(list).getAllByText(/运镜：/)).toHaveLength(2);
 });
 
-it("Shot 编辑器只列出本 Scene 绑定地点的视图建议，并以整卡 v33 保存", () => {
+it("Shot 编辑器不再暴露地点图片绑定，并以整卡保存", () => {
   const value = scriptSnapshot();
-  const { viewId } = withLocation(value, 1);
+  withLocation(value, 1);
   const onSaveScript = vi.fn();
   renderWorkspace({ onSaveScript }, value, false);
   openScene(2);
   fireEvent.click(screen.getByRole("button", { name: "镜头 1" }));
   fireEvent.click(screen.getByRole("button", { name: "编辑这一段" }));
-  const select = screen.getByLabelText("空间参考建议（view_id，不强制）");
-  expect(
-    within(select)
-      .getAllByRole("option")
-      .map((option) => option.textContent),
-  ).toEqual(["不使用", "正打 · 中景"]);
-  fireEvent.change(select, { target: { value: viewId } });
+  expect(screen.queryByLabelText(/空间参考建议/)).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("构图"), {
+    target: { value: "修改后的构图。" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "保存脚本修改" }));
   expect(onSaveScript).toHaveBeenCalledOnce();
-  expect(onSaveScript.mock.calls[0][0][1].shots[0].view_id).toBe(viewId);
+  expect(onSaveScript.mock.calls[0][0][1].shots[0]).not.toHaveProperty("view_id");
 });
 
-it("Scene 未绑定地点时 Shot 编辑器只能选择不使用视图", () => {
+it("Scene 未绑定地点时 Shot 编辑器同样不出现地点图片绑定", () => {
   const value = scriptSnapshot();
   renderWorkspace({}, value, false);
   openScene(1);
   fireEvent.click(screen.getByRole("button", { name: "镜头 1" }));
   fireEvent.click(screen.getByRole("button", { name: "编辑这一段" }));
-  expect(
-    screen.getByLabelText("空间参考建议（view_id，不强制）"),
-  ).toBeDisabled();
-  expect(
-    screen.getByText("本 Scene 尚未绑定地点，镜头只能不使用空间参考视图。"),
-  ).toBeInTheDocument();
+  expect(screen.queryByLabelText(/空间参考建议/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/镜头只能不使用空间参考视图/)).not.toBeInTheDocument();
 });
 
 it("Segment 覆盖区间选择按连续区间写 shot_ids，提交整卡保存", () => {
@@ -4475,7 +4377,7 @@ it("新增镜头并入已有片段与新建片段的整卡请求形状", () => {
   expect(attached.shots).toHaveLength(3);
   const newShot = attached.shots[2];
   expect(newShot.id.startsWith("new:")).toBe(true);
-  expect(newShot.view_id).toBeNull();
+  expect(newShot).not.toHaveProperty("view_id");
   expect(attached.segments[2].shot_ids).toEqual([
     attached.shots[1].id,
     newShot.id,
@@ -4587,18 +4489,15 @@ it("Segment 保存被服务端拒绝时保留输入并原样显示错误", () =>
   expect(input).toHaveValue("服务端拒绝后仍保留的输入");
 });
 
-it("新增镜头时可选择本 Scene 绑定地点的视图建议", () => {
+it("新增镜头不携带地点图片绑定", () => {
   const value = scriptSnapshot();
-  const { viewId } = withLocation(value, 1);
+  withLocation(value, 1);
   const onSaveScript = vi.fn();
   renderWorkspace({ onSaveScript }, value, false);
   openScene(2);
   fireEvent.click(screen.getByRole("button", { name: "新增镜头" }));
-  fireEvent.change(
-    screen.getByLabelText("空间参考建议（view_id，可空）"),
-    { target: { value: viewId } },
-  );
+  expect(screen.queryByLabelText(/空间参考建议/)).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "保存新镜头" }));
   const saved = onSaveScript.mock.calls[0][0][1];
-  expect(saved.shots.at(-1).view_id).toBe(viewId);
+  expect(saved.shots.at(-1)).not.toHaveProperty("view_id");
 });

@@ -72,10 +72,6 @@ def _dependency(
             )
             if binding is None:
                 reasons.append("Keyframe 尚未激活。")
-            if frame.environment_view_id is not None:
-                owner = document.location_library.view_owner(frame.environment_view_id)
-                if owner is None or owner[1].selected_asset_id is None:
-                    reasons.append("显式引用的地点视图尚未选择图片，请先选定该视图图片。")
             if not frame.prompt_text.strip():
                 reasons.append("Keyframe 提示词为空。")
             if (
@@ -260,18 +256,14 @@ def _selected_assets(
             )
             is not None
         }
-    if kind is ReferenceGenerationKind.LOCATION_MASTER_IMAGE:
+    if kind in {
+        ReferenceGenerationKind.LOCATION_IMAGE,
+    }:
         return {
-            item.id: {item.master.selected_asset_id}
+            image.id: {image.selected_asset_id}
             for item in document.location_library.locations
-            if item.master.selected_asset_id is not None
-        }
-    if kind is ReferenceGenerationKind.LOCATION_VIEW_IMAGE:
-        return {
-            view.id: {view.selected_asset_id}
-            for item in document.location_library.locations
-            for view in item.views
-            if view.selected_asset_id is not None
+            for image in item.images
+            if image.selected_asset_id is not None
         }
     if kind is ReferenceGenerationKind.NARRATION_AUDIO and document.director_script is not None:
         return {

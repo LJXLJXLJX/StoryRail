@@ -108,7 +108,7 @@ def _generation_request_signature(generation: ReferenceGeneration) -> tuple[obje
         generation.seed,
         generation.duration_seconds,
         generation.aspect_ratio,
-        generation.location_crop_request,
+        generation.panorama_capture_request,
     )
 
 

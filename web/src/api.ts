@@ -205,26 +205,37 @@ export const structuredDirectorApi = {
         expected_revision: revision,
         ...change.arguments,
       });
-    if (change.name === "location.select_master")
-      return structuredMutation(
-        projectId,
-        `locations/${change.arguments.location_id}/master/select`,
-        { expected_revision: revision, asset_id: change.arguments.asset_id },
-      );
     return structuredMutation(
       projectId,
-      `location-views/${change.arguments.view_id}/select`,
+      `location-images/${change.arguments.image_id}/select`,
       { expected_revision: revision, asset_id: change.arguments.asset_id },
     );
   },
-  generateLocationMaster: (
+  generateLocationImage: (
     projectId: string,
     revision: number,
-    locationId: string,
+    imageId: string,
   ) =>
-    structuredMutation(projectId, `locations/${locationId}/master/generate`, {
+    structuredMutation(projectId, `location-images/${imageId}/generate`, {
       expected_revision: revision,
     }),
+  captureLocationPanorama: (
+    projectId: string,
+    revision: number,
+    panoramaImageId: string,
+    name: string,
+    description: string,
+    yawDeg: number,
+    pitchDeg: number,
+    hfovDeg: number,
+  ) => structuredMutation(projectId, `location-images/${panoramaImageId}/capture`, {
+    expected_revision: revision,
+    name,
+    description,
+    yaw_deg: yawDeg,
+    pitch_deg: pitchDeg,
+    hfov_deg: hfovDeg,
+  }),
   previewScriptChange: (
     projectId: string,
     revision: number,
@@ -276,10 +287,6 @@ export const structuredDirectorApi = {
         }),
       },
     ),
-  generateLocationView: (projectId: string, revision: number, viewId: string) =>
-    structuredMutation(projectId, `location-views/${viewId}/generate`, {
-      expected_revision: revision,
-    }),
   get: (projectId: string) =>
     request(
       structuredDirectorResource(projectId),
@@ -438,9 +445,6 @@ export const structuredDirectorApi = {
     visibleCharacterIds: string[],
     characterReferences: KeyframeCharacterReference[],
     referenceAssetIds: string[],
-    environmentMode: "edit" | "reference" | "none",
-    environmentViewId: string | null,
-    environmentNoneReason: string | null,
   ) =>
     structuredMutation(
       projectId,
@@ -452,9 +456,6 @@ export const structuredDirectorApi = {
         visible_character_ids: visibleCharacterIds,
         character_references: characterReferences,
         reference_asset_ids: referenceAssetIds,
-        environment_mode: environmentMode,
-        environment_view_id: environmentViewId,
-        environment_none_reason: environmentNoneReason,
       },
       "PUT",
     ),
@@ -467,9 +468,6 @@ export const structuredDirectorApi = {
     visibleCharacterIds: string[],
     characterReferences: KeyframeCharacterReference[],
     referenceAssetIds: string[],
-    environmentMode: "edit" | "reference" | "none",
-    environmentViewId: string | null,
-    environmentNoneReason: string | null,
   ) =>
     request(
       `${structuredDirectorResource(projectId)}/keyframes/${keyframeId}/preview`,
@@ -484,9 +482,6 @@ export const structuredDirectorApi = {
           visible_character_ids: visibleCharacterIds,
           character_references: characterReferences,
           reference_asset_ids: referenceAssetIds,
-          environment_mode: environmentMode,
-          environment_view_id: environmentViewId,
-          environment_none_reason: environmentNoneReason,
         }),
       },
     ),

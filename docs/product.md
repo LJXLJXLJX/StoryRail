@@ -17,8 +17,8 @@ flowchart LR
     project --> refs[引用库<br/>角色·非出镜声音·旁白身份]
     refs --> script[结构化脚本<br/>Scene / Shot / Segment]
     script --> narration[项目所选语言旁白<br/>TTS · 选择 · 校时]
-    narration -.可选.-> loc[地点库<br/>主图 · 状态 · 机位视图]
-    loc --> kf[Keyframe<br/>首尾帧 · 默认取首/末覆盖 Shot 的视图]
+    narration -.可选.-> loc[地点库<br/>语义 · 状态 · 独立图片]
+    loc -.语义上下文.-> kf[Keyframe<br/>首尾帧 · 自行考虑地点]
     narration --> kf
     kf --> video[Segment 视频<br/>FL2VA / Ref2VA · 超分]
     video --> scenefinal[Scene 成片<br/>所选语言版本]
@@ -46,12 +46,12 @@ StoryRail 不内置 Agent、不持有模型会话，也没有隐藏 fallback。�
 | Project | 生产容器；创建时固化 `title`、`aspect_ratio`（`16:9` / `9:16` / `2:1`）和 `director_plan_markdown`，三者没有修改 API |
 | Reference Library | 角色卡（可见角色或非出镜声音）与独立旁白身份；Core 分配 ID |
 | Scene | 叙事块；声明 `driver` 为 `narration`（旁白驱动：恰好一条旁白 Cue，无对白）或 `drama`（表演驱动：无旁白，对白可有可无）；可绑定一个地点及其状态 |
-| Shot | 创作层的连续镜头：构图、运镜、动作、声音、可见角色与转场意图；可记录所属 Scene 地点的一个机位视图作为空间参考建议。Shot 不持有生产状态 |
+| Shot | 创作层的连续镜头：构图、运镜、动作、声音、可见角色与转场意图；不持有地点绑定或生产状态 |
 | Segment | 生产原子与一次视频生成单位（不短于 0.2 秒，默认 15 秒软约束），承载对白（仅 Drama Scene）；每个 Segment 一张视频卡，可覆盖一个或多个连续 Shot，一个 Shot 也可跨多个相邻 Segment |
 | Narration Cue | Scene 旁白，按创建时所选语言建立 `zh` / `en` 轨道，未选语言为 null，各自正文、seed、表演指示、已选音频 |
-| Location | 跨 Scene 共享的固定空间：主图（室内 2:1 全景、室外项目画幅）、固定陈设与主光、状态变体、供 Keyframe 参考的机位视图 |
-| Location View | 地点内的一个机位（方位、俯仰、视场角）；室内由全景裁切后细化，室外由主图转向；Keyframe 可按参考建议采用或自由改选 |
-| Keyframe | Segment 的首帧或尾帧；相邻 Segment 可显式共享边界 Keyframe；建帧默认取首个/末个覆盖 Shot 的视图作空间参考，以 `edit` / `reference` / `none` 使用地点视图 |
+| Location | 跨 Scene 共享的固定空间：描述、固定陈设、主光、状态变体和可选独立图片；图片不绑定 Shot/Keyframe |
+| Location Image | 普通图或 2:1 全景图；每张图必须有实际内容说明。全景图可在 3D 查看器中手动取景生成独立普通子图 |
+| Keyframe | Segment 的首帧或尾帧；相邻 Segment 可显式共享边界 Keyframe；Planner 根据 Scene 地点语义和镜头上下文自行建立空间 |
 | Asset | 不可变媒体字节，按 SHA-256、媒体类型、字节数校验 |
 | Generation | 一次 Provider 尝试或本地处理：输入、参数、seed、状态、产物、`retry_of` |
 | Candidate Selection | 从属于目标的成功、未隐藏 Generation 中显式采用一个 Asset |
@@ -67,9 +67,9 @@ StoryRail 不内置 Agent、不持有模型会话，也没有隐藏 fallback。�
   参考文字稿可用本机 Whisper 转写后人工校对；
 - 结构化脚本：外部 Agent 先生成 Shot 列表、再打包成 Segment；人工或 Agent 以原子操作局部修改（增删 Scene/Shot/Segment、拆分与合并 Segment），覆盖关系由 Core 校验；
 - 项目所选语言旁白：旁白身份按所选语言各一套参考音色，分别 TTS、审核、选择；单语按真实时长校准，双语按较长音频校准；
-- 地点库：外部 Agent 从完整脚本规划地点、状态与机位视图并绑定 Scene、给出 Shot 空间参考建议，人工编辑与改绑；主图与视图单项或成套生成，
-  室内全景裁切后细化、室外主图转向，人类选择；
-- Keyframe：按 Segment 建首尾槽位，激活、正文、可见角色造型、地点视图使用方式（默认取首个/末个覆盖 Shot 的视图建议）、辅助图、共享/拆分边界、从上一 Segment 视频按帧号抽取；
+- 地点库：外部 Agent 从完整脚本规划地点、状态和可选独立图片并绑定 Scene，人工编辑与改绑；普通图/全景图可单项或成套生成，
+  全景图点击进入 3D 查看器并由用户手动取景，人类选择普通生成候选；
+- Keyframe：按 Segment 建首尾槽位，激活、正文、可见角色造型、辅助图、共享/拆分边界、从上一 Segment 视频按帧号抽取；地点图片不自动提交；
 - Segment 视频：FL2VA / Ref2VA；导演台把 Ref2VA 其他图片与首尾帧并列展示，可从已选关键帧或资产库参考图添加（当前已启用的首尾帧不重复列入），底层显式保存为
   `additional_images`（≤4，逐图必填说明），另有参考音频（≤8）与参考视频（≤3），人工或外部 Agent 均可保存；SeedVR2 超分；
   FL2VA 至少需要首帧或尾帧之一；Ref2VA 不要求图片，但图片、音频与视频参考合计至少有一个输入资产；

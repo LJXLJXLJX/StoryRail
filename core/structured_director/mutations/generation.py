@@ -56,15 +56,12 @@ def validate_generation_target(
     if generation.kind is ReferenceGenerationKind.CHARACTER_LOOK_SHEET:
         if document.reference_library.look_owner(generation.target_id) is None:
             raise ValueError("Generation 目标造型不存在。")
-    elif generation.kind is ReferenceGenerationKind.LOCATION_MASTER_IMAGE:
-        if document.location_library.location(generation.target_id) is None:
-            raise ValueError("Generation 目标地点不存在。")
     elif generation.kind in {
-        ReferenceGenerationKind.LOCATION_VIEW_CROP,
-        ReferenceGenerationKind.LOCATION_VIEW_IMAGE,
+        ReferenceGenerationKind.LOCATION_IMAGE,
+        ReferenceGenerationKind.PANORAMA_CAPTURE,
     }:
-        if document.location_library.view_owner(generation.target_id) is None:
-            raise ValueError("Generation 目标地点视图不存在。")
+        if document.location_library.image_owner(generation.target_id) is None:
+            raise ValueError("Generation 目标地点图片不存在。")
     elif generation.kind is ReferenceGenerationKind.KEYFRAME_IMAGE:
         keyframe_ids = (
             set()
@@ -362,32 +359,38 @@ def complete_generation_document(
     )
     if completed.kind is ReferenceGenerationKind.VIDEO_FRAME and updated.keyframe_plan:
         updated = _attach_extracted_keyframe_candidate(updated, completed, timestamp)
-    if completed.kind is ReferenceGenerationKind.LOCATION_VIEW_CROP:
-        updated = _attach_location_crop(updated, completed)
+    if completed.kind is ReferenceGenerationKind.PANORAMA_CAPTURE:
+        updated = _attach_panorama_capture(updated, completed)
     return _wake_director_run_for_completed_generations(updated)
 
 
-def _attach_location_crop(
+def _attach_panorama_capture(
     updated: StructuredDirectorDocument, completed: ReferenceGeneration
 ) -> StructuredDirectorDocument:
-    """裁切是确定性产物，不是候选：快照仍等于视图当前主图与几何时直接写入 `crop_asset_id`。
-
-    主图改选、几何或标定变化后到达的结果已经过期，只保留为历史 Generation。
-    不在这里续提交细化；细化需要再次显式生成视图。
-    """
-    owner = updated.location_library.view_owner(completed.target_id)
+    """全景取景是确定性产物，成功后直接成为目标普通图片的当前图片。"""
+    owner = updated.location_library.image_owner(completed.target_id)
     if owner is None:
         return updated
-    location, view = owner
-    if location.crop_request(view, updated.aspect_ratio.value) != completed.location_crop_request:
+    location, image = owner
+    request = completed.panorama_capture_request
+    if image.source is None or request is None:
         return updated
-    views = tuple(
-        replace(item, crop_asset_id=completed.output_asset_id) if item.id == view.id else item
-        for item in location.views
+    source_owner = updated.location_library.image_owner(image.source.panorama_image_id)
+    if source_owner is None or source_owner[1].selected_asset_id != request.panorama_asset_id:
+        return updated
+    if (
+        image.source.yaw_deg,
+        image.source.pitch_deg,
+        image.source.hfov_deg,
+    ) != (request.yaw_deg, request.pitch_deg, request.hfov_deg):
+        return updated
+    images = tuple(
+        replace(item, selected_asset_id=completed.output_asset_id) if item.id == image.id else item
+        for item in location.images
     )
     library = LocationLibrary(
         tuple(
-            replace(location, views=views) if item.id == location.id else item
+            replace(location, images=images) if item.id == location.id else item
             for item in updated.location_library.locations
         )
     )
@@ -467,12 +470,7 @@ def _asset_is_referenced(document: StructuredDirectorDocument, asset_id: str) ->
     ):
         return True
     if any(
-        asset_id
-        in (
-            item.master.selected_asset_id,
-            *(view.selected_asset_id for view in item.views),
-            *(view.crop_asset_id for view in item.views),
-        )
+        asset_id in tuple(image.selected_asset_id for image in item.images)
         for item in document.location_library.locations
     ):
         return True

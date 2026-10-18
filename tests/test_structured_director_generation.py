@@ -377,7 +377,7 @@ class StructuredDirectorGenerationTests(unittest.IsolatedAsyncioTestCase):
                 + urlencode(
                     {
                         "expected_revision": uploaded.revision,
-                        "category": "location_master",
+                        "category": "location_image",
                     }
                 ),
                 png,
@@ -639,7 +639,7 @@ class StructuredDirectorGenerationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 assets[imported["location-view"]]["usage_reasons"],
                 [
-                    {"code": "location_view_image", "label": "地点视图图片"},
+                    {"code": "location_image", "label": "地点图片"},
                     {"code": "visible_candidate", "label": "可见生成候选"},
                 ],
             )
@@ -757,13 +757,13 @@ class StructuredDirectorGenerationTests(unittest.IsolatedAsyncioTestCase):
             first = await service.import_image_asset(
                 media_type="image/png",
                 content=b"\x89PNG\r\n\x1a\nhidden-source",
-                category=ImageAssetCategory.LOCATION_MASTER,
+                category=ImageAssetCategory.LOCATION_IMAGE,
                 expected_revision=prepared.revision,
             )
             second = await service.import_image_asset(
                 media_type="image/png",
                 content=b"\x89PNG\r\n\x1a\nhidden-result",
-                category=ImageAssetCategory.LOCATION_MASTER,
+                category=ImageAssetCategory.LOCATION_IMAGE,
                 expected_revision=first.revision,
             )
             source_asset_id, result_asset_id = (item.id for item in second.assets)
@@ -785,7 +785,7 @@ class StructuredDirectorGenerationTests(unittest.IsolatedAsyncioTestCase):
             )
             source_generation = ReferenceGeneration(
                 id="1" * 32,
-                kind=ReferenceGenerationKind.LOCATION_MASTER_IMAGE,
+                kind=ReferenceGenerationKind.LOCATION_IMAGE,
                 operation=GenerationOperation.GENERATE,
                 target_id="3" * 32,
                 phase=ReferenceGenerationPhase.SUCCEEDED,

@@ -37,9 +37,6 @@ def test_manual_keyframe_edit_matches_registry_result_and_preserves_lineage(tmp_
                     "fields": {
                         "prompt_text": changed.prompt_text,
                         "visible_character_ids": list(changed.visible_character_ids),
-                        "environment_mode": changed.environment_mode.value,
-                        "environment_view_id": changed.environment_view_id,
-                        "environment_none_reason": changed.environment_none_reason,
                     },
                 }
             ]

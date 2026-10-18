@@ -326,7 +326,7 @@ class GoldenPlugin:
 
 
 def _image(label: str, body: dict[str, Any]) -> tuple[str, bytes, float | None]:
-    # 室内地点主图请求等距柱状全景：产物带 2:1 IHDR，才能被选为主图并进入全景裁切。
+    # 地点全景图请求等距柱状投影：产物带 2:1 IHDR，才能进入 3D 查看器取景。
     if "等距柱状投影" in json.dumps(body, ensure_ascii=False):
         return "image/png", panorama_png_bytes(label), None
     return "image/png", png_bytes(label), None

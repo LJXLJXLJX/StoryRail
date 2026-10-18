@@ -129,7 +129,6 @@ from .models import (
     ImageAssetCategory,
     Keyframe,
     KeyframeCharacterReference,
-    KeyframeEnvironmentMode,
     NarrationCue,
     NarrationLanguage,
     NarratorProfile,
@@ -188,7 +187,7 @@ _KIND_CAPABILITY = {
     ReferenceGenerationKind.VIDEO_UPSCALE: Capability.VIDEO_UPSCALE.value,
     ReferenceGenerationKind.SCENE_ANIMATIC: "animatic",
     ReferenceGenerationKind.VIDEO_FRAME: "video_frame",
-    ReferenceGenerationKind.LOCATION_VIEW_CROP: "pano_view",
+    ReferenceGenerationKind.PANORAMA_CAPTURE: "pano_view",
     ReferenceGenerationKind.VIDEO_AUDIO_REMIX: "audio_remix",
     ReferenceGenerationKind.CHARACTER_VOICE: Capability.VOICE_DESIGN.value,
     ReferenceGenerationKind.NARRATOR_VOICE: Capability.VOICE_DESIGN.value,
@@ -216,8 +215,7 @@ def _generation_ports(generation: ReferenceGeneration) -> tuple[str, ...]:
     if kind in {
         ReferenceGenerationKind.CHARACTER_LOOK_SHEET,
         ReferenceGenerationKind.KEYFRAME_IMAGE,
-        ReferenceGenerationKind.LOCATION_MASTER_IMAGE,
-        ReferenceGenerationKind.LOCATION_VIEW_IMAGE,
+        ReferenceGenerationKind.LOCATION_IMAGE,
     }:
         return (
             Capability.IMAGE_EDIT.value
@@ -354,7 +352,7 @@ class StructuredDirectorService:
         )
         return outcome.document
 
-    def location_master_candidate_valid(self, asset: Asset) -> bool:
+    def panorama_candidate_valid(self, asset: Asset) -> bool:
         """只读快照复用不可变 Asset 的全景校验缓存；正式选择仍完整校验。"""
         return self._store.is_location_pano_source(asset)
 
@@ -400,18 +398,18 @@ class StructuredDirectorService:
     def video_frame_available(self) -> bool:
         return self._registry.available("video_frame")
 
-    async def generate_location_master(
-        self, *, location_id: str, expected_revision: int
+    async def generate_location_image(
+        self, *, image_id: str, expected_revision: int
     ) -> StructuredDirectorDocument:
-        return await self._media.generate_location_master(
-            location_id=location_id, expected_revision=expected_revision
+        return await self._media.generate_location_image(
+            image_id=image_id, expected_revision=expected_revision
         )
 
-    async def generate_location_view(
-        self, *, view_id: str, expected_revision: int
+    async def generate_location_capture(
+        self, *, image_id: str, expected_revision: int
     ) -> StructuredDirectorDocument:
-        return await self._media.generate_location_view(
-            view_id=view_id, expected_revision=expected_revision
+        return await self._media.generate_location_capture(
+            image_id=image_id, expected_revision=expected_revision
         )
 
     def video_frame_info(self, asset_id: str) -> Mp4VideoFrames:
@@ -704,9 +702,6 @@ class StructuredDirectorService:
         visible_character_ids: tuple[str, ...],
         character_references: tuple[KeyframeCharacterReference, ...],
         reference_asset_ids: tuple[str, ...],
-        environment_mode: KeyframeEnvironmentMode,
-        environment_view_id: str | None,
-        environment_none_reason: str | None,
         expected_revision: int,
     ) -> KeyframeSubmissionPreview:
         async with self._lock:
@@ -721,9 +716,6 @@ class StructuredDirectorService:
                 visible_character_ids=visible_character_ids,
                 character_references=character_references,
                 reference_asset_ids=reference_asset_ids,
-                environment_mode=environment_mode,
-                environment_view_id=environment_view_id,
-                environment_none_reason=environment_none_reason,
             )
             inputs = _keyframe_generation_inputs(preview_document, keyframe_id)
             if inputs is None:
@@ -1977,15 +1969,11 @@ class StructuredDirectorService:
             ReferenceGenerationKind.KEYFRAME_IMAGE: lambda: self.generate_keyframe(
                 keyframe_id=generation.target_id, **common
             ),
-            ReferenceGenerationKind.LOCATION_MASTER_IMAGE: lambda: (
-                self._media.generate_location_master(location_id=generation.target_id, **common)
+            ReferenceGenerationKind.PANORAMA_CAPTURE: lambda: self._media.generate_location_capture(
+                image_id=generation.target_id, **common
             ),
-            # 裁切与细化/转向都经同一入口：入口按当前裁切是否有效决定提交哪一步。
-            ReferenceGenerationKind.LOCATION_VIEW_CROP: lambda: self._media.generate_location_view(
-                view_id=generation.target_id, **common
-            ),
-            ReferenceGenerationKind.LOCATION_VIEW_IMAGE: lambda: self._media.generate_location_view(
-                view_id=generation.target_id, **common
+            ReferenceGenerationKind.LOCATION_IMAGE: lambda: self._media.generate_location_image(
+                image_id=generation.target_id, **common
             ),
             ReferenceGenerationKind.SEGMENT_VIDEO: lambda: self._media.generate_segment_video(
                 segment_id=generation.target_id, seed=generation.seed, **common

@@ -193,21 +193,11 @@ def _workflow_result(document, stage, phase, required, *, active_task=None):
 
 
 def location_binding_gaps(document):
-    """(未绑定地点的 Scene IDs, 已绑定地点但未绑定机位视图的 Shot IDs)；无脚本时皆空。"""
+    """返回尚未建立语义地点关系的 Scene IDs；Shot 不持有地点事实。"""
     script = document.director_script
     if script is None:
-        return (), ()
-    scenes_without_location = tuple(
-        scene.id for scene in script.scenes if scene.location_id is None
-    )
-    shots_without_view = tuple(
-        shot.id
-        for scene in script.scenes
-        if scene.location_id is not None
-        for shot in scene.shots
-        if shot.view_id is None
-    )
-    return scenes_without_location, shots_without_view
+        return ()
+    return tuple(scene.id for scene in script.scenes if scene.location_id is None)
 
 
 def _location_recommendations(document):
@@ -259,13 +249,8 @@ def _location_recommendations(document):
     if document.workspace_layers.videos_unlocked:
         return []
     actions = []
-    scenes_without_location, shots_without_view = location_binding_gaps(document)
-    if scenes_without_location or shots_without_view:
-        gaps = []
-        if scenes_without_location:
-            gaps.append(f"{len(scenes_without_location)} 个 Scene 尚未绑定地点")
-        if shots_without_view:
-            gaps.append(f"{len(shots_without_view)} 个 Shot 尚未绑定机位视图")
+    scenes_without_location = location_binding_gaps(document)
+    if scenes_without_location:
         actions.append(
             _action(
                 "location.request_proposal",
@@ -273,19 +258,19 @@ def _location_recommendations(document):
                 tool_action="request",
                 capability="location",
                 unbound_scene_count=len(scenes_without_location),
-                shots_without_view_count=len(shots_without_view),
                 message=(
-                    "、".join(gaps) + "；可让 Director 规划地点与机位视图，提升同场景镜头"
-                    "（尤其室内对话戏）的背景一致性。此为可选建议，不阻塞当前流程。"
+                    f"{len(scenes_without_location)} 个 Scene 尚未绑定地点；"
+                    "可让 Director 补充地点语义与地点图片，提升同场景镜头"
+                    "的背景一致性。此为可选建议，不阻塞当前流程。"
                 ),
             )
         )
     asset_ids = {item.id for item in document.assets}
     incomplete = tuple(
-        location.id
+        image.id
         for location in document.location_library.locations
-        if location.master.selected_asset_id not in asset_ids
-        or any(view.selected_asset_id not in asset_ids for view in location.views)
+        for image in location.images
+        if image.selected_asset_id not in asset_ids
     )
     if incomplete and not location_batches:
         actions.append(
@@ -296,7 +281,7 @@ def _location_recommendations(document):
                 kind="location",
                 target_ids=incomplete,
                 message=(
-                    f"{len(incomplete)} 个地点的主图或机位视图还没有选定图片；"
+                    f"{len(incomplete)} 张地点图片还没有选定图片；"
                     "用户明确要求后可成套生成。此为可选建议，不阻塞当前流程。"
                 ),
             )

@@ -20,29 +20,6 @@ from core.director_proposals.keyframe import (
 )
 from core.director_proposals.schema_gen import ProposalError, generate_schema, parse_proposal
 
-_OPTIONAL_ID_SCHEMA = {
-    "anyOf": [
-        {"type": "string", "pattern": "^[0-9a-f]{32}$"},
-        {"type": "null"},
-    ]
-}
-# 三个环境字段 wire 必填但可为 null：使用方式为 null 表示未声明，由 Core 继承
-# Segment 首/末覆盖 Shot 的视图；
-# 声明 none 时理由可选，使用视图时理由必须为 null（交叉约束由 proposal dataclass 校验）。
-_ENVIRONMENT_MODE_SCHEMA = {
-    "anyOf": [
-        {"type": "string", "enum": ["edit", "reference", "none"]},
-        {"type": "null"},
-    ],
-    "__required__": True,
-}
-_OPTIONAL_REASON_SCHEMA = {
-    "anyOf": [
-        {"type": "string", "maxLength": 500},
-        {"type": "null"},
-    ],
-    "__required__": True,
-}
 _CHARACTER_REFERENCES_SCHEMA = {
     "__required__": True,
     "items": {
@@ -65,23 +42,11 @@ _KEYFRAME_OVERRIDES = {
     "segments[].start_visible_character_ids": {
         "items": {"type": "string", "pattern": "^[0-9a-f]{32}$"}
     },
-    "segments[].start_environment_mode": _ENVIRONMENT_MODE_SCHEMA,
-    "segments[].start_environment_view_id": {
-        **_OPTIONAL_ID_SCHEMA,
-        "__required__": True,
-    },
-    "segments[].start_environment_none_reason": _OPTIONAL_REASON_SCHEMA,
     "segments[].start_character_references": _CHARACTER_REFERENCES_SCHEMA,
     "segments[].end_prompt_text": {"minLength": 1, "maxLength": 18_000},
     "segments[].end_visible_character_ids": {
         "items": {"type": "string", "pattern": "^[0-9a-f]{32}$"}
     },
-    "segments[].end_environment_mode": _ENVIRONMENT_MODE_SCHEMA,
-    "segments[].end_environment_view_id": {
-        **_OPTIONAL_ID_SCHEMA,
-        "__required__": True,
-    },
-    "segments[].end_environment_none_reason": _OPTIONAL_REASON_SCHEMA,
     "segments[].end_character_references": _CHARACTER_REFERENCES_SCHEMA,
     "segments[].continues_from_previous": {"__required__": True},
 }
@@ -139,8 +104,6 @@ class KeyframePlanSlot:
     end_keyframe_id: str
     planning_enabled: bool
     locked: bool
-    start_view_id: str | None
-    end_view_id: str | None
     continues_previous_shot: bool = False
 
 
@@ -155,8 +118,6 @@ def _scene_slots(
                 segment.end_keyframe_id,
                 segment.planning_enabled,
                 segment.start_locked or segment.end_locked,
-                segment.start_view_id,
-                segment.end_view_id,
                 segment.continues_from_previous,
             )
             for segment in scene.segments
@@ -231,12 +192,6 @@ def compile_plan_operations(
                         keyframe_id=slot.start_keyframe_id,
                         prompt_text=planned.start_prompt_text,
                         visible_character_ids=planned.start_visible_character_ids,
-                        **_environment_fields(
-                            planned.start_environment_mode,
-                            planned.start_environment_view_id,
-                            planned.start_environment_none_reason,
-                            slot.start_view_id,
-                        ),
                         character_references=_selections(planned.start_character_references),
                     )
                 )
@@ -245,12 +200,6 @@ def compile_plan_operations(
                     keyframe_id=slot.end_keyframe_id,
                     prompt_text=planned.end_prompt_text,
                     visible_character_ids=planned.end_visible_character_ids,
-                    **_environment_fields(
-                        planned.end_environment_mode,
-                        planned.end_environment_view_id,
-                        planned.end_environment_none_reason,
-                        slot.end_view_id,
-                    ),
                     character_references=_selections(planned.end_character_references),
                 )
             )
@@ -262,35 +211,6 @@ def compile_plan_operations(
                 )
             )
     return tuple(operations)
-
-
-def resolve_keyframe_environment(
-    mode: str | None, view_id: str | None, none_reason: str | None, default_view_id: str | None
-) -> tuple[str, str | None, str | None]:
-    """Planner 未声明（mode 为 null）时继承默认视图：有视图 reference，否则 none、无理由。
-
-    默认视图来自 Segment 首个/末个覆盖 Shot 的 `view_id`，与 `blank_keyframe` 同一规则；
-    视图只作空间参考，`edit` 只在显式声明时使用。显式 none 的理由可选，已由 proposal 归一。
-    """
-    if mode is not None:
-        return mode, view_id, none_reason
-    if default_view_id is not None:
-        return "reference", default_view_id, None
-    return "none", None, None
-
-
-def _environment_fields(
-    mode: str | None, view_id: str | None, none_reason: str | None, default_view_id: str | None
-) -> dict[str, object]:
-    mode, view_id, none_reason = resolve_keyframe_environment(
-        mode, view_id, none_reason, default_view_id
-    )
-    return {
-        "environment_mode": mode,
-        "environment_view_id": view_id,
-        "environment_none_reason": none_reason,
-        "environment_changed": True,
-    }
 
 
 def _selections(
@@ -319,7 +239,6 @@ def _validate_scope(
             for segment in scene.segments
             if segment.planning_enabled and segment.id in proposal_by_id
         }
-        scene_view_ids = set(scene.available_view_ids)
         looks = {
             item.id: {look.look_id for look in item.looks}
             for segment in scene.segments
@@ -373,14 +292,6 @@ def _validate_scope(
                     "keyframe",
                     "invalid_proposal",
                     "Agent 返回了不属于相邻 Segment 角色并集的可见角色 ID。",
-                )
-            view_ids = (
-                actual.start_environment_view_id,
-                actual.end_environment_view_id,
-            )
-            if any(view_id is not None and view_id not in scene_view_ids for view_id in view_ids):
-                raise ProposalError(
-                    "keyframe", "invalid_proposal", "关键帧引用了工作集之外的地点视图。"
                 )
             for reference in (
                 *actual.start_character_references,
@@ -436,9 +347,6 @@ def _enforce_required_shared_boundaries(
             continues_from_previous=True,
             start_prompt_text="",
             start_visible_character_ids=(),
-            start_environment_mode=None,
-            start_environment_view_id=None,
-            start_environment_none_reason=None,
             start_character_references=(),
         )
         segments[index_by_id[left_segment_id]] = left

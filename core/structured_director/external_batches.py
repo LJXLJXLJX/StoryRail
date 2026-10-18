@@ -150,7 +150,7 @@ async def execute(service, command):
             if item["status"] in deferred_statuses
         ]
         if location_batch:
-            # 地点批次的目标是一个地点，本轮可能只提交了其中的主图或部分视图。
+            # 地点批次的目标是一个地点，本轮可能只提交其中一部分独立图片。
             submitted_target_ids = [
                 item["target_id"]
                 for item in observation["targets"]
@@ -160,7 +160,7 @@ async def execute(service, command):
                     if generation.target_id
                     in {
                         item["target_id"],
-                        *(view["target_id"] for view in item["views"]),
+                        *(image["target_id"] for image in item["images"]),
                     }
                 )
             ]

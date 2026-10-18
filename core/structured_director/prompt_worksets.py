@@ -42,11 +42,6 @@ def video_prompt_workset(
     scene, segment = found
     shots = segment_shots(scene, segment.id)
     visible_character_ids = set(segment_visible_character_ids(scene, segment.id))
-    view_names = {
-        view.id: view.name
-        for location in document.location_library.locations
-        for view in location.views
-    }
     video = next(item for item in document.video_plan.segments if item.segment_id == segment_id)
     view = next(
         (item for item in provider_recipes or [] if item["recipe"]["id"] == video.active_recipe),
@@ -128,7 +123,6 @@ def video_prompt_workset(
                         characters.get(character_id, character_id)
                         for character_id in shot.visible_character_ids
                     ],
-                    "view_name": None if shot.view_id is None else view_names.get(shot.view_id),
                 }
                 for shot in shots
             ],
@@ -227,8 +221,7 @@ def _bindable_assets(document: StructuredDirectorDocument, scene, recipe) -> lis
     if library.narrator is not None:
         used.update(library.narrator.voice_reference_asset_ids)
     for location in document.location_library.locations:
-        used.add(location.master.selected_asset_id)
-        used.update(view.selected_asset_id for view in location.views)
+        used.update(image.selected_asset_id for image in location.images)
     segment_ids = {segment.id for segment in scene_segments(scene)}
     for cue in scene.narration_cues:
         used.update(cue.selected_audio_asset_ids)
@@ -311,7 +304,7 @@ def keyframe_workset(
 def image_prompt_guide(provider_catalog) -> dict[str, object]:
     """当前绑定的生图/改图 recipe 的输入图指代约定与随插件发布的 Skill。
 
-    Agent 编写 Keyframe 或地点主图、视图正文时据此选择写法；输入图映射头与画幅句仍由 Core 编译。
+    Agent 编写 Keyframe 或独立地点图片正文时据此选择写法；输入图映射头与画幅句仍由 Core 编译。
     同名 Skill 只附带一次。
     """
     recipes: list[dict[str, object]] = []

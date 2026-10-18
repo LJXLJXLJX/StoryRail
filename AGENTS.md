@@ -47,7 +47,7 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
 
 ## 事实来源
 
-1. `.stories/<项目名>-<project_id>/project.json` 是唯一权威结构化状态，当前 schema 为 v33（Scene 下并列 `shots` 与 `segments`、Segment 以 `shot_ids` 记录覆盖的 Shot、旁白 Cue 不带 Shot 锚点、角色造型 `looks` 为角色图唯一单位、地点库与 Scene/Shot/Keyframe 的地点视图绑定（Shot `view_id` 是软参考，Keyframe `environment_view_id` 是硬引用）、创建时选择中英文旁白语言、各启用语言一套音色、Keyframe 按帧选择角色造型、视频保存 `active_recipe` 与 `recipes` 输入簿，旁白保存 `recipe_params`，Generation 记录提交时的 `provider_snapshot`）。
+1. `.stories/<项目名>-<project_id>/project.json` 是唯一权威结构化状态，当前 schema 为 v35（Scene 下并列 `shots` 与 `segments`、Segment 以 `shot_ids` 记录覆盖的 Shot、旁白 Cue 不带 Shot 锚点、角色造型 `looks` 为角色图唯一单位、地点库保存 Scene 级语义绑定与独立图片而 Shot/Keyframe 不绑定地点、创建时选择中英文旁白语言、各启用语言一套音色、Keyframe 按帧选择角色造型、视频保存 `active_recipe` 与 `recipes` 输入簿，旁白保存 `recipe_params`，Generation 记录提交时的 `provider_snapshot`）。
    更早版本的 Segment 挂在 Shot 下，或没有英文旁白、只有一套旁白音色，无法无损转换，一律拒绝读取并提示新建项目。
    `workspace_layers` 持久化旁白、Keyframe、视频和成片内容层是否已经解锁；这些事实不由 Web
    根据全局状态猜测。
@@ -83,17 +83,14 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
   非人生物靠提示词约束按真实生物绘制、只画主体不画环境（不设形体标记字段）。提示词由 Core 从视觉描述与造型外观编译，
   人类可在生成前查看并编辑完整提示词（原样提交，重试沿用；Agent 不写设定图提示词），
   Codex/AGY 在提示词里写 4K 分辨率，Qwen 沿用全局档位。`reference.generate_look_sheet` 只接收造型 ID 与 ≤ 4 张
-  显式身份参考，只新增候选；Keyframe 与地点视图始终用项目画幅。
-- 地点库（`location_library`）保存跨 Scene 共享的固定空间：Core 分配稳定 ID 的地点、固定陈设与主光、状态变体和机位视图。
-  室内地点主图是 2:1 等距柱状全景，视图 = Core 确定性全景裁切（`PANO_VIEW`，结果直接写入 `crop_asset_id`，不是候选）后
-  再显式细化；室外地点主图用项目画幅，视图由主图转向编辑。主图与视图只新增候选，只有人类可以选择。地点库从项目创建起即可编辑。
-- 同一空间的昼夜、天气、布置或破坏变化建为状态，不建新地点。Scene 绑定 `location_id` 与可选 `state_id`，Shot 的
-  `view_id` 是给 Keyframe Planner 的空间参考建议（不强制、不生成）；Scene 换地点时清空其 Shot 视图。改名与描述类修改不失效；
-  主图改选、`kind`、标定、视图几何、细化计划、参考视图或状态变化只失效受影响视图、依赖它们的视图、
-  `environment_view_id` 指向它们的 Keyframe 及其下游视频/超分与装配。
-  删除视图时，只被 Shot 软引用的允许删除，同一操作清空引用该视图的全部 Shot `view_id`（当前脚本与生产基线），影响预览列出这些 Shot；
-  被 Keyframe `environment_view_id` 或其它视图 `reference_view_ids` 引用的仍拒绝并列出引用者。删除地点时其全部视图按同一规则处理，
-  Scene 仍绑定该地点时拒绝；被 Scene 引用的地点、状态与陈设仍拒绝删除。历史 Asset/Generation 保留，相关进行中或不确定任务阻止冲突修改。
+  显式身份参考，只新增候选；Keyframe 与普通地点图片使用项目画幅，造型设定图与地点全景图固定 2:1。
+- 地点库（`location_library`）保存跨 Scene 共享的固定空间：Core 分配稳定 ID 的地点、固定陈设与主光、状态变体和彼此独立的图片。
+  图片没有主图/视图层级，`kind=image|panorama`；每张图片必须由用户或 Agent 填写与生成提示词分离的实际内容纯文本说明。
+  普通图跟随项目画幅，全景图固定 2:1。全景图是唯一特殊类别：点击后进入 3D 预览，用户调整 yaw/pitch/hfov 并显式创建普通子图；
+  `PANO_VIEW` 产物直接选给子图，冻结来源只作 provenance，不形成活依赖。所有普通生成候选只有人类可以选择。
+- 同一空间的昼夜、天气、布置或破坏变化建为状态，不建新地点。只有 Scene 绑定 `location_id` 与可选 `state_id`；Shot 与 Keyframe
+  不保存地点或地点图片绑定。地点、状态、图片或 Scene 绑定变化不级联失效 Keyframe、视频、超分与装配；删除图片保留历史
+  Asset/Generation 与已取景子图。Scene 仍绑定地点时拒绝删除；被 Scene 引用的状态仍拒绝删除；相关进行中或不确定任务阻止冲突修改。
 - 地点规划只能由用户明确要求后经 `location` 专业能力提交 proposal（要求已有脚本，增补不删除）；成套生成用
   `location.generate_set` 固定范围、每轮只提交依赖已满足的项，选择或回调都不自动推进，继续须再次显式调用。
 - 生产基线建立后，`read_workflow` 的 `recommended_next_actions` 给出规划地点、成套生成或继续地点批次等可选建议；
@@ -106,18 +103,15 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
   用户或 Director 可以显式共享为同一个 Keyframe，共享后两侧启用状态仍各自决定。首帧卡提供“从上一 seg 抽取”：
   按帧号（默认最后一帧，范围 `0-(N-1)` 由 Core 从 MP4 读出）抽取上一段当前生效视频的一帧，产物只作为该首帧候选，
   不自动选择；需要后期处理时用户导入处理后的图片再选择。所有抽帧入口都按帧号工作，Core 不再维护“尾帧续接”状态。关键帧辅助参考图只用于关键帧生图，不会自动进入视频输入；视频卡按当前 recipe 的槽位声明显式保存参考。H3 Ref2VA 声明最多 4 张附加图片、每张必填描述；Core 按槽位顺序与标签 namespace 计算映射，专业工作集与实际 Provider 提交共用该映射。生产期脚本回改（合并、拆分、增删 Segment）后，Core 必须立即按当前脚本重建关键帧绑定：保留仍在的 Segment 原绑定与已选关键帧，新 Segment 立即获得独立的空首尾槽位，已删除 Segment 的槽位随之移除；显式共享的边界只在两侧仍紧邻时保留，否则复制为独立首帧；关键帧计划必须完整对应每个当前 Segment，由 Core 校验强制，不允许缺卡。
-- 每个 Keyframe 显式保存地点视图的使用方式：`reference`（默认）只作空间参考、`edit` 作为编辑底图（只加入人物与动作）、`none` 完全不提交且视图为 null；
-  `edit` 只在用户明确要求画面严格贴合视图时使用。`none` 理由可选（最多 500 字，空白存为 null）。建帧时（解锁视觉生产、脚本回改给新 Segment 建帧）首帧取首个覆盖 Shot 的视图、尾帧取末个覆盖 Shot 的视图：有视图 → `reference`，无视图 → `none`；
-  之后改绑不回写已有帧。视图是软参考，Shot 的视图只是建议：Planner 环境字段写 null 即继承，也可按本帧朝向在本 Scene 地点的全部视图中
-  自由改选或不用，改写不需要理由。输入名额顺序为视图 → 可见角色参考 → 前置帧 → 辅助图，
-  合计 ≤ 5 张，超额拒绝并列出被挤掉的输入；编辑底图提交时排第一。视图未选图时单帧生成拒绝、批次作为等待依赖。
-  手工流程和 Keyframe Planner Agent 使用同一字段，Core 只向生图工具提交明确启用的图片。
+- Keyframe 不保存地点字段。Planner 工作集给出 Scene 的地点/状态、地点语义和地点图片的强制说明，LLM 据此结合 Shot 与叙事上下文
+  自行建立画面；地点图片不自动进入 Provider 输入，也不构成生成依赖。只有用户把某张已选地点图片显式加入 Segment 辅助参考时才提交。
+  输入名额顺序为可见角色参考 → 前置帧 → 辅助图，合计 ≤ 5 张，超额拒绝并列出被挤掉的输入；前置帧作为编辑底图时排第一。
 - 角色实体唯一，同一角色可有多套造型（不同时期、服装或状态，各带使用场合）。每个 Keyframe 用 `character_references`
   为可见角色选择本帧使用的造型（`look_id`，null 表示不提交）；只有一套造型时默认使用，多套造型未选择时 Core 拒绝生成该帧，
   所选造型没有造型图时也拒绝。Keyframe 引用造型而不是图片，改选造型图不改写 Keyframe；删除造型时剪除对它的选择。
   手工弹窗与 Keyframe Planner 读写同一字段，工作集给出每套造型的 ID、名称、使用场合与是否已有造型图。
 - Director 的 Keyframe Skill 与手工弹窗必须读写同一权威计划；重规划保留 Segment 手工辅助图，弹窗完整展示
-  前置帧、地点视图、可见角色参考与手工辅助图的实际提交映射；弹窗视图选择器只列本 Scene 地点的视图。图片对应关系必须位于 instruction 顶部；
+  前置帧、可见角色参考与手工辅助图的实际提交映射。图片对应关系必须位于 instruction 顶部；
   画幅最多由 Core 固定编译一次，Agent 的画面正文不得重复画幅标签；输入图指代与是否写画幅句跟随当前图片插件
   manifest 的 `image_prompt` 约定（Qwen 用 `<imageN>`、画幅由画布保证）。声明 Seed 的图片插件由 Core 为每次提交分配 seed。
 - 进入 Keyframe 或视频阶段只建立计划，不自动生成。生成必须由用户在 Director 对话中明确要求。

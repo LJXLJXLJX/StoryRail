@@ -25,15 +25,15 @@ from core.structured_director.models import (
     Keyframe,
     KeyframePlan,
     Location,
-    LocationCropRequest,
-    LocationKind,
+    LocationImage,
+    LocationImageKind,
     LocationLibrary,
-    LocationView,
     NarrationCue,
     NarrationLanguage,
     NarrationTrack,
     NarratorProfile,
     NarratorVoice,
+    PanoramaCaptureRequest,
     ReferenceGeneration,
     ReferenceGenerationKind,
     ReferenceGenerationPhase,
@@ -120,44 +120,49 @@ def test_validate_generation_target_guards():
                 Location(
                     ID_B,
                     "客厅",
-                    LocationKind.INTERIOR,
-                    views=(LocationView(ID_D, "正打", "人眼高中景", azimuth_deg=0.0),),
+                    images=(
+                        LocationImage(
+                            ID_D,
+                            "正打",
+                            LocationImageKind.IMAGE,
+                            "人眼高中景。",
+                            "生成正打。",
+                        ),
+                    ),
                 ),
             )
         )
     )
     _expect(
         lambda **kw: _generation.validate_generation_target(kw.pop("document"), kw.pop("gen")),
-        "Generation 目标地点不存在。",
+        "Generation 目标地点图片不存在。",
         document=location_doc,
         gen=make_generation(
-            ReferenceGenerationKind.LOCATION_MASTER_IMAGE,
+            ReferenceGenerationKind.LOCATION_IMAGE,
             GenerationOperation.GENERATE,
-            target_id=ID_D,
+            target_id=ID_C,
         ),
     )
-    crop = LocationCropRequest(ID_C, 0.0, 0.0, 60.0, "16:9")
+    crop = PanoramaCaptureRequest(ID_C, 0.0, 0.0, 60.0, "16:9")
     for gen in (
         replace(
-            make_generation(
-                ReferenceGenerationKind.LOCATION_VIEW_IMAGE, GenerationOperation.GENERATE
-            ),
-            kind=ReferenceGenerationKind.LOCATION_VIEW_CROP,
+            make_generation(ReferenceGenerationKind.LOCATION_IMAGE, GenerationOperation.GENERATE),
+            kind=ReferenceGenerationKind.PANORAMA_CAPTURE,
             operation=GenerationOperation.PROCESS,
             target_id=ID_B,
             input_asset_ids=(ID_C,),
             seed=None,
-            location_crop_request=crop,
+            panorama_capture_request=crop,
         ),
         make_generation(
-            ReferenceGenerationKind.LOCATION_VIEW_IMAGE,
+            ReferenceGenerationKind.LOCATION_IMAGE,
             GenerationOperation.GENERATE,
             target_id=ID_B,
         ),
     ):
         _expect(
             lambda **kw: _generation.validate_generation_target(kw.pop("document"), kw.pop("gen")),
-            "Generation 目标地点视图不存在。",
+            "Generation 目标地点图片不存在。",
             document=location_doc,
             gen=gen,
         )

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type {
   CharacterCard,
-  KeyframeEnvironmentMode,
   KeyframeSubmissionPreview,
   KeyframeCharacterReference,
   StructuredDirectorSnapshot,
@@ -29,7 +28,6 @@ import {
   recipeInputsError,
   useSegmentVideoDraft,
 } from "./RecipeInputsControl";
-import { findSegmentScene, segmentShots } from "./script_index";
 export function SegmentKeyframeInputs({
   projectId,
   snapshot,
@@ -75,9 +73,6 @@ export function SegmentKeyframeInputs({
     visibleCharacterIds: string[],
     characterReferences: KeyframeCharacterReference[],
     referenceAssetIds: string[],
-    environmentMode: KeyframeEnvironmentMode,
-    environmentViewId: string | null,
-    environmentNoneReason: string | null,
   ) => void;
   onGenerate: (keyframeId: string) => void;
   onSelect: (keyframeId: string, assetId: string) => void;
@@ -611,7 +606,7 @@ function SegmentOtherImages({
 export function KeyframeSlot({
   projectId,
   segmentId,
-  slot,
+  slot: _slot,
   referenceAssetIds,
   onReferenceAssetIdsChange,
   onSaveReferences,
@@ -656,9 +651,6 @@ export function KeyframeSlot({
     visibleCharacterIds: string[],
     characterReferences: KeyframeCharacterReference[],
     referenceAssetIds: string[],
-    environmentMode: KeyframeEnvironmentMode,
-    environmentViewId: string | null,
-    environmentNoneReason: string | null,
   ) => void;
   onGenerate: (keyframeId: string) => void;
   onSelect: (keyframeId: string, assetId: string) => void;
@@ -671,22 +663,12 @@ export function KeyframeSlot({
     promptText: keyframe.prompt_text,
     visibleCharacterIds: keyframe.visible_character_ids,
     characterReferences: keyframe.character_references,
-    environmentMode: keyframe.environment_mode,
-    environmentViewId: keyframe.environment_view_id,
-    environmentNoneReason: keyframe.environment_none_reason ?? "",
   });
   const {
     promptText,
     visibleCharacterIds,
     characterReferences,
-    environmentMode,
-    environmentViewId,
-    environmentNoneReason,
   } = protectedPlan.value;
-  // none 理由可选，只在 none 时提交；空白与其它模式回传 null。
-  const submittedNoneReason =
-    environmentMode === "none" ? environmentNoneReason.trim() || null : null;
-  const noneReasonInvalid = (submittedNoneReason?.length ?? 0) > 500;
   const setPromptText = (promptText: string) =>
     protectedPlan.setValue((v) => ({ ...v, promptText }));
   const setVisibleCharacterIds = (
@@ -714,13 +696,6 @@ export function KeyframeSlot({
         { character_id: character.id, look_id: lookId },
       ],
     }));
-  const setEnvironment = (
-    environment: Partial<{
-      environmentMode: KeyframeEnvironmentMode;
-      environmentViewId: string | null;
-      environmentNoneReason: string;
-    }>,
-  ) => protectedPlan.setValue((v) => ({ ...v, ...environment }));
   const [editorOpen, setEditorOpen] = useState(false);
   const closeEditor = () => {
     if (
@@ -746,9 +721,6 @@ export function KeyframeSlot({
     visibleCharacterIds,
     characterReferences,
     referenceAssetIds,
-    environmentMode,
-    environmentViewId,
-    submittedNoneReason,
   });
   const previewKey = `${snapshot.revision}:${previewInputKey}`;
   useEffect(() => {
@@ -765,9 +737,6 @@ export function KeyframeSlot({
           visibleCharacterIds,
           characterReferences,
           referenceAssetIds,
-          environmentMode,
-          environmentViewId,
-          submittedNoneReason,
         )
         .then((data) => {
           if (activePreview)
@@ -804,9 +773,6 @@ export function KeyframeSlot({
     visibleCharacterIds.join(":"),
     JSON.stringify(characterReferences),
     referenceAssetIds.join(":"),
-    environmentMode,
-    environmentViewId,
-    submittedNoneReason,
     previewKey,
   ]);
   const selected =
@@ -937,17 +903,6 @@ export function KeyframeSlot({
                     关键帧计划已更新，输入已保留。请关闭并重新打开最新计划后修改。
                   </p>
                 ) : null}
-                <KeyframeEnvironmentFields
-                  snapshot={snapshot}
-                  ownerSegmentId={keyframe.owner_segment_id}
-                  slot={slot}
-                  mode={environmentMode}
-                  viewId={environmentViewId}
-                  noneReason={environmentNoneReason}
-                  noneReasonInvalid={noneReasonInvalid}
-                  disabled={busy || !enabled}
-                  onChange={setEnvironment}
-                />
                 <section className="keyframe-effective-reference-section">
                   <div>
                     <h3>当前实际图片输入</h3>
@@ -1141,11 +1096,7 @@ export function KeyframeSlot({
                           JSON.stringify(keyframe.visible_character_ids) &&
                         JSON.stringify(characterReferences) ===
                           JSON.stringify(keyframe.character_references) &&
-                        environmentMode === keyframe.environment_mode &&
-                        environmentViewId === keyframe.environment_view_id &&
-                        submittedNoneReason === keyframe.environment_none_reason &&
-                        !referenceDirty) ||
-                      noneReasonInvalid
+                        !referenceDirty)
                     }
                     onClick={() =>
                       onSave(
@@ -1155,9 +1106,6 @@ export function KeyframeSlot({
                         visibleCharacterIds,
                         characterReferences,
                         referenceAssetIds,
-                        environmentMode,
-                        environmentViewId,
-                        submittedNoneReason,
                       )
                     }
                   >
@@ -1392,199 +1340,6 @@ function CharacterReferencePicker({
           <span>本帧不提交该角色的图</span>
         </label>
       </div>
-    </fieldset>
-  );
-}
-
-/** 弹窗中的地点视图选项：只列所属 Scene 绑定地点的视图；帧当前引用的其它地点视图作为当前值保留。 */
-export function keyframeViewOptions(
-  snapshot: StructuredDirectorSnapshot,
-  ownerSegmentId: string,
-  currentViewId: string | null,
-  slot: "start" | "end",
-) {
-  const scene = findSegmentScene(snapshot.director_script?.scenes ?? [], ownerSegmentId);
-  const owner = scene?.segments.find((segment) => segment.id === ownerSegmentId);
-  const covered = scene !== undefined && owner !== undefined ? segmentShots(scene, owner) : [];
-  const shot = slot === "start" ? covered[0] : covered[covered.length - 1];
-  const locations = snapshot.location_library.locations;
-  const location =
-    scene?.location_id == null
-      ? null
-      : (locations.find((item) => item.id === scene.location_id) ?? null);
-  const describe = (
-    owner: (typeof locations)[number],
-    view: (typeof locations)[number]["views"][number],
-  ) => ({
-    id: view.id,
-    name: view.name,
-    purpose: view.purpose,
-    locationName: owner.name,
-    stateName:
-      view.state_id === null
-        ? null
-        : (owner.states.find((item) => item.id === view.state_id)?.name ?? null),
-    selected: view.selected_asset_id !== null,
-    slotDefault: shot?.view_id === view.id,
-  });
-  const options = (location?.views ?? []).map((view) => describe(location!, view));
-  let foreign: (ReturnType<typeof describe> & { ownLocation: false }) | null = null;
-  if (currentViewId !== null && !options.some((item) => item.id === currentViewId)) {
-    const owner = locations.find((item) =>
-      item.views.some((view) => view.id === currentViewId),
-    );
-    const view = owner?.views.find((item) => item.id === currentViewId);
-    if (owner !== undefined && view !== undefined)
-      foreign = { ...describe(owner, view), ownLocation: false };
-  }
-  return { location, options, foreign };
-}
-
-function KeyframeEnvironmentFields({
-  snapshot,
-  ownerSegmentId,
-  slot,
-  mode,
-  viewId,
-  noneReason,
-  noneReasonInvalid,
-  disabled,
-  onChange,
-}: {
-  snapshot: StructuredDirectorSnapshot;
-  ownerSegmentId: string;
-  slot: "start" | "end";
-  mode: KeyframeEnvironmentMode;
-  viewId: string | null;
-  noneReason: string;
-  noneReasonInvalid: boolean;
-  disabled: boolean;
-  onChange: (
-    environment: Partial<{
-      environmentMode: KeyframeEnvironmentMode;
-      environmentViewId: string | null;
-      environmentNoneReason: string;
-    }>,
-  ) => void;
-}) {
-  const { location, options, foreign } = keyframeViewOptions(
-    snapshot,
-    ownerSegmentId,
-    viewId,
-    slot,
-  );
-  const current =
-    options.find((item) => item.id === viewId) ??
-    (foreign?.id === viewId ? foreign : null);
-  const optionLabel = (item: (typeof options)[number]) =>
-    [
-      item.name,
-      item.purpose,
-      item.stateName === null ? null : `状态「${item.stateName}」`,
-      item.slotDefault
-        ? slot === "start"
-          ? "Segment 首帧建议"
-          : "Segment 尾帧建议"
-        : null,
-      item.selected ? null : "未选图，生成前需要选图",
-    ]
-      .filter((part) => part !== null && part !== "")
-      .join(" · ");
-  return (
-    <fieldset className="keyframe-environment-fields">
-      <legend>地点视图</legend>
-      <label className="card-field">
-        视图
-        <select
-          aria-label="地点视图"
-          value={viewId ?? ""}
-          disabled={disabled}
-          onChange={(event) => {
-            const next = event.target.value || null;
-            onChange(
-              next === null
-                ? { environmentViewId: null, environmentMode: "none" }
-                : {
-                    environmentViewId: next,
-                    // 从 none 选回视图时默认作为空间参考。
-                    environmentMode: mode === "none" ? "reference" : mode,
-                  },
-            );
-          }}
-        >
-          <option value="">不使用地点视图</option>
-          {foreign !== null ? (
-            <option value={foreign.id}>
-              当前值（来自地点「{foreign.locationName}」，不属于本 Scene 地点）·{" "}
-              {optionLabel(foreign)}
-            </option>
-          ) : null}
-          {options.map((item) => (
-            <option key={item.id} value={item.id}>
-              {optionLabel(item)}
-            </option>
-          ))}
-        </select>
-        <small>
-          {location === null
-            ? "本 Scene 尚未绑定地点，没有可选视图；可先在地点库绑定，或选择不使用。"
-            : `只列出本 Scene 地点「${location.name}」的视图。`}
-          {current !== null && !current.selected
-            ? ` 视图「${current.name}」未选图，生成前需要选图。`
-            : ""}
-          {foreign !== null
-            ? ` 当前视图来自地点「${foreign.locationName}」（例如 Scene 后来改绑），保存时保持原值，除非重新选择。`
-            : ""}
-        </small>
-      </label>
-      <label className="card-field">
-        使用方式
-        <select
-          aria-label="地点视图使用方式"
-          value={mode}
-          disabled={disabled}
-          onChange={(event) => {
-            const next = event.target.value as KeyframeEnvironmentMode;
-            onChange(
-              next === "none"
-                ? { environmentMode: "none", environmentViewId: null }
-                : { environmentMode: next },
-            );
-          }}
-        >
-          <option value="edit" disabled={viewId === null}>
-            编辑底图（edit）
-          </option>
-          <option value="reference" disabled={viewId === null}>
-            仅作参考（reference）
-          </option>
-          <option value="none">不使用（none）</option>
-        </select>
-        <small>
-          默认 reference：视图只作空间参考，只参考固定陈设的方位关系、空间布局、材质与主光方向，
-          不照搬该图的机位与构图；可按本帧朝向改选本地点的其它视图；需要画面严格贴合视图时选编辑底图（edit）；
-          没有合适视图或画面没有环境信息时选不使用（理由可选）。
-        </small>
-      </label>
-      {mode === "none" ? (
-        <label className="card-field">
-          不使用地点视图的理由（可选）
-          <textarea
-            aria-label="不使用地点视图的理由"
-            aria-invalid={noneReasonInvalid}
-            maxLength={500}
-            rows={2}
-            value={noneReason}
-            disabled={disabled}
-            onChange={(event) =>
-              onChange({ environmentNoneReason: event.target.value })
-            }
-          />
-          {noneReasonInvalid ? (
-            <small role="alert">理由最多 500 字。</small>
-          ) : null}
-        </label>
-      ) : null}
     </fieldset>
   );
 }

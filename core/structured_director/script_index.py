@@ -48,14 +48,6 @@ def segment_visible_character_ids(scene: Scene, segment_id: str) -> tuple[str, .
     )
 
 
-def segment_view_ids(scene: Scene, segment_id: str) -> tuple[str | None, str | None]:
-    """(首个覆盖 Shot 的视图, 最后一个覆盖 Shot 的视图)；Segment 不在本 Scene 时均为 None。"""
-    shots = segment_shots(scene, segment_id)
-    if not shots:
-        return None, None
-    return shots[0].view_id, shots[-1].view_id
-
-
 def find_segment(
     scenes: DirectorScript | Iterable[Scene], segment_id: str
 ) -> tuple[Scene, ShotSegment] | None:

@@ -1939,8 +1939,7 @@
                 "camera_movement": "缓慢推进",
                 "action": "同一镜头连续观察环境",
                 "audio_direction": "风声",
-                "transition_in": null,
-                "view_id": null
+                "transition_in": null
               }
             ],
             "segments": [
@@ -2008,8 +2007,7 @@
                 "camera_movement": "缓慢推近。",
                 "action": "小满握住行李箱拉杆，抬头看向站牌。",
                 "audio_direction": "远处风声和站内电流声。",
-                "transition_in": null,
-                "view_id": null
+                "transition_in": null
               },
               {
                 "id": "e81f129051f419f389234ea8ca16fe0b",
@@ -2018,8 +2016,7 @@
                 "camera_movement": "缓慢推进",
                 "action": "同一镜头连续观察环境",
                 "audio_direction": "风声",
-                "transition_in": null,
-                "view_id": null
+                "transition_in": null
               }
             ],
             "segments": [
@@ -2086,8 +2083,7 @@
                 "camera_movement": "缓慢推近。",
                 "action": "小满握住行李箱拉杆，抬头看向站牌。",
                 "audio_direction": "远处风声和站内电流声。",
-                "transition_in": null,
-                "view_id": null
+                "transition_in": null
               }
             ],
             "segments": [
@@ -2131,8 +2127,7 @@
                 "camera_movement": "缓慢推进",
                 "action": "同一镜头连续观察环境",
                 "audio_direction": "风声",
-                "transition_in": null,
-                "view_id": null
+                "transition_in": null
               }
             ],
             "segments": [
@@ -2224,8 +2219,7 @@
                 "camera_movement": "缓慢推近。",
                 "action": "小满握住行李箱拉杆，抬头看向站牌。",
                 "audio_direction": "远处风声和站内电流声。",
-                "transition_in": null,
-                "view_id": null
+                "transition_in": null
               },
               {
                 "id": "e81f129051f419f389234ea8ca16fe0b",
@@ -2234,8 +2228,7 @@
                 "camera_movement": "缓慢推进",
                 "action": "同一镜头连续观察环境",
                 "audio_direction": "风声",
-                "transition_in": null,
-                "view_id": null
+                "transition_in": null
               }
             ],
             "segments": [
@@ -2326,8 +2319,7 @@
                 "camera_movement": "缓慢推近。",
                 "action": "小满握住行李箱拉杆，抬头看向站牌。",
                 "audio_direction": "远处风声和站内电流声。",
-                "transition_in": null,
-                "view_id": null
+                "transition_in": null
               }
             ],
             "segments": [
@@ -2428,8 +2420,7 @@
         "locations": [],
         "allowed_actions": [
           "create_location",
-          "bind_scene",
-          "bind_shot"
+          "bind_scene"
         ]
       },
       "keyframe_plan": {
@@ -2442,10 +2433,7 @@
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
-            "selected_asset_id": null,
-            "environment_mode": "none",
-            "environment_view_id": null,
-            "environment_none_reason": null
+            "selected_asset_id": null
           },
           {
             "id": "3f9396bdc71644fdbd7c347fd03b2bba",
@@ -2454,10 +2442,7 @@
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
-            "selected_asset_id": null,
-            "environment_mode": "none",
-            "environment_view_id": null,
-            "environment_none_reason": null
+            "selected_asset_id": null
           },
           {
             "id": "42e38618f4e24d04b4fe3ef4a9fa4a30",
@@ -2466,10 +2451,7 @@
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
-            "selected_asset_id": null,
-            "environment_mode": "none",
-            "environment_view_id": null,
-            "environment_none_reason": null
+            "selected_asset_id": null
           },
           {
             "id": "dd2d3cbe80ef45de9718f34b32a00812",
@@ -2478,10 +2460,7 @@
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
-            "selected_asset_id": null,
-            "environment_mode": "none",
-            "environment_view_id": null,
-            "environment_none_reason": null
+            "selected_asset_id": null
           },
           {
             "id": "9b4f202083054ceea945a5a0ac4b8f14",
@@ -2490,10 +2469,7 @@
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
-            "selected_asset_id": null,
-            "environment_mode": "none",
-            "environment_view_id": null,
-            "environment_none_reason": null
+            "selected_asset_id": null
           },
           {
             "id": "8a597b02a27f4b39b5121e0a83de5f2e",
@@ -2502,10 +2478,7 @@
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
-            "selected_asset_id": null,
-            "environment_mode": "none",
-            "environment_view_id": null,
-            "environment_none_reason": null
+            "selected_asset_id": null
           },
           {
             "id": "7c06cae9245e4e469c25e51f57241878",
@@ -2514,10 +2487,7 @@
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
-            "selected_asset_id": null,
-            "environment_mode": "none",
-            "environment_view_id": null,
-            "environment_none_reason": null
+            "selected_asset_id": null
           },
           {
             "id": "bfe1ad17b0e14e2d80bcb4edc9c1a56a",
@@ -2526,10 +2496,7 @@
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
-            "selected_asset_id": null,
-            "environment_mode": "none",
-            "environment_view_id": null,
-            "environment_none_reason": null
+            "selected_asset_id": null
           },
           {
             "id": "c38e2fdca2ae4fe7adcfde3fc6622bbf",
@@ -2538,10 +2505,7 @@
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
-            "selected_asset_id": null,
-            "environment_mode": "none",
-            "environment_view_id": null,
-            "environment_none_reason": null
+            "selected_asset_id": null
           },
           {
             "id": "16162efb4bba41a59c4ca284244f5b5e",
@@ -2550,10 +2514,7 @@
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
-            "selected_asset_id": null,
-            "environment_mode": "none",
-            "environment_view_id": null,
-            "environment_none_reason": null
+            "selected_asset_id": null
           },
           {
             "id": "682c55a995374f86903b573e4a59490e",
@@ -2562,10 +2523,7 @@
             "prompt_text": "",
             "visible_character_ids": [],
             "character_references": [],
-            "selected_asset_id": null,
-            "environment_mode": "none",
-            "environment_view_id": null,
-            "environment_none_reason": null
+            "selected_asset_id": null
           }
         ],
         "segments": [

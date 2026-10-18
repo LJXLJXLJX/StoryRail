@@ -6,6 +6,6 @@
 - `reference.py` / `script.py`：引用库与脚本的 proposal、编辑、操作与 repair。
 - `narration.py` / `run.py` / `generation.py` / `asset.py` / `final.py`：对应 L2 mutations 域。
 - `keyframe.py` / `video.py`：Keyframe 计划与视觉解锁、视频生产。
-- `location.py`：地点库编辑（`location.apply_operations`）与人类主图/视图选择。
+- `location.py`：地点库编辑（`location.apply_operations`）与人类独立图片选择。
 
 新增域：实现新域类，并在 `store/__init__.py` 的 `_domains` 元组与尾部导入中登记。

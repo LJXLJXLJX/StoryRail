@@ -10,8 +10,8 @@ from core.model_providers.recipe import RecipeParams
 
 from ..models import (
     GenerationOperation,
-    LocationCropRequest,
     NarrationLanguage,
+    PanoramaCaptureRequest,
     ReferenceGeneration,
     ReferenceGenerationKind,
     ReferenceGenerationPhase,
@@ -56,7 +56,7 @@ _GENERATION_FIELDS = {
 
 _GENERATION_AUDIT_FIELDS = {"created_at", "updated_at"}
 # 只在有值时写出的可选键。
-_GENERATION_OPTIONAL_FIELDS = {"aspect_ratio", "location_crop_request"}
+_GENERATION_OPTIONAL_FIELDS = {"aspect_ratio", "panorama_capture_request"}
 
 
 def _serialize_generation(generation: ReferenceGeneration) -> dict[str, Any]:
@@ -95,8 +95,8 @@ def _serialize_generation(generation: ReferenceGeneration) -> dict[str, Any]:
     # 只有指定了非项目画幅的图片 Generation 才写出该键；未写出即跟随项目画幅。
     if generation.aspect_ratio is not None:
         value["aspect_ratio"] = generation.aspect_ratio
-    if generation.location_crop_request is not None:
-        value["location_crop_request"] = asdict(generation.location_crop_request)
+    if generation.panorama_capture_request is not None:
+        value["panorama_capture_request"] = asdict(generation.panorama_capture_request)
     if generation.created_at is not None or generation.updated_at is not None:
         value.update(
             {
@@ -157,19 +157,23 @@ def _parse_generation(value: object) -> ReferenceGeneration:
         aspect_ratio=_string(fields["aspect_ratio"], "generation.aspect_ratio")
         if "aspect_ratio" in fields
         else None,
-        location_crop_request=_parse_crop_request(fields.get("location_crop_request")),
+        panorama_capture_request=_parse_capture_request(fields.get("panorama_capture_request")),
     )
 
 
-def _parse_crop_request(value: object) -> LocationCropRequest | None:
+def _parse_capture_request(value: object) -> PanoramaCaptureRequest | None:
     if value is None:
         return None
-    if not isinstance(value, dict) or set(value) != set(LocationCropRequest.__dataclass_fields__):
-        raise ValueError("generation.location_crop_request 包含缺失或未声明字段。")
-    return LocationCropRequest(
-        master_asset_id=_string(value["master_asset_id"], "location_crop_request.master_asset_id"),
-        yaw_deg=_number(value["yaw_deg"], "location_crop_request.yaw_deg"),
-        pitch_deg=_number(value["pitch_deg"], "location_crop_request.pitch_deg"),
-        hfov_deg=_number(value["hfov_deg"], "location_crop_request.hfov_deg"),
-        aspect_ratio=_string(value["aspect_ratio"], "location_crop_request.aspect_ratio"),
+    if not isinstance(value, dict) or set(value) != set(
+        PanoramaCaptureRequest.__dataclass_fields__
+    ):
+        raise ValueError("generation.panorama_capture_request 包含缺失或未声明字段。")
+    return PanoramaCaptureRequest(
+        panorama_asset_id=_string(
+            value["panorama_asset_id"], "panorama_capture_request.panorama_asset_id"
+        ),
+        yaw_deg=_number(value["yaw_deg"], "panorama_capture_request.yaw_deg"),
+        pitch_deg=_number(value["pitch_deg"], "panorama_capture_request.pitch_deg"),
+        hfov_deg=_number(value["hfov_deg"], "panorama_capture_request.hfov_deg"),
+        aspect_ratio=_string(value["aspect_ratio"], "panorama_capture_request.aspect_ratio"),
     )

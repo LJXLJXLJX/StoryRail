@@ -89,7 +89,7 @@ export function refineAsset(value: unknown): boolean {
 }
 
 /** 来源：Segment 视频与图片 seed 是十进制字符串（63 位）；其它 Generation 的 seed 是整数或 null。 */
-const STRING_SEED_KINDS = new Set(["segment_video", "character_look_sheet", "location_master_image", "location_view_image", "keyframe_image"]);
+const STRING_SEED_KINDS = new Set(["segment_video", "character_look_sheet", "location_image", "keyframe_image"]);
 
 export function refineGeneration(value: unknown): boolean {
   if (!isRecord(value)) return false;

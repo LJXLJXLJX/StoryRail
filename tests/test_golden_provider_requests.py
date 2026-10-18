@@ -120,12 +120,12 @@ class GoldenJourney(Journey):
         return self.snapshot()
 
     def install_location(self, name: str, scene_id: str, view_asset_id: str) -> str:
-        """经正式地点操作建库、绑定 Scene 并选定视图图片；返回视图 ID。"""
+        """经正式地点操作建库、绑定 Scene 并选定独立图片；返回图片 ID。"""
         store = self._server.workspaces.structured_director_store(self.project_id)
         document = install_location(
             store, view_asset_id=view_asset_id, scene_ids=(scene_id,), name=name
         )
-        return document.location_library.locations[-1].views[0].id
+        return document.location_library.locations[-1].images[0].id
 
     def asset_id(self, content: bytes) -> str:
         digest = hashlib.sha256(content).hexdigest()
@@ -292,10 +292,10 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
     narration_segment = narration["segments"][0]["id"]
 
     journey.step("location.install")
-    station_image = journey.upload_image("upload:空旷站台视图.png", "location_view")
-    night_image = journey.upload_image("upload:入夜站台视图.png", "location_view")
-    station = journey.install_location("空旷站台", drama["id"], station_image)
-    night = journey.install_location("入夜站台", narration["id"], night_image)
+    station_image = journey.upload_image("upload:空旷站台视图.png", "location_image")
+    night_image = journey.upload_image("upload:入夜站台视图.png", "location_image")
+    journey.install_location("空旷站台", drama["id"], station_image)
+    journey.install_location("入夜站台", narration["id"], night_image)
 
     journey.step("keyframe.generate")
     journey.unlock_visual_production()
@@ -311,15 +311,9 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
                     "start_character_references": [
                         {"character_id": character_id, "look_id": winter}
                     ],
-                    "start_environment_view_id": station,
-                    "start_environment_mode": "edit",
-                    "start_environment_none_reason": None,
                     "end_prompt_text": "小满抬头看站牌，表情迟疑。",
                     "end_visible_character_ids": [character_id],
                     "end_character_references": [{"character_id": character_id, "look_id": casual}],
-                    "end_environment_view_id": station,
-                    "end_environment_mode": "reference",
-                    "end_environment_none_reason": None,
                 },
                 {
                     "segment_id": second_segment,
@@ -330,15 +324,9 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
                     "start_character_references": [
                         {"character_id": character_id, "look_id": casual}
                     ],
-                    "start_environment_view_id": station,
-                    "start_environment_mode": "reference",
-                    "start_environment_none_reason": None,
                     "end_prompt_text": "小满转身望向轨道尽头，行李箱留在身侧。",
                     "end_visible_character_ids": [character_id],
                     "end_character_references": [{"character_id": character_id, "look_id": None}],
-                    "end_environment_view_id": None,
-                    "end_environment_mode": "none",
-                    "end_environment_none_reason": "站台主机位不覆盖轨道尽头方向",
                 },
                 {
                     "segment_id": narration_segment,
@@ -347,15 +335,9 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
                     "start_prompt_text": "入夜的空旷站台全景，站灯亮起。",
                     "start_visible_character_ids": [],
                     "start_character_references": [],
-                    "start_environment_view_id": night,
-                    "start_environment_mode": "edit",
-                    "start_environment_none_reason": None,
                     "end_prompt_text": "入夜站台的静止尾帧。",
                     "end_visible_character_ids": [],
                     "end_character_references": [],
-                    "end_environment_view_id": None,
-                    "end_environment_mode": "none",
-                    "end_environment_none_reason": "尾帧未启用，不提交地点视图",
                 },
             ]
         }
@@ -631,7 +613,7 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
 
 
 def _location_generation_steps(journey: GoldenJourney, server: GoldenHttpServer) -> None:
-    """地点主图（室内 2:1 全景、室外项目画幅）→ 选择 → 室内裁切 → 显式细化；室外 edit 转向。"""
+    """独立地点图生成并选择；全景作为可选类别，当前视角可直接取景为子图。"""
     server.golden.bind_images("codex_image")
     journey.step("location.edit")
     journey._post(
@@ -639,21 +621,19 @@ def _location_generation_steps(journey: GoldenJourney, server: GoldenHttpServer)
         f"{journey.resource}/locations/operations",
         {
             "expected_revision": journey._revision(),
-            "scope": {"location_ids": [], "scene_ids": [], "shot_ids": []},
+            "scope": {"location_ids": [], "scene_ids": []},
             "operations": [
                 {
                     "op": "create_location",
                     "key": "hall",
                     "name": "候车大厅",
-                    "kind": "interior",
                     "description": "水磨石地面、木长椅、拱形高窗。",
                 },
                 {
                     "op": "update_location",
                     "location_id": "hall",
                     "fields": {
-                        "master_prompt_text": "老式火车站候车大厅，冬夜，暖黄灯光。",
-                        "key_light": {"description": "高窗透入的冷月光", "azimuth_deg": 270.0},
+                        "key_light": {"description": "高窗透入的冷月光"},
                     },
                 },
                 {
@@ -662,42 +642,33 @@ def _location_generation_steps(journey: GoldenJourney, server: GoldenHttpServer)
                     "fixture": "board",
                     "name": "时刻表",
                     "description": "翻牌式时刻表",
-                    "azimuth_deg": None,
                 },
                 {
-                    "op": "create_view",
+                    "op": "create_image",
                     "location_id": "hall",
-                    "key": "bench",
+                    "key": "pano",
                     "fields": {
-                        "name": "长椅正打",
-                        "purpose": "人眼高中景，小满坐在长椅上",
-                        "azimuth_deg": 45.0,
-                        "pitch_deg": -5.0,
-                        "hfov_deg": 70.0,
-                        "refine_prompt_text": "地面有融雪水渍。",
+                        "name": "候车大厅全景",
+                        "kind": "panorama",
+                        "description": "完整展示大厅四周、长椅、高窗与时刻表的位置关系。",
+                        "prompt_text": "老式火车站候车大厅，冬夜，暖黄灯光。",
                     },
                 },
                 {
                     "op": "create_location",
                     "key": "yard",
                     "name": "站前广场",
-                    "kind": "exterior",
                     "description": "积雪广场、路灯、远处钟楼。",
                 },
                 {
-                    "op": "update_location",
+                    "op": "create_image",
                     "location_id": "yard",
-                    "fields": {"master_prompt_text": "雪夜站前广场，路灯昏黄。"},
-                },
-                {
-                    "op": "create_view",
-                    "location_id": "yard",
-                    "key": "tower",
+                    "key": "square",
                     "fields": {
                         "name": "望向钟楼",
-                        "purpose": "广角远景，交代钟楼方位",
-                        "azimuth_deg": 300.0,
-                        "hfov_deg": 100.0,
+                        "kind": "image",
+                        "description": "广角远景，交代积雪广场、路灯与钟楼方位。",
+                        "prompt_text": "雪夜站前广场，路灯昏黄。",
                     },
                 },
             ],
@@ -708,38 +679,44 @@ def _location_generation_steps(journey: GoldenJourney, server: GoldenHttpServer)
         next(item for item in libraries if item["name"] == name)
         for name in ("候车大厅", "站前广场")
     )
-    journey.step("location.master_generate")
-    for location in (hall, yard):
+    pano = hall["images"][0]["id"]
+    square = yard["images"][0]["id"]
+    journey.step("location.image_generate")
+    for image_id in (pano, square):
         journey._post(
-            "location_master",
-            f"{journey.resource}/locations/{location['id']}/master/generate",
+            "location_image",
+            f"{journey.resource}/location-images/{image_id}/generate",
             {"expected_revision": journey._revision()},
         )
-        master = journey.latest_output("location_master_image", location["id"])
+        candidate = journey.latest_output("location_image", image_id)
         journey._post(
-            "location_master_select",
-            f"{journey.resource}/locations/{location['id']}/master/select",
-            {"expected_revision": journey._revision(), "asset_id": master["output_asset_id"]},
+            "location_image_select",
+            f"{journey.resource}/location-images/{image_id}/select",
+            {
+                "expected_revision": journey._revision(),
+                "asset_id": candidate["output_asset_id"],
+            },
         )
-    bench, tower = hall["views"][0]["id"], yard["views"][0]["id"]
-    for step, kind in (
-        ("location_view_crop", "location_view_crop"),
-        ("location_view_refine", "location_view_image"),
-    ):
-        journey.step(f"location.{step.removeprefix('location_')}")
-        journey._post(
-            step,
-            f"{journey.resource}/location-views/{bench}/generate",
-            {"expected_revision": journey._revision()},
-        )
-        journey.latest_output(kind, bench)
-    journey.step("location.view_turn")
+    journey.step("location.panorama_capture")
     journey._post(
-        "location_view_turn",
-        f"{journey.resource}/location-views/{tower}/generate",
-        {"expected_revision": journey._revision()},
+        "location_panorama_capture",
+        f"{journey.resource}/location-images/{pano}/capture",
+        {
+            "expected_revision": journey._revision(),
+            "name": "长椅正打",
+            "description": "人眼高度的长椅中景，地面有融雪水渍。",
+            "yaw_deg": 45.0,
+            "pitch_deg": -5.0,
+            "hfov_deg": 70.0,
+        },
     )
-    journey.latest_output("location_view_image", tower)
+    hall = next(
+        item
+        for item in journey.snapshot()["location_library"]["locations"]
+        if item["name"] == "候车大厅"
+    )
+    child = next(item for item in hall["images"] if item.get("source") is not None)
+    journey.latest_output("panorama_capture", child["id"])
 
 
 class PlaygroundDriver:

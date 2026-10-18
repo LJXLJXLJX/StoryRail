@@ -18,11 +18,10 @@ flowchart LR
     refs -->|角色参考音色或音色描述| dtts[逐句对白 TTS]
     dialogue --> dtts --> daudio[(已选对白 WAV)]
     daudio -->|真实时长 + 发声起点| baseline
-    script -.->|Scene 地点/状态 · Shot 视图| loclib[地点库]
-    loclib --> master[(主图)] --> crop[PANO_VIEW 裁切<br/>仅室内] --> viewimg[(视图图片)]
-    master -->|室外转向| viewimg
-    baseline --> kfplan[Keyframe 计划<br/>按 Segment 建帧<br/>默认取首/末覆盖 Shot 的视图]
-    viewimg -->|edit 底图 / reference| kfgen[生图 Provider]
+    script -.->|Scene 地点/状态| loclib[地点库<br/>独立普通图 / 全景图]
+    loclib -->|语义与图片说明，不自动传图| kfplan[Keyframe 计划<br/>按 Segment 建帧]
+    loclib -->|人类显式加入辅助参考时| kfgen[生图 Provider]
+    baseline --> kfplan
     refs -->|可见角色本帧所选造型的造型图| kfgen
     kfplan --> kfgen --> kfimg[(Keyframe 图)]
     kfimg --> h3[video.generate recipe]
@@ -101,21 +100,16 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    start[Keyframe] --> env{environment_mode}
-    env -- edit/reference 且视图未选图 --> vwait[拒绝单帧生成<br/>批次中作为等待项]
-    env -- edit --> e1[视图已选图：编辑底图<br/>只加入人物与动作]
-    env -- reference（默认） --> e2[视图已选图：空间参考<br/>只参考陈设方位、布局、材质与主光，不照搬机位与构图]
-    env -- none --> e3[不提交地点视图]
-    e1 & e2 & e3 --> chars{每个可见角色}
+    start[Keyframe] --> chars{每个可见角色}
     chars -- 有本帧选择 --> c1[角色参考 = 所选造型的造型图<br/>用途带该造型说明；look_id 为 null 表示不提交]
     chars -- 未选择且角色仅一套造型 --> c2[角色参考 = 该造型的造型图]
     chars -- 未选择且角色多套造型 --> creject[拒绝：要求为本帧选择造型]
     c1 & c2 --> pred{有前置帧且本 Segment 首帧启用?}
     pred -- 前置帧无可用图 --> wait[返回“前置未就绪”，本轮不提交]
-    pred -- 有图 --> p1[前置帧图；没有 edit 视图时它是编辑底图]
+    pred -- 有图 --> p1[前置帧图；编辑底图]
     pred -- 否 --> aux
     p1 --> aux[绑定该 Keyframe 的 Segment 手工辅助图]
-    aux --> dedupe[名额顺序：视图 → 角色 → 前置帧 → 辅助图<br/>按 Asset 去重，合并用途描述]
+    aux --> dedupe[名额顺序：角色 → 前置帧 → 辅助图<br/>按 Asset 去重，合并用途描述]
     dedupe --> limit{总数 ≤ 5?}
     limit -- 否 --> reject[拒绝，按名额顺序列出被挤掉的输入]
     limit -- 是 --> op[编辑底图移到第 1 位<br/>有底图 → operation = edit，否则 generate]
@@ -146,40 +140,33 @@ flowchart TB
 - Agent 只创作可见画面正文，不能通过正文改变类型化引用关系；只有明确启用的图片才会提交。
 - 角色的多套造型对应不同时期、服装或身体状态；Core 只提交本帧 `character_references` 所选造型的造型图，
   每个角色每帧至多一张，不同造型不会同时进入同一帧，避免特征被平均。
-- Keyframe 辅助图、角色卡与地点视图**只用于关键帧生图**，不会自动进入视频 recipe 输入。
+- Keyframe 辅助图与角色卡**只用于关键帧生图**，不会自动进入视频 recipe 输入。地点库图片只有被人显式加入辅助参考时才进入这里。
 - Keyframe Skill 与手工弹窗读写同一份计划；弹窗展示的实际提交映射与上面的编译结果同源。
 
 ## 地点图片输入编译
 
-地点主图与视图的输入、instruction 与提交由 `location_requests.py` 编译，名额与 Keyframe 共用 `image_inputs.py`
+每个独立地点图片条目的输入、instruction 与提交由 `location_requests.py` 编译，名额与 Keyframe 共用 `image_inputs.py`
 （合计 ≤ 5 张，超额按顺序列出被挤掉的输入）；指代与画幅句同样跟随图片插件的 `image_prompt` 约定。
 
 ```mermaid
 flowchart TB
-    gm[location.generate_master] --> mk{kind}
-    mk -- interior --> mi[image.generate · aspect_ratio = 2:1<br/>等距柱状全景 · 无人物 · 左右无缝 · 0° 在正中顺时针]
-    mk -- exterior --> me[image.generate · 项目画幅<br/>0° 即画面正前方]
-    gv[location.generate_view] --> sel{主图已选?<br/>朝向可解析?<br/>参考视图已选?}
-    sel -- 否 --> rej[拒绝并说明原因]
-    sel -- 是 --> vk{kind}
-    vk -- interior --> cur{crop_asset_id 对应当前<br/>主图与几何?}
-    cur -- 否 --> crop[提交 PANO_VIEW 裁切<br/>location_view_crop · 快照 location_crop_request]
-    crop -->|成功回调且快照仍是当前值| write[Core 写入 crop_asset_id<br/>不续提交]
-    cur -- 是 --> refine[image.edit 细化<br/>底图 = 裁切图 · 参考 = 参考视图<br/>不提交全景主图]
-    vk -- exterior --> turn[image.edit 转向<br/>底图 = 主图 · 参考 = 参考视图]
+    gen[location image generate] --> refs[显式 reference_asset_ids<br/>0–5 张任意项目图片]
+    refs --> kind{kind}
+    kind -- image --> normal[image.generate / edit<br/>项目画幅]
+    kind -- panorama --> pano[image.generate / edit<br/>固定 2:1 等距柱状、左右无缝]
+    pano --> choose[人类选择候选]
+    choose --> viewer[3D 查看器调整 yaw / pitch / hfov]
+    viewer --> capture[创建普通子图并提交 PANO_VIEW<br/>panorama_capture_request]
+    capture --> selected[成功回调直接选中确定性产物]
 ```
 
-- **主图正文**：输入映射 → 画幅句（插件约定需要时）→ 硬约束 → 空间描述（结构、材质、固定陈设、主光；有方位的陈设与主光写成
-  “正前方/右前方/右侧/…/身后”等八方位词加度数）→ 主图正文。主图参考图来自 `master.reference_asset_ids`。
-- **裁切**：输入是主图已选 Asset 与绝对方位（`azimuth_deg`，或陈设方位 + 偏转）、pitch、hfov、项目画幅；没有 seed、
-  没有 `provider_snapshot`，产物不是候选。
-- **细化**：修复全景裁切底图：输入映射 → 画幅句（插件约定需要时）→ 修复指令（保持取景中心、镜头朝向、景别、主体层次及
-  物体身份、数量和相互位置关系；修正直线弯曲、边缘拉伸、比例失衡和不自然透视，允许为恢复可信单一透视而调整局部轮廓、
-  尺度和边缘位置，但不改变空间布局、增删物体或改换机位；同时去除模糊、补足纹理细节）→ 视图有状态时附该状态的可见差量。
-  不附空间描述、陈设清单、purpose 或正文，避免编辑模型按描述重画整个空间。
-- **转向**：写明相对主图的水平转向角、俯仰与按 hfov 判定的景别（≥ 90° 广角远景、≥ 60° 远景、≥ 40° 中景，其余近景），
-  并要求保持建筑、地形、材质、天气与光线一致。
-- 参考视图的已选图以“同一地点已选定的视图；保持材质、陈设外观与光线一致，不复制其构图”进入输入。
+- **普通图**：输入映射 → 画幅句（插件约定需要时）→ 地点与状态语义 → 图片自己的 `prompt_text`。有参考图时 operation 为 edit，
+  无参考图时为 generate；参考图不需要来自同一地点。
+- **全景图**：在相同结构上增加固定 2:1 等距柱状投影、完整水平 360°、左右边缘无缝和无人物等约束。它仍只产生自己的候选，
+  不自动建立子图。
+- **全景取景**：输入是全景条目当前已选 Asset 与查看器提交的 yaw、pitch、hfov、项目画幅；没有 seed、没有
+  `provider_snapshot`。Core 同时创建带强制说明的普通图片条目，成功时直接选择产物。`source` 与 request 都是冻结 provenance，
+  不跟随父图变化。
 
 ## 视频 recipe 输入编译
 
@@ -269,15 +256,13 @@ flowchart TB
 flowchart TB
     ref[引用库：造型图/音色变化] --> kfUse[使用该角色的 Keyframe 选择]
     ref -->|删除造型| kfRef[剪除 Keyframe 中对该造型的选择<br/>回到默认规则]
-    loc[地点：主图改选 / kind / 标定 / 视图几何 / 细化计划 / 状态 / 视图改选] --> viewSel[受影响视图的裁切与选择]
-    viewSel --> viewDep[经 reference_view_ids 依赖它的视图选择]
-    viewSel & viewDep --> kfEnv[environment_view_id 指向这些视图的 Keyframe 选择]
+    loc[地点语义 / 图片 / 选图变化] --> locOnly[只更新地点库事实<br/>不级联生产选择]
     script[脚本：Scene setting / Shot / Segment 视觉或结构变化] --> rebuild[重建 Keyframe/视频绑定<br/>受影响 Segment 的视频选择]
     script --> base[Core 同次写入重新校准生产基线<br/>无法校准时保持失效并返回原因]
     cueEdit[Cue 某语言正文/参数变化] --> cueSel[该语言音频选择] --> base
-    kfUse & kfEnv --> kfDep[实际依赖这些帧的后继 Keyframe]
+    kfUse --> kfDep[实际依赖这些帧的后继 Keyframe]
     kf[Keyframe 正文/引用/绑定/选择变化] --> kfDep
-    kfEnv & kfUse & kf & kfDep --> vid[启用这些帧的 Segment 视频选择与超分]
+    kfUse & kf & kfDep --> vid[启用这些帧的 Segment 视频选择与超分]
     vplan[视频正文 / recipe / 输入槽位变化] --> vid
     vid --> sf[对应 Scene 成片（变为过期）]
     cueSel --> sf
@@ -289,9 +274,8 @@ flowchart TB
 
 - 只撤销**已过期的当前选择、派生计划与 Approval**；Asset、Generation、候选、seed、retry 血缘一律保留。
 - `workspace_layers` 只累加，上游回改不重锁任何内容层。
-- 地点、陈设、状态、视图**改名**与描述类修改不失效；Scene/Shot 改绑不改写已建立 Keyframe 的视图引用。完整规则见
-  [数据模型 · 失效规则](data-model.md#失效规则)。
-- 未启用的槽位、未引用受影响视图的 Keyframe、无关 Segment 不受影响。
+- 地点库没有 Keyframe/Shot 生产绑定，地点、状态、图片与 Scene 绑定变化不级联失效 Keyframe、视频或装配。
+- 未启用的槽位与无关 Segment 不受影响。
 - 相关任务进行中或提交结果未知时，冲突修改被拒绝。
 - `project.preview_impact` 调用同一 parser 与影响计算，预览的 `invalidated` / `preserved` 与同 revision 上真实执行一致。
 
@@ -304,7 +288,7 @@ flowchart TB
 | --- | --- |
 | `character_reference_image` / `character_voice_reference` / `narrator_voice_reference` | 引用库参考 |
 | `narration_audio` | 旁白已选音频 |
-| `location_master_image` / `location_view_image` | 地点已选主图 / 视图已选图或当前裁切图 |
+| `location_image` | 地点图片当前选图；全景取景子图按自己的选图记录 |
 | `keyframe_selected_asset` / `keyframe_reference_image` | Keyframe 已选图 / Segment 辅助图 |
 | `segment_video_selected` / `segment_video_upscaled` | Segment 已选视频 / 超分视频 |
 | `segment_video_input_image` / `_audio` / `_video` | Ref2VA 其他图片（`additional_images`）/ 参考音频 / 参考视频 |

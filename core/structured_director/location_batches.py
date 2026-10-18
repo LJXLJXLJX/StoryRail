@@ -1,8 +1,7 @@
 """地点成套生成批次（location.generate_set）的单轮执行。
 
-范围在批次开始时固定为明确的 location_ids；每轮重新分类全部生成单元
-（`location_requests.location_set_items`），只提交本轮条件已满足的项：
-主图 → 室内裁切 → 细化 / 室外转向。裁切与候选回调都不续提交，推进需要新的
+范围在批次开始时固定为明确的 location_ids；每轮重新分类全部独立图片条目，
+只提交本轮条件已满足的普通生成或全景取景。回调都不续提交，推进需要新的
 显式 `location.generate_set`（携带原 batch_id 或 execution_run_id）。
 提交本身复用单项入口共用的内部提交函数（`media_submission.image`），
 不另写提交、seed 或 provider_snapshot 逻辑。
@@ -17,9 +16,6 @@ _WAITING_SUMMARY = {
     "in_progress": "进行中",
     "submission_uncertain": "提交状态不确定",
     "awaiting_selection": "等待选择",
-    "awaiting_master": "等待主图选定",
-    "awaiting_calibration": "等待标定",
-    "awaiting_reference_view": "等待参考视图选择",
     "failed": "此前任务失败",
     "cancelled": "此前任务已取消",
     "blocked": "被阻止",
@@ -56,10 +52,11 @@ async def execute_location_wave(
         )
         submitted_labels: list[str] = []
         for item in ready:
-            if item.step == "master":
-                updated = await media._submit_location_master(updated, location_id=item.location_id)
+            assert item.image_id is not None
+            if item.step == "capture":
+                updated = await media._submit_location_capture(updated, image_id=item.image_id)
             else:
-                updated = await media._submit_location_view(updated, view_id=item.view_id)
+                updated = await media._submit_location_image(updated, image_id=item.image_id)
             generation = updated.generations[-1]
             pending_ids.remove(item.target_id)
             current_run = updated.active_director_run

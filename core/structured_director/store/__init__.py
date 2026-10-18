@@ -187,9 +187,6 @@ from ..models import (
     Keyframe as Keyframe,
 )
 from ..models import (
-    KeyframeEnvironmentMode as KeyframeEnvironmentMode,
-)
-from ..models import (
     NarrationCue as NarrationCue,
 )
 from ..models import (

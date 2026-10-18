@@ -362,7 +362,6 @@ def test_ref2va_labels_match_production_mapping() -> None:
                 action="等待",
                 audio_direction="雨声",
                 visible_character_names=("小满",),
-                view_name=None,
             ),
         ),
         segment_action="上车",
@@ -385,7 +384,6 @@ def test_ref2va_labels_match_production_mapping() -> None:
             "action": "等待",
             "audio_direction": "雨声",
             "visible_character_names": ["小满"],
-            "view_name": None,
         }
     ]
     provider = _actual_provider_inputs(context)

@@ -507,15 +507,9 @@ def _keyframe_payload(workset: dict[str, Any]) -> dict[str, Any]:
                         "start_prompt_text": ("" if continues else f"{scene['title']}的静态首帧。"),
                         "start_visible_character_ids": ([] if continues else character_ids),
                         "start_character_references": [],
-                        "start_environment_mode": None,
-                        "start_environment_view_id": None,
-                        "start_environment_none_reason": None,
                         "end_prompt_text": f"{scene['title']}的静态尾帧。",
                         "end_visible_character_ids": character_ids,
                         "end_character_references": [],
-                        "end_environment_mode": None,
-                        "end_environment_view_id": None,
-                        "end_environment_none_reason": None,
                     }
                 )
             previous_end = segment["end_keyframe_id"]
@@ -523,53 +517,42 @@ def _keyframe_payload(workset: dict[str, Any]) -> dict[str, Any]:
 
 
 def _location_payload(workset: dict[str, Any]) -> dict[str, Any]:
-    """每个 Scene 一个新建室内地点；每个 Shot 绑定该地点的一个主机位视图。"""
-    locations, scene_bindings, shot_bindings = [], [], []
+    """每个 Scene 一个新建地点和一张独立主参考图。"""
+    locations, scene_bindings = [], []
     for index, scene in enumerate(workset["core_facts"]["scenes"]):
         key = f"place-{index}"
-        view_key = f"{key}-main"
+        image_key = f"{key}-main"
         locations.append(
             {
                 "key": key,
                 "name": scene["title"],
-                "kind": "interior",
                 "description": scene["setting"],
-                "key_light": {"description": "冷蓝色天光", "azimuth_deg": 270},
-                "master_prompt_text": f"{scene['setting']}无人物。",
+                "key_light": {"description": "冷蓝色天光"},
                 "fixtures": [
                     {
                         "key": f"{key}-sign",
                         "name": "站牌",
                         "description": "金属站牌",
-                        "azimuth_deg": 0,
                     }
                 ],
                 "states": [],
-                "views": [
+                "images": [
                     {
-                        "key": view_key,
+                        "key": image_key,
                         "name": "主机位",
-                        "purpose": "人眼高中景，覆盖本 Scene 全部 Shot",
-                        "azimuth_deg": 0,
-                        "look_at_fixture_id": None,
-                        "yaw_offset_deg": None,
-                        "pitch_deg": 0,
-                        "hfov_deg": 65,
-                        "state_id": None,
-                        "refine_prompt_text": "",
-                        "reference_view_ids": [],
+                        "kind": "image",
+                        "description": "人眼高度中景，展示本 Scene 的主要空间关系。",
+                        "prompt_text": f"{scene['setting']}无人物。",
+                        "reference_asset_ids": [],
+                        "source": None,
                     }
                 ],
             }
         )
         scene_bindings.append({"scene_id": scene["id"], "location_id": key, "state_id": None})
-        shot_bindings.extend(
-            {"shot_id": shot["id"], "view_id": view_key} for shot in scene["shots"]
-        )
     return {
         "locations": locations,
         "scene_bindings": scene_bindings,
-        "shot_bindings": shot_bindings,
     }
 
 

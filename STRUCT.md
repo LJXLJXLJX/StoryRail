@@ -22,7 +22,7 @@ human 权限；明确撤回旁白音频可由 Agent 经窄命令解除引用。
 | 边缘 | `service.py`、`http_api.py` | 应用 facade 与 HTTP contract |
 
 项目只需 `project.json` 与不可变 `assets/`。领域 run/cursor/回执在业务 authority 内；外部会话、工作区与
-历史 `.runtime/` 不参与恢复事实读取。没有数据库、双写或旧 schema 迁移；当前 schema 为 v34
+历史 `.runtime/` 不参与恢复事实读取。没有数据库、双写或旧 schema 迁移；当前 schema 为 v35
 （Scene 下并列 Shot 与 Segment、Segment 以 `shot_ids` 记录覆盖的 Shot、一个 Segment 可覆盖多个相邻 Shot 且一个 Shot 可跨多个相邻 Segment、旁白 Cue 不带 Shot 锚点、造型为角色图唯一单位与造型设定图、地点库与 Scene/Shot/Keyframe 视图绑定（Shot 视图为软参考）、`workspace_layers` 持久化内容层、创建时选择旁白语言、每种启用语言一套旁白音色、Keyframe 按 Segment 建首尾槽位并按帧选择角色造型、视频保存 `active_recipe` 与按 recipe 隔离的输入簿、Generation 记录提交时的 Provider 快照），更早版本一律拒绝读取，需新建项目。
 
 Core 不包含厂商 Agent adapter、会话、Director loop 或 Agent SDK 依赖；执行由外部成熟 Agent 承担。
@@ -78,7 +78,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `run_commands.py`：领域 run 目标与恢复参数。
 - `script_operations.py`：脚本 Scene/Shot/Segment 原子操作输入。
 - `video_commands.py`：Segment 视频 recipe 输入、提示词、recipe 切换与撤销选择参数。
-- `location_operations.py`：地点库编辑、Scene/Shot 地点绑定与人类主图/视图选择参数。
+- `location_operations.py`：地点语义、独立图片、Scene 绑定与人类地点图片选择参数。
 - `reference_commands.py`：角色造型新增 / 修改操作参数（`reference.apply_look_operations`）。
 
 ### core/director_proposals/ — 专业输入、schema、parser 与 validator
@@ -189,7 +189,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `proposal_schema.py`：各 codec 输出 schema 的 TypeScript 类型标注。
 - `ts_emit.py`：JSON Schema → TypeScript 类型与结构校验代码。
 
-### core/structured_director/ — schema v34 结构化导演领域
+### core/structured_director/ — schema v35 结构化导演领域
 
 - `README.md`：领域、Store、Service 与 HTTP contract 总览。
 - `__init__.py`：公开 Store/Service/HTTP API 与模型（惰性导出）。
@@ -230,15 +230,15 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `script_mutations.py`：脚本物化、原子操作、生产期回改与关键帧/视频计划重建。
 - `mutations/dialogue.py`：对白 TTS 候选选择、真实 WAV 时序校准与下游视频失效。
 - `keyframe_mutations.py`：Keyframe 原子操作（激活、字段、辅助图、绑定、共享/拆分边界）与失效。
-- `location_mutations.py`：地点库操作、人类主图/视图选择（只接受该目标的成功候选）、删除引用检查与地点→视图→Keyframe→视频→装配失效；共享一次性索引及删除/选择/使用者任务的纯拒绝判定。
+- `location_mutations.py`：地点语义、独立图片、Scene 绑定与人类图片选择；地点图片不绑定 Shot/Keyframe，不传播生产失效。
 - `video_mutations.py`：Segment 视频计划/提示词/模式变换与校验。
 - `repair_mutations.py`：受控 repair patch 与能力缺口报警。
 
 媒体、时序与资产：
 
-- `keyframe_requests.py`：Keyframe 生图的实际输入映射（地点视图 edit/reference 文案与名额顺序）与提交预览。
+- `keyframe_requests.py`：Keyframe 生图的角色造型、前置帧、手工辅助图实际输入映射与提交预览。
 - `character_look_requests.py`：造型设定图的身份参考校验、固定版式与提示词编译（固定 2:1，按插件约定写画幅与 4K）。
-- `location_requests.py`：地点主图与视图（室内裁切→细化、室外转向）的前置检查、输入映射与名额、提示词编译；成套批次的单轮分类。
+- `location_requests.py`：独立地点图片生成与全景取景的前置检查、输入映射、名额、提示词编译及批次分类。
 - `image_inputs.py`：单次图片调用的输入名额（`MAX_IMAGE_INPUTS`）、优先级去重与超额拒绝；Keyframe 与地点生成共用。
 - `image_prompt_style.py`：当前图片插件的输入图指代与画幅句约定。
 - `video_contracts.py`：抽帧请求（帧号）与视频输入快照值对象。
@@ -307,7 +307,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `README.md`：只读层说明。
 - `video_recipes.py`：视频 recipe 可用性、切换守护、完整时长与 Core 输入标签预览。
 - `snapshot_view.py`：完整 Web 快照、`allowed_actions` 与生产可用性投影。
-- `location_view.py`：地点卡的状态、允许动作、有效裁切与候选/进行中 Generation 只读投影。
+- `location_image.py`：独立地点图片卡的类型、说明、状态、候选、选图、全景取景能力与允许动作投影。
 - `workflow_state.py`：主流程阶段、必需下一步、可选推荐动作与门禁投影。
 - `semantic_projection.py`：人和 Agent 共源的故事投影。
 - `professional_worksets.py`：专业能力工作集读取。
@@ -324,8 +324,8 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `README.md`：提交层说明。
 - `__init__.py`：`MediaSubmissionUseCases` 组合各能力提交。
 - `support.py`：画幅、音色设计入口与提交收尾共用逻辑。
-- `image.py`：角色/Keyframe 生图、地点主图与视图细化/转向提交。
-- `pano_view.py`：室内地点视图的全景裁切提交（冻结主图与几何快照）。
+- `image.py`：角色/Keyframe 生图与独立地点图片 generate/edit 提交。
+- `pano_view.py`：全景查看器取景提交（冻结全景 Asset 与几何快照）。
 - `narration.py`：旁白 TTS 提交。
 - `audio.py`：资产中心通用音频与角色/旁白音色设计（Breeze TTS 2）提交。
 - `video.py`：Segment 视频（FL2VA/Ref2VA）提交。
@@ -430,15 +430,15 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `src/director_workspace/contracts.tsx`：工作台 props 与动作契约。
 - `src/director_workspace/StoryReader.tsx`：Scene/Shot/Segment 阅读与各内容层组合；镜头设计列出覆盖片段，Segment 页列出覆盖镜头与结构修改入口。
 - `src/director_workspace/StoryNavigation.tsx`：Scene → Segment 导航、覆盖标签与服务端时长/对白提示。
-- `src/director_workspace/NodeEditor.tsx`：脚本节点编辑器；Shot 创作字段与空间参考建议、Segment 覆盖区间与延续说明。
+- `src/director_workspace/NodeEditor.tsx`：脚本节点编辑器；Shot 创作字段、Segment 覆盖区间与延续说明。
 - `src/director_workspace/script_draft.ts`：新 Scene 草稿（一个 Shot + 一个覆盖它的 Segment）。
 - `src/director_workspace/script_structure.tsx`：新增镜头（并入/新建 Segment）、拆分/合并 Segment 与服务端影响预览。
 - `src/director_workspace/references.tsx`：角色卡、造型与造型图弹窗（生成设定图 / 从资产库选）、旁白卡与参考音色。
-- `src/director_workspace/location.tsx`、`location.css`：同页地点库、地点/视图编辑、Scene/Shot 改绑与服务端影响预览；室内视图编辑器把已选 2:1 主图交给 Pannellum 实时预览，并把拖拽/缩放结果映射回现有机位字段。
-- `src/director_workspace/PanoramaCameraEditor.tsx`：Pannellum 生命周期、全景相机交互，以及 `yaw` / `pitch` / `hfov` 与表单草稿的双向同步。
+- `src/director_workspace/location.tsx`、`location.css`：同页地点库、独立图片编辑、Scene 绑定、任意参考图选择与服务端影响预览；全景图片打开 Pannellum 3D 查看器并显式创建子图。
+- `src/director_workspace/PanoramaCameraEditor.tsx`：Pannellum 生命周期、全景相机交互，以及 `yaw` / `pitch` / `hfov` 与取景请求的双向同步。
 - `web/third_party/pannellum/`：随 Web 分发的 Pannellum MIT 许可证与使用说明；运行时代码由 npm 锁定版本提供。
 - `src/director_workspace/narration.tsx`：旁白 Cue 卡片。
-- `src/director_workspace/keyframe.tsx`：Segment 首尾帧卡、Ref2VA 其他图片（已选关键帧 / 资产库参考图，排除当前已启用边界）、共享开关、“从上一 seg 抽取”与手动计划弹窗（本 Scene 地点视图、使用方式、none 理由、实际提交映射）。
+- `src/director_workspace/keyframe.tsx`：Segment 首尾帧卡、Ref2VA 其他图片（已选关键帧 / 资产库参考图，排除当前已启用边界）、共享开关、“从上一 seg 抽取”与手动计划弹窗（正文、角色造型、实际提交映射）。
 - `src/director_workspace/RecipeInputsControl.tsx`、`video.tsx`：共享受保护的视频 recipe 草稿，以及 Segment 视频卡（模式、参考素材、候选、超分、抽帧）；首尾帧区与视频卡原子编辑同一份 recipe 输入簿。
 - `src/director_workspace/SceneMedia.tsx`：Scene Animatic 与 Scene 成片。
 - `src/director_workspace/final.tsx`：全片装配与 Approval。

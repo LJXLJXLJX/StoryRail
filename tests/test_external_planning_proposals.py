@@ -37,15 +37,9 @@ def proposal_for(document, kind, target_ids=None):
                 "start_prompt_text": "完整静态场景。",
                 "start_visible_character_ids": [],
                 "start_character_references": [],
-                "start_environment_mode": None,
-                "start_environment_view_id": None,
-                "start_environment_none_reason": None,
                 "end_prompt_text": "静态终点。",
                 "end_visible_character_ids": [],
                 "end_character_references": [],
-                "end_environment_mode": None,
-                "end_environment_view_id": None,
-                "end_environment_none_reason": None,
             }
             for scene in scenes
             for segment in scene.segments

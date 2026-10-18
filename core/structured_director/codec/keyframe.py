@@ -7,7 +7,6 @@ from typing import Any
 from ..models import (
     Keyframe,
     KeyframeCharacterReference,
-    KeyframeEnvironmentMode,
     KeyframePlan,
     SegmentKeyframes,
 )
@@ -28,9 +27,6 @@ _KEYFRAME_FIELDS = {
     "prompt_text",
     "visible_character_ids",
     "selected_asset_id",
-    "environment_mode",
-    "environment_view_id",
-    "environment_none_reason",
     "character_references",
 }
 
@@ -66,9 +62,6 @@ def _serialize_keyframe_plan(plan: KeyframePlan) -> dict[str, Any]:
                 "prompt_text": item.prompt_text,
                 "visible_character_ids": list(item.visible_character_ids),
                 "selected_asset_id": item.selected_asset_id,
-                "environment_mode": item.environment_mode.value,
-                "environment_view_id": item.environment_view_id,
-                "environment_none_reason": item.environment_none_reason,
                 "character_references": serialize_character_references(item),
             }
             for item in plan.keyframes
@@ -112,15 +105,6 @@ def _parse_keyframe(value: object) -> Keyframe:
         ),
         selected_asset_id=_optional_string(
             fields["selected_asset_id"], "keyframe.selected_asset_id"
-        ),
-        environment_view_id=_optional_string(
-            fields["environment_view_id"], "keyframe.environment_view_id"
-        ),
-        environment_mode=KeyframeEnvironmentMode(
-            _string(fields["environment_mode"], "keyframe.environment_mode")
-        ),
-        environment_none_reason=_optional_string(
-            fields["environment_none_reason"], "keyframe.environment_none_reason"
         ),
         character_references=_object_list(
             fields["character_references"], _parse_character_reference

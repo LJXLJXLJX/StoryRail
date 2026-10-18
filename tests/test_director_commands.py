@@ -168,9 +168,6 @@ class _OperationsPlanner:
                     keyframe_id=segment.start_keyframe_id,
                     prompt_text="operations 写入的首帧。",
                     visible_character_ids=tuple(item.id for item in segment.visible_characters),
-                    environment_mode="none",
-                    environment_none_reason="首帧是纯黑场，没有环境信息。",
-                    environment_changed=True,
                 ),
                 SetKeyframeActivation(segment.id, True, False),
             ),
@@ -255,7 +252,7 @@ async def _location_project(
         document = await service.import_image_asset(
             media_type="image/png",
             content=b"\x89PNG\r\n\x1a\nlocation-view" + bytes([index]),
-            category=ImageAssetCategory.LOCATION_VIEW,
+            category=ImageAssetCategory.LOCATION_IMAGE,
             expected_revision=document.revision,
         )
         document = install_location(
@@ -1687,7 +1684,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsNone(new_scene.location_id)
             (new_shot,) = new_scene.shots
             self.assertRegex(new_shot.id, r"^[0-9a-f]{32}$")
-            self.assertIsNone(new_shot.view_id)
+            self.assertFalse(hasattr(new_shot, "view_id"))
             (new_segment,) = new_scene.segments
             self.assertEqual(new_segment.shot_ids, (new_shot.id,))
             self.assertEqual(inserted.receipt.new_revision, document.revision + 1)

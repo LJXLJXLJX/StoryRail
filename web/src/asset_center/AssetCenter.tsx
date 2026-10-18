@@ -21,15 +21,14 @@ type AssetFilter = "all" | "image" | ImageAssetCategory | "audio" | "video" | "p
 
 const IMAGE_CATEGORIES: Array<{ value: ImageAssetCategory; label: string }> = [
   { value: "character_reference", label: "角色参考图" },
-  { value: "location_master", label: "地点主图" },
-  { value: "location_crop", label: "地点裁切图" },
-  { value: "location_view", label: "地点视图" },
+  { value: "location_image", label: "地点图片" },
+  { value: "panorama_capture", label: "地点裁切图" },
   { value: "keyframe", label: "Keyframe 图" },
   { value: "video_frame", label: "抽帧图" },
 ];
 // 抽帧图与全景裁切图由 Core 生成，只能浏览，不能作为导入分类。
 export const IMPORT_IMAGE_CATEGORIES = IMAGE_CATEGORIES.filter(
-  (item) => item.value !== "video_frame" && item.value !== "location_crop",
+  (item) => item.value !== "video_frame" && item.value !== "panorama_capture",
 );
 
 const AUDIO_EFFECT_PRESETS: Array<{

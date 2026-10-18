@@ -33,23 +33,19 @@ from .generation import ReferenceGeneration as ReferenceGeneration
 from .generation import transition_generation as transition_generation
 from .keyframe import Keyframe as Keyframe
 from .keyframe import KeyframeCharacterReference as KeyframeCharacterReference
-from .keyframe import KeyframeEnvironmentMode as KeyframeEnvironmentMode
 from .keyframe import KeyframePlan as KeyframePlan
 from .keyframe import SegmentKeyframes as SegmentKeyframes
 from .keyframe import blank_keyframe as blank_keyframe
-from .keyframe import (
-    normalize_environment_none_reason as normalize_environment_none_reason,
-)
 from .keyframe import prune_character_references as prune_character_references
 from .location import Location as Location
-from .location import LocationCropRequest as LocationCropRequest
 from .location import LocationFixture as LocationFixture
+from .location import LocationImage as LocationImage
+from .location import LocationImageKind as LocationImageKind
 from .location import LocationKeyLight as LocationKeyLight
-from .location import LocationKind as LocationKind
 from .location import LocationLibrary as LocationLibrary
-from .location import LocationMaster as LocationMaster
 from .location import LocationState as LocationState
-from .location import LocationView as LocationView
+from .location import PanoramaCaptureRequest as PanoramaCaptureRequest
+from .location import PanoramaCaptureSource as PanoramaCaptureSource
 from .narration import NARRATION_LANGUAGES as NARRATION_LANGUAGES
 from .narration import NarrationCue as NarrationCue
 from .narration import NarrationLanguage as NarrationLanguage
@@ -117,17 +113,16 @@ __all__ = [
     "blank_keyframe",
     "Keyframe",
     "KeyframeCharacterReference",
-    "KeyframeEnvironmentMode",
     "KeyframePlan",
     "Location",
-    "LocationCropRequest",
     "LocationFixture",
+    "LocationImage",
+    "LocationImageKind",
     "LocationKeyLight",
-    "LocationKind",
     "LocationLibrary",
-    "LocationMaster",
     "LocationState",
-    "LocationView",
+    "PanoramaCaptureRequest",
+    "PanoramaCaptureSource",
     "MAX_IMAGE_INPUTS",
     "NARRATION_LANGUAGES",
     "NarrationCue",
@@ -161,7 +156,6 @@ __all__ = [
     "discarded_asset_deletion_closure",
     "transition_generation",
     "prune_character_references",
-    "normalize_environment_none_reason",
 ]
 
 # 校验函数注入（P2-C1）：validation 需要 models 的类做 isinstance，models 的

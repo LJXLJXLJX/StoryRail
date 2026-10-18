@@ -11,9 +11,6 @@ if TYPE_CHECKING:
 
 _ID = re.compile(r"[0-9a-f]{32}")
 _COMMAND_NAME = re.compile(r"[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+")
-_KEYFRAME_ENVIRONMENT_FIELDS = frozenset(
-    {"environment_mode", "environment_view_id", "environment_none_reason"}
-)
 
 
 class InvalidArgumentsError(ValueError):
@@ -104,11 +101,6 @@ class UpdateKeyframeFields:
     keyframe_id: str
     prompt_text: str | None
     visible_character_ids: tuple[str, ...] | None
-    # 地点视图使用方式；三项一起提交，environment_changed 为 False 表示不修改。
-    environment_mode: Literal["edit", "reference", "none"] | None
-    environment_view_id: str | None = None
-    environment_none_reason: str | None = None
-    environment_changed: bool = False
     # None 表示不修改；提交时整体替换本帧的角色参考图选择。
     character_references: tuple[KeyframeCharacterReferenceSelection, ...] | None = None
 
@@ -308,32 +300,14 @@ def _parse_keyframe_operation(value: object) -> KeyframeOperation:
         allowed = {
             "prompt_text",
             "visible_character_ids",
-            *_KEYFRAME_ENVIRONMENT_FIELDS,
             "character_references",
         }
         if not set(fields) <= allowed:
             raise ValueError("update_frame_fields.fields 包含未声明字段。")
         prompt = fields.get("prompt_text")
         characters = fields.get("visible_character_ids")
-        mode = fields.get("environment_mode")
-        if mode is not None and mode not in {"edit", "reference", "none"}:
-            raise ValueError("environment_mode 不合法。")
-        environment_keys = set(fields) & _KEYFRAME_ENVIRONMENT_FIELDS
-        if environment_keys and environment_keys != _KEYFRAME_ENVIRONMENT_FIELDS:
-            raise ValueError(
-                "地点视图 ID、使用方式与 none 理由必须一起提交"
-                "（environment_mode、environment_view_id、environment_none_reason）。"
-            )
-        reason = fields.get("environment_none_reason")
         return UpdateKeyframeFields(
             keyframe_id=_id(item["keyframe_id"], "keyframe_id"),
-            environment_view_id=None
-            if fields.get("environment_view_id") is None
-            else _id(fields["environment_view_id"], "environment_view_id"),
-            environment_none_reason=None
-            if reason is None
-            else _plain_string(reason, "environment_none_reason"),
-            environment_changed=bool(environment_keys),
             prompt_text=(
                 None if "prompt_text" not in fields else _plain_string(prompt, "prompt_text")
             ),
@@ -341,9 +315,6 @@ def _parse_keyframe_operation(value: object) -> KeyframeOperation:
                 None
                 if "visible_character_ids" not in fields
                 else _id_list(characters, "visible_character_ids")
-            ),
-            environment_mode=(
-                None if "environment_mode" not in fields else _string(mode, "environment_mode")
             ),
             character_references=(
                 None

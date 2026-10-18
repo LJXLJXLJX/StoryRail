@@ -82,13 +82,8 @@ export function InsertShotSection({
   const [action, setAction] = useState("请补充镜头内发生的动作。");
   const [audioDirection, setAudioDirection] = useState("");
   const [visibleCharacters, setVisibleCharacters] = useState<string[]>([]);
-  const [viewId, setViewId] = useState<string | null>(null);
   const [newDuration, setNewDuration] = useState(3);
   const [newAction, setNewAction] = useState("请补充这一段的连续动作。");
-  const location = snapshot.location_library.locations.find(
-    (item) => item.id === scene.location_id,
-  );
-  const views = location?.views ?? [];
   useUnsavedChanges(open);
   useEffect(() => {
     if (submittedRevision !== null && snapshot.revision !== submittedRevision) {
@@ -107,7 +102,6 @@ export function InsertShotSection({
       action,
       audio_direction: audioDirection,
       transition_in: null,
-      view_id: viewId,
     };
     const scenes = (snapshot.director_script?.scenes ?? []).map((item) => {
       if (item.id !== scene.id) return item;
@@ -276,26 +270,6 @@ export function InsertShotSection({
           value={audioDirection}
           onChange={setAudioDirection}
         />
-        <label className="card-field">
-          <span>空间参考建议（view_id，可空）</span>
-          <select
-            value={viewId ?? ""}
-            disabled={views.length === 0}
-            onChange={(event) => setViewId(event.target.value || null)}
-          >
-            <option value="">不使用</option>
-            {views.map((view) => (
-              <option key={view.id} value={view.id}>
-                {view.name} · {view.purpose}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="muted-copy">
-          {location === undefined || views.length === 0
-            ? "本 Scene 未绑定地点或该地点没有视图，新镜头只能不使用空间参考。"
-            : "视图只是空间关系建议，不强制生成；之后仍可在镜头编辑器改选。"}
-        </p>
       </fieldset>
       <button
         className="primary-button"

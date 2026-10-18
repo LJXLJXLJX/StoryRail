@@ -25,7 +25,6 @@ function existingScene(): Scene {
                 action: "抬头。",
                 audio_direction: "风声。",
                 transition_in: null,
-                view_id: null,
             },
             {
                 id: SHOT_B,
@@ -35,7 +34,6 @@ function existingScene(): Scene {
                 action: "低头。",
                 audio_direction: "",
                 transition_in: null,
-                view_id: null,
             },
         ],
         segments: [

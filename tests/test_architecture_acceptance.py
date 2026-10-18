@@ -111,11 +111,8 @@ async def mixed_acceptance(
             "op": "update_frame_fields",
             "keyframe_id": frame.id,
             "fields": {
-                "environment_view_id": None,
                 "prompt_text": "静态空站台，固定机位。",
                 "visible_character_ids": [],
-                "environment_mode": "none",
-                "environment_none_reason": "Shot 未绑定地点视图",
             },
         }
         for frame in document.keyframe_plan.keyframes

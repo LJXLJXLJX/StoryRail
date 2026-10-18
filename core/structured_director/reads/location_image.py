@@ -1,4 +1,4 @@
-"""地点卡的只读资源投影：权限、依赖状态和生成步骤由 Core 计算。"""
+"""地点语义卡与独立图片条目的只读投影。"""
 
 from __future__ import annotations
 
@@ -10,23 +10,19 @@ from ..location_mutations import (
     require_location_selection_idle,
 )
 from ..location_requests import (
-    crop_is_current,
-    location_master_plan,
+    location_image_plan,
     location_set_items,
-    location_view_plan,
+    panorama_capture_request,
 )
+from ..models import LocationImageKind, StructuredDirectorStatus
 from ..models import ReferenceGenerationKind as Kind
 from ..models import ReferenceGenerationPhase as Phase
-from ..models import StructuredDirectorStatus
 
 _LABELS = {
     "ready": "可生成",
     "in_progress": "进行中",
     "submission_uncertain": "提交结果未知",
     "awaiting_selection": "等待选择",
-    "awaiting_master": "等待主图选择",
-    "awaiting_calibration": "等待标定",
-    "awaiting_reference_view": "等待参考视图",
     "failed": "生成失败",
     "cancelled": "已取消",
     "blocked": "被阻止",
@@ -43,7 +39,7 @@ def location_library_projection(document, service):
         and document.active_director_run is None
     )
     library["allowed_actions"] = (
-        ["create_location", *(["bind_scene", "bind_shot"] if document.director_script else [])]
+        ["create_location", *(["bind_scene"] if document.director_script else [])]
         if editable
         else []
     )
@@ -53,7 +49,7 @@ def location_library_projection(document, service):
         generations_by_target=index.generations,
         asset_ids=index.assets.keys(),
     )
-    states = {(item.location_id, item.view_id): item for item in items}
+    states = {(item.location_id, item.image_id): item for item in items}
 
     def permitted(check, *args):
         if not editable:
@@ -64,19 +60,15 @@ def location_library_projection(document, service):
             return False
         return True
 
-    def generation_state(location, view=None):
-        target = location.id if view is None else view.id
-        kinds = (
-            {Kind.LOCATION_MASTER_IMAGE}
-            if view is None
-            else {Kind.LOCATION_VIEW_IMAGE, Kind.LOCATION_VIEW_CROP}
-        )
-        generations = [g for g in index.generations.get(target, ()) if g.kind in kinds]
+    def generation_state(location, image):
+        capture = image.source is not None
+        kinds = {Kind.PANORAMA_CAPTURE if capture else Kind.LOCATION_IMAGE}
+        generations = [g for g in index.generations.get(image.id, ()) if g.kind in kinds]
         active = next((g for g in reversed(generations) if g.phase not in _TERMINAL), None)
         candidates = [
             g
             for g in generations
-            if g.kind is not Kind.LOCATION_VIEW_CROP
+            if not capture
             and not g.dismissed
             and g.phase is Phase.SUCCEEDED
             and g.output_asset_id
@@ -84,57 +76,49 @@ def location_library_projection(document, service):
             and asset.media_type.startswith("image/")
         ]
         selectable = []
-        for g in candidates:
+        for generation in candidates:
             if not editable:
                 continue
             try:
                 if (
-                    view is None
-                    and location.kind.value == "interior"
-                    and not service.location_master_candidate_valid(index.assets[g.output_asset_id])
+                    image.kind is LocationImageKind.PANORAMA
+                    and not service.panorama_candidate_valid(
+                        index.assets[generation.output_asset_id]
+                    )
                 ):
                     continue
-                require_location_candidate(index, g.kind, target, g.output_asset_id, "候选不可选。")
-                require_location_selection_idle(index, location, view, g.output_asset_id)
+                require_location_candidate(
+                    index,
+                    generation.kind,
+                    image.id,
+                    generation.output_asset_id,
+                    "候选不可选。",
+                )
+                require_location_selection_idle(index, image, generation.output_asset_id)
             except ValueError:
                 continue
-            selectable.append(g.id)
-        item = states[location.id, None if view is None else view.id]
+            selectable.append(generation.id)
+        item = states[(location.id, image.id)]
         status, reason = item.status, item.reason
-        if active:
+        if active is not None:
             status = (
                 "submission_uncertain"
                 if active.phase is Phase.SUBMISSION_UNCERTAIN
                 else "in_progress"
             )
             reason = active.message
-        step = (
-            "master"
-            if view is None
-            else (
-                "crop"
-                if location.kind.value == "interior"
-                and not crop_is_current(document, location, view)
-                else "refine"
-                if location.kind.value == "interior"
-                else "turn"
-            )
-        )
-        ready = editable and active is None
+        step = "capture" if capture else "image"
+        ready = editable and active is None and image.selected_asset_id is None
         try:
-            plan = (
-                location_master_plan(document, location.id)
-                if view is None
-                else location_view_plan(document, view.id)
-            )
-            available = (
-                service.pano_view_available
-                if view is not None and plan.crop is not None
-                else service.image_generation_available
-            )
+            if capture:
+                panorama_capture_request(document, image.id)
+                available = service.pano_view_available
+            else:
+                location_image_plan(document, image.id)
+                available = service.image_generation_available
             if not available:
                 ready = False
-                reason = "全景裁切服务尚未配置。" if step == "crop" else "图片生成服务尚未配置。"
+                reason = "全景取景服务尚未配置。" if capture else "图片生成服务尚未配置。"
                 if active is None:
                     status = "blocked"
         except ValueError as exc:
@@ -148,17 +132,14 @@ def location_library_projection(document, service):
             actions.append("select")
         if editable:
             actions.append("edit")
+        if image.kind is LocationImageKind.PANORAMA and image.selected_asset_id is not None:
+            actions.append("preview_panorama")
         return {
             "status": status,
             "status_label": _LABELS.get(status, status),
             "reason": reason,
             "generation_step": step,
-            "generate_label": {
-                "master": "生成主图",
-                "crop": "第一步：生成裁切底图",
-                "refine": "第二步：细化视图",
-                "turn": "生成转向视图",
-            }[step],
+            "generate_label": "截取当前视角" if capture else "生成图片",
             "active_generation_id": None if active is None else active.id,
             "candidate_generation_ids": [g.id for g in candidates],
             "selectable_generation_ids": selectable,
@@ -169,24 +150,15 @@ def location_library_projection(document, service):
         library["locations"], document.location_library.locations, strict=True
     ):
         data["allowed_actions"] = (
-            ["edit", "create_view", "create_fixture", "create_state"] if editable else []
+            ["edit", "create_image", "create_fixture", "create_state"] if editable else []
         )
         if permitted(require_location_deletion, location, "location"):
             data["allowed_actions"].append("delete")
-        data["master"]["production"] = generation_state(location)
-        if (
-            permitted(require_location_selection_idle, location, None, None)
-            and location.master.selected_asset_id
-        ):
-            data["master"]["production"]["allowed_actions"].append("clear_selection")
-        for row, view in zip(data["views"], location.views, strict=True):
-            row["has_valid_crop"] = crop_is_current(document, location, view)
-            row["production"] = generation_state(location, view)
-            if permitted(require_location_deletion, location, "view", view.id):
+        for row, image in zip(data["images"], location.images, strict=True):
+            row["production"] = generation_state(location, image)
+            if permitted(require_location_deletion, location, "image", image.id):
                 row["production"]["allowed_actions"].append("delete")
-            if view.selected_asset_id and permitted(
-                require_location_selection_idle, location, view, None
-            ):
+            if image.selected_asset_id and permitted(require_location_selection_idle, image, None):
                 row["production"]["allowed_actions"].append("clear_selection")
         for key, kind in (("fixtures", "fixture"), ("states", "state")):
             for row in data[key]:

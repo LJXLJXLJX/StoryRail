@@ -71,12 +71,10 @@ def _generation_asset_location(
         return "audio/stems", f"{_asset_stem(document, generation.target_id)}-背景"
     if kind is ReferenceGenerationKind.VIDEO_AUDIO_REMIX:
         return "videos/audio-remixes", f"{_asset_stem(document, generation.target_id)}-音轨混音"
-    if kind is ReferenceGenerationKind.LOCATION_MASTER_IMAGE:
-        return "images/locations/master", f"地点-{_location_name(document, generation)}-主图候选"
-    if kind is ReferenceGenerationKind.LOCATION_VIEW_CROP:
-        return "images/locations/crops", f"地点-{_location_name(document, generation)}-裁切"
-    if kind is ReferenceGenerationKind.LOCATION_VIEW_IMAGE:
-        return "images/locations/views", f"地点-{_location_name(document, generation)}-视图候选"
+    if kind is ReferenceGenerationKind.PANORAMA_CAPTURE:
+        return "images/locations/captures", f"地点-{_location_name(document, generation)}-全景取景"
+    if kind is ReferenceGenerationKind.LOCATION_IMAGE:
+        return "images/locations", f"地点-{_location_name(document, generation)}-图片候选"
     if kind is ReferenceGenerationKind.KEYFRAME_IMAGE:
         return "images/keyframes", f"{_keyframe_location(document, generation.target_id)}-候选"
     if kind is ReferenceGenerationKind.VIDEO_FRAME:
@@ -99,12 +97,7 @@ def _generation_asset_location(
 
 
 def _location_name(document: StructuredDirectorDocument, generation: ReferenceGeneration) -> str:
-    """主图以 Location 为目标，裁切与视图以 LocationView 为目标。"""
-    library = document.location_library
-    if generation.kind is ReferenceGenerationKind.LOCATION_MASTER_IMAGE:
-        location = library.location(generation.target_id)
-        return "未定位" if location is None else location.name
-    owner = library.view_owner(generation.target_id)
+    owner = document.location_library.image_owner(generation.target_id)
     return "未定位" if owner is None else f"{owner[0].name}-{owner[1].name}"
 
 
@@ -222,9 +215,8 @@ def _narration_location(document: StructuredDirectorDocument, cue_id: str) -> st
 def _image_category_label(category: ImageAssetCategory | None) -> str:
     return {
         ImageAssetCategory.CHARACTER_REFERENCE: "角色参考图",
-        ImageAssetCategory.LOCATION_MASTER: "地点主图",
-        ImageAssetCategory.LOCATION_CROP: "地点裁切图",
-        ImageAssetCategory.LOCATION_VIEW: "地点视图",
+        ImageAssetCategory.LOCATION_IMAGE: "地点图片",
+        ImageAssetCategory.PANORAMA_CAPTURE: "地点裁切图",
         ImageAssetCategory.KEYFRAME: "Keyframe 图",
         ImageAssetCategory.VIDEO_FRAME: "抽帧图",
         None: "历史未分类图片",

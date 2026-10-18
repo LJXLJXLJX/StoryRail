@@ -987,15 +987,9 @@ class Journey:
                         ),
                         "start_visible_character_ids": [] if continues else character_ids,
                         "start_character_references": [],
-                        "start_environment_view_id": None,
-                        "start_environment_mode": None,
-                        "start_environment_none_reason": None,
                         "end_prompt_text": prompt_text or f"{scene['title']}的静态尾帧。",
                         "end_visible_character_ids": character_ids,
                         "end_character_references": [],
-                        "end_environment_view_id": None,
-                        "end_environment_mode": None,
-                        "end_environment_none_reason": None,
                     }
                 )
                 previous_end = segment["end_keyframe_id"]

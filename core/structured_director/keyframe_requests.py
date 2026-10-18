@@ -14,10 +14,7 @@ from .models import (
     GenerationOperation,
     Keyframe,
     KeyframeCharacterReference,
-    KeyframeEnvironmentMode,
     KeyframePlan,
-    Location,
-    LocationView,
     ReferenceGenerationKind,
     ReferenceGenerationPhase,
     StructuredDirectorDocument,
@@ -32,7 +29,7 @@ class KeyframeSubmissionPreview:
     ready: bool
     operation: GenerationOperation
     input_assets: tuple[Asset, ...]
-    # 与 input_assets 同序：每张图的角色名（例如“地点视图”“前置帧”）与用途说明，取自实际输入编译。
+    # 与 input_assets 同序：每张图的角色名（例如“角色参考”“前置帧”）与用途说明，取自实际输入编译。
     input_roles: tuple[tuple[str, ...], ...] = ()
     input_purposes: tuple[str, ...] = ()
 
@@ -174,26 +171,6 @@ def _resolve_keyframe_generation_targets(
     return tuple(dict.fromkeys(resolved))
 
 
-def keyframe_pending_view(
-    document: StructuredDirectorDocument, keyframe: Keyframe
-) -> tuple[Location, LocationView] | None:
-    """返回本帧 edit/reference 所用、但尚未选图的地点视图；none 或视图已选图时返回 None。
-
-    视图未选图是未满足的生成依赖：单帧入口据此拒绝，批次据此把该帧留作等待项。
-    视图已不存在属于计划错误，直接拒绝。
-    """
-    if keyframe.environment_mode is KeyframeEnvironmentMode.NONE:
-        return None
-    owner = (
-        None
-        if keyframe.environment_view_id is None
-        else document.location_library.view_owner(keyframe.environment_view_id)
-    )
-    if owner is None:
-        raise ValueError("当前 Keyframe 指定的地点视图已不存在；请改选视图，或改为 none。")
-    return None if owner[1].selected_asset_id is not None else owner
-
-
 def _keyframe_generation_inputs(
     document: StructuredDirectorDocument, keyframe_id: str
 ) -> ImageInputs | None:
@@ -218,39 +195,8 @@ def _keyframe_generation_inputs(
         raise ValueError("Keyframe owner Segment 没有输入绑定。")
     if find_segment(script.scenes, keyframe.owner_segment_id) is None:
         raise ValueError("Keyframe owner Segment 不在当前脚本中。")
-    # 名额优先级：地点视图 → 可见角色参考 → 前置帧 → 辅助图；编辑底图提交时排第一。
-    view_input: ImageInput | None = None
+    # 名额优先级：可见角色参考 → 前置帧 → 本次显式辅助图。
     source_asset_id: str | None = None
-    pending_view = keyframe_pending_view(document, keyframe)
-    if pending_view is not None:
-        location, view = pending_view
-        raise ValueError(
-            f"地点「{location.name}」的视图「{view.name}」尚未选择图片；"
-            "请先选择视图图片，或把本帧改为 none。"
-        )
-    if keyframe.environment_mode is not KeyframeEnvironmentMode.NONE:
-        assert keyframe.environment_view_id is not None
-        owner = document.location_library.view_owner(keyframe.environment_view_id)
-        assert owner is not None
-        location, view = owner
-        assert view.selected_asset_id is not None
-        if keyframe.environment_mode is KeyframeEnvironmentMode.EDIT:
-            view_input = ImageInput(
-                view.selected_asset_id,
-                "地点视图",
-                f"地点「{location.name}」的视图「{view.name}」：同一地点该机位的空环境，"
-                "这是本次图片编辑的底图；保持其中陈设、材质与光线不变，只加入本帧的人物与动作。",
-            )
-            source_asset_id = view.selected_asset_id
-        else:
-            view_input = ImageInput(
-                view.selected_asset_id,
-                "地点视图",
-                f"地点「{location.name}」的视图「{view.name}」：同一地点的空间参考；"
-                "只参考固定陈设的方位关系、空间布局、材质与主光方向；"
-                "不照搬该图的机位、视角与构图，按本帧画面目标重新构图，"
-                "人物与环境须融为同一光照与透视。",
-            )
     predecessor_input: ImageInput | None = None
     if keyframe.predecessor_keyframe_id is not None and binding.start_enabled:
         predecessor = _find_keyframe(document, keyframe.predecessor_keyframe_id)
@@ -299,15 +245,29 @@ def _keyframe_generation_inputs(
         for item in plan.segments
         if keyframe_id in {item.start_keyframe_id, item.end_keyframe_id}
     )
+    described_assets = {
+        image.selected_asset_id: (location.name, image.name, image.description)
+        for location in document.location_library.locations
+        for image in location.images
+        if image.selected_asset_id is not None
+    }
     auxiliary_inputs = [
-        ImageInput(asset_id, "辅助参考", "用户为本 Segment 选择的辅助参考；只约束对应局部细节。")
+        ImageInput(
+            asset_id,
+            "地点参考" if asset_id in described_assets else "辅助参考",
+            (
+                f"地点「{described_assets[asset_id][0]}」的图片"
+                f"「{described_assets[asset_id][1]}」：{described_assets[asset_id][2]}"
+                if asset_id in described_assets
+                else "用户为本 Segment 显式选择的辅助参考；只约束对应局部细节。"
+            ),
+        )
         for related in related_bindings
         for asset_id in related.reference_asset_ids
     ]
     return ordered_image_inputs(
         document,
         [
-            *([view_input] if view_input is not None else []),
             *character_inputs,
             *([predecessor_input] if predecessor_input is not None else []),
             *auxiliary_inputs,
@@ -317,7 +277,7 @@ def _keyframe_generation_inputs(
             if source_asset_id is not None
             else GenerationOperation.GENERATE
         ),
-        label=f"{_keyframe_label(document, keyframe_id)}的地点视图、角色参考、前置帧与辅助参考",
+        label=f"{_keyframe_label(document, keyframe_id)}的角色参考、前置帧与显式参考图",
         source_asset_id=source_asset_id,
     )
 
@@ -331,9 +291,6 @@ def _keyframe_preview_document(
     visible_character_ids: tuple[str, ...],
     character_references: tuple[KeyframeCharacterReference, ...],
     reference_asset_ids: tuple[str, ...],
-    environment_mode: KeyframeEnvironmentMode,
-    environment_view_id: str | None,
-    environment_none_reason: str | None,
 ) -> StructuredDirectorDocument:
     plan = document.keyframe_plan
     if plan is None:
@@ -367,9 +324,6 @@ def _keyframe_preview_document(
             prompt_text=prompt_text.strip(),
             visible_character_ids=visible_character_ids,
             character_references=character_references,
-            environment_mode=environment_mode,
-            environment_view_id=environment_view_id,
-            environment_none_reason=environment_none_reason,
         )
         if item.id == keyframe_id
         else item
@@ -406,7 +360,7 @@ def _keyframe_effective_prompt(
     )
     input_rule = (
         "严格遵守上述每张输入图的用途：编辑底图或前一时间边界是画面基础；"
-        "标记为仅参考或辅助参考的图片只提供空间关系或辅助信息，不是编辑底图，"
+        "标记为仅参考或辅助参考的图片只提供其文字说明对应的空间关系或辅助信息，不是编辑底图，"
         "不照搬其机位、视角与构图，允许按本帧目标重新构图；"
         if inputs.asset_ids
         else "根据本帧描述建立完整且自洽的空间、陈设、光线与画风；"
@@ -420,10 +374,10 @@ def _keyframe_effective_prompt(
         "准确表现这一时刻的可见状态，并"
         + input_rule
         + (
-            "未启用的地点视图不得进入输入或影响画面；"
-            "输出必须保持项目画幅比例与横竖方向，不得在连续关键帧之间改变画幅。"
+            "未显式选择的地点图片不得进入输入或影响画面；输出必须保持项目画幅比例与横竖方向，"
+            "不得在连续关键帧之间改变画幅。"
             if aspect
-            else "未启用的地点视图不得进入输入或影响画面。"
+            else "未显式选择的地点图片不得进入输入或影响画面。"
         )
         + "\n\n本帧创作正文：\n"
         + prompt_text
