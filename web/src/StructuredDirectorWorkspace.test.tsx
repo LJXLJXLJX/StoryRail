@@ -3980,9 +3980,9 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
  fireEvent.click(within(nav).getByRole('button',{name:/场景 2.*戏剧/}));
  const segmentList=within(nav).getByRole('list',{name:'场景 2 的生成片段'});
  fireEvent.click(within(segmentList).getByRole('button',{name:/片段 1.*小满抬头/}));
- const direction=screen.getByText('基础音色描述：').closest('p');
- expect(direction).toHaveTextContent('基础音色描述：年轻、克制、语速偏慢');
- expect(direction).toHaveTextContent('剧本表演要求：轻声，带一点迟疑');
+ const direction=within(screen.getByLabelText('对白 TTS')).getByText(line.text).closest('section');
+ expect(direction).toHaveTextContent('基础音色年轻、克制、语速偏慢');
+ expect(direction).toHaveTextContent('剧本表演轻声，带一点迟疑');
  const performance=screen.getByLabelText('表演指示（语气、情绪、语速、停顿）');
  fireEvent.change(performance,{target:{value:'压低声音，带一点迟疑，语速稍慢。'}});
  fireEvent.click(screen.getByRole('button',{name:'保存对白表演参数'}));
@@ -4029,7 +4029,7 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
  succeeded.dialogue_plan!.items.find(item=>item.dialogue_line_id===line.id)!.selected_audio_asset_id=assetId;
  view.rerenderSnapshot(succeeded);
  expect(screen.getByLabelText('试听已选对白 小满')).toHaveAttribute('src','/dialogue.wav');
- expect(screen.getByText('对白候选（2）')).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:/对白候选.*2 条/})).toBeInTheDocument();
  expect(screen.getByLabelText('试听对白候选 888888')).toHaveAttribute('src','/dialogue.wav');
  expect(screen.getByText('当前已选 · 888888')).toBeInTheDocument();
  expect(screen.getByLabelText('试听对白候选 777777')).toHaveAttribute('src','/dialogue-old.wav');
@@ -4038,6 +4038,14 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
  fireEvent.click(screen.getByRole('button',{name:'隐藏候选 777777'}));
  fireEvent.click(screen.getByRole('button',{name:'确认隐藏候选 777777'}));
  expect(onDismissGeneration).toHaveBeenCalledWith('7'.repeat(32));
+ const candidateToggle=screen.getByRole('button',{name:/对白候选.*2 条.*收起/});
+ fireEvent.click(candidateToggle);
+ expect(candidateToggle).toHaveAttribute('aria-expanded','false');
+ expect(screen.queryByLabelText('试听对白候选 888888')).not.toBeInTheDocument();
+ const panelToggle=screen.getByRole('button',{name:/对白 TTS.*已选 1\//});
+ fireEvent.click(panelToggle);
+ expect(panelToggle).toHaveAttribute('aria-expanded','false');
+ expect(screen.queryByLabelText('对白与表演')).not.toBeInTheDocument();
 });
 it('引用库编辑作为临时弹窗，关闭后保留当前 Segment 和未保存输入',()=>{
  const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;

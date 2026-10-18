@@ -775,6 +775,8 @@ function DialogueProductionPanel({
   ) => void;
 }) {
   const [confirmDismiss, setConfirmDismiss] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [candidateOpen, setCandidateOpen] = useState<Record<string, boolean>>({});
   const plan = new Map(
     (snapshot.dialogue_plan?.items ?? []).map((item) => [
       item.dialogue_line_id,
@@ -792,6 +794,7 @@ function DialogueProductionPanel({
   const ready = selected.every(
     ({ item, asset }) => item?.selected_audio_asset_id && asset?.duration_seconds,
   );
+  const selectedCount = selected.filter(({ asset }) => asset !== undefined).length;
   const autoTiming = () => {
     let cursor = 0.5;
     const starts: Record<string, number> = {};
@@ -802,193 +805,142 @@ function DialogueProductionPanel({
     onSetTiming?.(segment.id, starts, Math.max(0.2, cursor + 0.25));
   };
   return (
-    <section aria-label="对白 TTS" className="story-segment-text">
-      <h3>对白 TTS</h3>
-      <p>视频只使用这里选定的 WAV；有角色参考音色时强制克隆，否则使用音色设计。</p>
-      {selected.map(({ line, item, asset }) => {
-        const card = snapshot.reference_library.characters.find(
-          (value) => value.id === line.character_id,
-        );
-        const route = card?.voice_reference_asset_id ? "音色克隆" : "音色设计";
-        const voiceDescription = card?.voice_description ?? line.voice_description;
-        const speechRecipe = (snapshot.provider_recipes ?? []).find(
-          (view) => view.capability === "speech.synthesize",
-        );
-        const history = snapshot.generations.filter(
-          (generation) =>
-            generation.kind === "dialogue_audio" &&
-            generation.target_id === line.id &&
-            !generation.dismissed,
-        );
-        const activeGeneration = history.find((generation) =>
-          ["submitting", "queued", "running"].includes(generation.phase),
-        );
-        const latest = history.at(-1);
-        const failed =
-          latest?.phase === "failed" || latest?.phase === "submission_uncertain"
-            ? latest
-            : undefined;
-        // 候选历史和“当前还能否选择”是两件事。参数或角色音色变化后，
-        // Core 会撤销 select_dialogue_audio，但成功产物仍应留在卡片里供试听、辨认和隐藏。
-        const candidates = history.filter(
-          (generation) =>
-            generation.phase === "succeeded" && generation.output_asset_id !== null,
-        );
-        const speaker =
-          line.character_id === null ? line.speaker_label : character(line.character_id);
-        const timing =
-          item?.start_seconds === null || item?.start_seconds === undefined
-            ? " · 待校准起点"
-            : " · " + item.start_seconds.toFixed(3) + "s 开始";
-        return (
-          <div key={line.id}>
-            <strong>{speaker} · {route}</strong>
-            <p>{line.text}</p>
-            <p className="dialogue-direction-copy">
-              <strong>基础音色描述：</strong>{voiceDescription || "未填写"}
-              <br />
-              <strong>剧本表演要求：</strong>{line.delivery || "未填写"}
-            </p>
-            {card?.voice_reference_asset_id && speechRecipe && item ? (
-              <DialogueRecipeControls
-                line={line}
-                item={item}
-                recipe={speechRecipe}
-                busy={busy}
-                canEdit={snapshot.allowed_actions.includes("edit_dialogue_audio")}
-                onSave={onSaveRecipeParams}
-              />
-            ) : null}
-            <p>
-              {asset
-                ? "已选 WAV · " + asset.duration_seconds?.toFixed(3) + " 秒" + timing
-                : "尚未选择对白音频"}
-            </p>
-            {asset ? (
-              <audio
-                aria-label={`试听已选对白 ${speaker}`}
-                controls
-                preload="none"
-                src={asset.content_url}
-              />
-            ) : null}
-            {activeGeneration ? (
-              <div className="dialogue-generation-state" role="status">
-                <progress max="1" value={activeGeneration.progress} />
-                <p>
-                  {generationPhaseLabel(activeGeneration.phase)} ·{" "}
-                  {Math.round(activeGeneration.progress * 100)}% ·{" "}
-                  {activeGeneration.message}
-                </p>
-              </div>
-            ) : null}
-            {failed ? (
-              <div className="dialogue-generation-state is-failed" role="alert">
-                <strong>对白 TTS 失败</strong>
-                <p>{failed.message || failed.error_code || "外部语音模型执行失败。"}</p>
-                {failed.allowed_actions.includes("dismiss_history") ? (
-                  confirmDismiss === failed.id ? (
-                    <div className="dialogue-dismiss-confirm">
-                      <span>隐藏后不再显示；废弃产物可随后在资产中心永久清理。</span>
-                      <button
-                        type="button"
-                        className="delete-button"
-                        disabled={busy || !onDismiss}
-                        onClick={() => {
-                          setConfirmDismiss(null);
-                          onDismiss?.(failed.id);
-                        }}
-                      >
-                        确认隐藏
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => setConfirmDismiss(null)}
-                      >
-                        取消
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      className="delete-button"
-                      disabled={busy || !onDismiss}
-                      onClick={() => setConfirmDismiss(failed.id)}
-                    >
-                      隐藏失败记录
-                    </button>
-                  )
-                ) : null}
-              </div>
-            ) : null}
-            <button
-              disabled={busy || !!activeGeneration || !onGenerate}
-              onClick={() => onGenerate?.(line.id)}
-            >
-              {activeGeneration ? "生成中…" : failed ? "重新生成对白 TTS" : "生成对白 TTS"}
-            </button>
-            <div className="dialogue-candidate-list">
-              <strong>对白候选（{candidates.length}）</strong>
-              {candidates.length === 0 ? <p>尚无成功候选。</p> : null}
-              {candidates.map((generation) => {
-                const candidate = generation.output_asset_id
-                  ? assets.get(generation.output_asset_id)
+    <section aria-label="对白 TTS" className="dialogue-production-panel">
+      <button
+        type="button"
+        className="dialogue-panel-toggle"
+        aria-expanded={panelOpen}
+        onClick={() => setPanelOpen((value) => !value)}
+      >
+        <span>
+          <strong>对白 TTS</strong>
+          <small>已选 {selectedCount}/{selected.length}</small>
+        </span>
+        <span aria-hidden="true">{panelOpen ? "收起" : "展开"}</span>
+      </button>
+      {panelOpen ? (
+        <div className="dialogue-panel-body">
+          <p className="dialogue-panel-intro">
+            视频只使用这里选定的 WAV；有角色参考音色时强制克隆，否则使用音色设计。
+          </p>
+          <div className="dialogue-line-list">
+            {selected.map(({ line, item, asset }, lineIndex) => {
+              const card = snapshot.reference_library.characters.find(
+                (value) => value.id === line.character_id,
+              );
+              const route = card?.voice_reference_asset_id ? "音色克隆" : "音色设计";
+              const voiceDescription = card?.voice_description ?? line.voice_description;
+              const speechRecipe = (snapshot.provider_recipes ?? []).find(
+                (view) => view.capability === "speech.synthesize",
+              );
+              const history = snapshot.generations.filter(
+                (generation) =>
+                  generation.kind === "dialogue_audio" &&
+                  generation.target_id === line.id &&
+                  !generation.dismissed,
+              );
+              const activeGeneration = history.find((generation) =>
+                ["submitting", "queued", "running"].includes(generation.phase),
+              );
+              const latest = history.at(-1);
+              const failed =
+                latest?.phase === "failed" || latest?.phase === "submission_uncertain"
+                  ? latest
                   : undefined;
-                const isSelected = generation.output_asset_id === item?.selected_audio_asset_id;
-                const canSelect = generation.allowed_actions.includes("select_dialogue_audio");
-                return (
-                  <div className="dialogue-audio-candidate" key={generation.id}>
-                    {candidate ? (
-                      <audio
-                        aria-label={`试听对白候选 ${generation.id.slice(0, 6)}`}
-                        controls
-                        preload="none"
-                        src={candidate.content_url}
-                      />
-                    ) : null}
-                    <div className="dialogue-audio-candidate-actions">
-                      {isSelected ? (
-                        <strong>当前已选 · {generation.id.slice(0, 6)}</strong>
-                      ) : canSelect ? (
-                        <button
-                          disabled={busy || !onSelect}
-                          onClick={() => onSelect?.(line.id, generation.id)}
-                        >
-                          选择候选 {generation.id.slice(0, 6)}
-                        </button>
-                      ) : (
-                        <span>项目当前不可编辑</span>
-                      )}
-                      {generation.allowed_actions.includes("dismiss_history") &&
-                      confirmDismiss !== generation.id ? (
-                        <button
-                          type="button"
-                          className="delete-button"
-                          aria-label={`隐藏候选 ${generation.id.slice(0, 6)}`}
-                          disabled={busy || !onDismiss}
-                          onClick={() => setConfirmDismiss(generation.id)}
-                        >
-                          隐藏
-                        </button>
-                      ) : null}
-                    </div>
-                    {generation.inputs_outdated ? (
-                      <p className="dialogue-candidate-notice">
-                        该候选生成后的正文、音色或表演参数已经变化；仍可试听并选择，如需匹配当前设置请重新生成。
-                      </p>
-                    ) : null}
-                    {confirmDismiss === generation.id ? (
+              // 所有成功、未隐藏的 WAV 都保留在候选列表；输入变化只显示软提示。
+              const candidates = history.filter(
+                (generation) =>
+                  generation.phase === "succeeded" && generation.output_asset_id !== null,
+              );
+              const speaker =
+                line.character_id === null ? line.speaker_label : character(line.character_id);
+              const timing =
+                item?.start_seconds === null || item?.start_seconds === undefined
+                  ? " · 待校准起点"
+                  : " · " + item.start_seconds.toFixed(3) + "s 开始";
+              const candidatesExpanded = candidateOpen[line.id] ?? true;
+              return (
+                <article className="dialogue-line-card" key={line.id}>
+            <header className="dialogue-line-header">
+              <span className="dialogue-line-index">对白 {lineIndex + 1}</span>
+              <div>
+                <strong>{speaker}</strong>
+                <span className="dialogue-route-badge">{route}</span>
+              </div>
+              <span className={asset ? "dialogue-status is-selected" : "dialogue-status"}>
+                {activeGeneration ? "生成中" : asset ? "已选择" : "待选择"}
+              </span>
+            </header>
+
+            <section className="dialogue-card-section" aria-label="对白与表演">
+              <h4>对白与表演</h4>
+              <blockquote className="dialogue-copy">{line.text}</blockquote>
+              <dl className="dialogue-direction-list">
+                <div>
+                  <dt>基础音色</dt>
+                  <dd>{voiceDescription || "未填写"}</dd>
+                </div>
+                <div>
+                  <dt>剧本表演</dt>
+                  <dd>{line.delivery || "未填写"}</dd>
+                </div>
+              </dl>
+              {card?.voice_reference_asset_id && speechRecipe && item ? (
+                <DialogueRecipeControls
+                  line={line}
+                  item={item}
+                  recipe={speechRecipe}
+                  busy={busy}
+                  canEdit={snapshot.allowed_actions.includes("edit_dialogue_audio")}
+                  onSave={onSaveRecipeParams}
+                />
+              ) : null}
+            </section>
+
+            <section className="dialogue-card-section" aria-label="当前选择">
+              <h4>当前选择</h4>
+              <p className="dialogue-selection-state">
+                {asset
+                  ? "已选 WAV · " + asset.duration_seconds?.toFixed(3) + " 秒" + timing
+                  : "尚未选择对白音频"}
+              </p>
+              {asset ? (
+                <audio
+                  aria-label={`试听已选对白 ${speaker}`}
+                  controls
+                  preload="none"
+                  src={asset.content_url}
+                />
+              ) : null}
+            </section>
+
+            <section className="dialogue-card-section" aria-label="生成与候选">
+              <h4>生成与候选</h4>
+              {activeGeneration ? (
+                <div className="dialogue-generation-state" role="status">
+                  <progress max="1" value={activeGeneration.progress} />
+                  <p>
+                    {generationPhaseLabel(activeGeneration.phase)} ·{" "}
+                    {Math.round(activeGeneration.progress * 100)}% ·{" "}
+                    {activeGeneration.message}
+                  </p>
+                </div>
+              ) : null}
+              {failed ? (
+                <div className="dialogue-generation-state is-failed" role="alert">
+                  <strong>对白 TTS 失败</strong>
+                  <p>{failed.message || failed.error_code || "外部语音模型执行失败。"}</p>
+                  {failed.allowed_actions.includes("dismiss_history") ? (
+                    confirmDismiss === failed.id ? (
                       <div className="dialogue-dismiss-confirm">
                         <span>隐藏后不再显示；废弃产物可随后在资产中心永久清理。</span>
                         <button
                           type="button"
                           className="delete-button"
-                          aria-label={`确认隐藏候选 ${generation.id.slice(0, 6)}`}
                           disabled={busy || !onDismiss}
                           onClick={() => {
                             setConfirmDismiss(null);
-                            onDismiss?.(generation.id);
+                            onDismiss?.(failed.id);
                           }}
                         >
                           确认隐藏
@@ -1001,18 +953,137 @@ function DialogueProductionPanel({
                           取消
                         </button>
                       </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="delete-button"
+                        disabled={busy || !onDismiss}
+                        onClick={() => setConfirmDismiss(failed.id)}
+                      >
+                        隐藏失败记录
+                      </button>
+                    )
+                  ) : null}
+                </div>
+              ) : null}
+              <button
+                disabled={busy || !!activeGeneration || !onGenerate}
+                onClick={() => onGenerate?.(line.id)}
+              >
+                {activeGeneration
+                  ? "生成中…"
+                  : failed
+                    ? "重新生成对白 TTS"
+                    : "生成对白 TTS"}
+              </button>
+              <button
+                type="button"
+                className="dialogue-candidate-toggle"
+                aria-expanded={candidatesExpanded}
+                onClick={() =>
+                  setCandidateOpen((current) => ({
+                    ...current,
+                    [line.id]: !candidatesExpanded,
+                  }))
+                }
+              >
+                <span>对白候选</span>
+                <span>{candidates.length} 条 · {candidatesExpanded ? "收起" : "展开"}</span>
+              </button>
+              {candidatesExpanded ? (
+                <div className="dialogue-candidate-list">
+                  {candidates.length === 0 ? <p>尚无成功候选。</p> : null}
+                  {candidates.map((generation) => {
+                    const candidate = generation.output_asset_id
+                      ? assets.get(generation.output_asset_id)
+                      : undefined;
+                    const isSelected =
+                      generation.output_asset_id === item?.selected_audio_asset_id;
+                    const canSelect =
+                      generation.allowed_actions.includes("select_dialogue_audio");
+                    return (
+                      <div className="dialogue-audio-candidate" key={generation.id}>
+                        {candidate ? (
+                          <audio
+                            aria-label={`试听对白候选 ${generation.id.slice(0, 6)}`}
+                            controls
+                            preload="none"
+                            src={candidate.content_url}
+                          />
+                        ) : null}
+                        <div className="dialogue-audio-candidate-actions">
+                          {isSelected ? (
+                            <strong>当前已选 · {generation.id.slice(0, 6)}</strong>
+                          ) : canSelect ? (
+                            <button
+                              disabled={busy || !onSelect}
+                              onClick={() => onSelect?.(line.id, generation.id)}
+                            >
+                              选择候选 {generation.id.slice(0, 6)}
+                            </button>
+                          ) : (
+                            <span>项目当前不可编辑</span>
+                          )}
+                          {generation.allowed_actions.includes("dismiss_history") &&
+                          confirmDismiss !== generation.id ? (
+                            <button
+                              type="button"
+                              className="delete-button"
+                              aria-label={`隐藏候选 ${generation.id.slice(0, 6)}`}
+                              disabled={busy || !onDismiss}
+                              onClick={() => setConfirmDismiss(generation.id)}
+                            >
+                              隐藏
+                            </button>
+                          ) : null}
+                        </div>
+                        {generation.inputs_outdated ? (
+                          <p className="dialogue-candidate-notice">
+                            该候选生成后的正文、音色或表演参数已经变化；仍可试听并选择，如需匹配当前设置请重新生成。
+                          </p>
+                        ) : null}
+                        {confirmDismiss === generation.id ? (
+                          <div className="dialogue-dismiss-confirm">
+                            <span>隐藏后不再显示；废弃产物可随后在资产中心永久清理。</span>
+                            <button
+                              type="button"
+                              className="delete-button"
+                              aria-label={`确认隐藏候选 ${generation.id.slice(0, 6)}`}
+                              disabled={busy || !onDismiss}
+                              onClick={() => {
+                                setConfirmDismiss(null);
+                                onDismiss?.(generation.id);
+                              }}
+                            >
+                              确认隐藏
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary-button"
+                              onClick={() => setConfirmDismiss(null)}
+                            >
+                              取消
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </section>
+          </article>
         );
-      })}
-      <button disabled={busy || !ready || !onSetTiming} onClick={autoTiming}>
-        按真实音频自动校准时长
-      </button>
-      <p>自动校准会留基础停顿；Director Agent 可按镜头和情绪设置更大的余量。</p>
+            })}
+          </div>
+          <footer className="dialogue-timing-actions">
+            <button disabled={busy || !ready || !onSetTiming} onClick={autoTiming}>
+              按真实音频自动校准时长
+            </button>
+            <p>自动校准会留基础停顿；Director Agent 可按镜头和情绪设置更大的余量。</p>
+          </footer>
+        </div>
+      ) : null}
     </section>
   );
 }
