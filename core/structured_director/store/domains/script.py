@@ -58,6 +58,9 @@ from core.structured_director.script_mutations import (
 from core.structured_director.script_mutations import (
     _apply_script_scene_operations as _apply_script_scene_operations,
 )
+from core.structured_director.script_mutations import (
+    _assign_missing_dialogue_ids as _assign_missing_dialogue_ids,
+)
 from core.structured_director.script_mutations import _finish_director_run as _finish_director_run
 from core.structured_director.script_mutations import (
     _invalidate_production_after_script_revision as _invalidate_production_after_script_revision,
@@ -72,6 +75,7 @@ from core.structured_director.script_mutations import (
 from core.structured_director.script_mutations import (
     _with_production_baseline as _with_production_baseline,
 )
+from core.structured_director.script_mutations import dialogue_plan_for_script
 from core.structured_director.store import (
     _validate_proposal_references as _validate_proposal_references,
 )
@@ -147,6 +151,7 @@ class ScriptDomain(_DomainBase):
                 revision=document.revision + 1,
                 status=StructuredDirectorStatus.REVIEWING_SCRIPT,
                 director_script=script,
+                dialogue_plan=dialogue_plan_for_script(script),
                 director_runs=_finish_director_run(document, DirectorRunKind.SCRIPT_PROPOSAL),
             )
             return MutationResult(updated, None)
@@ -260,15 +265,16 @@ class ScriptDomain(_DomainBase):
         def mutate(document: StructuredDirectorDocument) -> MutationResult:
             if not document.is_reviewing or document.director_script is None:
                 raise ValueError("结构化导演脚本尚未生成。")
+            normalized_scenes = _assign_missing_dialogue_ids(scenes)
             _validate_script_references(
-                scenes,
+                normalized_scenes,
                 document.reference_library,
                 previous_scenes=document.director_script.scenes,
             )
             script = replace(
                 document.director_script,
                 revision=document.director_script.revision + 1,
-                scenes=scenes,
+                scenes=normalized_scenes,
             )
             return MutationResult(
                 _invalidate_production_after_script_revision(document, script.scenes), None

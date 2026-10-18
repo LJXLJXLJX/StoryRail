@@ -1,6 +1,6 @@
 # 数据流
 
-本文描述数据在生产链路中如何被编译、组合与失效：旁白时序、地点图片、Keyframe 与视频 recipe 的输入编译、Scene 成片与最终装配、
+本文描述数据在生产链路中如何被编译、组合与失效：旁白时序、对白 TTS、地点图片、Keyframe 与视频 recipe 的输入编译、Scene 成片与最终装配、
 失效传播、资产使用与删除，以及资产中心的处理链。流程顺序见 [生产工作流](production-workflow.md)。
 
 ## 生产数据总览
@@ -14,6 +14,10 @@ flowchart LR
     refs -->|同语言旁白参考音色| tts[speech.synthesize recipe]
     cue --> tts --> naudio[(旁白 WAV × 所选语言)]
     naudio -->|中英较长者的真实时长| baseline[生产基线<br/>校准后脚本]
+    script --> dialogue[DialogueLine<br/>稳定 ID · 正文 · 说话者]
+    refs -->|角色参考音色或音色描述| dtts[逐句对白 TTS]
+    dialogue --> dtts --> daudio[(已选对白 WAV)]
+    daudio -->|真实时长 + 发声起点| baseline
     script -.->|Scene 地点/状态 · Shot 视图| loclib[地点库]
     loclib --> master[(主图)] --> crop[PANO_VIEW 裁切<br/>仅室内] --> viewimg[(视图图片)]
     master -->|室外转向| viewimg
@@ -23,6 +27,7 @@ flowchart LR
     kfplan --> kfgen --> kfimg[(Keyframe 图)]
     kfimg --> h3[video.generate recipe]
     vplan[视频计划<br/>提示词 · recipe 输入簿] --> h3
+    daudio -->|系统 Audio 槽位 + 原文硬约束| h3
     h3 --> segvid[(Segment MP4)] --> up[SeedVR2] --> upvid[(超分 MP4)]
     segvid & upvid -->|生效视频| scenefinal[Scene 成片 zh/en]
     naudio --> scenefinal
@@ -65,6 +70,29 @@ flowchart LR
   收敛）；需要的调整使该 clip 短于 0.05 秒时拒绝，提示缩短前序视频或合并过短的 Segment。
 - **Drama Scene** 没有旁白，不参与对轨，按已选视频真实时长拼接。
 - 不用延长整部成片来掩盖局部时长不足。
+
+## 对白 TTS 与视频时长
+
+对白与旁白互斥，只存在于 Drama Scene。脚本中的每条 `DialogueLine` 有稳定 ID；Core 据此维护一条对应的对白音频计划，
+并在生成视频前完成以下闭环：
+
+```mermaid
+flowchart LR
+    line[DialogueLine 正文] --> route{角色已有参考音色?}
+    route -- 是 --> clone[speech.synthesize<br/>参考 WAV + 完整文字稿]
+    route -- 否 --> design[voice.design<br/>角色卡或临时说话者音色描述]
+    clone & design --> candidates[对白 WAV 候选]
+    candidates --> select[人类选择]
+    select --> timing[按剧本顺序设置发声起点]
+    timing --> min[最晚结束时间<br/>start + WAV 真实时长]
+    min --> duration[Segment 时长 ≥ 最晚结束时间<br/>余量由镜头与情感节奏决定]
+    duration --> ref2va[系统注入 H3 Ref2VA]
+```
+
+- 角色卡已经选择参考音色时只能走语音克隆，并要求该参考 WAV 有完整同语言文字稿；不会退回 Voice Design。
+- 没有参考音色的角色，以及用 `speaker_label` 表示的临时说话者/龙套，必须提供音色描述并走 Voice Design。
+- 选中任一句新的对白 WAV 会清除该 Segment 全部对白的旧发声起点，并失效该 Segment 已选视频、超分与装配；随后必须按新的真实时长重新校准。
+- 发声起点必须按剧本顺序排列且音频不可重叠。Core 拒绝短于最后一句对白结束时间的 Segment；Agent 可在此下限之外增加停顿、表演和镜头余量。
 
 ## Keyframe 输入编译
 
@@ -170,6 +198,8 @@ flowchart LR
 
 - Core 按 recipe 的 slots 顺序读取已选边界与显式 bindings，校验 MIME、数量、唯一性、说明和时长；机制参数取当前 recipe 的保存值或默认值。
 - 标签由 Core 的同一编号器按 namespace 计算。H3 的 Picture 顺序是首帧、尾帧、附加图；不存在的输入不占号，Audio 与 Video 各自从 1 编号。
+- 含对白的 Segment 只有在每句对白都选定 WAV、发声起点已保存、Segment 时长覆盖全部音频，且当前 recipe 支持参考音频时才能提交视频。Core 将对白 WAV 按剧本顺序放在系统 Audio 槽位，再接手工参考音频；系统槽位不写入或占用手工 recipe 输入簿。
+- H3 Ref2VA 的最终 instruction 由 Core 在人类/Agent 保存正文之前加上强制文本“严格让角色说出参考音频的原始内容，音频完全相等”，并逐条写明 `<Audio N>` 对应的对白原文；预览、专业工作集与实际 Provider 请求使用同一映射。
 - `video_prompt` 专业工作集暴露相同的实际 Asset ID 与标签，H3 插件提供自己的 HTTP 输入映射和提示词 Skill；关键帧辅助图不会自动进入视频输入。
   工作集另给出已保存的 `recipe_inputs`（`video.update_recipe_inputs` 的整体替换形状）与 `bindable_assets`：当前 recipe 显式槽位
   按媒体类型与时长可接受的项目 Asset（ID、名称、媒体类型、时长、可进入的槽位）。列表只含导入素材、引用库与地点库的已选资源，

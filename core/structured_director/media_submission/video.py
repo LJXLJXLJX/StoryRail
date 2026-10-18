@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from core.model_providers.manifest import Capability, Role
-from core.model_providers.recipe import MediaInput, RecipeParams
+from core.model_providers.recipe import MediaInput, RecipeParams, SlotBinding, binding_labels
 
 from ..generation_lifecycle import (
     _next_generation_seed,
@@ -18,8 +18,9 @@ from ..models import (
 from ..production_context import (
     _TERMINAL_PHASES,
 )
+from ..prompt_worksets import required_dialogue_prompt
 from ..script_index import find_segment
-from ..video_inputs import resolve_video_inputs
+from ..video_inputs import dialogue_audio_inputs, resolve_video_inputs
 from .support import _commit_submission
 
 
@@ -69,16 +70,47 @@ def _segment_video_context(owner, document, segment_id: str, expected_revision: 
             segment.id,
             0 if has_previous_seed else int(segment.id[:16], 16) % (2**63),
         )
-    return inputs, plan_item, duration, seed
+    return inputs, plan_item, segment, duration, seed
 
 
 def _segment_video_submission(owner, document, context):
-    inputs, plan_item, duration, seed = context
+    inputs, plan_item, segment, duration, seed = context
     start, end = inputs.start_asset_id, inputs.end_asset_id
     first = owner._store.read_asset(start) if start is not None else None
     last = owner._store.read_asset(end) if end is not None else None
     prepared = owner._registry.prepare_recipe(
         Capability.VIDEO_GENERATE, recipe_id=plan_item.active_recipe
+    )
+    dialogue = dialogue_audio_inputs(document, segment.id)
+    audio_slot = next(
+        (slot for slot in prepared.recipe.slots if slot.role is Role.REFERENCE_AUDIO), None
+    )
+    if dialogue and audio_slot is None:
+        raise ValueError("含对白的 Segment 必须使用支持参考音频的 Ref2VA recipe。")
+    bindings = dict(plan_item.recipe_inputs.bindings)
+    if audio_slot is not None and dialogue:
+        if len(dialogue) > audio_slot.maximum:
+            raise ValueError(
+                f"该 Segment 有 {len(dialogue)} 句对白，超过 Ref2VA 的 "
+                f"{audio_slot.maximum} 条音频上限；请先拆分 Segment。"
+            )
+        system = tuple(
+            SlotBinding(
+                asset.id,
+                _dialogue_description(document, line, item.start_seconds),
+            )
+            for line, item, asset in dialogue
+        )
+        manual = bindings.get(audio_slot.key, ())
+        if len(system) + len(manual) > audio_slot.maximum:
+            raise ValueError("对白系统音频与手工参考音频合计超过当前 recipe 上限。")
+        bindings[audio_slot.key] = (*system, *manual)
+    labels = binding_labels(prepared.recipe, bindings)
+    instruction = required_dialogue_prompt(labels, segment.dialogue_lines)
+    effective_prompt = (
+        plan_item.prompt_text
+        if instruction is None
+        else f"{instruction}\n\n{plan_item.prompt_text}"
     )
     inputs_by_slot = {}
     for slot in prepared.recipe.slots:
@@ -95,7 +127,7 @@ def _segment_video_submission(owner, document, context):
             )
         else:
             values = []
-            for binding in plan_item.recipe_inputs.slot(slot.key):
+            for binding in bindings.get(slot.key, ()):
                 asset, content = owner._store.read_asset(binding.asset_id)
                 values.append(
                     MediaInput(
@@ -105,7 +137,7 @@ def _segment_video_submission(owner, document, context):
             inputs_by_slot[slot.key] = tuple(values)
     request, submitted = prepared.request(
         roles={
-            Role.PROMPT: plan_item.prompt_text,
+            Role.PROMPT: effective_prompt,
             Role.DURATION: duration,
             Role.SEED: seed,
             Role.ASPECT_RATIO: document.aspect_ratio.value,
@@ -120,7 +152,7 @@ def _segment_video_submission(owner, document, context):
         elif slot.role is Role.LAST_FRAME:
             asset_ids.extend(() if end is None else (end,))
         else:
-            asset_ids.extend(item.asset_id for item in plan_item.recipe_inputs.slot(slot.key))
+            asset_ids.extend(item.asset_id for item in bindings.get(slot.key, ()))
     input_asset_ids = tuple(dict.fromkeys(asset_ids))
     generation = ReferenceGeneration(
         id=uuid4().hex,
@@ -133,7 +165,7 @@ def _segment_video_submission(owner, document, context):
         video_input_snapshot=inputs.snapshot,
         provider_snapshot=prepared.snapshot,
         recipe_params=RecipeParams.from_json({prepared.recipe.id: submitted}),
-        prompt_text=plan_item.prompt_text,
+        prompt_text=effective_prompt,
         input_asset_ids=input_asset_ids,
         sample_text=None,
         seed=seed,
@@ -147,6 +179,13 @@ def _segment_video_submission(owner, document, context):
         duration_seconds=duration,
     )
     return request, prepared, generation
+
+
+def _dialogue_description(document, line, start_seconds):
+    characters = {item.id: item.name for item in document.reference_library.characters}
+    speaker = line.speaker_label or characters.get(line.character_id, line.character_id)
+    assert start_seconds is not None
+    return f"{speaker} 的对白，{start_seconds:.3f}s 开始。原始内容：{line.text}"
 
 
 class VideoSubmission:

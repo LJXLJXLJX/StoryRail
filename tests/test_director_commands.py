@@ -860,43 +860,23 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(set(preview.data["preserved"]), set(prompt.receipt.preserved))
 
             document = seed_selection(prompt.document)
-            mode = registry.execute(
-                DirectorCommand(
-                    "video.set_recipe",
-                    document.revision,
-                    "video-mode",
-                    video_wire_dict(
-                        {
-                            "scope": {"scene_ids": [scene.id]},
-                            "segment_id": segment.id,
-                            "generation_mode": "fl2va",
-                        }
-                    ),
+            with self.assertRaisesRegex(ValueError, "含对白的 Segment"):
+                registry.execute(
+                    DirectorCommand(
+                        "video.set_recipe",
+                        document.revision,
+                        "video-mode",
+                        video_wire_dict(
+                            {
+                                "scope": {"scene_ids": [scene.id]},
+                                "segment_id": segment.id,
+                                "generation_mode": "fl2va",
+                            }
+                        ),
+                    )
                 )
-            )
-            assert mode.document.video_plan is not None
-            self.assertEqual(
-                video_mode(mode.document.video_plan.segments[0]).value,
-                "fl2va",
-            )
-            self.assertIsNone(mode.document.video_plan.segments[0].selected_asset_id)
-            repeated_mode = registry.execute(
-                DirectorCommand(
-                    "video.set_recipe",
-                    mode.document.revision,
-                    "video-mode-repeat",
-                    video_wire_dict(
-                        {
-                            "scope": {"scene_ids": [scene.id]},
-                            "segment_id": segment.id,
-                            "generation_mode": "fl2va",
-                        }
-                    ),
-                )
-            )
-            self.assertEqual(repeated_mode.receipt.status, "noop")
 
-            document = seed_selection(repeated_mode.document)
+            document = seed_selection(document)
             cleared = registry.execute(
                 DirectorCommand(
                     "video.clear_selection",
@@ -1074,15 +1054,15 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
 
             assert updated.video_plan is not None
             current = {item.segment_id: item for item in updated.video_plan.segments}
-            self.assertEqual(current[first_segment.id].selected_asset_id, video.id)
-            self.assertEqual(current[first_segment.id].upscaled_asset_id, upscale.id)
+            self.assertIsNone(current[first_segment.id].selected_asset_id)
+            self.assertIsNone(current[first_segment.id].upscaled_asset_id)
             self.assertEqual(
                 video_slot(current[first_segment.id], "reference_audios")[0].asset_id,
                 current_voice_id,
             )
             self.assertEqual(current[second_segment.id].selected_asset_id, video.id)
             self.assertEqual(current[second_segment.id].upscaled_asset_id, upscale.id)
-            self.assertEqual(updated.final_assembly, seeded.final_assembly)
+            self.assertIsNone(updated.final_assembly)
             self.assertEqual(updated.generations, with_active.generations)
             self.assertEqual(len(updated.assets), len(seeded.assets) + 1)
 

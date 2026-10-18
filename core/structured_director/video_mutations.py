@@ -34,10 +34,66 @@ def _apply_reference_library_change(
     角色卡音色不参与 Segment 视频输入；Keyframe 中已移出角色卡的参考图选择在同一次
     replace 里剪除（文档构造即校验，不能分两步）。
     """
+    old_cards = {item.id: item for item in document.reference_library.characters}
+    new_cards = {item.id: item for item in library.characters}
+    changed_voice_ids = {
+        card_id
+        for card_id in old_cards.keys() | new_cards.keys()
+        if card_id not in old_cards
+        or card_id not in new_cards
+        or (
+            old_cards[card_id].voice_description,
+            old_cards[card_id].voice_reference_asset_id,
+            old_cards[card_id].voice_reference_transcript,
+        )
+        != (
+            new_cards[card_id].voice_description,
+            new_cards[card_id].voice_reference_asset_id,
+            new_cards[card_id].voice_reference_transcript,
+        )
+    }
+    affected_segments = {
+        segment.id
+        for scene in (() if document.director_script is None else document.director_script.scenes)
+        for segment in scene.segments
+        if any(line.character_id in changed_voice_ids for line in segment.dialogue_lines)
+    }
+    affected_lines = {
+        line.id
+        for scene in (() if document.director_script is None else document.director_script.scenes)
+        for segment in scene.segments
+        if segment.id in affected_segments
+        for line in segment.dialogue_lines
+    }
+    dialogue_plan = document.dialogue_plan
+    if dialogue_plan is not None and affected_lines:
+        dialogue_plan = replace(
+            dialogue_plan,
+            items=tuple(
+                replace(item, selected_audio_asset_id=None, start_seconds=None)
+                if item.dialogue_line_id in affected_lines
+                else item
+                for item in dialogue_plan.items
+            ),
+        )
+    video_plan = document.video_plan
+    if video_plan is not None and affected_segments:
+        video_plan = replace(
+            video_plan,
+            segments=tuple(
+                replace(item, selected_asset_id=None, upscaled_asset_id=None)
+                if item.segment_id in affected_segments
+                else item
+                for item in video_plan.segments
+            ),
+        )
     return replace(
         document,
         reference_library=library,
+        dialogue_plan=dialogue_plan,
         keyframe_plan=prune_character_references(document.keyframe_plan, library),
+        video_plan=video_plan,
+        final_assembly=None if affected_segments else document.final_assembly,
     )
 
 

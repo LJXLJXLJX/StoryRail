@@ -128,7 +128,13 @@ def test_rule5_shots_and_segments_are_both_present_or_both_empty() -> None:
 
 
 def test_rule6_narration_has_no_dialogue_and_drama_has_no_narration() -> None:
-    line = DialogueLine(None, "还会来吗？", "轻声", speaker_label="路人")
+    line = DialogueLine(
+        None,
+        "还会来吗？",
+        "轻声",
+        speaker_label="路人",
+        voice_description="自然的成年路人声音。",
+    )
     with pytest.raises(ValueError, match="Narration Scene 不能包含对白"):
         _scene(1, _segment(0, 0, dialogue=(line,)), driver="narration", cues=(CUE,))
     with pytest.raises(ValueError, match="Drama Scene 不能包含旁白"):

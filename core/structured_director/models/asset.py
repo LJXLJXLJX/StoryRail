@@ -44,6 +44,7 @@ class AssetUsageReason(StrEnum):
     CHARACTER_VOICE_REFERENCE = "character_voice_reference"
     NARRATOR_VOICE_REFERENCE = "narrator_voice_reference"
     NARRATION_AUDIO = "narration_audio"
+    DIALOGUE_AUDIO = "dialogue_audio"
     LOCATION_MASTER_IMAGE = "location_master_image"
     LOCATION_VIEW_IMAGE = "location_view_image"
     KEYFRAME_REFERENCE_IMAGE = "keyframe_reference_image"
@@ -65,6 +66,7 @@ class AssetUsageReason(StrEnum):
             AssetUsageReason.CHARACTER_VOICE_REFERENCE: "角色参考音色",
             AssetUsageReason.NARRATOR_VOICE_REFERENCE: "旁白参考音色",
             AssetUsageReason.NARRATION_AUDIO: "旁白已选音频",
+            AssetUsageReason.DIALOGUE_AUDIO: "对白已选音频",
             AssetUsageReason.LOCATION_MASTER_IMAGE: "地点主图",
             AssetUsageReason.LOCATION_VIEW_IMAGE: "地点视图图片",
             AssetUsageReason.KEYFRAME_REFERENCE_IMAGE: "Keyframe 辅助参考图",
@@ -183,6 +185,10 @@ def asset_project_usage_reasons(
         for cue in scene.narration_cues
     ):
         reasons.append(AssetUsageReason.NARRATION_AUDIO)
+    if document.dialogue_plan is not None and any(
+        item.selected_audio_asset_id == asset_id for item in document.dialogue_plan.items
+    ):
+        reasons.append(AssetUsageReason.DIALOGUE_AUDIO)
     locations = document.location_library.locations
     if any(
         asset_id

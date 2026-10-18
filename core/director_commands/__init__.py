@@ -1,3 +1,4 @@
+from .dialogue_commands import DialogueTimingUpdate, parse_dialogue_timing_update
 from .final_commands import (
     AnimaticSceneTarget,
     FinalApprovalRequest,
@@ -142,6 +143,7 @@ __all__ = [
     "CommandReceipt",
     "CommandExecution",
     "DirectorCommand",
+    "DialogueTimingUpdate",
     "InvalidArgumentsError",
     "DirectorCommandRegistry",
     "director_command_id",
@@ -179,6 +181,7 @@ __all__ = [
     "VideoPromptUpdate",
     "VideoSelectionClear",
     "parse_director_command",
+    "parse_dialogue_timing_update",
     "parse_animatic_scene_target",
     "parse_empty_arguments",
     "parse_final_approval",

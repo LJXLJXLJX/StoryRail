@@ -38,6 +38,10 @@ type PendingAction =
   | "generate_narration_batch"
   | "select_narration"
   | "clear_narration_selection"
+  | "generate_dialogue"
+  | "generate_dialogue_batch"
+  | "select_dialogue"
+  | "set_dialogue_timing"
   | "unlock_visual_production"
   | "generate_keyframes"
   | "select_keyframe"
@@ -341,6 +345,60 @@ export function App() {
           language,
         ),
       "clear_narration_selection",
+    );
+  }
+  async function generateDialogue(dialogueLineId: string) {
+    if (selectedProject === null || structuredSnapshot === null) return;
+    await mutateStructuredDirector(
+      () =>
+        structuredDirectorApi.generateDialogue(
+          selectedProject.id,
+          structuredSnapshot.revision,
+          dialogueLineId,
+        ),
+      "generate_dialogue",
+    );
+  }
+  async function generateDialogueBatch() {
+    if (selectedProject === null || structuredSnapshot === null) return;
+    await mutateStructuredDirector(
+      () =>
+        structuredDirectorApi.generateDialogueBatch(
+          selectedProject.id,
+          structuredSnapshot.revision,
+        ),
+      "generate_dialogue_batch",
+    );
+  }
+  async function selectDialogue(dialogueLineId: string, generationId: string) {
+    if (selectedProject === null || structuredSnapshot === null) return;
+    await mutateStructuredDirector(
+      () =>
+        structuredDirectorApi.selectDialogueAudio(
+          selectedProject.id,
+          structuredSnapshot.revision,
+          dialogueLineId,
+          generationId,
+        ),
+      "select_dialogue",
+    );
+  }
+  async function setDialogueTiming(
+    segmentId: string,
+    starts: Record<string, number>,
+    durationSeconds: number,
+  ) {
+    if (selectedProject === null || structuredSnapshot === null) return;
+    await mutateStructuredDirector(
+      () =>
+        structuredDirectorApi.setDialogueTiming(
+          selectedProject.id,
+          structuredSnapshot.revision,
+          segmentId,
+          starts,
+          durationSeconds,
+        ),
+      "set_dialogue_timing",
     );
   }
   async function unlockVisualProduction() {
@@ -1011,6 +1069,14 @@ export function App() {
             }
             onClearNarrationAudioSelection={(sceneId, cueId, language) =>
               void clearNarrationSelection(sceneId, cueId, language)
+            }
+            onGenerateDialogue={(lineId) => void generateDialogue(lineId)}
+            onGenerateDialogueBatch={() => void generateDialogueBatch()}
+            onSelectDialogueAudio={(lineId, generationId) =>
+              void selectDialogue(lineId, generationId)
+            }
+            onSetDialogueTiming={(segmentId, starts, durationSeconds) =>
+              void setDialogueTiming(segmentId, starts, durationSeconds)
             }
             onGenerateSceneAnimatic={(sceneId) =>
               void generateSceneAnimatic(sceneId)

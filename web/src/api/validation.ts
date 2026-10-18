@@ -37,7 +37,9 @@ import type {
   CapabilityGapAlert,
   CharacterCard,
   CharacterLook,
+  DialogueAudio,
   DialogueLine,
+  DialoguePlan,
   DialogueTimingWarning,
   DirectorRunKind,
   DirectorScript,
@@ -270,6 +272,10 @@ const schemas: Record<string, JsonSchema> = {
       "generate_narration",
       "generate_narration_batch",
       "select_narration_audio",
+      "generate_dialogue",
+      "generate_dialogue_batch",
+      "select_dialogue_audio",
+      "set_dialogue_timing",
       "unlock_visual_production",
       "edit_keyframe_references",
       "generate_keyframe",
@@ -358,6 +364,7 @@ const schemas: Record<string, JsonSchema> = {
       "character_voice_reference",
       "narrator_voice_reference",
       "narration_audio",
+      "dialogue_audio",
       "location_master_image",
       "location_view_image",
       "keyframe_reference_image",
@@ -407,6 +414,7 @@ const schemas: Record<string, JsonSchema> = {
       "character_voice",
       "narrator_voice",
       "narration_audio",
+      "dialogue_audio",
       "generated_audio",
       "audio_effect",
       "audio_trim",
@@ -457,6 +465,7 @@ const schemas: Record<string, JsonSchema> = {
       "select_look_sheet",
       "select_output",
       "select_narration_audio",
+      "select_dialogue_audio",
       "select_segment_video",
       "attach_upscaled_video",
       "select_final_video",
@@ -1224,6 +1233,10 @@ const schemas: Record<string, JsonSchema> = {
   "DialogueLine": {
     "type": "object",
     "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{32}$"
+      },
       "character_id": {
         "anyOf": [
           {
@@ -1247,6 +1260,18 @@ const schemas: Record<string, JsonSchema> = {
           }
         ]
       },
+      "voice_description": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "x-trimmed-nonempty": true
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "text": {
         "type": "string",
         "minLength": 1,
@@ -1257,10 +1282,82 @@ const schemas: Record<string, JsonSchema> = {
       }
     },
     "required": [
+      "id",
       "character_id",
       "speaker_label",
+      "voice_description",
       "text",
       "delivery"
+    ],
+    "additionalProperties": false
+  },
+  "DialogueAudio": {
+    "type": "object",
+    "properties": {
+      "dialogue_line_id": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{32}$"
+      },
+      "seed": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 4294967295
+      },
+      "recipe_params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": true
+      },
+      "selected_audio_asset_id": {
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "start_seconds": {
+        "anyOf": [
+          {
+            "type": "number",
+            "minimum": 0,
+            "x-finite": true
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "dialogue_line_id",
+      "seed",
+      "recipe_params",
+      "selected_audio_asset_id",
+      "start_seconds"
+    ],
+    "additionalProperties": false
+  },
+  "DialoguePlan": {
+    "type": "object",
+    "properties": {
+      "source_script_revision": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "DialogueAudio"
+        }
+      }
+    },
+    "required": [
+      "source_script_revision",
+      "items"
     ],
     "additionalProperties": false
   },
@@ -3994,6 +4091,16 @@ const schemas: Record<string, JsonSchema> = {
           }
         ]
       },
+      "dialogue_plan": {
+        "anyOf": [
+          {
+            "$ref": "DialoguePlan"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "production_availability": {
         "$ref": "ProductionAvailability"
       },
@@ -4069,6 +4176,7 @@ const schemas: Record<string, JsonSchema> = {
       "generations",
       "reference_library",
       "director_script",
+      "dialogue_plan",
       "production_availability",
       "location_library",
       "keyframe_plan",
@@ -5043,6 +5151,29 @@ const schemas: Record<string, JsonSchema> = {
                               "type": "null"
                             }
                           ]
+                        },
+                        "id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{32}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "voice_description": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -5448,6 +5579,29 @@ const schemas: Record<string, JsonSchema> = {
                                       "type": "null"
                                     }
                                   ]
+                                },
+                                "id": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{32}$"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "voice_description": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
                                 }
                               },
                               "required": [
@@ -5718,6 +5872,29 @@ const schemas: Record<string, JsonSchema> = {
                                 "type": "string",
                                 "minLength": 1,
                                 "maxLength": 60
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{32}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "voice_description": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
                               },
                               {
                                 "type": "null"

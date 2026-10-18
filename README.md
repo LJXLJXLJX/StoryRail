@@ -102,11 +102,11 @@ Docker Desktop 或 OrbStack。之后可以直接问 Agent“现在该做什么�
 
 ## 技术边界
 
-- `.stories/<项目名>-<project_id>/project.json` 是唯一业务事实源（当前 schema v33），`assets/` 保存不可变媒体；
+- `.stories/<项目名>-<project_id>/project.json` 是唯一业务事实源（当前 schema v34），`assets/` 保存不可变媒体；
   更早版本不迁移，需新建项目。删除项目只移入 `.stories/.trash/`。
 - Core 是 ID、revision、scope、授权、失效、血缘、幂等和状态迁移的唯一 authority；Web 只消费 Core 返回的
   状态与 `allowed_actions`，不复制状态机。
-- Agent 通过 HTTP/MCP（24 个固定工具）读取有界投影和专业 Skill，只能提交类型化 proposal 或精确授权命令。
+- Agent 通过 HTTP/MCP（25 个固定工具）读取有界投影和专业 Skill，只能提交类型化 proposal 或精确授权命令。
   StoryRail 不内置 Agent、不持有厂商会话，也没有隐藏 fallback。
 - 模型 Provider 只由 Core 调用，只接收完成媒体任务所需的受控输入。
 

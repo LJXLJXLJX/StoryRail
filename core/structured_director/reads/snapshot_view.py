@@ -8,6 +8,7 @@ from ..assembly_timeline import (
     _build_scene_final_plan,
     _current_scene_final_asset_id,
 )
+from ..candidate_eligibility import generation_is_reviewable
 from ..codec.keyframe import serialize_character_references
 from ..dialogue_timing import dialogue_timing_warnings
 from ..models import (
@@ -190,6 +191,15 @@ def _allowed_actions(document: StructuredDirectorDocument) -> tuple[str, ...]:
     script = document.director_script
     if script is not None:
         actions.append("edit_script")
+        if any(segment.dialogue_lines for scene in script.scenes for segment in scene.segments):
+            actions.extend(
+                [
+                    "generate_dialogue",
+                    "generate_dialogue_batch",
+                    "select_dialogue_audio",
+                    "set_dialogue_timing",
+                ]
+            )
     if layers.narration_unlocked:
         actions = [action for action in actions if action != "confirm_script"]
         actions.extend(
@@ -357,8 +367,10 @@ def _serialize_scene(
                 "action": segment.action,
                 "dialogue_lines": [
                     {
+                        "id": line.id,
                         "character_id": line.character_id,
                         "speaker_label": line.speaker_label,
+                        "voice_description": line.voice_description,
                         "text": line.text,
                         "delivery": line.delivery,
                     }
@@ -623,6 +635,12 @@ def _generation_allowed_actions(
         ):
             return ("select_narration_audio", "dismiss_history")
         return ("dismiss_history",)
+    if generation.kind is ReferenceGenerationKind.DIALOGUE_AUDIO:
+        return (
+            ("select_dialogue_audio", "dismiss_history")
+            if generation_is_reviewable(document, generation)
+            else ("dismiss_history",)
+        )
     if generation.kind in {
         ReferenceGenerationKind.LOCATION_MASTER_IMAGE,
         ReferenceGenerationKind.LOCATION_VIEW_IMAGE,
@@ -886,6 +904,23 @@ def serialize_snapshot(
                         scene_final=_scene_final_state(document, scene.id, service),
                     )
                     for scene in document.director_script.scenes
+                ],
+            }
+        ),
+        "dialogue_plan": (
+            None
+            if document.dialogue_plan is None
+            else {
+                "source_script_revision": document.dialogue_plan.source_script_revision,
+                "items": [
+                    {
+                        "dialogue_line_id": item.dialogue_line_id,
+                        "seed": item.seed,
+                        "recipe_params": item.recipe_params.to_json(),
+                        "selected_audio_asset_id": item.selected_audio_asset_id,
+                        "start_seconds": item.start_seconds,
+                    }
+                    for item in document.dialogue_plan.items
                 ],
             }
         ),

@@ -23,7 +23,9 @@ from core.director_proposals import (
 from core.model_providers.recipe import RecipeParams
 
 from .models import (
+    DialogueAudio,
     DialogueLine,
+    DialoguePlan,
     DirectorRun,
     DirectorRunKind,
     DirectorRunStatus,
@@ -94,6 +96,11 @@ def _materialize_script(
     *,
     source_reference_revision: int,
 ) -> DirectorScript:
+    def new_dialogue_id(value: str | None) -> str:
+        if value is not None:
+            raise ValueError("初始脚本 proposal 的 dialogue_line.id 必须为空，由 Core 分配。")
+        return uuid4().hex
+
     scenes: list[Scene] = []
     for scene in proposal.scenes:
         if scene.driver == "narration" and (scene.shots or scene.segments):
@@ -103,6 +110,7 @@ def _materialize_script(
             scene.shots,
             scene.segments,
             shot_id=lambda _shot: uuid4().hex,
+            dialogue_id=new_dialogue_id,
         )
         cues = []
         for cue in scene.narration_cues:
@@ -142,7 +150,16 @@ def _materialize_script_revision(
     known_shot_ids = {shot.id for scene in previous for shot in scene.shots}
     known_segment_ids = {segment.id for segment in script_segments(previous)}
     known_cue_ids = {cue.id for scene in previous for cue in scene.narration_cues}
-    all_known_ids = known_scene_ids | known_shot_ids | known_segment_ids | known_cue_ids
+    known_dialogue_ids = {
+        line.id
+        for scene in previous
+        for segment in scene.segments
+        for line in segment.dialogue_lines
+        if line.id is not None
+    }
+    all_known_ids = (
+        known_scene_ids | known_shot_ids | known_segment_ids | known_cue_ids | known_dialogue_ids
+    )
     previous_cues = {cue.id: cue for scene in previous for cue in scene.narration_cues}
     previous_views = _shot_views(previous)
 
@@ -165,6 +182,7 @@ def _materialize_script_revision(
             scene.segments,
             shot_id=lambda shot: resolved(shot.id, known_shot_ids, "shot.id"),
             segment_id=lambda value: resolved(value, known_segment_ids, "segment.id"),
+            dialogue_id=lambda value: resolved(value, known_dialogue_ids, "dialogue_line.id"),
         )
         cues: list[NarrationCue] = []
         for cue in scene.narration_cues:
@@ -325,6 +343,8 @@ def _validate_new_scene_ids(scene: EditableSceneProposal) -> None:
         raise ValueError("新增 Scene 的 Shot ID 必须为 null。")
     if any(segment.id is not None for segment in scene.segments):
         raise ValueError("新增 Scene 的 Segment ID 必须为 null。")
+    if any(line.id is not None for segment in scene.segments for line in segment.dialogue_lines):
+        raise ValueError("新增 Scene 的 DialogueLine ID 必须为 null。")
     if any(cue.id is not None for cue in scene.narration_cues):
         raise ValueError("新增 Scene 的旁白 Cue ID 必须为 null。")
 
@@ -380,6 +400,12 @@ def _validate_scene_revision_scope(
         shot_ids = {shot.id for shot in current.shots}
         segment_ids = {segment.id for segment in scene_segments(current)}
         cue_ids = {cue.id for cue in current.narration_cues}
+        dialogue_ids = {
+            line.id
+            for segment in current.segments
+            for line in segment.dialogue_lines
+            if line.id is not None
+        }
         if any(shot.id is not None and shot.id not in shot_ids for shot in proposal.shots):
             raise ValueError("局部脚本修改不能挪用其他 Scene 的 Shot ID。")
         if any(
@@ -389,6 +415,12 @@ def _validate_scene_revision_scope(
             raise ValueError("局部脚本修改不能挪用其他 Scene 的 Segment ID。")
         if any(cue.id is not None and cue.id not in cue_ids for cue in proposal.narration_cues):
             raise ValueError("局部脚本修改不能挪用其他 Scene 的旁白 Cue ID。")
+        if any(
+            line.id is not None and line.id not in dialogue_ids
+            for segment in proposal.segments
+            for line in segment.dialogue_lines
+        ):
+            raise ValueError("局部脚本修改不能挪用其他 Scene 的 DialogueLine ID。")
 
 
 def _with_production_baseline(
@@ -416,6 +448,8 @@ def _with_production_baseline(
 def _invalidate_production_after_script_revision(
     document: StructuredDirectorDocument,
     scenes: tuple[Scene, ...],
+    *,
+    dialogue_plan_override: DialoguePlan | None = None,
 ) -> StructuredDirectorDocument:
     if document.director_script is None:
         raise ValueError("生产期脚本不存在。")
@@ -455,6 +489,13 @@ def _invalidate_production_after_script_revision(
         source_script_revision=script.revision,
         scenes=script.scenes,
     )
+    dialogue_plan = _rebase_dialogue_plan(
+        document.dialogue_plan if dialogue_plan_override is None else dialogue_plan_override,
+        source_script_revision=script.revision,
+        previous_scenes=document.director_script.scenes,
+        scenes=script.scenes,
+        clear_timing_for_changed_segments=dialogue_plan_override is None,
+    )
     director_runs = document.director_runs
     active = document.active_director_run
     if active is not None and active.kind in {
@@ -469,10 +510,133 @@ def _invalidate_production_after_script_revision(
         director_script=script,
         pending_script_edit=None,
         pending_narration_edit=None,
+        dialogue_plan=dialogue_plan,
         keyframe_plan=keyframe_plan,
         video_plan=video_plan,
         final_assembly=None,
         director_runs=director_runs,
+    )
+
+
+def dialogue_plan_for_script(script: DirectorScript) -> DialoguePlan:
+    """为首次物化的脚本建立逐句空 TTS 计划。"""
+    return DialoguePlan(
+        script.revision,
+        tuple(
+            DialogueAudio(line.id or "", _dialogue_seed(line))
+            for scene in script.scenes
+            for segment in scene.segments
+            for line in segment.dialogue_lines
+        ),
+    )
+
+
+def _dialogue_seed(line: DialogueLine) -> int:
+    speaker = line.character_id or f"label:{line.speaker_label}"
+    return int.from_bytes(hashlib.sha256(speaker.encode("utf-8")).digest()[:4], "big")
+
+
+def _rebase_dialogue_plan(
+    plan: DialoguePlan | None,
+    *,
+    source_script_revision: int,
+    previous_scenes: tuple[Scene, ...],
+    scenes: tuple[Scene, ...],
+    clear_timing_for_changed_segments: bool = True,
+) -> DialoguePlan:
+    old_items = {} if plan is None else {item.dialogue_line_id: item for item in plan.items}
+    old_lines = {
+        line.id: (segment.id, line)
+        for scene in previous_scenes
+        for segment in scene.segments
+        for line in segment.dialogue_lines
+        if line.id is not None
+    }
+    previous_segments = {
+        segment.id: segment for scene in previous_scenes for segment in scene.segments
+    }
+    changed_segments = {
+        segment.id
+        for scene in scenes
+        for segment in scene.segments
+        if (
+            (old := previous_segments.get(segment.id)) is None
+            or old.dialogue_lines != segment.dialogue_lines
+            or old.duration_estimate_seconds != segment.duration_estimate_seconds
+        )
+    }
+    items: list[DialogueAudio] = []
+    for scene in scenes:
+        for segment in scene.segments:
+            for line in segment.dialogue_lines:
+                assert line.id is not None
+                old_item = old_items.get(line.id)
+                old = old_lines.get(line.id)
+                if old_item is None or old is None:
+                    items.append(DialogueAudio(line.id, _dialogue_seed(line)))
+                    continue
+                old_segment_id, old_line = old
+                if old_line != line:
+                    items.append(
+                        DialogueAudio(
+                            line.id,
+                            (
+                                old_item.seed
+                                if old_line.character_id == line.character_id
+                                else _dialogue_seed(line)
+                            ),
+                            old_item.recipe_params,
+                        )
+                    )
+                    continue
+                items.append(
+                    replace(
+                        old_item,
+                        start_seconds=(
+                            None
+                            if (
+                                clear_timing_for_changed_segments and segment.id in changed_segments
+                            )
+                            or old_segment_id != segment.id
+                            else old_item.start_seconds
+                        ),
+                    )
+                )
+    return DialoguePlan(source_script_revision, tuple(items))
+
+
+def _assign_missing_dialogue_ids(scenes: tuple[Scene, ...]) -> tuple[Scene, ...]:
+    """Core 为直接领域写入中新增的 DialogueLine 分配稳定 ID。"""
+    used = {
+        line.id
+        for scene in scenes
+        for segment in scene.segments
+        for line in segment.dialogue_lines
+        if line.id is not None
+    }
+
+    def fresh() -> str:
+        value = uuid4().hex
+        while value in used:
+            value = uuid4().hex
+        used.add(value)
+        return value
+
+    return tuple(
+        replace(
+            scene,
+            segments=tuple(
+                replace(
+                    segment,
+                    dialogue_lines=tuple(
+                        line if line.id is not None else replace(line, id=fresh())
+                        for line in segment.dialogue_lines
+                    ),
+                )
+                for segment in scene.segments
+            ),
+        )
+        for scene in scenes
     )
 
 
@@ -561,6 +725,12 @@ def _apply_script_operations(
             scene.id,
             *(shot.id for shot in scene.shots),
             *(segment.id for segment in scene.segments),
+            *(
+                line.id
+                for segment in scene.segments
+                for line in segment.dialogue_lines
+                if line.id is not None
+            ),
         )
     }
 
@@ -933,7 +1103,14 @@ def _script_segment_draft(
 
 
 def _script_dialogue(value: ScriptDialogueInput) -> DialogueLine:
-    return DialogueLine(value.character_id, value.text, value.delivery, value.speaker_label)
+    return DialogueLine(
+        value.character_id,
+        value.text,
+        value.delivery,
+        value.speaker_label,
+        value.id or uuid4().hex,
+        value.voice_description,
+    )
 
 
 def _dialogue_line(line: Any) -> DialogueLine:
@@ -943,6 +1120,12 @@ def _dialogue_line(line: Any) -> DialogueLine:
         line.text.strip(),
         line.delivery.strip(),
         None if label is None else label.strip(),
+        getattr(line, "id", None) or uuid4().hex,
+        (
+            None
+            if getattr(line, "voice_description", None) is None
+            else line.voice_description.strip()
+        ),
     )
 
 
@@ -1180,6 +1363,7 @@ def _materialize_scene_parts(
     *,
     shot_id: Callable[[Any], str],
     segment_id: Callable[[str | None], str] | None = None,
+    dialogue_id: Callable[[str | None], str] | None = None,
 ) -> tuple[tuple[Shot, ...], tuple[ShotSegment, ...]]:
     """把 proposal 的 shots + segments（shot_indexes）物化为 v33 的并列结构并校验覆盖。"""
     materialized_shots = tuple(
@@ -1201,11 +1385,23 @@ def _materialize_scene_parts(
         has_boundary=tuple(segment.boundary_from_previous is not None for segment in segments),
     )
     segment_id = segment_id or (lambda _value: uuid4().hex)
-    materialized_segments = tuple(
-        _materialize_segment(segment, segment_id(getattr(segment, "id", None)), shot_ids)
-        for segment, shot_ids in zip(segments, resolved, strict=True)
-    )
-    return materialized_shots, materialized_segments
+    materialized_segments: list[ShotSegment] = []
+    for segment, shot_ids in zip(segments, resolved, strict=True):
+        materialized = _materialize_segment(
+            segment, segment_id(getattr(segment, "id", None)), shot_ids
+        )
+        if dialogue_id is not None:
+            materialized = replace(
+                materialized,
+                dialogue_lines=tuple(
+                    replace(line, id=dialogue_id(getattr(source, "id", None)))
+                    for line, source in zip(
+                        materialized.dialogue_lines, segment.dialogue_lines, strict=True
+                    )
+                ),
+            )
+        materialized_segments.append(materialized)
+    return materialized_shots, tuple(materialized_segments)
 
 
 def _resolve_shot_indexes(

@@ -2,6 +2,7 @@
 
 from ..assembly_timeline import _build_final_assembly_plan, _scenes_missing_final
 from ..candidate_eligibility import reviewable_generations
+from ..dialogue_timing import actual_dialogue_timing
 from ..keyframe_requests import _active_keyframe_ids
 from ..models import (
     ReferenceGenerationKind,
@@ -102,6 +103,10 @@ def workflow_state(document):
     if script.production_baseline_revision != script.revision:
         return _narration_workflow(document)
     if not document.workspace_layers.videos_unlocked:
+        dialogue = _dialogue_workflow(document)
+        if dialogue is not None:
+            stage, phase, required = dialogue
+            return _workflow_result(document, stage, phase, required)
         return _workflow_result(
             document,
             "visual_production",
@@ -142,6 +147,10 @@ def workflow_state(document):
                 )
             phase = active_task["phase"]
         return _workflow_result(document, stage, phase, required, active_task=active_task)
+    dialogue = _dialogue_workflow(document)
+    if dialogue is not None:
+        stage, phase, required = dialogue
+        return _workflow_result(document, stage, phase, required)
     video = _video_workflow(document)
     if video is not None:
         stage, phase, required = video
@@ -156,6 +165,7 @@ def _workflow_result(document, stage, phase, required, *, active_task=None):
             "keyframe",
             "video",
             "narration",
+            "dialogue",
             "final",
             "animatic",
         ):
@@ -508,6 +518,73 @@ def _narration_workflow(document):
         else "ready_to_generate"
     )
     return _workflow_result(document, "narration", phase, actions)
+
+
+def _dialogue_workflow(document):
+    script = document.director_script
+    plan = document.dialogue_plan
+    lines = tuple(
+        line
+        for scene in (() if script is None else script.scenes)
+        for segment in scene.segments
+        for line in segment.dialogue_lines
+    )
+    if not lines:
+        return None
+    if plan is None:
+        return (
+            "dialogue",
+            "inconsistency",
+            [_action("dialogue.read_plan", tool="read_professional_workset")],
+        )
+    selected = {item.dialogue_line_id: item.selected_audio_asset_id for item in plan.items}
+    pending = tuple(line.id for line in lines if selected.get(line.id) is None)
+    if pending:
+        candidate = _candidate_action(document, ReferenceGenerationKind.DIALOGUE_AUDIO, pending)
+        candidate_targets = set(() if candidate is None else candidate["target_ids"])
+        remaining = tuple(target for target in pending if target not in candidate_targets)
+        actions = [] if candidate is None else [candidate]
+        actions.extend(
+            _generation_actions(
+                document,
+                ReferenceGenerationKind.DIALOGUE_AUDIO,
+                pending,
+                generate_action="dialogue.generate",
+                tool_kind="dialogue",
+                ready_target_ids=remaining,
+            )
+        )
+        phase = (
+            "awaiting_human_review"
+            if candidate is not None
+            else "in_progress"
+            if any(item["action"] == "generation.wait" for item in actions)
+            else "needs_attention"
+            if any(item["action"] == "generation.inspect_uncertain" for item in actions)
+            else "ready_to_generate"
+        )
+        return "dialogue", phase, actions
+    timing_targets = tuple(
+        segment.id
+        for scene in script.scenes
+        for segment in scene.segments
+        if segment.dialogue_lines
+        and not (actual_dialogue_timing(document, segment) or {}).get("ready", False)
+    )
+    if timing_targets:
+        return (
+            "dialogue",
+            "awaiting_timing",
+            [
+                _action(
+                    "dialogue.set_timing",
+                    tool="set_dialogue_timing",
+                    target_ids=timing_targets,
+                    purpose="calibrate_video_duration_from_selected_tts",
+                )
+            ],
+        )
+    return None
 
 
 def production_baseline_issue(document):

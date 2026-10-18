@@ -23,6 +23,8 @@ class ScriptDialogueInput:
     text: str
     delivery: str
     speaker_label: str | None = None
+    id: str | None = None
+    voice_description: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -426,8 +428,13 @@ def _dialogues(value: object) -> tuple[ScriptDialogueInput, ...]:
         raise ValueError("dialogue_lines 必须是数组。")
     result = []
     for value_item in value:
-        if isinstance(value_item, dict) and "speaker_label" not in value_item:
-            value_item = {**value_item, "speaker_label": None}
+        if isinstance(value_item, dict):
+            value_item = {
+                **value_item,
+                "speaker_label": value_item.get("speaker_label"),
+                "id": value_item.get("id"),
+                "voice_description": value_item.get("voice_description"),
+            }
         item = _exact(value_item, DIALOGUE_FIELDS, "dialogue_line")
         character_id, label = item["character_id"], item["speaker_label"]
         if (character_id is None) == (label is None):
@@ -438,6 +445,12 @@ def _dialogues(value: object) -> tuple[ScriptDialogueInput, ...]:
                 _string(item["text"], "text"),
                 _string(item["delivery"], "delivery", allow_empty=True),
                 None if label is None else _string(label, "speaker_label"),
+                _optional_id(item["id"], "dialogue_line.id"),
+                (
+                    None
+                    if item["voice_description"] is None
+                    else _string(item["voice_description"], "voice_description")
+                ),
             )
         )
     return tuple(result)

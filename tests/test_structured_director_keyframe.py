@@ -276,6 +276,8 @@ class StructuredDirectorKeyframeTests(unittest.IsolatedAsyncioTestCase):
                     "continuity_instruction": "延续前半段结束状态。",
                 },
             )
+            for line in second_segment["dialogue_lines"]:
+                line["id"] = None
             scenes[0]["segments"] = [split_source, second_segment]
             edited = await api.handle(
                 "PUT",

@@ -19,6 +19,7 @@ from ..schema import (
 )
 from ._shared import _boolean, _exact_object, _integer, _object_list, _string
 from .asset import _parse_asset, _serialize_asset
+from .dialogue import _parse_dialogue_plan, _serialize_dialogue_plan
 from .final import (
     _parse_final_approval,
     _parse_final_assembly,
@@ -97,6 +98,11 @@ def serialize_document(document: StructuredDirectorDocument) -> dict[str, Any]:
                     "user_message": document.pending_narration_edit.user_message,
                 }
             ),
+            "dialogue_plan": (
+                None
+                if document.dialogue_plan is None
+                else _serialize_dialogue_plan(document.dialogue_plan)
+            ),
             "location_library": serialize_location_library(document.location_library),
             "keyframe_plan": (
                 None
@@ -155,6 +161,7 @@ def _parse_document(value: object) -> StructuredDirectorDocument:
             "director_script",
             "pending_script_edit",
             "pending_narration_edit",
+            "dialogue_plan",
             "location_library",
             "keyframe_plan",
             "video_plan",
@@ -223,6 +230,11 @@ def _parse_document(value: object) -> StructuredDirectorDocument:
                 None
                 if structured["pending_narration_edit"] is None
                 else _parse_pending_narration_edit(structured["pending_narration_edit"])
+            ),
+            dialogue_plan=(
+                None
+                if structured["dialogue_plan"] is None
+                else _parse_dialogue_plan(structured["dialogue_plan"])
             ),
             location_library=_parse_location_library(structured["location_library"]),
             keyframe_plan=(

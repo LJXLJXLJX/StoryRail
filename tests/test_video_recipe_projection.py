@@ -67,7 +67,12 @@ def test_recipe_switch_preserves_each_recipe_mechanism_parameters(tmp_path):
         service._registry._plugins[plugin.plugin_id] = PluginInstance(
             manifest, recipes=plugin.recipes, prompt_formatter=plugin.prompt_formatter
         )
-        segment_id = document.video_plan.segments[0].segment_id
+        segment_id = document.video_plan.segments[1].segment_id
+        document = await service.save_segment_video_recipe(
+            segment_id=segment_id,
+            recipe_id="minimax_h3.ref2va",
+            expected_revision=document.revision,
+        )
         document = await service.save_segment_video_inputs(
             segment_id=segment_id,
             prompt_text="固定机位。",
@@ -90,10 +95,13 @@ def test_recipe_switch_preserves_each_recipe_mechanism_parameters(tmp_path):
             recipe_id="minimax_h3.ref2va",
             expected_revision=document.revision,
         )
-        video = document.video_plan.segments[0]
+        video = next(item for item in document.video_plan.segments if item.segment_id == segment_id)
         assert dict(video.recipe_inputs.params) == {"motion": 0.4}
         assert dict(video.recipes.get("minimax_h3.fl2va").params) == {"motion": 0.7}
-        assert store.read().video_plan.segments[0].recipes == video.recipes
+        stored = next(
+            item for item in store.read().video_plan.segments if item.segment_id == segment_id
+        )
+        assert stored.recipes == video.recipes
 
     asyncio.run(run())
 
@@ -188,7 +196,7 @@ def test_ref2va_submits_without_images_when_audio_is_present(tmp_path):
         assert request.first_frame is None
         assert request.last_frame is None
         assert request.additional_frames == ()
-        assert len(request.reference_audios) == 2
+        assert len(request.reference_audios) == 5
         assert request.reference_videos == ()
 
     asyncio.run(run())
@@ -206,11 +214,12 @@ def test_empty_prompt_rejects_video_before_generation_intent(tmp_path):
         video = document.video_plan.segments[0]
         assert video.prompt_text == ""
         before = store.path.read_bytes()
+        generation_ids = tuple(item.id for item in document.generations)
         with pytest.raises(ValueError, match="请先填写并保存当前视频提示词"):
             await service._media.generate_segment_video(
                 segment_id=video.segment_id, expected_revision=document.revision
             )
-        assert not store.read().generations
+        assert tuple(item.id for item in store.read().generations) == generation_ids
         assert store.path.read_bytes() == before
 
     asyncio.run(run())

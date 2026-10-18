@@ -46,7 +46,15 @@ def context_from_workset(value):
         user_direction="",
         start_frame_description=first,
         end_frame_description=last,
-        dialogue=tuple(H3DialogueInput(**item) for item in segment["dialogue"]),
+        dialogue=tuple(
+            H3DialogueInput(
+                character_name=item["character_name"],
+                text=item["text"],
+                delivery=item["delivery"],
+                on_screen=item["on_screen"],
+            )
+            for item in segment["dialogue"]
+        ),
         continues_from_previous_segment=segment["continues_from_previous_segment"],
         continues_into_next_segment=segment["continues_into_next_segment"],
         additional_image_descriptions=descriptions("reference_image"),

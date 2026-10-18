@@ -25,19 +25,29 @@ def test_model_requires_exactly_one_valid_speaker(character_id, speaker_label):
         DialogueLine(character_id, "台词。", "", speaker_label=speaker_label)
 
 
-def test_persistence_round_trips_speaker_label_and_accepts_omitted_key():
-    line = DialogueLine(None, "开始宣读。", "平板", speaker_label="研究员")
+def test_persistence_round_trips_speaker_label_and_rejects_old_shape():
+    line = DialogueLine(
+        None,
+        "开始宣读。",
+        "平板",
+        speaker_label="研究员",
+        id="b" * 32,
+        voice_description="成年研究员，冷静、克制、中低音。",
+    )
     segment = ShotSegment(ID, (ID,), 3.0, "研究员对着麦克风。", (line,), None)
     (serialized,) = _serialize_segment(segment)["dialogue_lines"]
     assert serialized == {
+        "id": "b" * 32,
         "character_id": None,
         "speaker_label": "研究员",
+        "voice_description": "成年研究员，冷静、克制、中低音。",
         "text": "开始宣读。",
         "delivery": "平板",
     }
     assert _parse_dialogue_line(serialized) == line
     legacy = {"character_id": ID, "text": "好。", "delivery": ""}
-    assert _parse_dialogue_line(legacy) == DialogueLine(ID, "好。", "")
+    with pytest.raises(ValueError):
+        _parse_dialogue_line(legacy)
 
 
 def _proposal(dialogue: dict) -> str:
@@ -71,7 +81,13 @@ def _proposal(dialogue: dict) -> str:
 def test_script_proposal_accepts_external_speaker():
     proposal = parse_structured_director_script_proposal(
         _proposal(
-            {"character_id": None, "speaker_label": "研究员", "text": "开始。", "delivery": ""}
+            {
+                "character_id": None,
+                "speaker_label": "研究员",
+                "voice_description": "成年研究员，冷静、中低音。",
+                "text": "开始。",
+                "delivery": "",
+            }
         )
     )
     (line,) = proposal.scenes[0].segments[0].dialogue_lines
@@ -95,7 +111,13 @@ def test_script_proposal_rejects_missing_or_double_speaker(speaker):
 
 
 def test_edit_script_operations_and_mcp_accept_external_speaker():
-    value = {"character_id": None, "speaker_label": "广播", "text": "新闻。", "delivery": ""}
+    value = {
+        "character_id": None,
+        "speaker_label": "广播",
+        "voice_description": "老式车站广播，窄频、平直。",
+        "text": "新闻。",
+        "delivery": "",
+    }
     (line,) = _dialogues([value])
     assert (line.character_id, line.speaker_label) == (None, "广播")
     with pytest.raises(ValueError):

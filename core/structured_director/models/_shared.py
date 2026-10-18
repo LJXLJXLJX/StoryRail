@@ -18,7 +18,7 @@ _COMMAND_NAME = re.compile(r"[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+")
 _ASSET_PATH = re.compile(
     r"assets/(?:"
     r"images/(?:library|characters|locations/(?:master|crops|views)|keyframes|video-frames)|"
-    r"audio/(?:voice-references|narration|generated|effects|trims|stems|imported)|"
+    r"audio/(?:voice-references|narration|dialogue|generated|effects|trims|stems|imported)|"
     r"videos/(?:segments|upscaled|final|scene-final|animatics|audio-remixes|imported)"
     r")/[^/\\\x00-\x1f]+\.(?:png|jpg|webp|wav|mp4)"
 )
@@ -88,6 +88,7 @@ class ReferenceGenerationKind(StrEnum):
     CHARACTER_VOICE = "character_voice"
     NARRATOR_VOICE = "narrator_voice"
     NARRATION_AUDIO = "narration_audio"
+    DIALOGUE_AUDIO = "dialogue_audio"
     GENERATED_AUDIO = "generated_audio"
     AUDIO_EFFECT = "audio_effect"
     AUDIO_TRIM = "audio_trim"

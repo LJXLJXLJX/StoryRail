@@ -130,17 +130,28 @@ def _validate_kind_contract(generation) -> None:
             raise ValueError("音色设计 generation.seed 不合法。")
         if generation.duration_seconds is not None:
             raise ValueError("音色设计不能包含旁白合成参数。")
-    elif generation.kind is ReferenceGenerationKind.GENERATED_AUDIO:
+    elif generation.kind in {
+        ReferenceGenerationKind.GENERATED_AUDIO,
+        ReferenceGenerationKind.DIALOGUE_AUDIO,
+    }:
         if generation.operation is GenerationOperation.VOICE_DESIGN:
             _require_text(generation.sample_text or "", "generation.sample_text", 2_000)
             if generation.input_asset_ids:
-                raise ValueError("Voice Design 通用音频生成不能包含参考音频。")
+                raise ValueError(
+                    "Voice Design 通用音频生成不能包含参考音频。"
+                    if generation.kind is ReferenceGenerationKind.GENERATED_AUDIO
+                    else "Voice Design 对白生成不能包含参考音频。"
+                )
             if (
                 isinstance(generation.seed, bool)
                 or not isinstance(generation.seed, int)
                 or not 0 <= generation.seed <= 2**32 - 1
             ):
-                raise ValueError("Voice Design 通用音频 generation.seed 不合法。")
+                raise ValueError(
+                    "Voice Design 通用音频 generation.seed 不合法。"
+                    if generation.kind is ReferenceGenerationKind.GENERATED_AUDIO
+                    else "Voice Design 对白 generation.seed 不合法。"
+                )
         elif generation.operation is GenerationOperation.SYNTHESIZE:
             if len(generation.input_asset_ids) != 1:
                 raise ValueError("音频克隆必须且只能引用一个参考音频 Asset。")
@@ -154,7 +165,11 @@ def _validate_kind_contract(generation) -> None:
         else:
             raise ValueError("通用音频 Generation 操作不合法。")
         if generation.duration_seconds is not None:
-            raise ValueError("通用音频 Generation 不预存产物时长。")
+            raise ValueError(
+                "通用音频 Generation 不预存产物时长。"
+                if generation.kind is ReferenceGenerationKind.GENERATED_AUDIO
+                else "对白 Generation 不预存产物时长。"
+            )
     elif generation.kind is ReferenceGenerationKind.VIDEO_FRAME:
         if (
             generation.operation is not GenerationOperation.PROCESS

@@ -38,6 +38,48 @@ def generation_is_reviewable(document, generation) -> bool:
             and asset.media_type == "audio/wav"
             and generation.prompt_text == cue.track(generation.language).text
         )
+    if kind is ReferenceGenerationKind.DIALOGUE_AUDIO:
+        line = next(
+            (
+                line
+                for scene in (
+                    () if document.director_script is None else document.director_script.scenes
+                )
+                for segment in scene.segments
+                for line in segment.dialogue_lines
+                if line.id == target_id
+            ),
+            None,
+        )
+        if line is None or asset.media_type != "audio/wav":
+            return False
+        if generation.prompt_text != line.text:
+            return False
+        if line.character_id is None:
+            return (
+                generation.operation.value == "voice_design"
+                and generation.sample_text == line.voice_description
+            )
+        card = next(
+            (
+                item
+                for item in document.reference_library.characters
+                if item.id == line.character_id
+            ),
+            None,
+        )
+        if card is None:
+            return False
+        if card.voice_reference_asset_id is None:
+            return (
+                generation.operation.value == "voice_design"
+                and generation.sample_text == card.voice_description
+            )
+        return (
+            generation.operation.value == "synthesize"
+            and generation.input_asset_ids == (card.voice_reference_asset_id,)
+            and generation.sample_text == card.voice_reference_transcript
+        )
     if kind is ReferenceGenerationKind.KEYFRAME_IMAGE:
         return (
             document.keyframe_plan is not None

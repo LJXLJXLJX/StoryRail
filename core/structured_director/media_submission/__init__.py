@@ -17,6 +17,7 @@ from ..store import StructuredDirectorStore
 from .animatic import AnimaticSubmission
 from .assembly import AssemblySubmission
 from .audio import AudioSubmission
+from .dialogue import DialogueSubmission
 from .frames import FrameSubmission
 from .image import ImageSubmission
 from .narration import NarrationSubmission
@@ -28,6 +29,7 @@ from .video import VideoSubmission
 class MediaSubmissionUseCases(
     AudioSubmission,
     NarrationSubmission,
+    DialogueSubmission,
     ImageSubmission,
     VideoSubmission,
     FrameSubmission,

@@ -258,4 +258,4 @@ def test_playground_mcp_against_http_server(http_server, tmp_path):
     result = asyncio.run(run())
     assert not result.is_error, result
     assert result.structured_content["http_status"] == 200
-    assert len(result.structured_content["data"]["capabilities"]) == 11
+    assert len(result.structured_content["data"]["capabilities"]) == 12

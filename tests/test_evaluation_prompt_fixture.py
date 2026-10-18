@@ -48,7 +48,10 @@ def test_prompt_fixture_before_real_calls(tmp_path, kind):
             },
         )
         # 只有 fixture 登记的视图候选，没有任何真实 Provider 调用。
-        assert {item.plugin_id for item in store.read().generations} <= {"fixture.image"}
+        assert {item.plugin_id for item in store.read().generations} <= {
+            "fixture.image",
+            "fixture.audio",
+        }
         if kind == "keyframe":
             assert result["workset"]["operation"] == "edit"
             assert len(result["reference_images"]) == 5

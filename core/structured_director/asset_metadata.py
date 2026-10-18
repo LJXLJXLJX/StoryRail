@@ -53,6 +53,8 @@ def _generation_asset_location(
     if kind is ReferenceGenerationKind.NARRATION_AUDIO:
         location = _narration_location(document, generation.target_id)
         return "audio/narration", f"{location}-旁白-{_language_label(generation)}"
+    if kind is ReferenceGenerationKind.DIALOGUE_AUDIO:
+        return "audio/dialogue", f"{_dialogue_location(document, generation.target_id)}-对白"
     if kind is ReferenceGenerationKind.GENERATED_AUDIO:
         # 资产名就是这段音频朗读的文本；模型由快照的 Generation.model 展示。
         # Voice Design 的朗读文本在 sample_text；克隆（synthesize）的朗读文本在
@@ -134,6 +136,23 @@ def _character_name(document: StructuredDirectorDocument, character_id: str) -> 
         None,
     )
     return card.name if card is not None else "未命名角色"
+
+
+def _dialogue_location(document: StructuredDirectorDocument, dialogue_line_id: str) -> str:
+    script = document.director_script
+    if script is None:
+        return "未定位对白"
+    for scene_index, scene in enumerate(script.scenes, start=1):
+        for segment_index, segment in enumerate(scene.segments, start=1):
+            for line in segment.dialogue_lines:
+                if line.id == dialogue_line_id:
+                    speaker = (
+                        _character_name(document, line.character_id)
+                        if line.character_id is not None
+                        else line.speaker_label or "龙套"
+                    )
+                    return f"Scene{scene_index}-Segment{segment_index}-{speaker}"
+    return "未定位对白"
 
 
 def _scene_location(document: StructuredDirectorDocument, scene_id: str) -> str:

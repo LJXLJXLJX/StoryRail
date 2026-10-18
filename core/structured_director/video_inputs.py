@@ -86,6 +86,7 @@ def resolve_video_inputs(document, segment_id):
     if (binding.start_enabled and start is None) or (binding.end_enabled and end is None):
         raise ValueError("所有启用的边界输入必须先准备图片；关键帧尚未选择。")
     _, _, segment, _ = segment_context(document, segment_id)
+    dialogue = dialogue_audio_inputs(document, segment_id, require_ready=False)
     # 第 3、4 项固定为 schema v21 关键帧来源的取值，保持已有视频候选的签名不变。
     facts = [
         1,
@@ -97,13 +98,81 @@ def resolve_video_inputs(document, segment_id):
         plan.prompt_text,
         plan.active_recipe,
         plan.recipe_inputs.to_json(),
+        [
+            (
+                item[0].id,
+                item[1].selected_audio_asset_id,
+                item[1].start_seconds,
+                item[2].duration_seconds,
+            )
+            for item in dialogue
+        ],
         segment.duration_estimate_seconds,
         document.aspect_ratio.value,
     ]
     signature = hashlib.sha256(
         json.dumps(facts, ensure_ascii=False, separators=(",", ":")).encode()
     ).hexdigest()
-    return VideoInputs(start, end, VideoInputSnapshot(signature, start, end))
+    dialogue_signature = (
+        None
+        if not segment.dialogue_lines
+        else hashlib.sha256(
+            json.dumps(
+                [
+                    (
+                        line.id,
+                        line.text,
+                        item.selected_audio_asset_id,
+                        item.start_seconds,
+                        asset.duration_seconds,
+                    )
+                    for line, item, asset in dialogue
+                ],
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode()
+        ).hexdigest()
+    )
+    return VideoInputs(
+        start,
+        end,
+        VideoInputSnapshot(signature, start, end, dialogue_signature),
+    )
+
+
+def dialogue_audio_inputs(document, segment_id, *, require_ready=True):
+    """按剧本顺序返回 (DialogueLine, DialogueAudio, Asset)，必要时强制完整真实时序。"""
+    _scene, _shot, segment, _index = segment_context(document, segment_id)
+    if not segment.dialogue_lines:
+        return ()
+    if document.dialogue_plan is None:
+        raise ValueError("该 Segment 有对白，但 DialoguePlan 不存在。")
+    plan = {item.dialogue_line_id: item for item in document.dialogue_plan.items}
+    assets = {item.id: item for item in document.assets}
+    result = []
+    previous_end = 0.0
+    for line in segment.dialogue_lines:
+        item = plan.get(line.id)
+        if item is None or item.selected_audio_asset_id is None:
+            if require_ready:
+                raise ValueError("请先为该 Segment 的每句对白生成并选择 TTS 音频。")
+            continue
+        asset = assets.get(item.selected_audio_asset_id)
+        if asset is None or asset.media_type != "audio/wav" or asset.duration_seconds is None:
+            raise ValueError("对白选择的 WAV Asset 不存在或没有真实时长。")
+        if require_ready:
+            if item.start_seconds is None:
+                raise ValueError("请先按真实 TTS 时长校准该 Segment 的对白时序。")
+            if item.start_seconds + 1e-6 < previous_end:
+                raise ValueError("对白真实音频时序发生重叠，请重新校准。")
+            previous_end = item.start_seconds + asset.duration_seconds
+        result.append((line, item, asset))
+    if require_ready:
+        if len(result) != len(segment.dialogue_lines):
+            raise ValueError("请先为该 Segment 的每句对白生成并选择 TTS 音频。")
+        if previous_end > segment.duration_estimate_seconds + 1e-6:
+            raise ValueError("Segment 视频时长不能短于对白真实音频的结束时间。")
+    return tuple(result)
 
 
 def video_candidate_selectable(document, generation):
@@ -113,7 +182,7 @@ def video_candidate_selectable(document, generation):
     用户可以为已变化的输入选一条旧视频，成片会直接使用它。
     """
 
-    return (
+    base = (
         generation.phase is Phase.SUCCEEDED
         and not generation.dismissed
         and any(
@@ -121,6 +190,23 @@ def video_candidate_selectable(document, generation):
             for a in document.assets
         )
         and video_for(document, generation.target_id) is not None
+    )
+    if not base:
+        return False
+    try:
+        _scene, _shot, segment, _index = segment_context(document, generation.target_id)
+    except ValueError:
+        return False
+    if not segment.dialogue_lines:
+        return True
+    try:
+        current = resolve_video_inputs(document, generation.target_id).snapshot
+    except (ValueError, KeyError):
+        return False
+    return (
+        generation.video_input_snapshot is not None
+        and generation.video_input_snapshot.dialogue_signature is not None
+        and generation.video_input_snapshot.dialogue_signature == current.dialogue_signature
     )
 
 

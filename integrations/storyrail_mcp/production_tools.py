@@ -62,12 +62,15 @@ def operation(name, fields):
 Dialogue = object_model(
     "Dialogue",
     {
+        "id": ID | None,
         "character_id": ID | None,
         "speaker_label": Annotated[str, Field(min_length=1, max_length=60, pattern=r"\S")] | None,
+        "voice_description": Annotated[str, Field(min_length=1, max_length=500, pattern=r"\S")]
+        | None,
         "text": Text,
         "delivery": Text,
     },
-    optional=("speaker_label",),
+    optional=("id", "speaker_label", "voice_description"),
 )
 Boundary = object_model("Boundary", {"reason": str, "continuity_instruction": Text})
 segment_fields = {
@@ -390,6 +393,7 @@ class NarrationEdit(Request):
 class Generate(Request):
     kind: Literal[
         "narration",
+        "dialogue",
         "keyframe",
         "video",
         "upscale",
@@ -494,6 +498,7 @@ class Candidates(ReadRequest):
         "character_voice",
         "narrator_voice",
         "narration_audio",
+        "dialogue_audio",
         "location_master_image",
         "location_view_image",
         "keyframe_image",
@@ -514,6 +519,13 @@ class VideoRecipe(Request):
     recipe_id: Annotated[str, Field(min_length=1, max_length=128)]
 
 
+class DialogueTiming(Request):
+    scene_ids: Targets
+    segment_id: ID
+    starts: dict[ID, Annotated[float, Field(ge=0, allow_inf_nan=False)]]
+    duration_seconds: Annotated[float, Field(ge=0.2, allow_inf_nan=False)]
+
+
 MODELS = {
     "edit_script": ScriptEdit,
     "edit_narration": NarrationEdit,
@@ -532,6 +544,7 @@ MODELS = {
     "read_workflow_state": ProjectRead,
     "list_candidates": Candidates,
     "set_video_recipe": VideoRecipe,
+    "set_dialogue_timing": DialogueTiming,
 }
 DESCRIPTIONS = {
     name: description
@@ -555,6 +568,7 @@ DESCRIPTIONS = {
             "读取主流程阶段、必需下一步、可选准备和阻塞原因；推进请求只按必需下一步处理。",
             "分页读取明确目标候选，不选择。",
             "设置单Segment视频模式，不生成。",
+            "按已选 TTS WAV 的真实时长设置逐句发声起点与 Segment 视频时长。",
         ),
         strict=True,
     )
@@ -588,12 +602,14 @@ def translate(name, request):
         "read_workflow_state": "project.get_workflow_state",
         "list_candidates": "project.list_candidates",
         "set_video_recipe": "video.set_recipe",
+        "set_dialogue_timing": "dialogue.set_timing",
     }
     if name in direct:
         return direct[name], args
     if isinstance(request, Generate):
         command, target = {
             "narration": ("narration.generate", "cue_id"),
+            "dialogue": ("dialogue.generate", "dialogue_line_id"),
             "keyframe": ("keyframe.generate", "keyframe_id"),
             "video": ("video.generate", "segment_id"),
             "upscale": ("video.upscale", "segment_id"),

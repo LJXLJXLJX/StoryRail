@@ -204,7 +204,10 @@ def _generation_ports(generation: ReferenceGeneration) -> tuple[str, ...]:
     kind = generation.kind
     if kind is ReferenceGenerationKind.SEGMENT_VIDEO:
         return (Capability.VIDEO_GENERATE.value,)
-    if kind is ReferenceGenerationKind.GENERATED_AUDIO:
+    if kind in {
+        ReferenceGenerationKind.GENERATED_AUDIO,
+        ReferenceGenerationKind.DIALOGUE_AUDIO,
+    }:
         return (
             (Capability.VOICE_DESIGN.value,)
             if generation.operation is GenerationOperation.VOICE_DESIGN
@@ -571,6 +574,85 @@ class StructuredDirectorService:
             return self._store.select_narration_audio(
                 cue_id=cue_id,
                 generation_id=generation_id,
+                expected_revision=expected_revision,
+            )
+
+    async def generate_dialogue(
+        self,
+        *,
+        dialogue_line_id: str,
+        expected_revision: int,
+        _retry_of: ReferenceGeneration | None = None,
+    ) -> StructuredDirectorDocument:
+        async with self._lock:
+            document = self._store.read()
+            if document.revision != expected_revision:
+                raise ValueError("项目已被更新，请重新读取后再生成对白。")
+            return await self._media._submit_dialogue_generation(
+                document,
+                dialogue_line_id,
+                retry_of=_retry_of,
+            )
+
+    async def generate_dialogue_batch(
+        self, *, expected_revision: int
+    ) -> StructuredDirectorDocument:
+        async with self._lock:
+            document = self._store.read()
+            if document.revision != expected_revision:
+                raise ValueError("项目已被更新，请重新读取后再批量生成对白。")
+            if document.director_script is None or document.dialogue_plan is None:
+                raise ValueError("对白 TTS 计划不存在。")
+            selected = {
+                item.dialogue_line_id: item.selected_audio_asset_id
+                for item in document.dialogue_plan.items
+            }
+            current = document
+            for scene in document.director_script.scenes:
+                for segment in scene.segments:
+                    for line in segment.dialogue_lines:
+                        assert line.id is not None
+                        if selected[line.id] is not None:
+                            continue
+                        active = any(
+                            generation.kind is ReferenceGenerationKind.DIALOGUE_AUDIO
+                            and generation.target_id == line.id
+                            and generation.phase not in _TERMINAL_PHASES
+                            for generation in current.generations
+                        )
+                        if not active:
+                            current = await self._media._submit_dialogue_generation(
+                                current, line.id
+                            )
+            return current
+
+    async def select_dialogue_audio(
+        self,
+        *,
+        dialogue_line_id: str,
+        generation_id: str,
+        expected_revision: int,
+    ) -> StructuredDirectorDocument:
+        async with self._lock:
+            return self._store.select_dialogue_audio(
+                dialogue_line_id=dialogue_line_id,
+                generation_id=generation_id,
+                expected_revision=expected_revision,
+            )
+
+    async def set_dialogue_timing(
+        self,
+        *,
+        segment_id: str,
+        starts: dict[str, float],
+        duration_seconds: float,
+        expected_revision: int,
+    ) -> StructuredDirectorDocument:
+        async with self._lock:
+            return self._store.set_dialogue_timing(
+                segment_id=segment_id,
+                starts=starts,
+                duration_seconds=duration_seconds,
                 expected_revision=expected_revision,
             )
 
@@ -1885,6 +1967,9 @@ class StructuredDirectorService:
             ),
             ReferenceGenerationKind.NARRATION_AUDIO: lambda: self.generate_narration(
                 cue_id=generation.target_id, language=generation.language, **common
+            ),
+            ReferenceGenerationKind.DIALOGUE_AUDIO: lambda: self.generate_dialogue(
+                dialogue_line_id=generation.target_id, **common
             ),
             ReferenceGenerationKind.GENERATED_AUDIO: lambda: self._retry_generated_audio(
                 generation, common

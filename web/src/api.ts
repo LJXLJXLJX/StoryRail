@@ -352,6 +352,41 @@ export const structuredDirectorApi = {
       `scenes/${sceneId}/narration-cues/${cueId}/select`,
       { expected_revision: revision, generation_id: generationId },
     ),
+  generateDialogue: (projectId: string, revision: number, dialogueLineId: string) =>
+    structuredMutation(projectId, `dialogue-lines/${dialogueLineId}/generate`, {
+      expected_revision: revision,
+    }),
+  generateDialogueBatch: (projectId: string, revision: number) =>
+    structuredMutation(projectId, "dialogue/generate-batch", {
+      expected_revision: revision,
+    }),
+  selectDialogueAudio: (
+    projectId: string,
+    revision: number,
+    dialogueLineId: string,
+    generationId: string,
+  ) =>
+    structuredMutation(projectId, `dialogue-lines/${dialogueLineId}/select`, {
+      expected_revision: revision,
+      generation_id: generationId,
+    }),
+  setDialogueTiming: (
+    projectId: string,
+    revision: number,
+    segmentId: string,
+    starts: Record<string, number>,
+    durationSeconds: number,
+  ) =>
+    structuredMutation(
+      projectId,
+      `segments/${segmentId}/dialogue-timing`,
+      {
+        expected_revision: revision,
+        starts,
+        duration_seconds: durationSeconds,
+      },
+      "PUT",
+    ),
   clearNarrationAudioSelection: (
     projectId: string,
     revision: number,

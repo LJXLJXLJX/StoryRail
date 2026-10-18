@@ -1075,6 +1075,7 @@
         "kind": {
           "enum": [
             "narration",
+            "dialogue",
             "keyframe",
             "video",
             "upscale",
@@ -1585,6 +1586,7 @@
             "character_voice",
             "narrator_voice",
             "narration_audio",
+            "dialogue_audio",
             "location_master_image",
             "location_view_image",
             "keyframe_image",
@@ -1672,6 +1674,64 @@
       "type": "object"
     },
     "name": "set_video_recipe"
+  },
+  {
+    "description": "按已选 TTS WAV 的真实时长设置逐句发声起点与 Segment 视频时长。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_seconds": {
+          "minimum": 0.2,
+          "type": "number"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "segment_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "starts": {
+          "patternProperties": {
+            "^[0-9a-f]{32}$": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "scene_ids",
+        "segment_id",
+        "starts",
+        "duration_seconds"
+      ],
+      "type": "object"
+    },
+    "name": "set_dialogue_timing"
   },
   {
     "description": "读取当前项目实际图片/音频Asset，校验SHA-256，最多8 MiB；不接受路径。返回的图片直接用原生视觉能力查看，不要再用 ffmpeg 等命令行工具处理；当前模型无视觉能力时直接拒绝看图任务。",

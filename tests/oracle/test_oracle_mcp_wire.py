@@ -103,7 +103,7 @@ def test_oracle_mcp_wire_tools_translation_pagination_and_errors(journey, http_s
             async with Client(create_server(in_process_bridge)) as local:
                 local_tools = {tool.name: tool for tool in (await local.list_tools()).tools}
             assert set(wire_tools) == EXPECTED_TOOLS
-            assert len(wire_tools) == 24
+            assert len(wire_tools) == 25
             assert set(local_tools) == set(wire_tools)
             for name, tool in wire_tools.items():
                 assert tool.input_schema == local_tools[name].input_schema, name
@@ -207,16 +207,16 @@ def test_oracle_mcp_wire_tools_translation_pagination_and_errors(journey, http_s
             contract_hash = first_contract_data["hash"]
             assert isinstance(contract_hash, str) and len(contract_hash) == 64
 
-            # ORACLE：set_video_recipe → video.set_recipe，generation_mode 切换；这是中间写入。
+            # ORACLE：set_video_recipe → video.set_recipe；对白 Segment 只能保持 Ref2VA。
             current_mode = video_wire_mode(plan_item)
-            flipped = "fl2va" if current_mode == "ref2va" else "ref2va"
+            selected_mode = current_mode
             mode_args = video_wire_dict(
                 {
                     **_base(journey),
                     "idempotency_key": "O8-video-mode",
                     "scene_ids": scene_ids,
                     "segment_id": segment_id,
-                    "generation_mode": flipped,
+                    "generation_mode": selected_mode,
                 }
             )
             mode = await stdio.call_tool("set_video_recipe", mode_args)
@@ -226,7 +226,7 @@ def test_oracle_mcp_wire_tools_translation_pagination_and_errors(journey, http_s
                 for item in journey.snapshot()["video_plan"]["segments"]
                 if item["segment_id"] == segment_id
             )
-            assert video_wire_mode(flipped_item) == flipped
+            assert video_wire_mode(flipped_item) == selected_mode
 
             unchanged = await stdio.call_tool(
                 "read_professional_contract",

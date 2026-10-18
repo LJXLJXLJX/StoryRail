@@ -276,6 +276,8 @@ async def bootstrap(store, service, stage: str) -> dict[str, Any]:
     base["scene_ids"] = list(scene_ids)
     base["segment_ids"] = list(segment_ids)
     base["expected_revision"] = store.read().revision
+    await _finish_dialogue_generations(service)
+    base["expected_revision"] = store.read().revision
     if stage == "timing":
         return base
 
@@ -375,6 +377,51 @@ async def _finish_keyframe_generations(service) -> None:
             asset_id=candidates[-1].output_asset_id,
             expected_revision=service.snapshot_required().revision,
         )
+
+
+async def _finish_dialogue_generations(service) -> None:
+    """完成 benchmark 剧本全部对白的 TTS 生成、人工选择与真实时序校准。"""
+    document = service.snapshot_required()
+    if document.dialogue_plan is None or not document.dialogue_plan.items:
+        return
+    await service.generate_dialogue_batch(expected_revision=document.revision)
+    await _observe_generations(service)
+    document = service.snapshot_required()
+    for item in document.dialogue_plan.items:
+        candidates = [
+            generation
+            for generation in document.generations
+            if generation.kind.value == "dialogue_audio"
+            and generation.target_id == item.dialogue_line_id
+            and generation.phase.value == "succeeded"
+            and generation.output_asset_id is not None
+            and not generation.dismissed
+        ]
+        if not candidates:
+            raise ScenarioError(f"对白 {item.dialogue_line_id} 没有成功候选。")
+        document = await service.select_dialogue_audio(
+            dialogue_line_id=item.dialogue_line_id,
+            generation_id=candidates[-1].id,
+            expected_revision=document.revision,
+        )
+    assets = {asset.id: asset for asset in document.assets}
+    plan = {item.dialogue_line_id: item for item in document.dialogue_plan.items}
+    for scene in document.director_script.scenes:
+        for segment in scene.segments:
+            if not segment.dialogue_lines:
+                continue
+            cursor = 0.25
+            starts = {}
+            for line in segment.dialogue_lines:
+                starts[line.id] = cursor
+                selected = plan[line.id].selected_audio_asset_id
+                cursor += assets[selected].duration_seconds + 0.25
+            document = await service.set_dialogue_timing(
+                segment_id=segment.id,
+                starts=starts,
+                duration_seconds=cursor + 0.25,
+                expected_revision=document.revision,
+            )
 
 
 async def _observe_generations(service) -> None:

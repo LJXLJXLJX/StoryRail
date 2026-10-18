@@ -21,6 +21,7 @@ from core.structured_director.workflow_commands import (
     execute as _execute_workflow_command,
 )
 
+from .dialogue_commands import DialogueTimingUpdate, parse_dialogue_timing_update
 from .final_commands import (
     FinalApprovalRequest,
     FinalCandidateSelection,
@@ -138,6 +139,14 @@ class DirectorCommandStore(Protocol):
     def clear_narration_selection(
         self,
         clear: NarrationSelectionClear,
+        *,
+        expected_revision: int,
+        command_id: str,
+    ) -> tuple[StructuredDirectorDocument, CommandReceipt]: ...
+
+    def set_dialogue_timing_command(
+        self,
+        update: DialogueTimingUpdate,
         *,
         expected_revision: int,
         command_id: str,
@@ -380,6 +389,9 @@ _COMMAND_SPECS: dict[str, _CommandSpec] = {
     ),
     "narration.clear_selection": _CommandSpec(
         _parse(parse_narration_selection_clear), "clear_narration_selection"
+    ),
+    "dialogue.set_timing": _CommandSpec(
+        _parse(parse_dialogue_timing_update), "set_dialogue_timing_command"
     ),
     "video.set_prompt": _CommandSpec(_parse(parse_video_prompt_update), "set_segment_video_prompt"),
     "video.update_recipe_inputs": _CommandSpec(

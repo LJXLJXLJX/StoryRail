@@ -15,6 +15,7 @@ from ..models import (
     StructuredDirectorDocument,
 )
 from ..script_index import scene_segments
+from ..video_inputs import dialogue_audio_inputs
 from .common import _exact_arguments, _ids
 
 _TERMINAL_PHASES = {
@@ -153,6 +154,11 @@ def _dependency(
                 reasons.append("已选 Keyframe Asset 不存在。")
             if script_segment is None:
                 reasons.append("Segment 不在当前脚本中。")
+            elif script_segment.dialogue_lines:
+                try:
+                    dialogue_audio_inputs(document, target_id)
+                except (ValueError, KeyError) as exc:
+                    reasons.append(str(exc))
             if catalog is not None:
                 try:
                     _plugin, recipe = catalog.recipe_definition(
@@ -166,6 +172,21 @@ def _dependency(
                     for slot in recipe.slots:
                         if slot.role in boundary_assets:
                             bindings[slot.key] = boundary_assets[slot.role]
+                    if script_segment is not None and script_segment.dialogue_lines:
+                        audio_slot = next(
+                            (slot for slot in recipe.slots if slot.role is Role.REFERENCE_AUDIO),
+                            None,
+                        )
+                        if audio_slot is None:
+                            raise ValueError(
+                                "含对白的 Segment 必须使用支持参考音频的 Ref2VA recipe。"
+                            )
+                        dialogue = dialogue_audio_inputs(document, target_id)
+                        current_audio = tuple(bindings.get(audio_slot.key, ()))
+                        system_audio = tuple(item[2].id for item in dialogue)
+                        if len(system_audio) + len(current_audio) > audio_slot.maximum:
+                            raise ValueError("对白系统音频与手工参考音频合计超过当前 recipe 上限。")
+                        bindings[audio_slot.key] = (*system_audio, *current_audio)
                     validate_required_slots(recipe, bindings)
                     catalog.validate_recipe_inputs(
                         Capability.VIDEO_GENERATE,

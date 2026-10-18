@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from core.project_settings import ProjectAspectRatio
 
     from .asset import Asset
+    from .dialogue import DialoguePlan
     from .final import FinalApproval, FinalAssemblyPlan
     from .generation import ReferenceGeneration
     from .keyframe import KeyframePlan
@@ -65,6 +66,7 @@ class StructuredDirectorDocument:
     director_script: DirectorScript | None = None
     pending_script_edit: PendingScriptEdit | None = None
     pending_narration_edit: PendingNarrationEdit | None = None
+    dialogue_plan: DialoguePlan | None = None
     location_library: LocationLibrary = field(default_factory=LocationLibrary)
     keyframe_plan: KeyframePlan | None = None
     video_plan: VideoPlan | None = None

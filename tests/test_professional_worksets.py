@@ -72,9 +72,8 @@ def test_worksets_current_facts_schema_scope_and_no_writes(tmp_path):
         }
         if capability == "video_prompt":
             request["target_ids"] = [segment.id]
-        result = execute_project_read(
+        result = workset_read(
             document,
-            "project.get_workset",
             request,
             provider_recipes=service.provider_recipe_views(),
             provider_catalog=service._registry,

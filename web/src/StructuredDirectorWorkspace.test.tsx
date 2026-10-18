@@ -229,8 +229,10 @@ describe("StructuredDirectorWorkspace", () => {
                     action: "Comi 回答。",
                     dialogue_lines: [
                       {
+                        id: "d".repeat(32),
                         character_id: "b".repeat(32),
                         speaker_label: null,
+                        voice_description: null,
                         text: "她猜的。",
                         delivery: "平静",
                       },
@@ -1803,8 +1805,10 @@ describe("StructuredDirectorWorkspace", () => {
                     action: "小满抬头。",
                     dialogue_lines: [
                       {
+                        id: "d".repeat(32),
                         character_id: "b".repeat(32),
                         speaker_label: null,
+                        voice_description: null,
                         text: "还会来吗？",
                         delivery: "轻声",
                       },
@@ -2579,8 +2583,10 @@ describe("StructuredDirectorWorkspace", () => {
               action: "角色走到门边。",
               dialogue_lines: [
                 {
+                  id: "d".repeat(32),
                   character_id: "b".repeat(32),
                   speaker_label: null,
+                  voice_description: null,
                   text: "到了。",
                   delivery: "低声",
                 },
@@ -3135,14 +3141,18 @@ describe("StructuredDirectorWorkspace", () => {
               action: "Comi 回应，锦鲤追问。",
               dialogue_lines: [
                 {
+                  id: "d".repeat(32),
                   character_id: firstCharacterId,
                   speaker_label: null,
+                  voice_description: null,
                   text: "嗯？",
                   delivery: "懒散",
                 },
                 {
+                  id: "e".repeat(32),
                   character_id: secondCharacterId,
                   speaker_label: null,
+                  voice_description: null,
                   text: "为什么？",
                   delivery: "严肃",
                 },

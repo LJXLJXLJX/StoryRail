@@ -326,6 +326,7 @@ async def execute_application_command(service, caller, command):
         "location.generate_view": (service.generate_location_view, {"view_id"}),
         "video.upscale": (service._media.upscale_segment_video, {"segment_id"}),
         "narration.generate": (service.generate_narration, {"cue_id", "language"}),
+        "dialogue.generate": (service.generate_dialogue, {"dialogue_line_id"}),
         "reference.generate_look_sheet": (
             service.generate_look_sheet,
             {"look_id", "identity_asset_ids"},

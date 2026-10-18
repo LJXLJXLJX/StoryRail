@@ -18,6 +18,8 @@ from .asset import asset_has_project_reference as asset_has_project_reference
 from .asset import asset_project_usage_reasons as asset_project_usage_reasons
 from .asset import asset_usage_reasons as asset_usage_reasons
 from .asset import discarded_asset_deletion_closure as discarded_asset_deletion_closure
+from .dialogue import DialogueAudio as DialogueAudio
+from .dialogue import DialoguePlan as DialoguePlan
 from .document import StructuredDirectorDocument as StructuredDirectorDocument
 from .document import WorkspaceLayers as WorkspaceLayers
 from .final import FinalApproval as FinalApproval
@@ -94,6 +96,8 @@ __all__ = [
     "CharacterLook",
     "MAX_CHARACTER_LOOKS",
     "DialogueLine",
+    "DialogueAudio",
+    "DialoguePlan",
     "DirectorAuthorization",
     "DirectorCandidateSelectionPolicy",
     "DirectorCommandReceipt",

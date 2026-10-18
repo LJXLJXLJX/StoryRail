@@ -150,6 +150,7 @@ class ProviderSet:
     def as_registry(self) -> ProviderRegistry:
         return provider_registry(
             image_provider=self.image,
+            voice_provider=self.speech,
             speech_provider=self.speech,
             fl2va_provider=self.fl2va,
             ref2va_provider=self.ref2va,
@@ -1123,6 +1124,7 @@ class Journey:
         select: bool = True,
     ) -> dict:
         """为每个未选 Segment 保存 H3 提示词并逐个生成，等待成功后选择。"""
+        self.prepare_dialogue_tts()
         snap = self.snapshot()
         for segment in snap["video_plan"]["segments"]:
             if segment["selected_asset_id"] is None:
@@ -1168,6 +1170,61 @@ class Journey:
                 )
             )
         return responses[-1]
+
+    def prepare_dialogue_tts(self) -> dict:
+        """按 v34 正式流程生成、人工选择对白 TTS，并按真实 WAV 时长校准 Segment。"""
+        snap = self.snapshot()
+        plan = snap.get("dialogue_plan")
+        if not plan or not plan["items"]:
+            return snap
+        pending = [item for item in plan["items"] if item["selected_audio_asset_id"] is None]
+        if pending:
+            self._post(
+                "prepare_dialogue_tts.generate",
+                f"{self.resource}/dialogue/generate-batch",
+                {"expected_revision": self._revision()},
+            )
+            snap = self.wait_generations(kind="dialogue_audio")
+            for item in pending:
+                candidates = [
+                    generation
+                    for generation in snap["generations"]
+                    if generation["kind"] == "dialogue_audio"
+                    and generation["target_id"] == item["dialogue_line_id"]
+                    and generation["phase"] == "succeeded"
+                    and not generation["dismissed"]
+                ]
+                self._post(
+                    "prepare_dialogue_tts.select",
+                    f"{self.resource}/dialogue-lines/{item['dialogue_line_id']}/select",
+                    {
+                        "expected_revision": self._revision(),
+                        "generation_id": candidates[-1]["id"],
+                    },
+                )
+        snap = self.snapshot()
+        plan_by_id = {item["dialogue_line_id"]: item for item in snap["dialogue_plan"]["items"]}
+        assets = {item["id"]: item for item in snap["assets"]}
+        for scene in snap["director_script"]["scenes"]:
+            for segment in scene["segments"]:
+                if not segment["dialogue_lines"]:
+                    continue
+                cursor = 0.5
+                starts = {}
+                for line in segment["dialogue_lines"]:
+                    starts[line["id"]] = cursor
+                    asset_id = plan_by_id[line["id"]]["selected_audio_asset_id"]
+                    cursor += assets[asset_id]["duration_seconds"] + 0.25
+                self._put(
+                    "prepare_dialogue_tts.timing",
+                    f"{self.resource}/segments/{segment['id']}/dialogue-timing",
+                    {
+                        "expected_revision": self._revision(),
+                        "starts": starts,
+                        "duration_seconds": max(0.2, cursor + 0.25),
+                    },
+                )
+        return self.snapshot()
 
     def assemble_scene_finals(self) -> dict:
         """逐 Scene 提交 Scene 成片装配（202），等待全部 succeeded。"""

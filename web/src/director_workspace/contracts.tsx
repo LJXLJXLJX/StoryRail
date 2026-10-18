@@ -60,6 +60,14 @@ export interface WorkspaceActions {
     cueId: string,
     language: NarrationLanguage,
   ) => void;
+  onGenerateDialogue?: (dialogueLineId: string) => void;
+  onGenerateDialogueBatch?: () => void;
+  onSelectDialogueAudio?: (dialogueLineId: string, generationId: string) => void;
+  onSetDialogueTiming?: (
+    segmentId: string,
+    starts: Record<string, number>,
+    durationSeconds: number,
+  ) => void;
   onGenerateSceneAnimatic?: (sceneId: string) => void;
   onGenerateSceneFinal?: (
     sceneId: string,

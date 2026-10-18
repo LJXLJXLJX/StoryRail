@@ -59,6 +59,7 @@ class VideoInputSnapshot:
     input_signature: str
     start_asset_id: str | None
     end_asset_id: str | None
+    dialogue_signature: str | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -68,6 +69,11 @@ class VideoInputSnapshot:
             raise ValueError("视频输入签名不合法。")
         for name in ("start_asset_id", "end_asset_id"):
             _id(getattr(self, name), name, optional=True)
+        if (
+            self.dialogue_signature is not None
+            and re.fullmatch(r"[0-9a-f]{64}", self.dialogue_signature) is None
+        ):
+            raise ValueError("对白输入签名不合法。")
 
 
 def parse_video_value(cls, value):

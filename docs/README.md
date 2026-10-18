@@ -9,7 +9,7 @@
 | --- | --- |
 | [产品概览](product.md) | StoryRail 做什么、不做什么，核心概念与人工控制边界 |
 | [系统架构](architecture.md) | 由哪些进程和模块组成，依赖方向，单写与并发模型 |
-| [数据模型](data-model.md) | `project.json` v33 里有什么，每个实体的字段语义与约束（含地点库与失效规则），Asset 如何落盘 |
+| [数据模型](data-model.md) | `project.json` v34 里有什么，每个实体的字段语义与约束（含地点库、对白 TTS 与失效规则），Asset 如何落盘 |
 | [生产工作流](production-workflow.md) | 从导演方案到批准成片的每一步：谁触发、输入什么、产出什么、被什么门禁 |
 | [控制流](control-flow.md) | 一个请求如何穿过 Server、授权、幂等、Store 与 Provider；Generation、proposal、批次、恢复 |
 | [数据流](data-flow.md) | 旁白时序、地点图片、Keyframe 与 H3 的输入编译、Scene 成片与最终装配、失效传播、资产使用判定 |
@@ -42,7 +42,7 @@ flowchart LR
 | 术语 | 含义 |
 | --- | --- |
 | Core | 进程内业务核心，所有业务事实的唯一 authority |
-| Project / `project.json` | 一个视频项目及其唯一权威结构化状态（schema v33） |
+| Project / `project.json` | 一个视频项目及其唯一权威结构化状态（schema v34） |
 | Scene / Shot / Segment | 叙事块 / 创作层连续镜头 / 生产层单次视频生成切片；一个 Segment 可覆盖多个 Shot，一个 Shot 可跨多个相邻 Segment |
 | Cue | Scene 旁白，按项目所选中文或英文语言建立轨道 |
 | Location / State / View | 跨 Scene 共享的固定空间 / 同一空间的可见状态变体 / 供 Keyframe 参考的机位视图（Shot 绑定只是建议） |

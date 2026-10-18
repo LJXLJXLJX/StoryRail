@@ -21,7 +21,10 @@ from core.structured_director import (
 )
 from core.structured_director.models import CharacterLook, ReferenceGenerationKind
 from core.structured_director.prompt_worksets import keyframe_workset, video_prompt_workset
-from scripts.harness.fixtures.candidates import register_image_candidate
+from scripts.harness.fixtures.candidates import (
+    register_dialogue_audio_candidate,
+    register_image_candidate,
+)
 
 
 async def prepare(store, value):
@@ -152,7 +155,49 @@ async def prepare(store, value):
             content=base64.b64decode(value["audios"][f"audio-{index}.wav"]),
             expected_revision=doc.revision,
         )
+        current = next(item for item in doc.reference_library.characters if item.id == character.id)
+        doc = await service.update_character(
+            replace(current, voice_reference_transcript=f"音色参考文字稿 {index}"),
+            expected_revision=doc.revision,
+        )
     if kind == "ref2va":
+        starts = {}
+        cursor = 0.25
+        current_cards = {item.id: item for item in doc.reference_library.characters}
+        for line in segment.dialogue_lines:
+            card = current_cards[line.character_id]
+            assert card.voice_reference_asset_id is not None
+            generation_id = register_dialogue_audio_candidate(
+                store,
+                dialogue_line_id=line.id,
+                source_asset_id=card.voice_reference_asset_id,
+                voice_reference_asset_id=card.voice_reference_asset_id,
+                reference_transcript=card.voice_reference_transcript,
+                text=line.text,
+            )
+            doc = await service.select_dialogue_audio(
+                dialogue_line_id=line.id,
+                generation_id=generation_id,
+                expected_revision=store.read().revision,
+            )
+            asset = next(
+                item
+                for item in doc.assets
+                if item.id
+                == next(
+                    value.selected_audio_asset_id
+                    for value in doc.dialogue_plan.items
+                    if value.dialogue_line_id == line.id
+                )
+            )
+            starts[line.id] = cursor
+            cursor += asset.duration_seconds + 0.25
+        doc = await service.set_dialogue_timing(
+            segment_id=segment.id,
+            starts=starts,
+            duration_seconds=cursor + 0.25,
+            expected_revision=doc.revision,
+        )
         doc = registry.execute(
             DirectorCommand(
                 "video.set_recipe",

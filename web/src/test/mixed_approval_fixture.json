@@ -1096,6 +1096,10 @@
       }
     ]
   },
+  "dialogue_plan": {
+    "source_script_revision": 5,
+    "items": []
+  },
   "production_availability": {
     "narration": {
       "unlocked": true,

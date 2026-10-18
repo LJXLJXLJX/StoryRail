@@ -71,7 +71,12 @@ def scaled_project(tmp_path):
             view_id = locations[n].views[i % 3].id
             shots.append(replace(scene.shots[0], id=uid(70000 + n * 10 + i), view_id=view_id))
             segments.append(
-                replace(scene.segments[0], id=segment_id, shot_ids=(uid(70000 + n * 10 + i),))
+                replace(
+                    scene.segments[0],
+                    id=segment_id,
+                    shot_ids=(uid(70000 + n * 10 + i),),
+                    dialogue_lines=(),
+                )
             )
             frames.extend(
                 (
@@ -151,6 +156,7 @@ def scaled_project(tmp_path):
         director_script=replace(
             document.director_script, scenes=tuple(scenes), production_baseline_scenes=tuple(scenes)
         ),
+        dialogue_plan=replace(document.dialogue_plan, items=()),
         keyframe_plan=replace(
             document.keyframe_plan, keyframes=tuple(frames), segments=tuple(bindings)
         ),

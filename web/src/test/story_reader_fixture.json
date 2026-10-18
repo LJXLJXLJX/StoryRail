@@ -1254,6 +1254,10 @@
         "upscale_segment_video",
         "generate_scene_final",
         "edit_narration",
+        "generate_dialogue",
+        "generate_dialogue_batch",
+        "select_dialogue_audio",
+        "set_dialogue_timing",
         "generate_narration",
         "generate_narration_batch",
         "select_narration_audio",
@@ -2028,8 +2032,10 @@
                 "action": "小满抬头看向站牌。",
                 "dialogue_lines": [
                   {
+                    "id": "11111111111111111111111111111111",
                     "character_id": "3bd5dd7684db41f1a3127c856e59ff15",
                     "speaker_label": null,
+                    "voice_description": null,
                     "text": "还会来吗？",
                     "delivery": "轻声，带一点迟疑"
                   }
@@ -2094,8 +2100,10 @@
                 "action": "小满抬头看向站牌。",
                 "dialogue_lines": [
                   {
+                    "id": "22222222222222222222222222222222",
                     "character_id": "3bd5dd7684db41f1a3127c856e59ff15",
                     "speaker_label": null,
+                    "voice_description": null,
                     "text": "还会来吗？",
                     "delivery": "轻声，带一点迟疑"
                   }
@@ -2240,8 +2248,10 @@
                 "action": "小满抬头看向站牌。",
                 "dialogue_lines": [
                   {
+                    "id": "11111111111111111111111111111111",
                     "character_id": "3bd5dd7684db41f1a3127c856e59ff15",
                     "speaker_label": null,
+                    "voice_description": null,
                     "text": "还会来吗？",
                     "delivery": "轻声，带一点迟疑"
                   }
@@ -2330,8 +2340,10 @@
                 "action": "小满抬头看向站牌。",
                 "dialogue_lines": [
                   {
+                    "id": "22222222222222222222222222222222",
                     "character_id": "3bd5dd7684db41f1a3127c856e59ff15",
                     "speaker_label": null,
+                    "voice_description": null,
                     "text": "还会来吗？",
                     "delivery": "轻声，带一点迟疑"
                   }
@@ -2364,6 +2376,25 @@
                 "outdated": false
               }
             }
+          }
+        ]
+      },
+      "dialogue_plan": {
+        "source_script_revision": 7,
+        "items": [
+          {
+            "dialogue_line_id": "11111111111111111111111111111111",
+            "seed": 101,
+            "recipe_params": {},
+            "selected_audio_asset_id": null,
+            "start_seconds": null
+          },
+          {
+            "dialogue_line_id": "22222222222222222222222222222222",
+            "seed": 202,
+            "recipe_params": {},
+            "selected_audio_asset_id": null,
+            "start_seconds": null
           }
         ]
       },

@@ -368,7 +368,10 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
     )
     journey.generate_keyframe_candidates()
     journey.select_keyframe_candidates()
+    journey.step("dialogue.tts")
+    journey.prepare_dialogue_tts()
     snap = journey.snapshot()
+    dialogue_seed = snap["dialogue_plan"]["items"][0]["seed"]
     modes = {item["segment_id"]: video_wire_mode(item) for item in snap["video_plan"]["segments"]}
     assert modes == {first_segment: "ref2va", second_segment: "fl2va", narration_segment: "fl2va"}
 
@@ -390,15 +393,12 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
         {
             "scope": {"scene_ids": [drama["id"]]},
             "segment_id": first_segment,
-            "prompt_text": (
-                "<Picture 1> 小满抬头看 <Picture 3> 站牌，用 <Audio 1> 的声音说“还会来吗？”"
-            ),
+            "prompt_text": ("<Picture 1> 小满抬头看 <Picture 3> 站牌，严格同步 <Audio 1> 的对白。"),
             "bindings": {
                 "additional_images": [
                     {"asset_id": reference_image, "description": "站牌上的站名字样"}
                 ],
                 "reference_audios": [
-                    {"asset_id": reference_audio, "description": "小满的对白，原样使用"},
                     {"asset_id": reference_ambience, "description": "站台环境底噪"},
                 ],
                 "reference_videos": [
@@ -460,7 +460,7 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
         f"{journey.resource}/keyframes/{second_start}/extract-frame",
         {
             "expected_revision": journey._revision(),
-            "frame_index": 70,
+            "frame_index": 50,
             "source_video_asset_id": first_video,
         },
     )
@@ -625,6 +625,7 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
         substitutions={
             _segment_seed(first_segment): "<默认 seed：drama 第 1 个 Segment ID 前 16 位>",
             _segment_seed(narration_segment): "<默认 seed：narration Segment ID 前 16 位>",
+            dialogue_seed: "<默认 seed：DialogueLine 说话者身份稳定派生>",
         },
     )
 

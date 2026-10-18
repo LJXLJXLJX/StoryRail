@@ -175,6 +175,12 @@ _NARRATION_CUE_RESOURCE = re.compile(
     r"/scenes/(?P<scene_id>[0-9a-f]{32})/narration-cues/"
     r"(?P<cue_id>[0-9a-f]{32})(?P<action>/generate|/select|/clear-selection)?"
 )
+_DIALOGUE_LINE_RESOURCE = re.compile(
+    r"/dialogue-lines/(?P<dialogue_line_id>[0-9a-f]{32})/(?P<action>generate|select)"
+)
+_SEGMENT_DIALOGUE_TIMING_RESOURCE = re.compile(
+    r"/segments/(?P<segment_id>[0-9a-f]{32})/dialogue-timing"
+)
 _LOOK_ACTION = re.compile(
     r"/looks/(?P<look_id>[0-9a-f]{32})/(?P<verb>sheet-generations|sheet-preview|select-sheet|select-asset)"
 )
@@ -508,6 +514,75 @@ class StructuredDirectorHttpApi:
         except (RuntimeError, ValueError) as exc:
             return _error(409, "action_not_allowed", str(exc))
         return JsonResponse(202, self._serialize_snapshot(result))
+
+    async def _dialogue_line_action(
+        self, dialogue_line_id: str, action: str, body: bytes
+    ) -> JsonResponse:
+        request = _parse_request(
+            body,
+            required=(
+                {"expected_revision", "generation_id"}
+                if action == "select"
+                else {"expected_revision"}
+            ),
+        )
+        if isinstance(request, JsonResponse):
+            return request
+        try:
+            if action == "generate":
+                result = await self._service.generate_dialogue(
+                    dialogue_line_id=dialogue_line_id,
+                    expected_revision=_required_revision(request),
+                )
+                return JsonResponse(202, self._serialize_snapshot(result))
+            result = await self._service.select_dialogue_audio(
+                dialogue_line_id=dialogue_line_id,
+                generation_id=_id(request["generation_id"], "generation_id"),
+                expected_revision=_required_revision(request),
+            )
+            return JsonResponse(200, self._serialize_snapshot(result))
+        except RevisionConflictError as exc:
+            return _error(409, "revision_conflict", str(exc), recoverable=True)
+        except (RuntimeError, ValueError) as exc:
+            return _error(409, "action_not_allowed", str(exc))
+
+    async def _generate_dialogue_batch(self, body: bytes) -> JsonResponse:
+        request = _parse_request(body, required={"expected_revision"})
+        if isinstance(request, JsonResponse):
+            return request
+        try:
+            result = await self._service.generate_dialogue_batch(
+                expected_revision=_required_revision(request)
+            )
+        except RevisionConflictError as exc:
+            return _error(409, "revision_conflict", str(exc), recoverable=True)
+        except (RuntimeError, ValueError) as exc:
+            return _error(409, "action_not_allowed", str(exc))
+        return JsonResponse(202, self._serialize_snapshot(result))
+
+    async def _set_dialogue_timing(self, segment_id: str, body: bytes) -> JsonResponse:
+        request = _parse_request(body, required={"expected_revision", "starts", "duration_seconds"})
+        if isinstance(request, JsonResponse):
+            return request
+        starts_value = request["starts"]
+        if not isinstance(starts_value, dict):
+            return _error(400, "invalid_request", "starts 必须是 DialogueLine ID 到秒数的对象。")
+        try:
+            starts = {
+                _id(key, "starts key"): _number(value, f"starts.{key}")
+                for key, value in starts_value.items()
+            }
+            result = await self._service.set_dialogue_timing(
+                segment_id=segment_id,
+                starts=starts,
+                duration_seconds=_number(request["duration_seconds"], "duration_seconds"),
+                expected_revision=_required_revision(request),
+            )
+        except RevisionConflictError as exc:
+            return _error(409, "revision_conflict", str(exc), recoverable=True)
+        except (RuntimeError, ValueError) as exc:
+            return _error(409, "action_not_allowed", str(exc))
+        return JsonResponse(200, self._serialize_snapshot(result))
 
     async def _extract_asset_video_frame(self, asset_id: str, body: bytes) -> JsonResponse:
         request = _parse_request(body, required={"expected_revision", "frame_index"})
@@ -2005,6 +2080,12 @@ _ROUTES: tuple[_Route, ...] = (
         "project.write",
     ),
     _Route(
+        frozenset({"POST"}),
+        "/dialogue/generate-batch",
+        _body_route("_generate_dialogue_batch"),
+        "project.write",
+    ),
+    _Route(
         frozenset({"PUT"}),
         "/narrator",
         _body_route("_update_narrator"),
@@ -2176,6 +2257,12 @@ _ROUTES: tuple[_Route, ...] = (
         "project.write",
     ),
     _Route(
+        frozenset({"PUT"}),
+        _SEGMENT_DIALOGUE_TIMING_RESOURCE,
+        _group_route("_set_dialogue_timing", "segment_id"),
+        "project.write",
+    ),
+    _Route(
         frozenset({"POST"}),
         _AUDIO_GENERATIONS_RESOURCE,
         _body_route("_generate_asset_audio"),
@@ -2246,6 +2333,12 @@ _ROUTES: tuple[_Route, ...] = (
             "action",
             include_method=True,
         ),
+        "project.write",
+    ),
+    _Route(
+        frozenset({"POST"}),
+        _DIALOGUE_LINE_RESOURCE,
+        _group_route("_dialogue_line_action", "dialogue_line_id", "action"),
         "project.write",
     ),
     _Route(frozenset({"POST", "PUT", "DELETE"}), _CARD_RESOURCE, _card_route, "project.write"),

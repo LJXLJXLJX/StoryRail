@@ -120,8 +120,10 @@ Store 拒绝任何让某层从 true 变回 false 的写入。上游回改只清�
 | `NarratorVoice` | 单一语言的旁白音色：`voice_description` 必填（≤ 500）；`voice_reference_asset_id`（WAV）+ `voice_reference_transcript`（克隆所需完整文字稿）。中文 Cue 只用 `zh` 克隆、英文 Cue 只用 `en` 克隆，缺哪种语言的参考音色或文字稿就不能合成该语言 |
 
 对白说话者二选一：`character_id` 指向引用库角色（可以是非出镜声音，如广播、电话），或 `character_id = null` 加
-`speaker_label`（≤ 60 字称呼），表示引用库外的临时或画外说话者，没有造型和音色，视频工作集里 `on_screen = null`、
-是否入画以 Segment `action` 为准。Ref2VA 视频的音频输入只来自 Segment 视频卡上显式添加的参考音频，不会从角色卡自动推导。
+`speaker_label`（≤ 60 字称呼）与必填 `voice_description`（≤ 500），表示引用库外的临时或画外说话者；视频工作集里
+`on_screen = null`，是否入画以 Segment `action` 为准。每句 `DialogueLine` 由 Core 分配全项目唯一的稳定 `id`。
+引用库角色有参考音色时，对白 TTS 强制使用同一角色的参考 WAV 和完整文字稿克隆；没有参考音色时使用角色卡的
+`voice_description` 做 Voice Design；引用库外说话者使用该句的 `voice_description` 做 Voice Design。
 
 ## 结构化脚本
 
@@ -159,21 +161,29 @@ classDiagram
       shot_ids[1..]
       duration_estimate_seconds min 0.2
       action ≤4000
-      dialogue_lines[]
+      dialogue_lines[]: DialogueLine
       boundary_from_previous?
     }
     class SegmentBoundary {
       reason: model_constraint | continuity_anchor | control_boundary | failure_cost
       continuity_instruction
     }
+    class DialogueLine {
+      id
+      character_id? | speaker_label
+      voice_description?
+      text
+      delivery
+    }
     DirectorScript "1" *-- "1..100" Scene
     Scene "1" *-- "0..*" Shot
     Scene "1" *-- "0..*" ShotSegment
     ShotSegment "*" ..> "1..*" Shot : shot_ids
     ShotSegment "1" *-- "0..1" SegmentBoundary
+    ShotSegment "1" *-- "0..*" DialogueLine
 ```
 
-- 全项目最多 100 个 Scene、1,000 个 Shot、2,000 个 Segment；Scene、Shot、Segment、Cue 的 ID 全局唯一。
+- 全项目最多 100 个 Scene、1,000 个 Shot、2,000 个 Segment；Scene、Shot、Segment、DialogueLine、Cue 的 ID 全局唯一。
 - Shot 是创作层描述，Segment 是生产原子。`segment.shot_ids` 是本 Scene `shots` 中按顺序连续的一段，非空不重复；
   依次拼接全部 Segment 的 `shot_ids`（相邻 Segment 共享的边界 Shot 只算一次）必须恰好等于 `shots`，不跳过、不倒序、
   不重复覆盖。一个 Segment 可覆盖多个 Shot，一个 Shot 可跨多个相邻 Segment。
@@ -208,6 +218,22 @@ flowchart LR
 | `NarrationTrack.selected_audio_asset_id` | 该语言当前采用的音频 |
 
 所选语言分别合成、审核、选择。单语言取该音频的真实时长，双语言取已选音频中较长的一条，算法见 [数据流](data-flow.md#旁白时序)。
+
+### 对白 TTS 计划
+
+`DialoguePlan` 与当前 `DirectorScript.revision` 严格绑定，每条 `DialogueLine` 恰好对应一条 `DialogueAudio`：
+
+| 字段 | 说明 |
+| --- | --- |
+| `dialogue_line_id` | 当前脚本中的稳定 DialogueLine ID |
+| `seed` | TTS / Voice Design seed |
+| `recipe_params` | 当前克隆 recipe 的机制参数；Voice Design 路由不接受克隆参数 |
+| `selected_audio_asset_id` | 人类从该句当前正文和当前音色路由的成功候选中选定的 WAV |
+| `start_seconds` | 该 WAV 在 Segment 内的真实发声起点；任一句重新选音频或正文/音色变化时整段清空 |
+
+Core 按剧本顺序校验 WAV 不重叠，并要求 `Segment.duration_estimate_seconds` 不短于最后一句对白结束时间。对白音频全部选择且
+时序校准后，Core 才允许生成该 Segment 视频。脚本回改会按稳定 DialogueLine ID 重建计划：正文、说话者、音色描述或所属
+Segment 改变时清除受影响选择/时序；历史 Asset 与 Generation 保留。
 
 ## 地点库
 
@@ -329,6 +355,9 @@ Keyframe 的环境字段只在建帧时按 Segment 首帧/尾帧的默认视图�
 | `upscaled_asset_id` | 超分结果；必须以已选原视频为前提 |
 
 首尾帧由 Core 从 Keyframe 的启用与选择事实填写，不进入显式 bindings。旁白、对白和 Segment 时长仍是领域事实。
+含对白的 Segment 只能使用带参考音频槽位的 recipe；Core 把已选 DialogueAudio WAV 按剧本顺序放在手工音频绑定之前，
+它们不写入 `recipes.bindings`。H3 提交时 Core 在正文开头确定性加入“严格让角色说出参考音频的原始内容，音频完全相等。”
+及每个 Audio 标签到原始台词的逐句映射。
 新视频卡按当前绑定插件的 manifest defaults 与 `segment.has_dialogue` 谓词选择 recipe；没有安装视频插件时不指定默认模型。
 切换 recipe 保留每个 recipe 的输入与参数，清除当前视频和超分选择并失效相关装配；同值切换为 noop。
 若当前显式输入的角色或约束不受目标 recipe 支持，必须先移除这些输入。卸载插件后历史输入仍保留，可选择新的可用 recipe。

@@ -108,6 +108,15 @@ Core 分配。不支持单独移动 Shot：重排或跨 Scene 迁移 Shot 时，
 | `narration.select_candidate` | H | 采用某语言候选 |
 | `narration.clear_selection` | A | 解除某语言当前音频引用；Agent 只能在用户明确要求时调用，不授予采用其它候选的能力 |
 
+## 对白 TTS
+
+| 命令 | 调用方 | 要点 |
+| --- | --- | --- |
+| `dialogue.generate` | A | 为单条 `dialogue_line_id` 提交 WAV 候选；角色有参考音色时强制 `speech.synthesize` 克隆，否则强制 `voice.design` |
+| `dialogue.generate_batch` | H | Web 批量按钮只为当前未选且没有在途任务的 DialogueLine 逐条提交；不选择候选、不自动校准时序 |
+| 对白候选选择 | H | 只接受当前正文与当前音色路由下成功、未隐藏的 `dialogue_audio` 候选；选择任一句会清空该 Segment 全部起点并失效视频选择 |
+| `dialogue.set_timing` | A | `segment_id` + 全部 DialogueLine 的 `starts` + `duration_seconds`；按真实 WAV 时长拒绝重叠，并要求 Segment 时长不短于最后一句结束时间 |
+
 ## 地点
 
 `location.apply_operations`（A）：在 `scope = {location_ids, scene_ids, shot_ids}` 内按顺序原子执行操作。scope 内 ID 必须存在；

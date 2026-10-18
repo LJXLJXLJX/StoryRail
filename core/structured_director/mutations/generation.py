@@ -83,6 +83,17 @@ def validate_generation_target(
         }
         if generation.target_id not in cue_ids:
             raise ValueError("Generation 目标旁白 Cue 不存在。")
+    elif generation.kind is ReferenceGenerationKind.DIALOGUE_AUDIO:
+        line_ids = {
+            line.id
+            for scene in (
+                () if document.director_script is None else document.director_script.scenes
+            )
+            for segment in scene.segments
+            for line in segment.dialogue_lines
+        }
+        if generation.target_id not in line_ids:
+            raise ValueError("Generation 目标 DialogueLine 不存在。")
     else:
         _validate_media_generation_target(document, generation)
 
@@ -286,6 +297,7 @@ def validate_completion_payload(
         ReferenceGenerationKind.NARRATOR_VOICE,
         ReferenceGenerationKind.NARRATION_AUDIO,
         ReferenceGenerationKind.GENERATED_AUDIO,
+        ReferenceGenerationKind.DIALOGUE_AUDIO,
         ReferenceGenerationKind.VIDEO_AUDIO_VOICE,
         ReferenceGenerationKind.VIDEO_AUDIO_BACKGROUND,
     }:

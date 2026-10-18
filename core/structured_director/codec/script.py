@@ -31,7 +31,14 @@ from ._shared import (
 )
 from .narration import _parse_narration_cue, _serialize_narration_cue
 
-_DIALOGUE_LINE_FIELDS = {"character_id", "speaker_label", "text", "delivery"}
+_DIALOGUE_LINE_FIELDS = {
+    "id",
+    "character_id",
+    "speaker_label",
+    "voice_description",
+    "text",
+    "delivery",
+}
 
 _BOUNDARY_FIELDS = {"reason", "continuity_instruction"}
 
@@ -163,8 +170,10 @@ def _serialize_segment(segment: ShotSegment) -> dict[str, Any]:
         "action": segment.action,
         "dialogue_lines": [
             {
+                "id": line.id,
                 "character_id": line.character_id,
                 "speaker_label": line.speaker_label,
+                "voice_description": line.voice_description,
                 "text": line.text,
                 "delivery": line.delivery,
             }
@@ -350,15 +359,16 @@ def _parse_segment(value: object) -> ShotSegment:
 
 
 def _parse_dialogue_line(value: object) -> DialogueLine:
-    # speaker_label 可省略，等同 null。
-    if isinstance(value, dict) and "speaker_label" not in value:
-        value = {**value, "speaker_label": None}
     fields = _exact_object(value, _DIALOGUE_LINE_FIELDS)
     return DialogueLine(
         character_id=_optional_string(fields["character_id"], "dialogue_line.character_id"),
         text=_string(fields["text"], "dialogue_line.text"),
         delivery=_string(fields["delivery"], "dialogue_line.delivery"),
         speaker_label=_optional_string(fields["speaker_label"], "dialogue_line.speaker_label"),
+        id=_string(fields["id"], "dialogue_line.id"),
+        voice_description=_optional_string(
+            fields["voice_description"], "dialogue_line.voice_description"
+        ),
     )
 
 

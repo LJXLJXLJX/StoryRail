@@ -113,7 +113,7 @@ flowchart LR
 
 ## MCP 工具
 
-项目 scope 的 `tools/list` 发布 24 个工具（逐字节基线：`tests/fixtures/mcp_project_tools.json`）。没有任意 command、shell、文件、
+项目 scope 的 `tools/list` 发布 25 个工具（逐字节基线：`tests/fixtures/mcp_project_tools.json`）。没有任意 command、shell、文件、
 路径、URL、模型目录、候选采用或 Approval 工具。所有工具顶层与嵌套参数都拒绝未知字段，条件参数用公开 `oneOf` 表达，MCP runtime
 与 schema 共用同一参数矩阵。
 
@@ -183,7 +183,7 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
   - 视频工作集给出当前 `video_recipe`（槽位与参数声明、`editable_params`）、`context`（含 `scene.driver`，决定无对白时是否声明预留旁白通道；
     `context.shots` 按覆盖顺序列出 Segment 的每个 Shot（构图、运镜、动作、声音、可见角色名与视图建议名）；
     `segment.continues_from_previous_segment` / `continues_into_next_segment` 表示相邻 Segment 共享边界 Shot 的延续关系；
-    `segment.dialogue[]` 的 `on_screen` 为 null 表示引用库外的临时说话者）、`dialogue_timing`（对白时长软提示）、`asset_inputs`、`plugin_skills`（随插件发布的
+    `segment.dialogue[]` 的 `on_screen` 为 null 表示引用库外的临时说话者）、`dialogue_timing`（已选 WAV 的真实起点、时长与最晚结束时间；未完成 TTS 时明确标记未就绪）、`required_dialogue_prompt`（H3 必须原样置于正文开头的 Audio 标签与原台词映射）、`asset_inputs`、`plugin_skills`（随插件发布的
     Skill 与参考正文），以及 `recipe_inputs`（已保存的 `{bindings, params}`，即 `save_video_prompt.recipe_inputs` 的整体替换形状）与
     `bindable_assets`（当前 recipe 显式槽位可接受的项目 Asset：`asset_id`、`name`、`media_type`、`duration_seconds`、`slots`；
     只列导入素材、引用库与地点库已选资源、本 Scene 已选的关键帧/旁白/视频）。标签按 manifest namespace 由 Core 计算，绑定变化后重读

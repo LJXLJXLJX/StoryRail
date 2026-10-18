@@ -150,14 +150,27 @@ def _parse_segment(value: object) -> EditableShotSegmentProposal:
 
 
 def _parse_dialogue_line(value: object) -> DialogueLineProposal:
-    if isinstance(value, dict) and "speaker_label" not in value:
-        value = {**value, "speaker_label": None}
+    if isinstance(value, dict):
+        value = {
+            "id": None,
+            "speaker_label": None,
+            "voice_description": None,
+            **value,
+        }
     item = _exact_object(
         value,
-        {"character_id", "speaker_label", "text", "delivery"},
+        {
+            "id",
+            "character_id",
+            "speaker_label",
+            "voice_description",
+            "text",
+            "delivery",
+        },
         "dialogue_line",
     )
     label = item["speaker_label"]
+    voice_description = item["voice_description"]
     return DialogueLineProposal(
         character_id=(
             None
@@ -168,6 +181,12 @@ def _parse_dialogue_line(value: object) -> DialogueLineProposal:
         delivery=_plain_string(item["delivery"], "dialogue_line.delivery").strip(),
         speaker_label=(
             None if label is None else _plain_string(label, "dialogue_line.speaker_label").strip()
+        ),
+        id=_optional_id(item["id"], "dialogue_line.id"),
+        voice_description=(
+            None
+            if voice_description is None
+            else _plain_string(voice_description, "dialogue_line.voice_description").strip()
         ),
     )
 

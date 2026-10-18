@@ -30,6 +30,8 @@ class DialogueLineProposal:
     text: str
     delivery: str
     speaker_label: str | None = None
+    id: str | None = None
+    voice_description: str | None = None
 
     def __post_init__(self) -> None:
         if (self.character_id is None) == (self.speaker_label is None):
@@ -38,6 +40,11 @@ class DialogueLineProposal:
             _require_text(self.character_id, "dialogue_line.character_id", 32)
         else:
             _require_text(self.speaker_label or "", "dialogue_line.speaker_label", 60)
+            _require_text(self.voice_description or "", "dialogue_line.voice_description", 500)
+        if self.character_id is not None and self.voice_description is not None:
+            raise ValueError("引用库角色对白不能重复保存 voice_description。")
+        if self.id is not None:
+            _require_text(self.id, "dialogue_line.id", 32)
         _require_text(self.text, "dialogue_line.text", 2_000)
         if len(self.delivery) > 1_000:
             raise ValueError("dialogue_line.delivery 过长。")

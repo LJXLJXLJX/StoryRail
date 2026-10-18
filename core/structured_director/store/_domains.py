@@ -5,6 +5,7 @@
 """
 
 from .domains.asset import AssetDomain
+from .domains.dialogue import DialogueDomain
 from .domains.final import FinalDomain
 from .domains.generation import GenerationDomain
 from .domains.keyframe import KeyframeDomain
@@ -17,6 +18,7 @@ from .domains.video import VideoDomain
 
 __all__ = [
     "AssetDomain",
+    "DialogueDomain",
     "FinalDomain",
     "GenerationDomain",
     "KeyframeDomain",

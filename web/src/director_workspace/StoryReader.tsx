@@ -500,6 +500,17 @@ export function StoryReader(props: WorkspaceFlatProps) {
                   character={character}
                   timingWarnings={snapshot.dialogue_timing_warnings}
                 />
+                {segment.dialogue_lines.length ? (
+                  <DialogueProductionPanel
+                    segment={segment}
+                    snapshot={snapshot}
+                    busy={busy}
+                    character={character}
+                    onGenerate={props.onGenerateDialogue}
+                    onSelect={props.onSelectDialogueAudio}
+                    onSetTiming={props.onSetDialogueTiming}
+                  />
+                ) : null}
                 {can("edit_script") ? (
                   <SegmentStructureActions
                     key={`structure:${segment.id}`}
@@ -642,6 +653,24 @@ export function StoryReader(props: WorkspaceFlatProps) {
                   </button>
                 </>
               ) : null}
+              {snapshot.dialogue_plan?.items.length ? (
+                <>
+                  <p aria-label="对白 TTS 选择进度">
+                    {
+                      snapshot.dialogue_plan.items.filter(
+                        (item) => item.selected_audio_asset_id,
+                      ).length
+                    }
+                    /{snapshot.dialogue_plan.items.length} 句对白已选择 TTS 音频
+                  </p>
+                  <button
+                    disabled={busy || !can("generate_dialogue_batch")}
+                    onClick={props.onGenerateDialogueBatch}
+                  >
+                    生成所有缺失对白
+                  </button>
+                </>
+              ) : null}
               {can("unlock_visual_production") ? (
                 <button
                   disabled={busy}
@@ -710,6 +739,117 @@ export function StoryReader(props: WorkspaceFlatProps) {
     </DraftProtection.Provider>
   );
 }
+function DialogueProductionPanel({
+  segment,
+  snapshot,
+  busy,
+  character,
+  onGenerate,
+  onSelect,
+  onSetTiming,
+}: {
+  segment: ShotSegment;
+  snapshot: StructuredDirectorSnapshot;
+  busy: boolean;
+  character: (id: string) => string;
+  onGenerate?: (dialogueLineId: string) => void;
+  onSelect?: (dialogueLineId: string, generationId: string) => void;
+  onSetTiming?: (
+    segmentId: string,
+    starts: Record<string, number>,
+    durationSeconds: number,
+  ) => void;
+}) {
+  const plan = new Map(
+    (snapshot.dialogue_plan?.items ?? []).map((item) => [
+      item.dialogue_line_id,
+      item,
+    ]),
+  );
+  const assets = new Map(snapshot.assets.map((asset) => [asset.id, asset]));
+  const selected = segment.dialogue_lines.map((line) => {
+    const item = plan.get(line.id);
+    const asset = item?.selected_audio_asset_id
+      ? assets.get(item.selected_audio_asset_id)
+      : undefined;
+    return { line, item, asset };
+  });
+  const ready = selected.every(
+    ({ item, asset }) => item?.selected_audio_asset_id && asset?.duration_seconds,
+  );
+  const autoTiming = () => {
+    let cursor = 0.5;
+    const starts: Record<string, number> = {};
+    for (const { line, asset } of selected) {
+      starts[line.id] = cursor;
+      cursor += (asset?.duration_seconds ?? 0) + 0.25;
+    }
+    onSetTiming?.(segment.id, starts, Math.max(0.2, cursor + 0.25));
+  };
+  return (
+    <section aria-label="对白 TTS" className="story-segment-text">
+      <h3>对白 TTS</h3>
+      <p>视频只使用这里选定的 WAV；有角色参考音色时强制克隆，否则使用音色设计。</p>
+      {selected.map(({ line, item, asset }) => {
+        const card = snapshot.reference_library.characters.find(
+          (value) => value.id === line.character_id,
+        );
+        const route = card?.voice_reference_asset_id ? "音色克隆" : "音色设计";
+        const candidates = snapshot.generations.filter(
+          (generation) =>
+            generation.kind === "dialogue_audio" &&
+            generation.target_id === line.id &&
+            generation.allowed_actions.includes("select_dialogue_audio"),
+        );
+        const active = snapshot.generations.some(
+          (generation) =>
+            generation.kind === "dialogue_audio" &&
+            generation.target_id === line.id &&
+            ["submitting", "submission_uncertain", "queued", "running"].includes(
+              generation.phase,
+            ),
+        );
+        const speaker =
+          line.character_id === null ? line.speaker_label : character(line.character_id);
+        const timing =
+          item?.start_seconds === null || item?.start_seconds === undefined
+            ? " · 待校准起点"
+            : " · " + item.start_seconds.toFixed(3) + "s 开始";
+        return (
+          <div key={line.id}>
+            <strong>{speaker} · {route}</strong>
+            <p>{line.text}</p>
+            <p>
+              {asset
+                ? "已选 WAV · " + asset.duration_seconds?.toFixed(3) + " 秒" + timing
+                : "尚未选择对白音频"}
+            </p>
+            <button
+              disabled={busy || active || !onGenerate}
+              onClick={() => onGenerate?.(line.id)}
+            >
+              {active ? "生成中…" : "生成对白 TTS"}
+            </button>
+            {candidates.map((generation) => (
+              <button
+                key={generation.id}
+                disabled={busy || !onSelect}
+                onClick={() => onSelect?.(line.id, generation.id)}
+              >
+                选择候选 {generation.id.slice(0, 6)}
+              </button>
+            ))}
+          </div>
+        );
+      })}
+      <button disabled={busy || !ready || !onSetTiming} onClick={autoTiming}>
+        按真实音频自动校准时长
+      </button>
+      <p>自动校准会留基础停顿；Director Agent 可按镜头和情绪设置更大的余量。</p>
+    </section>
+  );
+}
+
 function SegmentText({
   segment,
   character,

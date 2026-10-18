@@ -270,7 +270,13 @@ Scene 与未绑定视图的 Shot。
 
 ## 6. 解锁视觉生产与 Keyframe
 
-**解锁**（`unlock_visual_production`）要求生产基线 = 当前脚本 revision。它一次性：
+**对白 TTS**：Drama Scene 的每句对白在视频生产前必须先生成 WAV 并由人选择。引用库角色已有参考音色时强制克隆，缺少
+完整参考文字稿时拒绝；没有参考音色的角色以及引用库外临时说话者使用 Voice Design。选择完成后按真实 WAV 时长设置每句
+`start_seconds`，Core 校验不重叠，并把 Segment 时长校准到不短于最后一句结束时间；镜头设计与情绪需要的余量可继续加在其后。
+任一句正文、说话者、音色路由或已选音频变化都会清除该 Segment 的时序与下游视频选择。
+
+**解锁**（`unlock_visual_production`）要求生产基线 = 当前脚本 revision。主流程会先要求含对白项目完成上述 TTS 选择与真实时序；
+无论视觉计划何时建立，视频生成入口都会重新硬校验对白已就绪。解锁一次性：
 
 1. 为每个 Segment 建立独立的首帧与尾帧 Keyframe（尾帧以首帧为前置），两个槽位默认都不启用；环境字段按 Segment 首个/末个覆盖 Shot 的视图写成显式值；
 2. 为每个 Segment 建立视频卡（无对白默认 FL2VA，有对白默认 Ref2VA）；
@@ -340,7 +346,7 @@ Segment 当前生效视频（有超分取超分）的一帧。产物只作为该
 
 - FL2VA 至少有一个**启用且已选择**的首帧或尾帧；Ref2VA 不要求首尾帧或图片，但所有媒体槽位合计至少有一个输入资产；
 - 已保存的非空 H3 提示词（空提示词必须先填写或显式让 Agent 用 `h3-prompt-writing` Skill 优化）；
-- Ref2VA 已添加的参考音频/视频/其他图片都合法（存在、类型正确、视频 2–15 秒、描述非空）；
+- 含对白 Segment 的全部 TTS WAV 已选择并完成真实时序，当前 recipe 支持参考音频；Ref2VA 的手工参考音频/视频/其他图片也都合法（存在、类型正确、视频 2–15 秒、描述非空）；
 - 实际使用的 Keyframe 仍然有效、时长在预算内。
 
 **视频 recipe**：
@@ -348,10 +354,9 @@ Segment 当前生效视频（有超分取超分）的一帧。产物只作为该
 | 模式 | 默认场景 | 输入 |
 | --- | --- | --- |
 | `minimax_h3.fl2va` | 无对白 | 启用且已选的首/尾帧 + H3 正文 |
-| `minimax_h3.ref2va` | 有对白 | 可选首/尾帧 + 可选 ≤4 张其他图片（`additional_images`）+ 可选 ≤8 条参考音频 + 可选 ≤3 条参考视频 + H3 正文；五类媒体槽位至少有一项 |
+| `minimax_h3.ref2va` | 有对白 | 可选首/尾帧 + 可选 ≤4 张其他图片（`additional_images`）+ **Core 自动注入的已选对白 WAV** + 手工参考音频（两者合计 ≤8）+ 可选 ≤3 条参考视频 + H3 正文；五类媒体槽位至少有一项 |
 
-默认规则、可用槽位和参数由当前绑定插件的 manifest 声明。视频卡按 recipe 渲染，切换前由 Core 校验；每个 recipe 的机制参数与显式输入独立保存。H3 用户可手动切换两个 recipe；切回 FL2VA 前必须先清空全部其他图片、音频与视频引用。参考音频的用途完全由用户描述决定
-（音色参考、原样对白、音乐、音效……），Core 不从角色卡推导。参考视频只作视觉参考（运镜、节奏、续写），其音轨不会自动成为音频参考。
+默认规则、可用槽位和参数由当前绑定插件的 manifest 声明。视频卡按 recipe 渲染，切换前由 Core 校验；每个 recipe 的机制参数与显式输入独立保存。含对白 Segment 不能切换到不支持参考音频的 FL2VA；无对白 Segment 切回 FL2VA 前必须先清空全部其他图片、音频与视频引用。手工参考音频的用途由用户描述决定；对白 WAV 则由 DialoguePlan 自动注入，不从角色卡参考音频直接推导。参考视频只作视觉参考（运镜、节奏、续写），其音轨不会自动成为音频参考。
 
 **多 Shot Segment**：一个 Segment 覆盖多个 Shot 时，`video_prompt` 工作集的 `context.shots` 按覆盖顺序给出每个 Shot 的
 构图、运镜、动作、声音、可见角色名与视图建议名；`segment.continues_from_previous_segment` /
@@ -367,7 +372,8 @@ Segment 当前生效视频（有超分取超分）的一帧。产物只作为该
 候选选择与清除选择仍只属于人类。
 
 **H3 提示词**由用户手工编辑，或由 Agent 显式使用 `h3-prompt-writing` Skill 优化。用户指定语言时必须服从；未指定时不额外约束
-自然语言正文，但官方字段、引用标签与时间语法保持 Provider 格式。
+自然语言正文，但官方字段、引用标签与时间语法保持 Provider 格式。含对白时，工作集给出 `required_dialogue_prompt`；Agent 必须
+原样置于正文开头。即使用户正文遗漏，Core 提交 H3 时也会确定性补入同一句强约束和逐条 Audio→原台词映射。
 
 **视频生成是纯程序动作**：Core 校验输入后原样提交已保存的正文，不调用 Agent、不重写正文。H3 预设（基础模型与步数）、分辨率、
 SageAttention、SelfLift 读自全局 Provider 设置（见 [媒体 Provider 与部署](providers-and-deployment.md#minimax-h3-设置)），并记录在
@@ -378,10 +384,9 @@ seed 可指定；留空时按该目标历史实际 seed 递增。
 超过可能（但不一定）OOM。视频工作集读取 H3 hints，返回 `soft_duration_limit_seconds = 15` 与 `exceeds_soft_duration_limit`，视频卡在超过时显示提示；
 Agent 在生成前对超过的 Segment 主动提醒风险并建议拆分点，用户同意后用 `split_segment` 拆分，坚持不拆则照常提交。
 
-**对白时长**：Core 按字数估算台词念完至少需要的秒数（中文每秒 4.5 字、英文每秒 2.5 词，每句加 0.5 秒停顿，整段再加
-0.5 秒），超过 Segment `duration_estimate_seconds` 时给出软提示：快照 `dialogue_timing_warnings`（Web 在脚本阅读与编辑处显示）、
-`read_story` Segment 层与视频工作集的 `dialogue_timing`（`estimated_seconds`、`exceeds_duration`）。Agent 据此建议加长或拆分，
-不删减、改写或加速台词；提示不阻止任何写入或生成。
+**对白时长**：TTS 生成前，Core 仍按字数给出只用于规划的软估算；它不再作为视频生成依据。选择 WAV 后，视频工作集的
+`dialogue_timing` 给出真实起点、单句时长与最晚结束时间，Segment 时长必须大于等于该结束时间。Agent 可根据镜头设计和情绪
+增加尾部余量；不得删减、改写或加速台词来挤进原时长。
 
 **候选与超分**：
 

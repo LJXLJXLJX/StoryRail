@@ -25,6 +25,9 @@ _DIALOGUE_CHARACTER_SCHEMA = _ID_SCHEMA
 _DIALOGUE_SPEAKER_SCHEMA = {
     "anyOf": [{"type": "string", "minLength": 1, "maxLength": 60}, {"type": "null"}]
 }
+_DIALOGUE_VOICE_SCHEMA = {
+    "anyOf": [{"type": "string", "minLength": 1, "maxLength": 500}, {"type": "null"}]
+}
 _BOUNDARY_REASONS = [
     "model_constraint",
     "continuity_anchor",
@@ -54,6 +57,8 @@ def _content_overrides(prefix: str) -> dict[str, dict[str, object]]:
         f"{segment}.action": {"minLength": 1, "maxLength": 4_000},
         f"{segment}.dialogue_lines[].character_id": _DIALOGUE_CHARACTER_SCHEMA,
         f"{segment}.dialogue_lines[].speaker_label": _DIALOGUE_SPEAKER_SCHEMA,
+        f"{segment}.dialogue_lines[].id": _ID_SCHEMA,
+        f"{segment}.dialogue_lines[].voice_description": _DIALOGUE_VOICE_SCHEMA,
         f"{segment}.dialogue_lines[].text": {"minLength": 1, "maxLength": 2_000},
         f"{segment}.dialogue_lines[].delivery": {"maxLength": 1_000},
         f"{segment}.boundary_from_previous.reason": {"enum": _BOUNDARY_REASONS},
@@ -112,6 +117,8 @@ _REVISION_OVERRIDES.update(
         "operations[].segment.action": {"minLength": 1, "maxLength": 4_000},
         "operations[].segment.dialogue_lines[].character_id": _DIALOGUE_CHARACTER_SCHEMA,
         "operations[].segment.dialogue_lines[].speaker_label": _DIALOGUE_SPEAKER_SCHEMA,
+        "operations[].segment.dialogue_lines[].id": _ID_SCHEMA,
+        "operations[].segment.dialogue_lines[].voice_description": _DIALOGUE_VOICE_SCHEMA,
         "operations[].segment.dialogue_lines[].text": {"minLength": 1, "maxLength": 2_000},
         "operations[].segment.dialogue_lines[].delivery": {"maxLength": 1_000},
         "operations[].segment.boundary_from_previous.reason": {"enum": _BOUNDARY_REASONS},

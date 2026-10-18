@@ -84,6 +84,61 @@ def wav_bytes(*, duration_seconds: float = 1.0, sample_rate: int = 8_000) -> byt
     return output.getvalue()
 
 
+async def prepare_dialogue_tts(store, service, document):
+    """Unit fixture：为全部对白登记 WAV、选择候选并按真实时长顺序校准。"""
+    from scripts.harness.fixtures.candidates import register_dialogue_audio_candidate
+
+    if document.dialogue_plan is None or not document.dialogue_plan.items:
+        return document
+    cards = {item.id: item for item in document.reference_library.characters}
+    for scene in document.director_script.scenes:
+        for segment in scene.segments:
+            starts = {}
+            cursor = 0.25
+            for index, line in enumerate(segment.dialogue_lines):
+                item = next(
+                    value
+                    for value in store.read().dialogue_plan.items
+                    if value.dialogue_line_id == line.id
+                )
+                if item.selected_audio_asset_id is None:
+                    document = await service.import_media_asset(
+                        media_type="audio/wav",
+                        content=wav_bytes(duration_seconds=1.0) + bytes([index]),
+                        expected_revision=store.read().revision,
+                    )
+                    card = None if line.character_id is None else cards[line.character_id]
+                    generation_id = register_dialogue_audio_candidate(
+                        store,
+                        dialogue_line_id=line.id,
+                        source_asset_id=document.assets[-1].id,
+                        voice_reference_asset_id=(
+                            None if card is None else card.voice_reference_asset_id
+                        ),
+                        reference_transcript=(
+                            (line.voice_description if card is None else card.voice_description)
+                            if card is None or card.voice_reference_asset_id is None
+                            else card.voice_reference_transcript
+                        ),
+                        text=line.text,
+                    )
+                    document = await service.select_dialogue_audio(
+                        dialogue_line_id=line.id,
+                        generation_id=generation_id,
+                        expected_revision=store.read().revision,
+                    )
+                starts[line.id] = cursor
+                cursor += 1.25
+            if starts:
+                document = await service.set_dialogue_timing(
+                    segment_id=segment.id,
+                    starts=starts,
+                    duration_seconds=cursor + 0.25,
+                    expected_revision=store.read().revision,
+                )
+    return document
+
+
 class RecordingProposer:
     def __init__(self, *, fail: bool = False) -> None:
         self.fail = fail

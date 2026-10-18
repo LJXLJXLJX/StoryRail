@@ -9,9 +9,7 @@ from structured_director_fixtures import RecordingProvider
 from test_external_reference_proposals import PROPOSAL, command, empty_project
 from test_external_script_proposals import agent, confirm_references, http, mixed_proposal
 from video_recipes import (
-    SegmentVideoGenerationMode,
     SegmentVideoVideoReference,
-    recipe_id,
     replace_video,
     save_video_inputs,
 )
@@ -160,11 +158,13 @@ def test_voice_only_identity_roundtrip_dialogue_and_visibility(tmp_path):
 
 
 def test_confirmed_timing_advances_to_unlock_not_repeated_review(tmp_path):
+    from structured_director_fixtures import prepare_dialogue_tts
     from test_director_commands import _location_project
 
     from core.structured_director.reads.workflow_state import workflow_state
 
-    store, _, document, _ = asyncio.run(_location_project(str(tmp_path)))
+    store, service, document, _ = asyncio.run(_location_project(str(tmp_path)))
+    document = asyncio.run(prepare_dialogue_tts(store, service, document))
     assert (
         document.director_script.production_baseline_revision == document.director_script.revision
     )
@@ -329,6 +329,7 @@ def test_visual_workflow_uses_current_inputs_generations_and_reviewable_candidat
         RecordingProvider,
         RecordingScriptProposer,
         SingleKeyframePlanner,
+        prepare_dialogue_tts,
     )
     from test_director_commands import _visual_project
 
@@ -342,6 +343,7 @@ def test_visual_workflow_uses_current_inputs_generations_and_reviewable_candidat
             script_proposer=RecordingScriptProposer(),
             keyframe_planner=SingleKeyframePlanner(),
         )
+        document = await prepare_dialogue_tts(store, planner_service, document)
         document = await planner_service.prepare_keyframes(expected_revision=document.revision)
         image = RecordingProvider(media_type="image/png", content=b"\x89PNG\r\n\x1a\nframe")
         video = RecordingProvider(
@@ -402,11 +404,6 @@ def test_visual_workflow_uses_current_inputs_generations_and_reviewable_candidat
             for item in ref2va_ready["required_next_actions"]
             if item["action"] == "video.generate"
         )["target_ids"] == [segment_id]
-        document = await core.save_segment_video_recipe(
-            segment_id=segment_id,
-            recipe_id=recipe_id(SegmentVideoGenerationMode.FL2VA),
-            expected_revision=document.revision,
-        )
         ready = workflow_state(document)
         assert next(
             item for item in ready["required_next_actions"] if item["action"] == "video.generate"
@@ -526,6 +523,7 @@ def test_input_changed_segment_video_candidate_stays_selectable_with_soft_hint(t
         RecordingProvider,
         RecordingScriptProposer,
         SingleKeyframePlanner,
+        prepare_dialogue_tts,
     )
     from test_director_commands import _visual_project
 
@@ -539,6 +537,7 @@ def test_input_changed_segment_video_candidate_stays_selectable_with_soft_hint(t
             script_proposer=RecordingScriptProposer(),
             keyframe_planner=SingleKeyframePlanner(),
         )
+        document = await prepare_dialogue_tts(store, planner_service, document)
         document = await planner_service.prepare_keyframes(expected_revision=document.revision)
         image = RecordingProvider(media_type="image/png", content=b"\x89PNG\r\n\x1a\nframe")
         video = RecordingProvider(
@@ -571,11 +570,6 @@ def test_input_changed_segment_video_candidate_stays_selectable_with_soft_hint(t
             core,
             segment_id=segment_id,
             prompt_text="固定机位，人物轻声询问。",
-            expected_revision=document.revision,
-        )
-        document = await core.save_segment_video_recipe(
-            segment_id=segment_id,
-            recipe_id=recipe_id(SegmentVideoGenerationMode.FL2VA),
             expected_revision=document.revision,
         )
         document = await core._media.generate_segment_video(
@@ -626,6 +620,7 @@ def test_video_reference_gate_checks_mp4_duration_window(tmp_path):
         RecordingProvider,
         RecordingScriptProposer,
         SingleKeyframePlanner,
+        prepare_dialogue_tts,
     )
     from test_director_commands import _visual_project
 
@@ -648,6 +643,7 @@ def test_video_reference_gate_checks_mp4_duration_window(tmp_path):
             script_proposer=RecordingScriptProposer(),
             keyframe_planner=SingleKeyframePlanner(),
         )
+        document = await prepare_dialogue_tts(store, planner_service, document)
         document = await planner_service.prepare_keyframes(expected_revision=document.revision)
         image = RecordingProvider(media_type="image/png", content=b"\x89PNG\r\n\x1a\nframe")
         core = make_service(
@@ -742,6 +738,7 @@ def test_video_reference_gate_checks_mp4_duration_window(tmp_path):
 def test_location_recommendations_follow_bindings_and_stay_optional(tmp_path):
     """地点推荐动作的出现/消失条件；永不进 required，推荐工具真实存在。"""
 
+    from structured_director_fixtures import prepare_dialogue_tts
     from test_director_commands import _location_project
     from test_external_production import assert_workflow_tools_exist
 
@@ -749,6 +746,7 @@ def test_location_recommendations_follow_bindings_and_stay_optional(tmp_path):
     from core.structured_director.reads.workflow_state import workflow_state
 
     store, service, document, _ = asyncio.run(_location_project(str(tmp_path)))
+    document = asyncio.run(prepare_dialogue_tts(store, service, document))
     script = document.director_script
     first, second = script.scenes
     # 解开一个 Scene 的地点绑定与一个 Shot 的视图绑定。
@@ -841,7 +839,7 @@ def test_location_recommendations_wait_for_production_baseline(tmp_path):
 def test_location_recommendations_cover_generation_and_disappear_when_complete(tmp_path):
     """绑定齐全但图片未选齐时推荐成套生成；主图与视图全部选定后推荐消失。"""
 
-    from structured_director_fixtures import add_image_asset
+    from structured_director_fixtures import add_image_asset, prepare_dialogue_tts
     from test_director_commands import _location_project
     from test_external_production import assert_workflow_tools_exist
 
@@ -850,7 +848,8 @@ def test_location_recommendations_cover_generation_and_disappear_when_complete(t
     from core.structured_director.reads.workflow_state import workflow_state
     from scripts.harness.fixtures.candidates import register_image_candidate
 
-    store, _, document, _ = asyncio.run(_location_project(str(tmp_path)))
+    store, service, document, _ = asyncio.run(_location_project(str(tmp_path)))
+    document = asyncio.run(prepare_dialogue_tts(store, service, document))
     state = workflow_state(store.read())
     assert state["required_next_actions"][0]["action"] == "visual_production.unlock"
     recommended = state["recommended_next_actions"]

@@ -197,8 +197,10 @@ describe("StoryRail App", () => {
               action: "人物回答",
               dialogue_lines: [
                 {
+                  id: "d".repeat(32),
                   character_id: "b".repeat(32),
                   speaker_label: null,
+                  voice_description: null,
                   text: "原对白",
                   delivery: "平静",
                 },
@@ -1102,6 +1104,7 @@ function snapshot(status: string, allowedActions: string[]) {
     generations: [],
     reference_library: { characters: [], narrator: null },
     director_script: null,
+    dialogue_plan: null,
     production_availability: {"narration": {"unlocked": false, "reason": "请到项目概览完成前置步骤。", "next_location": "project", "action": null}, "keyframes": {"unlocked": false, "reason": "请到项目概览完成前置步骤。", "next_location": "project", "action": null}, "videos": {"unlocked": false, "reason": "请到项目概览完成前置步骤。", "next_location": "project", "action": null}, "final": {"unlocked": false, "reason": "请到项目概览完成前置步骤。", "next_location": "project", "action": null}},
     location_library: {locations: [], allowed_actions: ["create_location"]},
     keyframe_plan: null,

@@ -33,6 +33,7 @@ from core.structured_director.production_context import _production_state_json
 from core.structured_director.reads.semantic_projection import build_semantic_projection
 from core.structured_director.reads.snapshot_view import serialize_snapshot
 from core.structured_director.script_index import shot_segments
+from scripts.harness.fixtures.candidates import register_dialogue_audio_candidate
 
 
 def _mp4_bytes(*, duration_seconds: float) -> bytes:
@@ -129,6 +130,38 @@ async def fixture(tmp_path):
             content=wav_bytes(duration_seconds=2) + bytes([index]),
             expected_revision=doc.revision,
         )
+        current = next(item for item in doc.reference_library.characters if item.id == character.id)
+        doc = await service.update_character(
+            replace(current, voice_reference_transcript=f"{character.name} 的音色参考文字稿。"),
+            expected_revision=doc.revision,
+        )
+    cards = {item.id: item for item in doc.reference_library.characters}
+    segment = doc.director_script.scenes[0].segments[0]
+    starts = {}
+    cursor = 0.25
+    for index, line in enumerate(segment.dialogue_lines):
+        card = cards[line.character_id]
+        doc = await service.import_media_asset(
+            media_type="audio/wav",
+            content=wav_bytes(duration_seconds=1.0) + bytes([100 + index]),
+            expected_revision=doc.revision,
+        )
+        dialogue_asset_id = doc.assets[-1].id
+        generation_id = register_dialogue_audio_candidate(
+            store,
+            dialogue_line_id=line.id,
+            source_asset_id=dialogue_asset_id,
+            voice_reference_asset_id=card.voice_reference_asset_id,
+            reference_transcript=card.voice_reference_transcript,
+            text=line.text,
+        )
+        doc = await service.select_dialogue_audio(
+            dialogue_line_id=line.id,
+            generation_id=generation_id,
+            expected_revision=store.read().revision,
+        )
+        starts[line.id] = cursor
+        cursor += 1.25
     scene = doc.director_script.scenes[0]
     doc = registry.execute(
         DirectorCommand(
@@ -193,6 +226,13 @@ async def fixture(tmp_path):
             doc = await service.select_keyframe(
                 keyframe_id=frame.id, asset_id=asset_id, expected_revision=doc.revision
             )
+    # 任何会失效视频输入的准备动作都完成后，再建立最终对白时序。
+    doc = await service.set_dialogue_timing(
+        segment_id=segment.id,
+        starts=starts,
+        duration_seconds=cursor + 0.25,
+        expected_revision=doc.revision,
+    )
     return store, service, doc, aux
 
 
@@ -217,7 +257,7 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
             audio_references=video_slot(document.video_plan.segments[0], "reference_audios"),
         )
         workset = video_prompt_workset(store.read(), segment.id)
-        assert not store.read().generations
+        assert all(item.kind.value == "dialogue_audio" for item in store.read().generations)
         # 单 Shot Segment：工作集只列一个 Shot，且不延续相邻 Segment。
         single = workset["context"]
         assert [
@@ -244,10 +284,9 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
         assert request.last_frame.content == assets["<Picture 2>"]
         assert request.additional_frames[0].content == assets["<Picture 3>"]
         assert [audio.content for audio in request.reference_audios] == [
-            assets["<Audio 1>"],
-            assets["<Audio 2>"],
+            assets[f"<Audio {index}>"] for index in range(1, 6)
         ]
-        assert len(store.read().generations[-1].input_asset_ids) == 5
+        assert len(store.read().generations[-1].input_asset_ids) == 8
         picture = workset["context"]["actual_provider_inputs"]["pictures"][2]
         assert picture == {
             "label": "<Picture 3>",
@@ -256,23 +295,11 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
             "description": "保持图中红色行李箱的外观和材质一致。",
             "time_seconds": None,
         }
-        assert workset["context"]["actual_provider_inputs"]["audios"] == [
-            {
-                "label": "<Audio 1>",
-                "provider_input": "reference_audio_1",
-                "role": "described_reference",
-                "description": video_slot(document.video_plan.segments[0], "reference_audios")[
-                    0
-                ].description,
-            },
-            {
-                "label": "<Audio 2>",
-                "provider_input": "reference_audio_2",
-                "role": "described_reference",
-                "description": video_slot(document.video_plan.segments[0], "reference_audios")[
-                    1
-                ].description,
-            },
+        audios = workset["context"]["actual_provider_inputs"]["audios"]
+        assert [item["label"] for item in audios] == [f"<Audio {index}>" for index in range(1, 6)]
+        assert [item["description"] for item in audios[-2:]] == [
+            item.description
+            for item in video_slot(document.video_plan.segments[0], "reference_audios")
         ]
         import pytest
 
@@ -280,7 +307,9 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
         replace(generation, input_asset_ids=tuple(f"{i:032x}" for i in range(17)))
         with pytest.raises(ValueError, match="17"):
             replace(generation, input_asset_ids=tuple(f"{i:032x}" for i in range(18)))
-        assert request.prompt == "中文正文；无字幕、无水印。"
+        assert request.prompt.startswith("严格让角色说出参考音频的原始内容，音频完全相等")
+        assert "<Audio 1> 对应原始对白" in request.prompt
+        assert request.prompt.endswith("中文正文；无字幕、无水印。")
 
     asyncio.run(run())
 
@@ -312,7 +341,7 @@ def test_ref2va_submits_reference_videos_with_lineage(tmp_path):
                 audio_references=video_slot(document.video_plan.segments[0], "reference_audios"),
                 video_references=(SegmentVideoVideoReference(rejected_video.id, "超出时长上限。"),),
             )
-        assert not store.read().generations
+        assert all(item.kind.value == "dialogue_audio" for item in store.read().generations)
 
         document = await service.import_media_asset(
             media_type="video/mp4",
@@ -340,7 +369,7 @@ def test_ref2va_submits_reference_videos_with_lineage(tmp_path):
         assert [item.duration_seconds for item in request.reference_videos] == [3.0]
         generation = generated.generations[-1]
         assert reference_video.id in generation.input_asset_ids
-        assert len(generation.input_asset_ids) == 5
+        assert len(generation.input_asset_ids) == 8
 
     asyncio.run(run())
 
@@ -403,6 +432,9 @@ def test_video_labels_number_independently_and_map_to_provider_order(tmp_path):
             "<Picture 3>",
             "<Audio 1>",
             "<Audio 2>",
+            "<Audio 3>",
+            "<Audio 4>",
+            "<Audio 5>",
             "<Video 1>",
             "<Video 2>",
         ]
@@ -412,7 +444,7 @@ def test_video_labels_number_independently_and_map_to_provider_order(tmp_path):
         labeled = {item["label"]: item["asset_id"] for item in workset["asset_inputs"]}
         assert labeled["<Video 1>"] == video_ids[1]
         assert labeled["<Video 2>"] == video_ids[0]
-        assert labeled["<Audio 1>"] == audio_references[0].asset_id
+        assert labeled["<Audio 4>"] == audio_references[0].asset_id
 
         # 引用的参考视频 Asset 缺失时，项目文档本身即不成立，工作集无从构建。
         with pytest.raises(ValueError, match="视频参考输入必须引用本项目 Asset"):
@@ -479,7 +511,7 @@ def test_h3_context_rejects_invalid_video_reference_descriptions(tmp_path):
     asyncio.run(run())
 
 
-def test_ref2va_submits_additional_images_without_reference_audio(tmp_path):
+def test_ref2va_submits_additional_images_without_manual_reference_audio(tmp_path):
     from structured_director_fixtures import RecordingProvider
 
     async def run():
@@ -498,11 +530,14 @@ def test_ref2va_submits_additional_images_without_reference_audio(tmp_path):
             audio_references=(),
         )
         workset = video_prompt_workset(document, segment.id)
-        assert workset["context"]["actual_provider_inputs"]["audios"] == []
+        assert len(workset["context"]["actual_provider_inputs"]["audios"]) == 3
         assert [item["label"] for item in workset["asset_inputs"]] == [
             "<Picture 1>",
             "<Picture 2>",
             "<Picture 3>",
+            "<Audio 1>",
+            "<Audio 2>",
+            "<Audio 3>",
         ]
 
         provider = RecordingProvider(media_type="video/mp4", content=b"fake")
@@ -512,9 +547,9 @@ def test_ref2va_submits_additional_images_without_reference_audio(tmp_path):
             expected_revision=document.revision,
         )
         request = provider.requests[-1]
-        assert request.reference_audios == ()
+        assert len(request.reference_audios) == 3
         assert len(request.additional_frames) == 1
-        assert len(generated.generations[-1].input_asset_ids) == 3
+        assert len(generated.generations[-1].input_asset_ids) == 6
 
     asyncio.run(run())
 
@@ -789,7 +824,7 @@ def test_mcp_prompt_commit_lost_response_replay_and_invalidated_boundary(tmp_pat
             )
             assert invalidated.is_error
         current = store.read()
-        assert current.assets == document.assets and not current.generations
+        assert current.assets == document.assets and current.generations == document.generations
         unrelated = {
             document.keyframe_plan.segments[1].start_keyframe_id,
             document.keyframe_plan.segments[1].end_keyframe_id,
@@ -863,7 +898,7 @@ def test_ref2va_reference_audio_has_no_duration_limit(tmp_path):
             segment_id=segment.id,
             expected_revision=document.revision,
         )
-        assert [audio.content for audio in provider.requests[-1].reference_audios] == [
+        assert [audio.content for audio in provider.requests[-1].reference_audios][-2:] == [
             store.read_asset(reference.asset_id)[1] for reference in references
         ]
 
@@ -876,11 +911,11 @@ def test_segment_over_soft_duration_limit_is_flagged_but_still_submitted(tmp_pat
     async def run():
         store, service, document, _ = await fixture(tmp_path)
         scene = document.director_script.scenes[0]
-        segment = scene.segments[0]
+        segment = scene.segments[1]
         assert video_prompt_workset(document, segment.id)["exceeds_soft_duration_limit"] is False
         long_scene = replace(
             scene,
-            segments=(replace(segment, duration_estimate_seconds=20.0), *scene.segments[1:]),
+            segments=(scene.segments[0], replace(segment, duration_estimate_seconds=20.0)),
         )
         document = await service.save_script(
             (long_scene, *document.director_script.scenes[1:]),
@@ -947,7 +982,13 @@ def test_video_workset_carries_external_speakers_and_scene_driver(tmp_path):
         scene = document.director_script.scenes[0]
         shot = scene.shots[0]
         segment = shot_segments(scene, shot.id)[0]
-        external = DialogueLine(None, "实验编号 0x04，开始宣读。", "平板", speaker_label="研究员")
+        external = DialogueLine(
+            None,
+            "实验编号 0x04，开始宣读。",
+            "平板",
+            speaker_label="研究员",
+            voice_description="冷静、克制的成年研究员声音。",
+        )
         document = await service.save_script(
             (
                 replace(
@@ -963,7 +1004,8 @@ def test_video_workset_carries_external_speakers_and_scene_driver(tmp_path):
         )
         # 持久化往返保留 speaker_label。
         stored = store.read().director_script.scenes[0].segments[0]
-        assert stored.dialogue_lines[-1] == external
+        assert stored.dialogue_lines[-1].id is not None
+        assert replace(stored.dialogue_lines[-1], id=None) == external
 
         # H3 插件已把工作集格式化为 prompt payload。
         context = video_prompt_workset(document, segment.id)["context"]
@@ -1013,7 +1055,10 @@ def test_dialogue_timing_soft_hint_reaches_snapshot_story_and_video_workset(tmp_
             {"level": "segment", "scope": {"scene_ids": [scene.id]}, "ids": [segment.id]},
         )
         assert story["items"][0]["dialogue_timing"] == expected
-        assert video_prompt_workset(document, segment.id)["dialogue_timing"] == expected
+        assert video_prompt_workset(document, segment.id)["dialogue_timing"] == {
+            "ready": False,
+            "reason": "audio_not_selected",
+        }
 
     asyncio.run(run())
 

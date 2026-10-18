@@ -3,7 +3,7 @@
 from core.model_providers.manifest import Capability, Role, recipe_from_json
 from core.model_providers.recipe import SlotBinding, binding_labels, explicit_slots
 
-from .dialogue_timing import dialogue_timing
+from .dialogue_timing import actual_dialogue_timing
 from .image_prompt_style import image_prompt_style
 from .keyframe_requests import (
     _keyframe_generation_inputs,
@@ -19,7 +19,7 @@ from .script_index import (
     segment_shots,
     segment_visible_character_ids,
 )
-from .video_inputs import resolve_video_inputs
+from .video_inputs import dialogue_audio_inputs, resolve_video_inputs
 
 
 def video_prompt_workset(
@@ -67,6 +67,27 @@ def video_prompt_workset(
         )
         if slot.role in {Role.FIRST_FRAME, Role.LAST_FRAME}:
             bindings[slot.key] = () if asset_id is None else (SlotBinding(asset_id),)
+    dialogue_inputs = dialogue_audio_inputs(document, segment_id, require_ready=False)
+    audio_slot = next((slot for slot in recipe.slots if slot.role is Role.REFERENCE_AUDIO), None)
+    if segment.dialogue_lines and audio_slot is None:
+        raise ValueError("含对白的 Segment 必须使用支持参考音频的 Ref2VA recipe。")
+    if audio_slot is not None and dialogue_inputs:
+        if len(segment.dialogue_lines) > audio_slot.maximum:
+            raise ValueError(
+                f"该 Segment 有 {len(segment.dialogue_lines)} 句对白，超过 Ref2VA 的 "
+                f"{audio_slot.maximum} 条音频上限；请先拆分 Segment。"
+            )
+        system = tuple(
+            SlotBinding(
+                asset.id,
+                _dialogue_audio_description(document, line, item.start_seconds),
+            )
+            for line, item, asset in dialogue_inputs
+        )
+        manual = bindings.get(audio_slot.key, ())
+        if len(system) + len(manual) > audio_slot.maximum:
+            raise ValueError("对白系统音频与手工参考音频合计超过当前 recipe 上限。")
+        bindings[audio_slot.key] = (*system, *manual)
     labels = binding_labels(recipe, bindings)
     assets = {asset.id: asset for asset in document.assets}
     if any(item["asset_id"] not in assets for item in labels):
@@ -131,6 +152,7 @@ def video_prompt_workset(
                         ),
                         "text": item.text,
                         "delivery": item.delivery,
+                        "dialogue_line_id": item.id,
                         # 引用库外说话者没有可见性登记，是否入画以 Segment action 为准。
                         "on_screen": (
                             None
@@ -157,8 +179,8 @@ def video_prompt_workset(
         "soft_duration_limit_seconds": soft,
         "exceeds_soft_duration_limit": isinstance(soft, int | float)
         and segment.duration_estimate_seconds > soft,
-        # 对白按字数估算的最短秒数；超出 duration_seconds 时提示用户加长或拆分，不压缩台词。
-        "dialogue_timing": dialogue_timing(segment),
+        "dialogue_timing": actual_dialogue_timing(document, segment),
+        "required_dialogue_prompt": required_dialogue_prompt(labels, segment.dialogue_lines),
     }
 
     return (
@@ -166,6 +188,25 @@ def video_prompt_workset(
         if provider_catalog is None
         else provider_catalog.format_prompt_workset(Capability.VIDEO_GENERATE, recipe.id, result)
     )
+
+
+def _dialogue_audio_description(document, line, start_seconds):
+    characters = {item.id: item.name for item in document.reference_library.characters}
+    speaker = line.speaker_label or characters.get(line.character_id, line.character_id)
+    timing = "尚未校准" if start_seconds is None else f"{start_seconds:.3f}s 开始"
+    return f"{speaker} 的对白，{timing}。原始内容：{line.text}"
+
+
+def required_dialogue_prompt(labels, dialogue_lines):
+    audio_labels = [item["label"] for item in labels if item["role"] == "reference_audio"]
+    if not dialogue_lines or len(audio_labels) < len(dialogue_lines):
+        return None
+    instructions = ["严格让角色说出参考音频的原始内容，音频完全相等。"]
+    instructions.extend(
+        f"{label} 对应原始对白：{line.text}"
+        for label, line in zip(audio_labels[: len(dialogue_lines)], dialogue_lines, strict=True)
+    )
+    return "\n".join(instructions)
 
 
 def _bindable_assets(document: StructuredDirectorDocument, scene, recipe) -> list[dict]:

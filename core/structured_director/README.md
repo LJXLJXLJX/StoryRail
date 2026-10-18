@@ -1,6 +1,6 @@
 # Structured Director
 
-本目录拥有 StoryRail schema v33 项目的结构化导演领域：模型、编解码、领域变换、Store、读取投影、媒体提交、Service 与
+本目录拥有 StoryRail schema v34 项目的结构化导演领域：模型、编解码、领域变换、Store、读取投影、媒体提交、Service 与
 HTTP contract。`project.json` 的创建、读取、校验、revision compare-and-swap 与原子替换都在这里完成，它是唯一的项目写者。
 
 行为说明在产品说明书中：[数据模型](../../docs/data-model.md)、[生产工作流](../../docs/production-workflow.md)、
@@ -30,6 +30,8 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 - `service.py`：`StructuredDirectorService`，持有项目 Store、`ProviderRegistry` 与两把 asyncio 锁（领域写入 / 外部应用请求），
   组合下列协作者；不内联持久化细节。
 - `application_requests.py`：外部命令的原子回执、同 key 回放、生成请求 pending/uncertain 恢复。
+- `media_submission/dialogue.py`：逐句对白 TTS 提交；角色已有参考音色时使用同语言克隆，否则使用角色卡或临时说话者的音色描述做 Voice Design。
+- `mutations/dialogue.py`：人类选择对白 WAV、保存 Segment 内发声起点，并以 WAV 真实时长校准 Segment 时长和失效下游视频。
 - `production_commands.py`：生成、选择、装配等生产命令到 Service 用例的分发。
 - `workflow_commands.py`：工作流确认（引用确认、脚本确认、视觉生产解锁）；解锁回执附未绑定地点提示。
 - `manual_commands.py`：把 Web 手工编辑值对象翻译成与 Agent 相同的确定性命令（含地点编辑、标定与人类主图/视图选择）。
@@ -45,7 +47,7 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 - `location_proposals.py`：地点规划的项目级工作集与提交：proposal 编译成 `location.apply_operations` 的同一组操作，
   在 `LOCATION_PLAN` run 内经 `location_mutations.py` 原子落库（局部 key 映射、失效级联与手工编辑同源）并结束 run。
 - `planning_inputs.py`：专业规划的纯输入构造（含局部 Keyframe 的完整 Scene 上下文、锁定节点与共享边界；地点规划的全部 Scene/Shot 与已有地点归属）。
-- `prompt_worksets.py`：视频 recipe 与 Keyframe 专业工作集（实际 Provider 输入清单与 `<Picture N>` / `<Audio N>` / `<Video N>` 映射；视频另给已保存的 `recipe_inputs` 与当前 recipe 显式槽位的 `bindable_assets`），以及当前图片插件的提示词约定与随插件 Skill（`image_prompt_guide`）。
+- `prompt_worksets.py`：视频 recipe 与 Keyframe 专业工作集（实际 Provider 输入清单与 `<Picture N>` / `<Audio N>` / `<Video N>` 映射；对白系统 WAV 在手工 Audio 之前注入，视频另给已保存的 `recipe_inputs` 与当前 recipe 显式槽位的 `bindable_assets`），以及当前图片插件的提示词约定与随插件 Skill（`image_prompt_guide`）。
 
 **生产**
 

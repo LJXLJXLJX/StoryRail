@@ -58,3 +58,57 @@ def register_image_candidate(
         expected_sha256=hashlib.sha256(content).hexdigest(),
         expected_byte_count=len(content),
     )
+
+
+def register_dialogue_audio_candidate(
+    store,
+    *,
+    dialogue_line_id: str,
+    source_asset_id: str,
+    voice_reference_asset_id: str | None,
+    reference_transcript: str | None,
+    text: str,
+) -> str:
+    """把 fixture WAV 登记为成功的克隆或音色设计对白候选，不调用 Provider。"""
+    asset, content = store.read_asset(source_asset_id)
+    generation = ReferenceGeneration(
+        id=uuid4().hex,
+        kind=ReferenceGenerationKind.DIALOGUE_AUDIO,
+        operation=(
+            GenerationOperation.SYNTHESIZE
+            if voice_reference_asset_id is not None
+            else GenerationOperation.VOICE_DESIGN
+        ),
+        target_id=dialogue_line_id,
+        phase=ReferenceGenerationPhase.SUBMITTING,
+        progress=0.0,
+        message="fixture 对白候选。",
+        prompt_text=text,
+        input_asset_ids=(() if voice_reference_asset_id is None else (voice_reference_asset_id,)),
+        sample_text=reference_transcript,
+        seed=1,
+        plugin_id=None,
+        plugin_version=None,
+        external_id=None,
+        output_asset_id=None,
+        error_code=None,
+        cancellation_requested=False,
+        retry_of=None,
+    )
+    store.create_generation(generation, expected_revision=store.read().revision)
+    queued = transition_generation(
+        generation,
+        ReferenceGenerationPhase.QUEUED,
+        plugin_id="fixture.audio",
+        plugin_version=1,
+        external_id=generation.id,
+    )
+    store.update_generation(queued)
+    store.complete_generation(
+        queued,
+        media_type=asset.media_type,
+        content=content,
+        expected_sha256=hashlib.sha256(content).hexdigest(),
+        expected_byte_count=len(content),
+    )
+    return generation.id

@@ -14,7 +14,7 @@ export const ManifestRole = ["first_frame", "last_frame", "reference_image", "re
 export type ManifestRole = (typeof ManifestRole)[number];
 export const NarrationLanguage = ["zh", "en"] as const;
 export type NarrationLanguage = (typeof NarrationLanguage)[number];
-export const StructuredDirectorAction = ["confirm_reference_review", "edit_reference_library", "import_image_asset", "import_media_asset", "extract_video_frame", "generate_audio", "trim_audio", "apply_audio_effect", "separate_video_audio", "remix_video_audio", "delete_asset", "attach_reference_image", "upload_reference_voice", "observe_reference_generations", "edit_script", "confirm_script", "edit_narration", "generate_narration", "generate_narration_batch", "select_narration_audio", "unlock_visual_production", "edit_keyframe_references", "generate_keyframe", "generate_keyframe_batch", "select_keyframe", "generate_scene_animatic", "generate_scene_final", "edit_segment_video_plan", "generate_segment_video", "attach_segment_video_candidate", "select_segment_video", "upscale_segment_video", "generate_final_video", "select_final_video", "clear_final_selection", "approve_final_video", "reopen_video_production"] as const;
+export const StructuredDirectorAction = ["confirm_reference_review", "edit_reference_library", "import_image_asset", "import_media_asset", "extract_video_frame", "generate_audio", "trim_audio", "apply_audio_effect", "separate_video_audio", "remix_video_audio", "delete_asset", "attach_reference_image", "upload_reference_voice", "observe_reference_generations", "edit_script", "confirm_script", "edit_narration", "generate_narration", "generate_narration_batch", "select_narration_audio", "generate_dialogue", "generate_dialogue_batch", "select_dialogue_audio", "set_dialogue_timing", "unlock_visual_production", "edit_keyframe_references", "generate_keyframe", "generate_keyframe_batch", "select_keyframe", "generate_scene_animatic", "generate_scene_final", "edit_segment_video_plan", "generate_segment_video", "attach_segment_video_candidate", "select_segment_video", "upscale_segment_video", "generate_final_video", "select_final_video", "clear_final_selection", "approve_final_video", "reopen_video_production"] as const;
 export type StructuredDirectorAction = (typeof StructuredDirectorAction)[number];
 export const StructuredDirectorStatus = ["awaiting_reference_proposal", "reviewing_references", "reviewing_script", "reviewing_narration", "reviewing_keyframes", "reviewing_videos", "reviewing_final", "approved"] as const;
 export type StructuredDirectorStatus = (typeof StructuredDirectorStatus)[number];
@@ -26,7 +26,7 @@ export const ImageOperation = ["generate", "edit"] as const;
 export type ImageOperation = (typeof ImageOperation)[number];
 export const ImageAspectRatio = ["16:9", "9:16", "2:1", "1:2", "1:1", "3:2", "2:3", "4:3", "3:4", "5:4", "4:5", "21:9", "9:21", "3:1", "1:3"] as const;
 export type ImageAspectRatio = (typeof ImageAspectRatio)[number];
-export const AssetUsageReasonCode = ["character_reference_image", "character_voice_reference", "narrator_voice_reference", "narration_audio", "location_master_image", "location_view_image", "keyframe_reference_image", "keyframe_selected_asset", "segment_video_selected", "segment_video_upscaled", "segment_video_input_image", "segment_video_input_audio", "segment_video_input_video", "final_assembly", "visible_candidate", "unfinished_generation_input", "director_wait"] as const;
+export const AssetUsageReasonCode = ["character_reference_image", "character_voice_reference", "narrator_voice_reference", "narration_audio", "dialogue_audio", "location_master_image", "location_view_image", "keyframe_reference_image", "keyframe_selected_asset", "segment_video_selected", "segment_video_upscaled", "segment_video_input_image", "segment_video_input_audio", "segment_video_input_video", "final_assembly", "visible_candidate", "unfinished_generation_input", "director_wait"] as const;
 export type AssetUsageReasonCode = (typeof AssetUsageReasonCode)[number];
 export const ImageAssetCategory = ["character_reference", "location_master", "location_crop", "location_view", "keyframe", "video_frame"] as const;
 export type ImageAssetCategory = (typeof ImageAssetCategory)[number];
@@ -34,13 +34,13 @@ export const AssetAction = ["audio_trim", "audio_effect", "audio_editor", "video
 export type AssetAction = (typeof AssetAction)[number];
 export const AudioEffectPreset = ["walkie_talkie", "military_radio", "weak_signal", "bad_signal", "dying_transmission"] as const;
 export type AudioEffectPreset = (typeof AudioEffectPreset)[number];
-export const ReferenceGenerationKind = ["character_look_sheet", "character_voice", "narrator_voice", "narration_audio", "generated_audio", "audio_effect", "audio_trim", "video_audio_voice", "video_audio_background", "video_audio_remix", "location_master_image", "location_view_crop", "location_view_image", "keyframe_image", "segment_video", "video_frame", "video_upscale", "final_video", "scene_final_video", "scene_animatic"] as const;
+export const ReferenceGenerationKind = ["character_look_sheet", "character_voice", "narrator_voice", "narration_audio", "dialogue_audio", "generated_audio", "audio_effect", "audio_trim", "video_audio_voice", "video_audio_background", "video_audio_remix", "location_master_image", "location_view_crop", "location_view_image", "keyframe_image", "segment_video", "video_frame", "video_upscale", "final_video", "scene_final_video", "scene_animatic"] as const;
 export type ReferenceGenerationKind = (typeof ReferenceGenerationKind)[number];
 export const GenerationOperation = ["generate", "edit", "attach", "voice_design", "synthesize", "render", "upscale", "assemble", "process", "separate", "remix"] as const;
 export type GenerationOperation = (typeof GenerationOperation)[number];
 export const ReferenceGenerationPhase = ["submitting", "submission_uncertain", "queued", "running", "succeeded", "failed", "cancelled"] as const;
 export type ReferenceGenerationPhase = (typeof ReferenceGenerationPhase)[number];
-export const ReferenceGenerationAction = ["attach_output", "select_look_sheet", "select_output", "select_narration_audio", "select_segment_video", "attach_upscaled_video", "select_final_video", "dismiss_history", "cancel", "retry"] as const;
+export const ReferenceGenerationAction = ["attach_output", "select_look_sheet", "select_output", "select_narration_audio", "select_dialogue_audio", "select_segment_video", "attach_upscaled_video", "select_final_video", "dismiss_history", "cancel", "retry"] as const;
 export type ReferenceGenerationAction = (typeof ReferenceGenerationAction)[number];
 export const KeyframeEnvironmentMode = ["edit", "reference", "none"] as const;
 export type KeyframeEnvironmentMode = (typeof KeyframeEnvironmentMode)[number];
@@ -202,10 +202,25 @@ export interface CharacterLook {
 }
 
 export interface DialogueLine {
+  id: string;
   character_id: string | null;
   speaker_label: string | null;
+  voice_description: string | null;
   text: string;
   delivery: string;
+}
+
+export interface DialogueAudio {
+  dialogue_line_id: string;
+  seed: number;
+  recipe_params: Record<string, unknown>;
+  selected_audio_asset_id: string | null;
+  start_seconds: number | null;
+}
+
+export interface DialoguePlan {
+  source_script_revision: number;
+  items: DialogueAudio[];
 }
 
 export interface DialogueTimingWarning {
@@ -703,6 +718,7 @@ export interface StructuredDirectorSnapshot {
   generations: ReferenceGeneration[];
   reference_library: ReferenceLibraryView;
   director_script: DirectorScript | null;
+  dialogue_plan?: DialoguePlan | null;
   production_availability: ProductionAvailability;
   location_library: LocationLibrary;
   keyframe_plan: KeyframePlan | null;
@@ -936,6 +952,8 @@ export interface DialogueLineProposal {
   text: string;
   delivery: string;
   speaker_label?: string | null;
+  id?: string | null;
+  voice_description?: string | null;
 }
 
 export interface SegmentBoundaryProposal {

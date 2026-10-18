@@ -280,6 +280,20 @@
   },
   {
     "body": {
+      "cfg_scale": 4.0,
+      "instruction": "年轻、克制、语速偏慢",
+      "reference_transcript": null,
+      "seed": "<默认 seed：DialogueLine 说话者身份稳定派生>",
+      "text": "还会来吗？",
+      "voice": null
+    },
+    "method": "POST",
+    "path": "/breeze-tts2/speech",
+    "plugin": "breeze",
+    "step": "dialogue.tts"
+  },
+  {
+    "body": {
       "additional_references": [
         {
           "content": {
@@ -294,9 +308,9 @@
       "audio_references": [
         {
           "content": {
-            "blob": "upload:小满对白.wav",
-            "bytes": 24044,
-            "sha256": "fe375a38de8cea3b1e50e9752198b65b08c6e2d57fef77fc3a0b9e91b8785ae4"
+            "blob": "output:breeze-7",
+            "bytes": 20044,
+            "sha256": "9e7d100263d06f093b655746417bcbc652710710ed464f909e33541bd8e24807"
           },
           "media_type": "audio/wav"
         },
@@ -309,8 +323,8 @@
           "media_type": "audio/wav"
         }
       ],
-      "direction": "<Picture 1> 小满抬头看 <Picture 3> 站牌，用 <Audio 1> 的声音说“还会来吗？”",
-      "duration_s": 6.0,
+      "direction": "严格让角色说出参考音频的原始内容，音频完全相等。\n<Audio 1> 对应原始对白：还会来吗？\n\n<Picture 1> 小满抬头看 <Picture 3> 站牌，严格同步 <Audio 1> 的对白。",
+      "duration_s": 2.25,
       "first_reference": {
         "content": {
           "blob": "output:codex-2",
@@ -424,9 +438,9 @@
       "base64": {
         "blob": "output:h3_ref2va-1",
         "bytes": 371,
-        "sha256": "1580ae6ad91a42048e6515f397ad794427763cfd0ed7dd60bd3e31b89a4f4962"
+        "sha256": "45d02fa9d427f41b99270d26f17ec7a2c21931a40c559de586320f920e2e9875"
       },
-      "frame_index": 70,
+      "frame_index": 50,
       "mime": "video/mp4"
     },
     "method": "POST",
@@ -439,7 +453,7 @@
       "base64": {
         "blob": "output:h3_ref2va-1",
         "bytes": 371,
-        "sha256": "1580ae6ad91a42048e6515f397ad794427763cfd0ed7dd60bd3e31b89a4f4962"
+        "sha256": "45d02fa9d427f41b99270d26f17ec7a2c21931a40c559de586320f920e2e9875"
       },
       "frame_index": 0,
       "mime": "video/mp4"
@@ -457,7 +471,7 @@
         "base64": {
           "blob": "output:h3_ref2va-1",
           "bytes": 371,
-          "sha256": "1580ae6ad91a42048e6515f397ad794427763cfd0ed7dd60bd3e31b89a4f4962"
+          "sha256": "45d02fa9d427f41b99270d26f17ec7a2c21931a40c559de586320f920e2e9875"
         },
         "mime": "video/mp4"
       },
@@ -475,7 +489,7 @@
         "base64": {
           "blob": "output:h3_ref2va-1",
           "bytes": 371,
-          "sha256": "1580ae6ad91a42048e6515f397ad794427763cfd0ed7dd60bd3e31b89a4f4962"
+          "sha256": "45d02fa9d427f41b99270d26f17ec7a2c21931a40c559de586320f920e2e9875"
         },
         "mime": "video/mp4"
       }
@@ -492,7 +506,7 @@
         "base64": {
           "blob": "output:h3_ref2va-1",
           "bytes": 371,
-          "sha256": "1580ae6ad91a42048e6515f397ad794427763cfd0ed7dd60bd3e31b89a4f4962"
+          "sha256": "45d02fa9d427f41b99270d26f17ec7a2c21931a40c559de586320f920e2e9875"
         },
         "mime": "video/mp4"
       }
@@ -519,7 +533,7 @@
         "base64": {
           "blob": "output:h3_ref2va-1",
           "bytes": 371,
-          "sha256": "1580ae6ad91a42048e6515f397ad794427763cfd0ed7dd60bd3e31b89a4f4962"
+          "sha256": "45d02fa9d427f41b99270d26f17ec7a2c21931a40c559de586320f920e2e9875"
         },
         "mime": "video/mp4"
       },
@@ -634,7 +648,7 @@
             "bytes": 22,
             "sha256": "e225d631df4f9186f46d909edf3b673f162acb1ead264a64c075a3c1dbcdeebb"
           },
-          "duration_seconds": 3.0,
+          "duration_seconds": 1.125,
           "mime": "image/png",
           "transition_from_previous": null
         },
@@ -644,7 +658,7 @@
             "bytes": 22,
             "sha256": "81204f1c100e7f23a83a6a9abad23ed191e3e7bfc8541526b214a447b31ff775"
           },
-          "duration_seconds": 3.0,
+          "duration_seconds": 1.125,
           "mime": "image/png",
           "transition_from_previous": null
         },
@@ -685,9 +699,9 @@
           "base64": {
             "blob": "output:seedvr2-1",
             "bytes": 369,
-            "sha256": "ee2060c31e05fa5bb44c4ebe9e8caf0850ddb888647760ad92d428c2a77d1699"
+            "sha256": "04e5c0bfbb1174e8715b7e42b1672d13bb137936977ea1d84d7ca0399e7c450e"
           },
-          "duration_seconds": 6.0,
+          "duration_seconds": 2.25,
           "mime": "video/mp4",
           "transition_from_previous": null
         },
@@ -720,9 +734,9 @@
           "base64": {
             "blob": "output:seedvr2-1",
             "bytes": 369,
-            "sha256": "ee2060c31e05fa5bb44c4ebe9e8caf0850ddb888647760ad92d428c2a77d1699"
+            "sha256": "04e5c0bfbb1174e8715b7e42b1672d13bb137936977ea1d84d7ca0399e7c450e"
           },
-          "duration_seconds": 6.0,
+          "duration_seconds": 2.25,
           "mime": "video/mp4",
           "transition_from_previous": null
         },
@@ -825,9 +839,9 @@
           "base64": {
             "blob": "output:final_assembly-1",
             "bytes": 376,
-            "sha256": "5e9fad5ba6b87634eb135525bbb53f67f234912ea5bbd7311ac063859a14e2a2"
+            "sha256": "037b488504b3d871c42ba40c6fa1cf73fb65e29b5a452de5669609267c8f726e"
           },
-          "duration_seconds": 10.5,
+          "duration_seconds": 6.75,
           "mime": "video/mp4",
           "transition_from_previous": null
         },
@@ -860,9 +874,9 @@
           "base64": {
             "blob": "output:final_assembly-2",
             "bytes": 376,
-            "sha256": "cb7ccb11171ffa8886a5397214e81aca4d7d842d77cd400cc66b716faadf034d"
+            "sha256": "8545f629df968c03972458c159899ae4d105282c67d09bfd921868dc55bb06d4"
           },
-          "duration_seconds": 10.5,
+          "duration_seconds": 6.75,
           "mime": "video/mp4",
           "transition_from_previous": null
         },
@@ -903,9 +917,9 @@
       "audio_references": [
         {
           "content": {
-            "blob": "upload:小满对白.wav",
-            "bytes": 24044,
-            "sha256": "fe375a38de8cea3b1e50e9752198b65b08c6e2d57fef77fc3a0b9e91b8785ae4"
+            "blob": "output:breeze-7",
+            "bytes": 20044,
+            "sha256": "9e7d100263d06f093b655746417bcbc652710710ed464f909e33541bd8e24807"
           },
           "media_type": "audio/wav"
         },
@@ -918,8 +932,8 @@
           "media_type": "audio/wav"
         }
       ],
-      "direction": "<Picture 1> 小满抬头看 <Picture 3> 站牌，用 <Audio 1> 的声音说“还会来吗？”",
-      "duration_s": 6.0,
+      "direction": "严格让角色说出参考音频的原始内容，音频完全相等。\n<Audio 1> 对应原始对白：还会来吗？\n\n<Picture 1> 小满抬头看 <Picture 3> 站牌，严格同步 <Audio 1> 的对白。",
+      "duration_s": 2.25,
       "first_reference": {
         "content": {
           "blob": "output:codex-2",

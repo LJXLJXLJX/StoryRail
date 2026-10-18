@@ -45,6 +45,8 @@ class StructuredDirectorWorkflowTests(unittest.IsolatedAsyncioTestCase):
                 shot["id"] = None
             for segment in inserted["segments"]:
                 segment["id"] = None
+                for line in segment["dialogue_lines"]:
+                    line["id"] = None
 
             created = await api.handle(
                 "PUT",

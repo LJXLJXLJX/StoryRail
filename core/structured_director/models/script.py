@@ -42,6 +42,9 @@ class DialogueLine:
     text: str
     delivery: str
     speaker_label: str | None = None
+    id: str | None = None
+    # 引用库外临时说话者没有 CharacterCard；Voice Design 需要持久化音色描述。
+    voice_description: str | None = None
 
     def __post_init__(self) -> None:
         if (self.character_id is None) == (self.speaker_label is None):
@@ -52,6 +55,11 @@ class DialogueLine:
             _require_text(
                 self.speaker_label or "", "dialogue_line.speaker_label", DIALOGUE_SPEAKER_LABEL_MAX
             )
+            _require_text(self.voice_description or "", "dialogue_line.voice_description", 500)
+        if self.character_id is not None and self.voice_description is not None:
+            raise ValueError("引用库角色对白不能重复保存 voice_description。")
+        if self.id is not None:
+            _require_id(self.id, "dialogue_line.id")
         _require_text(self.text, "dialogue_line.text", 2_000)
         if len(self.delivery) > 1_000:
             raise ValueError("dialogue_line.delivery 过长。")
@@ -244,10 +252,14 @@ class DirectorScript:
             segment_count += len(scene.segments)
             ids.extend(shot.id for shot in scene.shots)
             ids.extend(segment.id for segment in scene.segments)
+            for segment in scene.segments:
+                if any(line.id is None for line in segment.dialogue_lines):
+                    raise ValueError("持久化脚本的 DialogueLine 必须具有稳定 ID。")
+                ids.extend(line.id for line in segment.dialogue_lines if line.id is not None)
         if shot_count > 1_000 or segment_count > 2_000:
             raise ValueError("结构化导演脚本规模过大。")
         if len(ids) != len(set(ids)):
-            raise ValueError("Scene、Shot、Segment 和旁白 Cue ID 不能重复。")
+            raise ValueError("Scene、Shot、Segment、DialogueLine 和旁白 Cue ID 不能重复。")
         if self.production_baseline_scenes is not None:
             _validate_script_scenes(self.production_baseline_scenes, "生产基线")
 

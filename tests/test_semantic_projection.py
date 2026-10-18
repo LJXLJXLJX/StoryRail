@@ -17,6 +17,7 @@ from core.structured_director.reads.read_tools import execute_project_read
 from core.structured_director.reads.semantic_projection import build_semantic_projection as build
 from core.structured_director.reads.semantic_projection import build_semantic_tree
 from core.structured_director.script_index import shot_segments
+from core.structured_director.script_mutations import dialogue_plan_for_script
 
 
 def test_mixed_projection_and_selected_real_audio(tmp_path):
@@ -138,6 +139,13 @@ async def _bounds(tmp_path):
                     segment,
                     id=f"{10000 + index * 100 + j * 10 + k:032x}",
                     shot_ids=tuple(shot_ids[item] for item in segment.shot_ids),
+                    dialogue_lines=tuple(
+                        replace(
+                            line,
+                            id=f"{200000 + index * 1000 + j * 100 + k * 10 + n:032x}",
+                        )
+                        for n, line in enumerate(segment.dialogue_lines)
+                    ),
                 )
                 for j, shot in enumerate(long_scene.shots)
                 for k, segment in enumerate(shot_segments(long_scene, shot.id))
@@ -145,12 +153,14 @@ async def _bounds(tmp_path):
         )
 
     many = tuple(numbered(index) for index in range(40))
+    script = replace(document.director_script, scenes=many)
     large = replace(
         document,
         keyframe_plan=None,
         video_plan=None,
         location_library=LocationLibrary(),
-        director_script=replace(document.director_script, scenes=many),
+        director_script=script,
+        dialogue_plan=dialogue_plan_for_script(script),
     )
     request = {
         "level": "outline",
@@ -179,6 +189,10 @@ async def _parent_scope(tmp_path):
             source_segments[0],
             id=f"{1000 + i * 10 + j:032x}",
             shot_ids=(shot.id,),
+            dialogue_lines=tuple(
+                replace(line, id=f"{300000 + i * 100 + j * 10 + n:032x}")
+                for n, line in enumerate(source_segments[0].dialogue_lines)
+            ),
             boundary_from_previous=None
             if j == 0
             else SegmentBoundary(SegmentBoundaryReason.CONTINUITY_ANCHOR, "从上一边界继续。"),
@@ -191,14 +205,26 @@ async def _parent_scope(tmp_path):
         scene,
         id="e" * 32,
         shots=(replace(source, id="f" * 32),),
-        segments=tuple(replace(segment, shot_ids=("f" * 32,)) for segment in source_segments),
+        segments=tuple(
+            replace(
+                segment,
+                shot_ids=("f" * 32,),
+                dialogue_lines=tuple(
+                    replace(line, id=f"{400000 + i * 10 + n:032x}")
+                    for n, line in enumerate(segment.dialogue_lines)
+                ),
+            )
+            for i, segment in enumerate(source_segments)
+        ),
     )
+    script = replace(document.director_script, scenes=(scene, other))
     document = replace(
         document,
         keyframe_plan=None,
         video_plan=None,
         location_library=LocationLibrary(),
-        director_script=replace(document.director_script, scenes=(scene, other)),
+        director_script=script,
+        dialogue_plan=dialogue_plan_for_script(script),
     )
     request = {
         "level": "segment",
@@ -299,19 +325,45 @@ async def _multi_shot(tmp_path):
     boundary = SegmentBoundary(SegmentBoundaryReason.CONTINUITY_ANCHOR, "延续上一段。")
     # g0 段内切镜 s0–s1；s2 长镜头跨 g1、g2。
     segments = (
-        replace(template, id=f"{400:032x}", shot_ids=(shots[0].id, shots[1].id)),
-        replace(template, id=f"{401:032x}", shot_ids=(shots[2].id,), boundary_from_previous=None),
         replace(
-            template, id=f"{402:032x}", shot_ids=(shots[2].id,), boundary_from_previous=boundary
+            template,
+            id=f"{400:032x}",
+            shot_ids=(shots[0].id, shots[1].id),
+            dialogue_lines=tuple(
+                replace(line, id=f"{500000 + n:032x}")
+                for n, line in enumerate(template.dialogue_lines)
+            ),
+        ),
+        replace(
+            template,
+            id=f"{401:032x}",
+            shot_ids=(shots[2].id,),
+            boundary_from_previous=None,
+            dialogue_lines=tuple(
+                replace(line, id=f"{500100 + n:032x}")
+                for n, line in enumerate(template.dialogue_lines)
+            ),
+        ),
+        replace(
+            template,
+            id=f"{402:032x}",
+            shot_ids=(shots[2].id,),
+            boundary_from_previous=boundary,
+            dialogue_lines=tuple(
+                replace(line, id=f"{500200 + n:032x}")
+                for n, line in enumerate(template.dialogue_lines)
+            ),
         ),
     )
     scene = replace(scene, shots=shots, segments=segments)
+    script = replace(document.director_script, scenes=(scene,))
     document = replace(
         document,
         keyframe_plan=None,
         video_plan=None,
         location_library=LocationLibrary(),
-        director_script=replace(document.director_script, scenes=(scene,)),
+        director_script=script,
+        dialogue_plan=dialogue_plan_for_script(script),
     )
     scope = {"scene_ids": [scene.id]}
     shot_items = build(document, {"level": "shot", "scope": scope})["items"]

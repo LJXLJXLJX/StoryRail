@@ -91,7 +91,7 @@ from core.director_proposals import (
     StructuredDirectorScriptRevisionProposal as StructuredDirectorScriptRevisionProposal,
 )
 from core.model_providers.contracts import validate_pano_source
-from core.model_providers.manifest import Capability, DomainPredicate
+from core.model_providers.manifest import Capability, DomainPredicate, Role
 from core.model_providers.recipe import RecipeParams
 from core.project_settings import ProjectAspectRatio
 
@@ -310,6 +310,7 @@ class ProviderCatalog(Protocol):
     def recipe_for(self, capability, predicates=frozenset()): ...
     def validate_recipe_inputs(self, capability, recipe_id, inputs, assets): ...
     def validate_recipe_switch(self, capability, current, recipe_id, assets): ...
+    def recipe_definition(self, capability, recipe_id): ...
 
 
 def _narration_tracks(document: StructuredDirectorDocument):
@@ -378,6 +379,7 @@ class StructuredDirectorStore:
             ReferenceDomain(self),
             ScriptDomain(self),
             NarrationDomain(self),
+            DialogueDomain(self),
             KeyframeDomain(self),
             LocationDomain(self),
             VideoDomain(self),
@@ -395,6 +397,23 @@ class StructuredDirectorStore:
         self._provider_catalog.validate_recipe_switch(
             Capability.VIDEO_GENERATE, current, recipe_id, document.assets
         )
+        found = next(
+            (
+                segment
+                for scene in (
+                    () if document.director_script is None else document.director_script.scenes
+                )
+                for segment in scene.segments
+                if segment.id == current.segment_id
+            ),
+            None,
+        )
+        if found is not None and found.dialogue_lines:
+            _plugin, recipe = self._provider_catalog.recipe_definition(
+                Capability.VIDEO_GENERATE, recipe_id
+            )
+            if not any(slot.role is Role.REFERENCE_AUDIO for slot in recipe.slots):
+                raise ValueError("含对白的 Segment 必须使用支持参考音频的 Ref2VA recipe。")
 
     def _bind_new_video_recipes(self, previous, document):
         if self._provider_catalog is None or document.video_plan is None:
@@ -917,6 +936,7 @@ def _generation_timestamp() -> str:
 # 本模块的 read/_editable_document/persistence 私有助手；尾部导入保证助手已绑定）。
 from ._domains import (  # noqa: E402
     AssetDomain,
+    DialogueDomain,
     FinalDomain,
     GenerationDomain,
     KeyframeDomain,

@@ -88,6 +88,8 @@ _AGENT_OPERATIONS = {
     "keyframe.generate",
     "video.generate",
     "narration.generate",
+    "dialogue.generate",
+    "dialogue.set_timing",
     "reference.generate_look_sheet",
     "reference.apply_look_operations",
 }

@@ -8,5 +8,7 @@
 #     移除 v31 的 non_humanoid，非人形设定图改由提示词约束。
 # v33 Scene 下并列 shots（创作层）与 segments（生产层，shot_ids 记录覆盖的 Shot）；
 #     旁白 Cue 删除 Shot 锚点，Narration Scene 的唯一 Cue 覆盖整个 Scene。
+# v34 DialogueLine 获得稳定 ID 与临时说话者音色描述；DialoguePlan 保存逐句 TTS
+#     选择、机制参数与 Segment 内真实音频起点，有对白视频必须先完成对白音频生产。
 # 更早版本按开发期规则不迁移，需新建项目。
-PROJECT_SCHEMA_VERSION = 33
+PROJECT_SCHEMA_VERSION = 34

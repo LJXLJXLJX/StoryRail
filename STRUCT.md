@@ -22,7 +22,7 @@ human 权限；明确撤回旁白音频可由 Agent 经窄命令解除引用。
 | 边缘 | `service.py`、`http_api.py` | 应用 facade 与 HTTP contract |
 
 项目只需 `project.json` 与不可变 `assets/`。领域 run/cursor/回执在业务 authority 内；外部会话、工作区与
-历史 `.runtime/` 不参与恢复事实读取。没有数据库、双写或旧 schema 迁移；当前 schema 为 v33
+历史 `.runtime/` 不参与恢复事实读取。没有数据库、双写或旧 schema 迁移；当前 schema 为 v34
 （Scene 下并列 Shot 与 Segment、Segment 以 `shot_ids` 记录覆盖的 Shot、一个 Segment 可覆盖多个相邻 Shot 且一个 Shot 可跨多个相邻 Segment、旁白 Cue 不带 Shot 锚点、造型为角色图唯一单位与造型设定图、地点库与 Scene/Shot/Keyframe 视图绑定（Shot 视图为软参考）、`workspace_layers` 持久化内容层、创建时选择旁白语言、每种启用语言一套旁白音色、Keyframe 按 Segment 建首尾槽位并按帧选择角色造型、视频保存 `active_recipe` 与按 recipe 隔离的输入簿、Generation 记录提交时的 Provider 快照），更早版本一律拒绝读取，需新建项目。
 
 Core 不包含厂商 Agent adapter、会话、Director loop 或 Agent SDK 依赖；执行由外部成熟 Agent 承担。
@@ -189,7 +189,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `proposal_schema.py`：各 codec 输出 schema 的 TypeScript 类型标注。
 - `ts_emit.py`：JSON Schema → TypeScript 类型与结构校验代码。
 
-### core/structured_director/ — schema v33 结构化导演领域
+### core/structured_director/ — schema v34 结构化导演领域
 
 - `README.md`：领域、Store、Service 与 HTTP contract 总览。
 - `__init__.py`：公开 Store/Service/HTTP API 与模型（惰性导出）。
@@ -228,6 +228,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 领域变换（L2）：
 
 - `script_mutations.py`：脚本物化、原子操作、生产期回改与关键帧/视频计划重建。
+- `mutations/dialogue.py`：对白 TTS 候选选择、真实 WAV 时序校准与下游视频失效。
 - `keyframe_mutations.py`：Keyframe 原子操作（激活、字段、辅助图、绑定、共享/拆分边界）与失效。
 - `location_mutations.py`：地点库操作、人类主图/视图选择（只接受该目标的成功候选）、删除引用检查与地点→视图→Keyframe→视频→装配失效；共享一次性索引及删除/选择/使用者任务的纯拒绝判定。
 - `video_mutations.py`：Segment 视频计划/提示词/模式变换与校验。
@@ -242,8 +243,9 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `image_prompt_style.py`：当前图片插件的输入图指代与画幅句约定。
 - `video_contracts.py`：抽帧请求（帧号）与视频输入快照值对象。
 - `video_inputs.py`：Segment 视频实际输入、候选适用性与首帧“从上一 seg 抽取”来源。
+- `media_submission/dialogue.py`：逐句对白 TTS 提交；有参考音色强制克隆，无参考音色强制 Voice Design。
 - `assembly_timeline.py`：Animatic、Scene 成片与全片装配时间线纯计算。
-- `dialogue_timing.py`：对白时长软提示，按字数估算台词念完所需秒数，超出 Segment 预估时长时进入快照、`read_story` 与视频工作集，不阻止写入。
+- `dialogue_timing.py`：TTS 前对白时长软提示，以及已选对白 WAV 的真实起点、时长和最晚结束时间投影。
 - `narration_timing.py`：旁白 Scene 的尾部画面缓冲、视觉时长、所选语言时间基准（单语真实时长、双语较长一条）与生产基线校准（每次脚本写入自动执行）。
 - `asset_metadata.py`：Generation 产物的可读文件名与位置（字节校验见 core/media_assets）。
 - `generation_lifecycle.py`：Generation seed、retry 链接、请求签名与恢复判断。
@@ -257,6 +259,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `_shared.py`：枚举（Generation kind/phase/operation 等）与共享校验工具。
 - `reference.py`：角色卡、造型（角色图唯一单位）、旁白身份与引用库。
 - `script.py`：Scene、Shot、Segment、对白与导演脚本。
+- `dialogue.py`：逐句对白音频选择、合成参数、发声起点与脚本 revision 绑定的生产计划。
 - `narration.py`：旁白 Cue 与待处理旁白编辑。
 - `location.py`：Location（地点）、固定陈设、状态变体、机位视图与地点库（含视图依赖无环校验）。
 - `keyframe.py`：Keyframe、Segment 首尾绑定与 Keyframe 计划（含依赖无环校验）。
@@ -277,7 +280,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `_shared.py`：严格字段与类型解析工具。
 - `document.py`：根文档编解码与 schema 版本分派。
 - `asset.py`、`final.py`、`generation.py`、`keyframe.py`、`location.py`、`narration.py`、
-  `reference.py`、`run.py`、`script.py`、`video.py`：对应域的 parse/serialize 函数对。
+  `reference.py`、`run.py`、`script.py`、`dialogue.py`、`video.py`：对应域的 parse/serialize 函数对。
 
 #### mutations/ — L2 纯函数变换
 
@@ -366,7 +369,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `agent_launcher/clipboard_input.py`：容器内临时图片校验与剪贴板发布。
 - `storyrail_mcp/README.md`：MCP adapter 说明。
 - `storyrail_mcp/__main__.py`：stdio adapter 启动。
-- `storyrail_mcp/app.py`：公开 24 个受控工具（外加旧别名），另有 Playground scope 的 5 个工具；大型 proposal 可从
+- `storyrail_mcp/app.py`：公开 25 个受控工具（外加旧别名），另有 Playground scope 的 5 个工具；大型 proposal 可从
   request ID 唯一确定的工作区 JSON 读取，校验大小与 SHA-256 后再走原 Core 命令。
 - `storyrail_mcp/playground_tools.py`：Playground scope 的 5 个工具输入模型与命令翻译。
 - `storyrail_mcp/bridge.py`：固定地址的无状态 HTTP 翻译。
@@ -530,7 +533,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `README.md`：文档索引、全局图与术语。
 - `product.md`：产品定位、核心概念、能力、人工控制边界、非目标。
 - `architecture.md`：进程与模块、分层、authority 划分、单写与并发、持久状态布局。
-- `data-model.md`：`project.json` v33 实体关系、字段约束（含地点库与失效规则）、Asset 落盘、Generation、DirectorRun、ApplicationRequest。
+- `data-model.md`：`project.json` v34 实体关系、字段约束（含地点库、对白 TTS 与失效规则）、Asset 落盘、Generation、DirectorRun、ApplicationRequest。
 - `production-workflow.md`：逐阶段的触发者、输入、产出与门禁。
 - `control-flow.md`：身份授权、命令分发、原子回执、Generation 生命周期（含确定性工具）、proposal、Keyframe 与地点成套批次、恢复。
 - `data-flow.md`：旁白时序、地点图片/Keyframe/H3 输入编译、Scene 成片与最终装配、失效传播、资产使用与删除。

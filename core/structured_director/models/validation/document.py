@@ -36,6 +36,7 @@ def validate_document(document) -> None:
     _validate_voice_only_visibility(document)
     _validate_keyframe_character_references(document)
     _validate_narration_selections(document, asset_by_id)
+    _validate_dialogue_plan(document, asset_by_id)
     _validate_locations(document, asset_by_id)
     _validate_keyframe_plan(document, asset_by_id)
     _validate_video_plan(document, asset_by_id)
@@ -236,7 +237,10 @@ def _validate_assets_and_generations(document) -> None:
                 ReferenceGenerationKind.AUDIO_TRIM,
             }:
                 accepted = isinstance(asset, Asset) and asset.media_type == "audio/wav"
-            elif generation.kind is ReferenceGenerationKind.GENERATED_AUDIO:
+            elif generation.kind in {
+                ReferenceGenerationKind.GENERATED_AUDIO,
+                ReferenceGenerationKind.DIALOGUE_AUDIO,
+            }:
                 accepted = (
                     generation.operation is GenerationOperation.SYNTHESIZE
                     and isinstance(asset, Asset)
@@ -302,6 +306,7 @@ def _validate_assets_and_generations(document) -> None:
                     ReferenceGenerationKind.NARRATOR_VOICE,
                     ReferenceGenerationKind.NARRATION_AUDIO,
                     ReferenceGenerationKind.GENERATED_AUDIO,
+                    ReferenceGenerationKind.DIALOGUE_AUDIO,
                     ReferenceGenerationKind.AUDIO_EFFECT,
                     ReferenceGenerationKind.AUDIO_TRIM,
                     ReferenceGenerationKind.VIDEO_AUDIO_VOICE,
@@ -377,6 +382,72 @@ def _validate_narration_selections(document, asset_by_id) -> None:
                 for generation in document.generations
             ):
                 raise ValueError("旁白 Cue 选择的音频没有对应的成功 Generation。")
+
+
+def _validate_dialogue_plan(document, asset_by_id) -> None:
+    lines = {
+        line.id: (segment, line)
+        for scene in (() if document.director_script is None else document.director_script.scenes)
+        for segment in scene.segments
+        for line in segment.dialogue_lines
+        if line.id is not None
+    }
+    plan = document.dialogue_plan
+    if document.director_script is None:
+        if plan is not None:
+            raise ValueError("对白计划不能早于结构化脚本。")
+        return
+    if plan is None:
+        if lines:
+            raise ValueError("有对白的脚本必须保存 DialoguePlan。")
+        return
+    if plan.source_script_revision != document.director_script.revision:
+        raise ValueError("对白计划的脚本 revision 与当前脚本不一致。")
+    if {item.dialogue_line_id for item in plan.items} != set(lines):
+        raise ValueError("对白计划必须完整对应当前 DialogueLine。")
+    for item in plan.items:
+        if item.selected_audio_asset_id is None:
+            continue
+        selected = asset_by_id.get(item.selected_audio_asset_id)
+        if (
+            not isinstance(selected, Asset)
+            or selected.media_type != "audio/wav"
+            or selected.duration_seconds is None
+            or selected.duration_seconds <= 0
+        ):
+            raise ValueError("对白必须选择带真实时长的 WAV Asset。")
+        if not any(
+            generation.kind is ReferenceGenerationKind.DIALOGUE_AUDIO
+            and generation.target_id == item.dialogue_line_id
+            and generation.output_asset_id == item.selected_audio_asset_id
+            and generation.phase is ReferenceGenerationPhase.SUCCEEDED
+            and not generation.dismissed
+            for generation in document.generations
+        ):
+            raise ValueError("对白选择的音频没有对应的成功 Generation。")
+    items = {item.dialogue_line_id: item for item in plan.items}
+    for scene in document.director_script.scenes:
+        for segment in scene.segments:
+            if not segment.dialogue_lines:
+                continue
+            segment_items = [items[line.id] for line in segment.dialogue_lines]
+            if not any(item.start_seconds is not None for item in segment_items):
+                continue
+            if any(
+                item.start_seconds is None or item.selected_audio_asset_id is None
+                for item in segment_items
+            ):
+                raise ValueError("Segment 的对白时序必须一次完整覆盖全部 DialogueLine。")
+            previous_end = 0.0
+            for item in segment_items:
+                assert item.start_seconds is not None
+                assert item.selected_audio_asset_id is not None
+                asset = asset_by_id[item.selected_audio_asset_id]
+                if item.start_seconds + 1e-6 < previous_end:
+                    raise ValueError("Segment 的对白音频不能重叠。")
+                previous_end = item.start_seconds + asset.duration_seconds
+            if previous_end > segment.duration_estimate_seconds + 1e-6:
+                raise ValueError("Segment 时长不能短于对白真实音频结束时间。")
 
 
 def _validate_locations(document, asset_by_id) -> None:

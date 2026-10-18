@@ -17,6 +17,7 @@ from core.structured_director.reads.semantic_projection import (
     build_semantic_tree,
 )
 from core.structured_director.script_index import shot_segments
+from core.structured_director.script_mutations import dialogue_plan_for_script
 
 
 def test_read_api_uses_same_projection_and_explicit_details(tmp_path):
@@ -143,6 +144,13 @@ async def _large_context(tmp_path):
                     id=f"{10000 + index * 100 + j * 10 + k:032x}",
                     shot_ids=tuple(shot_ids[item] for item in segment.shot_ids),
                     action=f"segment-{index + 1}-" + "动作" * 1000,
+                    dialogue_lines=tuple(
+                        replace(
+                            line,
+                            id=f"{200000 + index * 1000 + j * 100 + k * 10 + n:032x}",
+                        )
+                        for n, line in enumerate(segment.dialogue_lines)
+                    ),
                 )
                 for j, shot in enumerate(source.shots)
                 for k, segment in enumerate(shot_segments(source, shot.id))
@@ -150,12 +158,14 @@ async def _large_context(tmp_path):
         )
 
     scenes = tuple(numbered(index) for index in range(60))
+    script = replace(document.director_script, scenes=scenes)
     large = replace(
         document,
         keyframe_plan=None,
         video_plan=None,
         location_library=LocationLibrary(),
-        director_script=replace(document.director_script, scenes=scenes),
+        director_script=script,
+        dialogue_plan=dialogue_plan_for_script(script),
     )
     before = store.path.read_bytes()
     state_json = _director_state_json(large, user_message="只讨论 scene1")
