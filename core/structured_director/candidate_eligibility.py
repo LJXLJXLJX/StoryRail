@@ -39,70 +39,9 @@ def generation_is_reviewable(document, generation) -> bool:
             and generation.prompt_text == cue.track(generation.language).text
         )
     if kind is ReferenceGenerationKind.DIALOGUE_AUDIO:
-        line = next(
-            (
-                line
-                for scene in (
-                    () if document.director_script is None else document.director_script.scenes
-                )
-                for segment in scene.segments
-                for line in segment.dialogue_lines
-                if line.id == target_id
-            ),
-            None,
-        )
-        if line is None or asset.media_type != "audio/wav":
-            return False
-        if generation.prompt_text != line.text:
-            return False
-        plan_item = next(
-            (
-                item
-                for item in (() if document.dialogue_plan is None else document.dialogue_plan.items)
-                if item.dialogue_line_id == target_id
-            ),
-            None,
-        )
-        recipe_id = (
-            None if generation.provider_snapshot is None else generation.provider_snapshot.recipe_id
-        )
-        if plan_item is not None and recipe_id is not None:
-            configured = plan_item.recipe_params.get(recipe_id)
-            submitted = generation.recipe_params.get(recipe_id)
-            if configured is not None and submitted != configured:
-                return False
-            if (
-                configured is None
-                and submitted is not None
-                and "performance_instruction" in submitted
-                and submitted["performance_instruction"] != (line.delivery.strip() or None)
-            ):
-                return False
-        if line.character_id is None:
-            return (
-                generation.operation.value == "voice_design"
-                and generation.sample_text == line.voice_description
-            )
-        card = next(
-            (
-                item
-                for item in document.reference_library.characters
-                if item.id == line.character_id
-            ),
-            None,
-        )
-        if card is None:
-            return False
-        if card.voice_reference_asset_id is None:
-            return (
-                generation.operation.value == "voice_design"
-                and generation.sample_text == card.voice_description
-            )
-        return (
-            generation.operation.value == "synthesize"
-            and generation.input_asset_ids == (card.voice_reference_asset_id,)
-            and generation.sample_text == card.voice_reference_transcript
-        )
+        # 对白候选由人类试听判断；正文、音色或表演参数变化只作软提示。
+        # target_id 已把候选约束在同一条 DialogueLine，不能替用户拒绝历史 WAV。
+        return _dialogue_line(document, target_id) is not None and asset.media_type == "audio/wav"
     if kind is ReferenceGenerationKind.KEYFRAME_IMAGE:
         return (
             document.keyframe_plan is not None
@@ -150,6 +89,74 @@ def generation_is_reviewable(document, generation) -> bool:
             and asset.media_type == "video/mp4"
         )
     return False
+
+
+def dialogue_inputs_unchanged(document, generation) -> bool:
+    """Return whether a dialogue candidate was generated from the current inputs."""
+    if generation.kind is not ReferenceGenerationKind.DIALOGUE_AUDIO:
+        return True
+    line = _dialogue_line(document, generation.target_id)
+    if line is None or generation.prompt_text != line.text:
+        return False
+    plan_item = next(
+        (
+            item
+            for item in (() if document.dialogue_plan is None else document.dialogue_plan.items)
+            if item.dialogue_line_id == generation.target_id
+        ),
+        None,
+    )
+    recipe_id = (
+        None if generation.provider_snapshot is None else generation.provider_snapshot.recipe_id
+    )
+    if plan_item is not None and recipe_id is not None:
+        configured = plan_item.recipe_params.get(recipe_id)
+        submitted = generation.recipe_params.get(recipe_id)
+        if configured is not None and submitted != configured:
+            return False
+        if (
+            configured is None
+            and submitted is not None
+            and "performance_instruction" in submitted
+            and submitted["performance_instruction"] != (line.delivery.strip() or None)
+        ):
+            return False
+    if line.character_id is None:
+        return (
+            generation.operation.value == "voice_design"
+            and generation.sample_text == line.voice_description
+        )
+    card = next(
+        (item for item in document.reference_library.characters if item.id == line.character_id),
+        None,
+    )
+    if card is None:
+        return False
+    if card.voice_reference_asset_id is None:
+        return (
+            generation.operation.value == "voice_design"
+            and generation.sample_text == card.voice_description
+        )
+    return (
+        generation.operation.value == "synthesize"
+        and generation.input_asset_ids == (card.voice_reference_asset_id,)
+        and generation.sample_text == card.voice_reference_transcript
+    )
+
+
+def _dialogue_line(document, target_id):
+    return next(
+        (
+            line
+            for scene in (
+                () if document.director_script is None else document.director_script.scenes
+            )
+            for segment in scene.segments
+            for line in segment.dialogue_lines
+            if line.id == target_id
+        ),
+        None,
+    )
 
 
 def reviewable_generations(document, kind, target_ids):

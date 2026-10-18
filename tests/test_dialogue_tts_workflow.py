@@ -93,12 +93,17 @@ def test_character_dialogue_uses_voice_design_without_reference_and_clone_with_r
             ),
             expected_revision=clone_doc.revision,
         )
-        with pytest.raises(ValueError, match="已不匹配"):
-            await clone_service.select_dialogue_audio(
-                dialogue_line_id=clone_line.id,
-                generation_id=clone_generation.id,
-                expected_revision=clone_doc.revision,
-            )
+        clone_doc = await clone_service.select_dialogue_audio(
+            dialogue_line_id=clone_line.id,
+            generation_id=clone_generation.id,
+            expected_revision=clone_doc.revision,
+        )
+        stale_projection = serialize_snapshot(clone_doc, clone_service, "/project")
+        stale_generation = next(
+            item for item in stale_projection["generations"] if item["id"] == clone_generation.id
+        )
+        assert stale_generation["inputs_outdated"] is True
+        assert stale_generation["allowed_actions"] == []
         overridden = await clone_service.generate_dialogue(
             dialogue_line_id=clone_line.id,
             expected_revision=clone_doc.revision,
@@ -124,7 +129,7 @@ def test_character_dialogue_uses_voice_design_without_reference_and_clone_with_r
         projected = serialize_snapshot(clone_doc, clone_service, "/project")
         actions = {item["id"]: item["allowed_actions"] for item in projected["generations"]}
         assert actions[overridden_generation_id] == []
-        assert actions[clone_generation.id] == ["dismiss_history"]
+        assert actions[clone_generation.id] == ["select_dialogue_audio", "dismiss_history"]
         with pytest.raises(ValueError, match="已经成为参考素材"):
             await clone_service.dismiss_generation(
                 overridden_generation_id,

@@ -50,6 +50,7 @@
 .dialogue-audio-candidate { display: grid; grid-template-columns: minmax(220px, 1fr) auto; align-items: center; gap: 10px; margin-top: 10px; }
 .dialogue-candidate-list { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .dialogue-audio-candidate-actions, .dialogue-dismiss-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dialogue-candidate-notice { grid-column: 1 / -1; margin: 0; color: var(--muted); }
 .dialogue-dismiss-confirm { grid-column: 1 / -1; padding-top: 7px; border-top: 1px solid var(--line); }
 .dialogue-dismiss-confirm span { flex-basis: 100%; color: var(--muted); font-size: 10px; }
 .story-reader-intro { color: var(--muted); }

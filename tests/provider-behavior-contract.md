@@ -68,6 +68,7 @@
 | C9 | Breeze 异步 API 明确返回 400/404/405/415 时回退官方同步 API，PCM 保存为可观察/回收的 WAV 句柄。 | `core/model_providers/breeze_tts2/manifest.py`、`provider.py` | `test_breeze_tts2_provider.py` |
 | C10 | 旁白卡正文与 seed 是领域控件，机制参数按当前 speech recipe 的 editable_params 渲染。 | `web/src/director_workspace/narration.tsx`；`provider_settings/SettingField.tsx` | `director_workspace/narration.test.tsx`、`StructuredDirectorWorkspace.test.tsx`、`RunForm.test.tsx` |
 | C11 | 选择角色参考音色不改写显式保存的视频音频引用。 | `core/structured_director/store/domains/reference.py` | `test_director_commands.py::test_reselecting_character_voice_does_not_change_explicit_audio_references` |
+| C12 | 同一 DialogueLine 的成功、未隐藏 WAV 始终可由人类选择；正文、音色或表演参数变化仅投影 `inputs_outdated` 软提示。 | `core/structured_director/candidate_eligibility.py`、`reads/snapshot_view.py` | `test_dialogue_tts_workflow.py::test_character_dialogue_uses_voice_design_without_reference_and_clone_with_reference`、`StructuredDirectorWorkspace.test.tsx` |
 
 ## 图片
 

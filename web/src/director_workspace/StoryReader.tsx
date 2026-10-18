@@ -958,7 +958,7 @@ function DialogueProductionPanel({
                           选择候选 {generation.id.slice(0, 6)}
                         </button>
                       ) : (
-                        <span title="正文、音色或表演参数已经变化">历史候选 · 当前不可选择</span>
+                        <span>项目当前不可编辑</span>
                       )}
                       {generation.allowed_actions.includes("dismiss_history") &&
                       confirmDismiss !== generation.id ? (
@@ -973,6 +973,11 @@ function DialogueProductionPanel({
                         </button>
                       ) : null}
                     </div>
+                    {generation.inputs_outdated ? (
+                      <p className="dialogue-candidate-notice">
+                        该候选生成后的正文、音色或表演参数已经变化；仍可试听并选择，如需匹配当前设置请重新生成。
+                      </p>
+                    ) : null}
                     {confirmDismiss === generation.id ? (
                       <div className="dialogue-dismiss-confirm">
                         <span>隐藏后不再显示；废弃产物可随后在资产中心永久清理。</span>

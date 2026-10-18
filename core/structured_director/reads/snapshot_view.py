@@ -8,7 +8,7 @@ from ..assembly_timeline import (
     _build_scene_final_plan,
     _current_scene_final_asset_id,
 )
-from ..candidate_eligibility import generation_is_reviewable
+from ..candidate_eligibility import dialogue_inputs_unchanged, generation_is_reviewable
 from ..codec.keyframe import serialize_character_references
 from ..dialogue_timing import dialogue_timing_warnings
 from ..models import (
@@ -837,10 +837,16 @@ def serialize_snapshot(
                         "summary": item.provider_snapshot.summary,
                     }
                 ),
-                # 软提示：仅 Segment 视频有意义；输入变化不阻止选择。
+                # 输入变化只作软提示；Segment 视频和对白候选都不因此失去选择入口。
                 "inputs_outdated": (
-                    item.kind is ReferenceGenerationKind.SEGMENT_VIDEO
-                    and not video_inputs_unchanged(document, item)
+                    (
+                        item.kind is ReferenceGenerationKind.SEGMENT_VIDEO
+                        and not video_inputs_unchanged(document, item)
+                    )
+                    or (
+                        item.kind is ReferenceGenerationKind.DIALOGUE_AUDIO
+                        and not dialogue_inputs_unchanged(document, item)
+                    )
                 ),
                 "allowed_actions": list(_generation_allowed_actions(document, item)),
             }

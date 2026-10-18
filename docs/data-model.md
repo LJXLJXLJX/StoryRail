@@ -227,7 +227,7 @@ flowchart LR
 | `dialogue_line_id` | 当前脚本中的稳定 DialogueLine ID |
 | `seed` | TTS / Voice Design seed |
 | `recipe_params` | 当前克隆 recipe 的机制参数，由 Provider manifest 渲染和校验；例如 Breeze 的表演指示包含语气、情绪、语速与停顿。Voice Design 路由不接受克隆参数 |
-| `selected_audio_asset_id` | 人类从该句当前正文和当前音色路由的成功候选中选定的 WAV |
+| `selected_audio_asset_id` | 人类从该句成功、未隐藏的候选中选定的 WAV；生成后输入变化只作软提示 |
 | `start_seconds` | 该 WAV 在 Segment 内的真实发声起点；任一句重新选音频或正文/音色变化时整段清空 |
 
 Core 按剧本顺序校验 WAV 不重叠，并要求 `Segment.duration_estimate_seconds` 不短于最后一句对白结束时间。对白音频全部选择且

@@ -21,7 +21,7 @@ def select_dialogue_audio(
     dialogue_line_id: str,
     generation_id: str,
 ) -> StructuredDirectorDocument:
-    """选择当前正文和当前音色路由生成的 WAV，并清除该 Segment 的旧时序。"""
+    """选择该 DialogueLine 的成功 WAV，并清除该 Segment 的旧时序。"""
     plan, _scene, segment = _require_dialogue_line(document, dialogue_line_id)
     generation = next((item for item in document.generations if item.id == generation_id), None)
     if (
@@ -31,7 +31,7 @@ def select_dialogue_audio(
         or not generation_is_reviewable(document, generation)
         or generation.output_asset_id is None
     ):
-        raise ValueError("对白候选不存在、尚未完成，或已不匹配当前正文与音色。")
+        raise ValueError("对白候选不存在、尚未完成、已隐藏，或不是该句的 WAV。")
     items = tuple(
         replace(
             item,

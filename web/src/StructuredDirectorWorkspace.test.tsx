@@ -4024,7 +4024,7 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
  });
  succeeded.generations.push({
    ...succeeded.generations.at(-1)!,id:'7'.repeat(32),output_asset_id:historicalAssetId,
-   allowed_actions:['dismiss_history'],
+   inputs_outdated:true,allowed_actions:['select_dialogue_audio','dismiss_history'],
  });
  succeeded.dialogue_plan!.items.find(item=>item.dialogue_line_id===line.id)!.selected_audio_asset_id=assetId;
  view.rerenderSnapshot(succeeded);
@@ -4033,7 +4033,8 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
  expect(screen.getByLabelText('试听对白候选 888888')).toHaveAttribute('src','/dialogue.wav');
  expect(screen.getByText('当前已选 · 888888')).toBeInTheDocument();
  expect(screen.getByLabelText('试听对白候选 777777')).toHaveAttribute('src','/dialogue-old.wav');
- expect(screen.getByText('历史候选 · 当前不可选择')).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'选择候选 777777'})).toBeEnabled();
+ expect(screen.getByText(/该候选生成后的正文、音色或表演参数已经变化/)).toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'隐藏候选 777777'}));
  fireEvent.click(screen.getByRole('button',{name:'确认隐藏候选 777777'}));
  expect(onDismissGeneration).toHaveBeenCalledWith('7'.repeat(32));
