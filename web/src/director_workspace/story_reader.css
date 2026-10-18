@@ -46,9 +46,11 @@
 .dialogue-panel-intro { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
 .dialogue-line-list { display: grid; gap: 18px; }
 .dialogue-line-card { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--white); }
-.dialogue-line-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 14px; background: var(--paper); border-bottom: 1px solid var(--line); }
-.dialogue-line-header > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.dialogue-line-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 12px 14px; background: var(--paper); border-bottom: 1px solid var(--line); }
+.dialogue-line-toggle { width: 100%; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; color: var(--ink); text-align: left; }
+.dialogue-line-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .dialogue-line-index { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; text-transform: uppercase; }
+.dialogue-line-collapse { color: var(--muted); font-size: 12px; }
 .dialogue-route-badge, .dialogue-status { display: inline-flex; align-items: center; width: fit-content; padding: 3px 8px; border: 1px solid var(--line-dark); border-radius: 999px; color: var(--muted); font-size: 11px; white-space: nowrap; }
 .dialogue-status.is-selected { border-color: rgba(46, 125, 80, .35); background: rgba(46, 125, 80, .08); color: #2e7d50; }
 .dialogue-card-section { padding: 14px; }
@@ -88,7 +90,7 @@
 @media (max-width: 640px) { .story-reader-page { padding: 18px 20px; } }
 @media (max-width: 640px) {
   .dialogue-panel-body { padding: 12px; }
-  .dialogue-line-header { grid-template-columns: auto minmax(0, 1fr); }
+  .dialogue-line-header { grid-template-columns: auto minmax(0, 1fr) auto; }
   .dialogue-status { grid-column: 2; }
   .dialogue-direction-list { grid-template-columns: minmax(0, 1fr); }
   .dialogue-audio-candidate { grid-template-columns: minmax(0, 1fr); }

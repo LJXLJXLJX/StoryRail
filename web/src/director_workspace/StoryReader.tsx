@@ -776,6 +776,7 @@ function DialogueProductionPanel({
 }) {
   const [confirmDismiss, setConfirmDismiss] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
+  const [lineOpen, setLineOpen] = useState<Record<string, boolean>>({});
   const [candidateOpen, setCandidateOpen] = useState<Record<string, boolean>>({});
   const plan = new Map(
     (snapshot.dialogue_plan?.items ?? []).map((item) => [
@@ -858,20 +859,36 @@ function DialogueProductionPanel({
                 item?.start_seconds === null || item?.start_seconds === undefined
                   ? " · 待校准起点"
                   : " · " + item.start_seconds.toFixed(3) + "s 开始";
+              const lineExpanded = lineOpen[line.id] ?? true;
               const candidatesExpanded = candidateOpen[line.id] ?? true;
               return (
                 <article className="dialogue-line-card" key={line.id}>
-            <header className="dialogue-line-header">
+            <button
+              type="button"
+              className="dialogue-line-header dialogue-line-toggle"
+              aria-expanded={lineExpanded}
+              onClick={() =>
+                setLineOpen((current) => ({
+                  ...current,
+                  [line.id]: !lineExpanded,
+                }))
+              }
+            >
               <span className="dialogue-line-index">对白 {lineIndex + 1}</span>
-              <div>
+              <span className="dialogue-line-identity">
                 <strong>{speaker}</strong>
                 <span className="dialogue-route-badge">{route}</span>
-              </div>
+              </span>
               <span className={asset ? "dialogue-status is-selected" : "dialogue-status"}>
                 {activeGeneration ? "生成中" : asset ? "已选择" : "待选择"}
               </span>
-            </header>
+              <span className="dialogue-line-collapse" aria-hidden="true">
+                {lineExpanded ? "收起" : "展开"}
+              </span>
+            </button>
 
+            {lineExpanded ? (
+              <>
             <section className="dialogue-card-section" aria-label="对白与表演">
               <h4>对白与表演</h4>
               <blockquote className="dialogue-copy">{line.text}</blockquote>
@@ -1072,6 +1089,8 @@ function DialogueProductionPanel({
                 </div>
               ) : null}
             </section>
+              </>
+            ) : null}
           </article>
         );
             })}

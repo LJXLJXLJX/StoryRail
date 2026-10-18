@@ -4042,6 +4042,10 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
  fireEvent.click(candidateToggle);
  expect(candidateToggle).toHaveAttribute('aria-expanded','false');
  expect(screen.queryByLabelText('试听对白候选 888888')).not.toBeInTheDocument();
+ const lineToggle=screen.getByRole('button',{name:/对白 1.*小满.*音色克隆.*已选择/});
+ fireEvent.click(lineToggle);
+ expect(lineToggle).toHaveAttribute('aria-expanded','false');
+ expect(screen.queryByLabelText('试听已选对白 小满')).not.toBeInTheDocument();
  const panelToggle=screen.getByRole('button',{name:/对白 TTS.*已选 1\//});
  fireEvent.click(panelToggle);
  expect(panelToggle).toHaveAttribute('aria-expanded','false');
