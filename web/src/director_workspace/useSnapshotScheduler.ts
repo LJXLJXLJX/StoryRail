@@ -28,7 +28,10 @@ export type SnapshotSchedulerOptions = {
 function hasActiveGeneration(snapshot: StructuredDirectorSnapshot | null): boolean {
   return (
     snapshot?.generations.some(
-      generation => generation.phase === "queued" || generation.phase === "running",
+      generation =>
+        generation.phase === "submitting" ||
+        generation.phase === "queued" ||
+        generation.phase === "running",
     ) ?? false
   );
 }

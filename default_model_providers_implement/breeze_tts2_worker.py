@@ -116,7 +116,7 @@ class BreezeApi:
             )
 
         field("text", request["text"])
-        field("cfg_scale", str(request["cfg_scale"]))
+        field("cfg_scale", str(_effective_cfg_scale(request)))
         field("seed", str(request["seed"]))
         if request.get("instruction"):
             field("instruction", request["instruction"])
@@ -217,6 +217,18 @@ class BreezeApi:
 def breeze_process_pattern(model: str, port: int | str) -> str:
     """pkill -f 的固定命令签名；host 随 WSL 地址变化，只放宽为 IPv4。"""
     return f"breeze_infer.api {model} --host [0-9.]+ --port {port}( |$)"
+
+
+def _effective_cfg_scale(request: dict[str, Any]) -> float:
+    """Keep bare voice cloning compatible with Breeze's available CFG branches.
+
+    The deployed ``ref_clone_tata`` template has no negative prompt, so its
+    inference runtime rejects any CFG value other than 1. Voice Direction uses
+    ``ref_edit_tata`` and retains the configured guidance scale.
+    """
+    if request.get("voice") and not request.get("instruction"):
+        return 1.0
+    return float(request["cfg_scale"])
 
 
 def _wsl_address(output: str) -> str:

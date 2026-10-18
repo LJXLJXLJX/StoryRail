@@ -3748,6 +3748,9 @@ function renderWorkspace(
       cueId: string,
       generationId: string,
     ) => void;
+    onGenerateDialogue?: WorkspaceActions["onGenerateDialogue"];
+    onSelectDialogueAudio?: WorkspaceActions["onSelectDialogueAudio"];
+    onSetDialogueTiming?: WorkspaceActions["onSetDialogueTiming"];
     onClearNarrationAudioSelection?: (sceneId: string, cueId: string) => void;
     onApproveFinalVideo?: () => void;
     onGenerateFinalVideo?: () => void;
@@ -3817,6 +3820,9 @@ function renderWorkspace(
       onClearNarrationAudioSelection={
         overrides.onClearNarrationAudioSelection ?? vi.fn()
       }
+      onGenerateDialogue={overrides.onGenerateDialogue ?? vi.fn()}
+      onSelectDialogueAudio={overrides.onSelectDialogueAudio ?? vi.fn()}
+      onSetDialogueTiming={overrides.onSetDialogueTiming ?? vi.fn()}
       onGenerateSceneAnimatic={overrides.onGenerateSceneAnimatic}
       onGenerateSceneFinal={overrides.onGenerateSceneFinal}
       onUnlockVisualProduction={vi.fn()}
@@ -3943,6 +3949,54 @@ it('Scene 正文覆盖全部镜头对白；旁白未规划 Shot 时保持可读�
    expect(screen.getAllByText(g.action).length).toBeGreaterThan(0);
    for(const line of g.dialogue_lines) expect(screen.getByText(line.text)).toBeInTheDocument();
  }
+});
+it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物',()=>{
+ const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;
+ const scene=value.director_script!.scenes[1];
+ const segment=scene.segments[0];
+ const line=segment.dialogue_lines[0];
+ const base=value.generations[0];
+ const active={
+   ...base,
+   id:'8'.repeat(32),kind:'dialogue_audio' as const,operation:'synthesize' as const,
+   target_id:line.id,language:null,phase:'running' as const,progress:.42,
+   message:'Breeze 正在合成对白。',output_asset_id:null,error_code:null,
+   allowed_actions:['cancel'] as typeof base.allowed_actions,
+ };
+ value.generations.push(active);
+ const view=renderWorkspace({},value);
+ const nav=screen.getByRole('navigation',{name:'故事层级'});
+ fireEvent.click(within(nav).getByRole('button',{name:/场景 2.*戏剧/}));
+ const segmentList=within(nav).getByRole('list',{name:'场景 2 的生成片段'});
+ fireEvent.click(within(segmentList).getByRole('button',{name:/片段 1.*小满抬头/}));
+ expect(screen.getByText(/生成中 · 42% · Breeze 正在合成对白/)).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'生成中…'})).toBeDisabled();
+
+ const failed=structuredClone(value);
+ Object.assign(failed.generations.at(-1)!,{
+   phase:'failed',progress:.42,message:'Breeze 返回 HTTP 500：Internal Server Error',
+   error_code:'RuntimeError',allowed_actions:[],
+ });
+ view.rerenderSnapshot(failed);
+ expect(screen.getByRole('alert')).toHaveTextContent('Breeze 返回 HTTP 500');
+ expect(screen.getByRole('button',{name:'重新生成对白 TTS'})).toBeEnabled();
+
+ const succeeded=structuredClone(failed);
+ const assetId='9'.repeat(32);
+ succeeded.assets.push({
+   id:assetId,media_type:'audio/wav',image_category:null,byte_count:2048,
+   duration_seconds:1.75,display_name:'小满对白.wav',content_url:'/dialogue.wav',
+   is_in_use:true,usage_reasons:[],retains_derived_assets_on_delete:false,allowed_actions:[],
+ });
+ Object.assign(succeeded.generations.at(-1)!,{
+   phase:'succeeded',progress:1,message:'完成',output_asset_id:assetId,error_code:null,
+   allowed_actions:['select_dialogue_audio'],
+ });
+ succeeded.dialogue_plan!.items.find(item=>item.dialogue_line_id===line.id)!.selected_audio_asset_id=assetId;
+ view.rerenderSnapshot(succeeded);
+ expect(screen.getByLabelText('试听已选对白 小满')).toHaveAttribute('src','/dialogue.wav');
+ expect(screen.getByLabelText('试听对白候选 888888')).toHaveAttribute('src','/dialogue.wav');
+ expect(screen.getByRole('button',{name:'选择候选 888888'})).toBeEnabled();
 });
 it('引用库编辑作为临时弹窗，关闭后保留当前 Segment 和未保存输入',()=>{
  const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;

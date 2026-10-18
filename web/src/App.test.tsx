@@ -280,6 +280,7 @@ describe("StoryRail App", () => {
   it("按 TTS、图片和视频汇总未隐藏 Generation 进度", () => {
     const progress = summarizeGenerationProgress([
       generation("narration_audio", "succeeded"),
+      generation("dialogue_audio", "running"),
       generation("keyframe_image", "running"),
       generation("location_image", "failed"),
       generation("segment_video", "queued"),
@@ -287,21 +288,18 @@ describe("StoryRail App", () => {
       { ...generation("character_look_sheet", "succeeded"), dismissed: true },
     ]);
     expect(progress.tts).toEqual({
-      finished: 1,
-      total: 1,
+      total: 2,
       succeeded: 1,
-      active: 0,
+      active: 1,
       failed: 0,
     });
     expect(progress.image).toEqual({
-      finished: 1,
       total: 2,
       succeeded: 0,
       active: 1,
       failed: 1,
     });
     expect(progress.video).toEqual({
-      finished: 1,
       total: 2,
       succeeded: 0,
       active: 1,

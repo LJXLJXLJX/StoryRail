@@ -1,6 +1,7 @@
 """对白必须先 TTS：音色路由、真实时序和视频门禁。"""
 
 import asyncio
+import threading
 from dataclasses import replace
 
 import pytest
@@ -100,5 +101,48 @@ def test_dialogue_timing_rejects_overlap_and_video_shorter_than_audio(tmp_path):
                 duration_seconds=3.0,
                 expected_revision=document.revision,
             )
+
+    asyncio.run(run())
+
+
+def test_cancelled_http_request_still_finishes_durable_dialogue_submission(tmp_path):
+    async def scenario(directory, *, should_fail: bool):
+        directory.mkdir()
+        store_path, _old, document, _ = await _visual_project(str(directory))
+        started = threading.Event()
+        release = threading.Event()
+        provider = RecordingProvider(media_type="audio/wav", content=wav_bytes())
+        original_submit = provider.submit_recipe
+
+        def blocked_submit(request):
+            started.set()
+            assert release.wait(timeout=2)
+            if should_fail:
+                raise RuntimeError("模拟 Provider 拒绝提交")
+            return original_submit(request)
+
+        provider.submit_recipe = blocked_submit
+        store = StructuredDirectorStore(store_path.path.parent, document.project_id)
+        service = make_service(store, voice_provider=provider)
+        line = document.director_script.scenes[0].segments[0].dialogue_lines[0]
+        task = asyncio.create_task(
+            service.generate_dialogue(
+                dialogue_line_id=line.id,
+                expected_revision=document.revision,
+            )
+        )
+        assert await asyncio.to_thread(started.wait, 2)
+        task.cancel()
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        generation = store.read().generations[-1]
+        assert generation.phase.value == ("submission_uncertain" if should_fail else "queued")
+        assert generation.external_id == (None if should_fail else "external-1")
+
+    async def run():
+        await scenario(tmp_path / "accepted", should_fail=False)
+        await scenario(tmp_path / "failed", should_fail=True)
 
     asyncio.run(run())

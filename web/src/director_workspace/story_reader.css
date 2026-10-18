@@ -37,6 +37,12 @@
 .story-reader-lead, .story-reader-narration p { font-size: 19px; }
 .story-reader-narration { padding: 20px 24px; background: var(--paper); border-left: 3px solid var(--red); }
 .story-reader-narration audio { display: block; max-width: 100%; margin: 15px 0 8px; }
+.story-segment-text > div { padding: 14px 0; border-top: 1px solid var(--line); }
+.story-segment-text audio, .dialogue-generation-state progress { display: block; width: 100%; max-width: 520px; }
+.dialogue-generation-state { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); background: var(--paper); }
+.dialogue-generation-state.is-failed { border-color: var(--red); background: rgba(216, 75, 53, .07); }
+.dialogue-generation-state p { margin: 5px 0 0; font-size: 12px; line-height: 1.6; }
+.dialogue-audio-candidate { display: grid; grid-template-columns: minmax(220px, 1fr) auto; align-items: center; gap: 10px; margin-top: 10px; }
 .story-reader-intro { color: var(--muted); }
 .story-reader-chapter, .story-reader-children button, .story-reader-segments button { display: block; width: 100%; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); padding: 20px 0; color: inherit; }
 .story-reader-chapter:hover, .story-reader-children button:hover { color: var(--red); }

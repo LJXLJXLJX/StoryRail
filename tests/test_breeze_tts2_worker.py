@@ -147,6 +147,19 @@ class BreezeWorkerAddressTests(unittest.TestCase):
         self.assertIsNotNone(re.search(pattern, line.format("127.0.0.1", 7860)))
         self.assertIsNone(re.search(pattern, line.format("172.30.33.123", 78601)))
 
+    def test_bare_clone_disables_cfg_but_voice_direction_keeps_it(self) -> None:
+        bare_clone = {
+            "voice": "reference.wav",
+            "instruction": None,
+            "cfg_scale": 4.0,
+        }
+        directed_clone = {**bare_clone, "instruction": "轻声，语速稍慢。"}
+        voice_design = {"voice": None, "instruction": "温和", "cfg_scale": 4.0}
+
+        self.assertEqual(breeze_tts2_worker._effective_cfg_scale(bare_clone), 1.0)
+        self.assertEqual(breeze_tts2_worker._effective_cfg_scale(directed_clone), 4.0)
+        self.assertEqual(breeze_tts2_worker._effective_cfg_scale(voice_design), 4.0)
+
 
 if __name__ == "__main__":
     unittest.main()

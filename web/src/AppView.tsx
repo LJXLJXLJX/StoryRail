@@ -1368,12 +1368,11 @@ function GenerationProgress({
         return (
           <span
             key={category}
-            title={`${label}：成功 ${item.succeeded}，进行中 ${item.active}，失败或取消 ${item.failed}`}
+            title={`${label}：共 ${item.total} 次尝试`}
           >
-            {label}{" "}
-            <b>
-              {item.finished}/{item.total}
-            </b>
+            {label} <b>成功 {item.succeeded}</b>
+            {item.active > 0 ? ` · 进行 ${item.active}` : ""}
+            {item.failed > 0 ? ` · 失败 ${item.failed}` : ""}
           </span>
         );
       })}
@@ -1384,9 +1383,9 @@ export function summarizeGenerationProgress(
   generations: ReferenceGeneration[],
 ) {
   const result = {
-    tts: { finished: 0, total: 0, succeeded: 0, active: 0, failed: 0 },
-    image: { finished: 0, total: 0, succeeded: 0, active: 0, failed: 0 },
-    video: { finished: 0, total: 0, succeeded: 0, active: 0, failed: 0 },
+    tts: { total: 0, succeeded: 0, active: 0, failed: 0 },
+    image: { total: 0, succeeded: 0, active: 0, failed: 0 },
+    video: { total: 0, succeeded: 0, active: 0, failed: 0 },
   };
   for (const generation of generations) {
     if (generation.dismissed) continue;
@@ -1394,6 +1393,7 @@ export function summarizeGenerationProgress(
       generation.kind === "character_voice" ||
       generation.kind === "narrator_voice" ||
       generation.kind === "narration_audio" ||
+      generation.kind === "dialogue_audio" ||
       generation.kind === "generated_audio"
         ? "tts"
         : generation.kind === "character_look_sheet" ||
@@ -1405,14 +1405,12 @@ export function summarizeGenerationProgress(
     const item = result[category];
     item.total += 1;
     if (generation.phase === "succeeded") {
-      item.finished += 1;
       item.succeeded += 1;
     } else if (
       generation.phase === "failed" ||
       generation.phase === "cancelled" ||
       generation.phase === "submission_uncertain"
     ) {
-      item.finished += 1;
       item.failed += 1;
     } else {
       item.active += 1;

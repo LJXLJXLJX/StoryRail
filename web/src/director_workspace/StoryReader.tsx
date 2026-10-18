@@ -22,6 +22,7 @@ import {
 } from "./narration";
 import { FinalAssemblyWorkspace } from "./final";
 import { SceneMedia } from "./SceneMedia";
+import { generationPhaseLabel } from "./generation";
 import { copyText } from "./clipboard";
 import { newSceneDraft } from "./script_draft";
 import {
@@ -795,19 +796,22 @@ function DialogueProductionPanel({
           (value) => value.id === line.character_id,
         );
         const route = card?.voice_reference_asset_id ? "音色克隆" : "音色设计";
-        const candidates = snapshot.generations.filter(
+        const history = snapshot.generations.filter(
           (generation) =>
             generation.kind === "dialogue_audio" &&
             generation.target_id === line.id &&
-            generation.allowed_actions.includes("select_dialogue_audio"),
+            !generation.dismissed,
         );
-        const active = snapshot.generations.some(
-          (generation) =>
-            generation.kind === "dialogue_audio" &&
-            generation.target_id === line.id &&
-            ["submitting", "submission_uncertain", "queued", "running"].includes(
-              generation.phase,
-            ),
+        const activeGeneration = history.find((generation) =>
+          ["submitting", "queued", "running"].includes(generation.phase),
+        );
+        const latest = history.at(-1);
+        const failed =
+          latest?.phase === "failed" || latest?.phase === "submission_uncertain"
+            ? latest
+            : undefined;
+        const candidates = history.filter((generation) =>
+          generation.allowed_actions.includes("select_dialogue_audio"),
         );
         const speaker =
           line.character_id === null ? line.speaker_label : character(line.character_id);
@@ -824,21 +828,59 @@ function DialogueProductionPanel({
                 ? "已选 WAV · " + asset.duration_seconds?.toFixed(3) + " 秒" + timing
                 : "尚未选择对白音频"}
             </p>
+            {asset ? (
+              <audio
+                aria-label={`试听已选对白 ${speaker}`}
+                controls
+                preload="none"
+                src={asset.content_url}
+              />
+            ) : null}
+            {activeGeneration ? (
+              <div className="dialogue-generation-state" role="status">
+                <progress max="1" value={activeGeneration.progress} />
+                <p>
+                  {generationPhaseLabel(activeGeneration.phase)} ·{" "}
+                  {Math.round(activeGeneration.progress * 100)}% ·{" "}
+                  {activeGeneration.message}
+                </p>
+              </div>
+            ) : null}
+            {failed ? (
+              <div className="dialogue-generation-state is-failed" role="alert">
+                <strong>对白 TTS 失败</strong>
+                <p>{failed.message || failed.error_code || "外部语音模型执行失败。"}</p>
+              </div>
+            ) : null}
             <button
-              disabled={busy || active || !onGenerate}
+              disabled={busy || !!activeGeneration || !onGenerate}
               onClick={() => onGenerate?.(line.id)}
             >
-              {active ? "生成中…" : "生成对白 TTS"}
+              {activeGeneration ? "生成中…" : failed ? "重新生成对白 TTS" : "生成对白 TTS"}
             </button>
-            {candidates.map((generation) => (
-              <button
-                key={generation.id}
-                disabled={busy || !onSelect}
-                onClick={() => onSelect?.(line.id, generation.id)}
-              >
-                选择候选 {generation.id.slice(0, 6)}
-              </button>
-            ))}
+            {candidates.map((generation) => {
+              const candidate = generation.output_asset_id
+                ? assets.get(generation.output_asset_id)
+                : undefined;
+              return (
+                <div className="dialogue-audio-candidate" key={generation.id}>
+                  {candidate ? (
+                    <audio
+                      aria-label={`试听对白候选 ${generation.id.slice(0, 6)}`}
+                      controls
+                      preload="none"
+                      src={candidate.content_url}
+                    />
+                  ) : null}
+                  <button
+                    disabled={busy || !onSelect}
+                    onClick={() => onSelect?.(line.id, generation.id)}
+                  >
+                    选择候选 {generation.id.slice(0, 6)}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         );
       })}

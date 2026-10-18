@@ -149,6 +149,9 @@ WSL NAT 模式的 localhost 转发在虚拟机冷启动后可能不建立，因�
 不改变模型与权重。当前 16 GB 开发卡上冷启动（加载 + 预热）约 70 秒，生成耗时约为音频时长的 0.48 倍，
 显存峰值约 15.9 GB 且与文本长度无关。
 
+纯 Voice Clone（没有表演指示）使用 Breeze 的 `ref_clone_tata` 模板；该模板没有 CFG 负向分支，worker
+固定以 CFG 1 调用。带表演指示的 Voice Direction 使用 `ref_edit_tata`，继续采用插件配置的 CFG。
+
 同一进程内相同输入与 seed 产生相同 token；进程重启后不保证相同，因此 seed 只记录本次提交，
 不承诺跨重启逐字复现。显存几乎占满整卡，Windows 上不得有其它 GPU 常驻程序；
 启动失败（含 OOM）时任务直接报错，不回退到 eager。
