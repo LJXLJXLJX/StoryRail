@@ -26,6 +26,8 @@ recipe 的 `additional_images`，不进入 KeyframePlan，也不获得时间位�
 
 导航和正文使用 App 已有权威 snapshot，不叠加投影请求，不另存业务稿。
 媒体选择和权限始终来自当前快照的 workspace_layers / allowed_actions。
+Segment 的对白 TTS 卡片展示全部成功且未隐藏的候选：当前 Asset 明确标为“当前已选”，仍匹配正文、音色与表演参数的候选可选择，
+输入已变化的历史候选仍可试听并按 Core 的 `allowed_actions` 隐藏；Web 不用“当前不可选择”过滤候选历史。
 `location.tsx` 内的 `LocationLibrary` 在常驻工具栏“地点库”浮层中以左侧地点索引 + 右侧详情展示：
 详情按地点语义与主光 → 固定陈设 / 地点状态 → 独立图片卡分区，状态徽标只按 Core 的 `status` 着色；
 `LocationBinding` 只嵌入当前 Scene，编辑地点与状态绑定。

@@ -469,6 +469,10 @@ def _asset_is_referenced(document: StructuredDirectorDocument, asset_id: str) ->
         for cue in scene.narration_cues
     ):
         return True
+    if document.dialogue_plan is not None and any(
+        item.selected_audio_asset_id == asset_id for item in document.dialogue_plan.items
+    ):
+        return True
     if any(
         asset_id in tuple(image.selected_asset_id for image in item.images)
         for item in document.location_library.locations

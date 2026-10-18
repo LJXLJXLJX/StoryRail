@@ -576,6 +576,12 @@ def _generation_allowed_actions(
             for cue in scene.narration_cues
             for asset_id in cue.selected_audio_asset_ids
         )
+    if document.dialogue_plan is not None:
+        referenced_asset_ids.update(
+            item.selected_audio_asset_id
+            for item in document.dialogue_plan.items
+            if item.selected_audio_asset_id is not None
+        )
     referenced_asset_ids.update(
         asset_id
         for item in document.location_library.locations

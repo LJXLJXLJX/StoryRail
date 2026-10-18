@@ -4007,23 +4007,36 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
 
  const succeeded=structuredClone(failed);
  const assetId='9'.repeat(32);
+ const historicalAssetId='7'.repeat(32);
  succeeded.assets.push({
    id:assetId,media_type:'audio/wav',image_category:null,byte_count:2048,
    duration_seconds:1.75,display_name:'小满对白.wav',content_url:'/dialogue.wav',
    is_in_use:true,usage_reasons:[],retains_derived_assets_on_delete:false,allowed_actions:[],
  });
+ succeeded.assets.push({
+   id:historicalAssetId,media_type:'audio/wav',image_category:null,byte_count:2048,
+   duration_seconds:1.62,display_name:'小满旧对白.wav',content_url:'/dialogue-old.wav',
+   is_in_use:false,usage_reasons:[],retains_derived_assets_on_delete:false,allowed_actions:[],
+ });
  Object.assign(succeeded.generations.at(-1)!,{
    phase:'succeeded',progress:1,message:'完成',output_asset_id:assetId,error_code:null,
-   allowed_actions:['select_dialogue_audio','dismiss_history'],
+   allowed_actions:[],
+ });
+ succeeded.generations.push({
+   ...succeeded.generations.at(-1)!,id:'7'.repeat(32),output_asset_id:historicalAssetId,
+   allowed_actions:['dismiss_history'],
  });
  succeeded.dialogue_plan!.items.find(item=>item.dialogue_line_id===line.id)!.selected_audio_asset_id=assetId;
  view.rerenderSnapshot(succeeded);
  expect(screen.getByLabelText('试听已选对白 小满')).toHaveAttribute('src','/dialogue.wav');
+ expect(screen.getByText('对白候选（2）')).toBeInTheDocument();
  expect(screen.getByLabelText('试听对白候选 888888')).toHaveAttribute('src','/dialogue.wav');
- expect(screen.getByRole('button',{name:'选择候选 888888'})).toBeEnabled();
- fireEvent.click(screen.getByRole('button',{name:'隐藏候选 888888'}));
- fireEvent.click(screen.getByRole('button',{name:'确认隐藏候选 888888'}));
- expect(onDismissGeneration).toHaveBeenCalledWith('8'.repeat(32));
+ expect(screen.getByText('当前已选 · 888888')).toBeInTheDocument();
+ expect(screen.getByLabelText('试听对白候选 777777')).toHaveAttribute('src','/dialogue-old.wav');
+ expect(screen.getByText('历史候选 · 当前不可选择')).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'隐藏候选 777777'}));
+ fireEvent.click(screen.getByRole('button',{name:'确认隐藏候选 777777'}));
+ expect(onDismissGeneration).toHaveBeenCalledWith('7'.repeat(32));
 });
 it('引用库编辑作为临时弹窗，关闭后保留当前 Segment 和未保存输入',()=>{
  const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;

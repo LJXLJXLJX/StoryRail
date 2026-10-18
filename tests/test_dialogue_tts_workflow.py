@@ -9,9 +9,11 @@ from provider_factory import make_service
 from structured_director_fixtures import RecordingProvider, wav_bytes
 from test_director_commands import _visual_project
 
+from core.model_providers.boundary import GenerationPhase
 from core.model_providers.recipe import RecipeParams
 from core.structured_director import StructuredDirectorStore
 from core.structured_director.models import GenerationOperation
+from core.structured_director.reads.snapshot_view import serialize_snapshot
 
 
 def test_character_dialogue_uses_voice_design_without_reference_and_clone_with_reference(
@@ -107,6 +109,27 @@ def test_character_dialogue_uses_voice_design_without_reference_and_clone_with_r
         assert overridden.generations[-1].recipe_params.get("breeze_tts2.clone") == {
             "performance_instruction": performance_instruction
         }
+        overridden_generation_id = overridden.generations[-1].id
+        clone_provider.content = wav_bytes(duration_seconds=3)
+        clone_provider.observations = [GenerationPhase.RUNNING, GenerationPhase.SUCCEEDED]
+        await clone_service._generation_observer.refresh_generation(overridden_generation_id)
+        clone_doc = await clone_service._generation_observer.refresh_generation(
+            overridden_generation_id
+        )
+        clone_doc = await clone_service.select_dialogue_audio(
+            dialogue_line_id=clone_line.id,
+            generation_id=overridden_generation_id,
+            expected_revision=clone_doc.revision,
+        )
+        projected = serialize_snapshot(clone_doc, clone_service, "/project")
+        actions = {item["id"]: item["allowed_actions"] for item in projected["generations"]}
+        assert actions[overridden_generation_id] == []
+        assert actions[clone_generation.id] == ["dismiss_history"]
+        with pytest.raises(ValueError, match="已经成为参考素材"):
+            await clone_service.dismiss_generation(
+                overridden_generation_id,
+                expected_revision=clone_doc.revision,
+            )
         assert design_provider.requests == []
 
     asyncio.run(run())

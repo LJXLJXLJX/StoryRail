@@ -828,8 +828,11 @@ function DialogueProductionPanel({
           latest?.phase === "failed" || latest?.phase === "submission_uncertain"
             ? latest
             : undefined;
-        const candidates = history.filter((generation) =>
-          generation.allowed_actions.includes("select_dialogue_audio"),
+        // 候选历史和“当前还能否选择”是两件事。参数或角色音色变化后，
+        // Core 会撤销 select_dialogue_audio，但成功产物仍应留在卡片里供试听、辨认和隐藏。
+        const candidates = history.filter(
+          (generation) =>
+            generation.phase === "succeeded" && generation.output_asset_id !== null,
         );
         const speaker =
           line.character_id === null ? line.speaker_label : character(line.character_id);
@@ -925,67 +928,79 @@ function DialogueProductionPanel({
             >
               {activeGeneration ? "生成中…" : failed ? "重新生成对白 TTS" : "生成对白 TTS"}
             </button>
-            {candidates.map((generation) => {
-              const candidate = generation.output_asset_id
-                ? assets.get(generation.output_asset_id)
-                : undefined;
-              return (
-                <div className="dialogue-audio-candidate" key={generation.id}>
-                  {candidate ? (
-                    <audio
-                      aria-label={`试听对白候选 ${generation.id.slice(0, 6)}`}
-                      controls
-                      preload="none"
-                      src={candidate.content_url}
-                    />
-                  ) : null}
-                  <div className="dialogue-audio-candidate-actions">
-                    <button
-                      disabled={busy || !onSelect}
-                      onClick={() => onSelect?.(line.id, generation.id)}
-                    >
-                      选择候选 {generation.id.slice(0, 6)}
-                    </button>
-                    {generation.allowed_actions.includes("dismiss_history") &&
-                    confirmDismiss !== generation.id ? (
-                      <button
-                        type="button"
-                        className="delete-button"
-                        aria-label={`隐藏候选 ${generation.id.slice(0, 6)}`}
-                        disabled={busy || !onDismiss}
-                        onClick={() => setConfirmDismiss(generation.id)}
-                      >
-                        隐藏
-                      </button>
+            <div className="dialogue-candidate-list">
+              <strong>对白候选（{candidates.length}）</strong>
+              {candidates.length === 0 ? <p>尚无成功候选。</p> : null}
+              {candidates.map((generation) => {
+                const candidate = generation.output_asset_id
+                  ? assets.get(generation.output_asset_id)
+                  : undefined;
+                const isSelected = generation.output_asset_id === item?.selected_audio_asset_id;
+                const canSelect = generation.allowed_actions.includes("select_dialogue_audio");
+                return (
+                  <div className="dialogue-audio-candidate" key={generation.id}>
+                    {candidate ? (
+                      <audio
+                        aria-label={`试听对白候选 ${generation.id.slice(0, 6)}`}
+                        controls
+                        preload="none"
+                        src={candidate.content_url}
+                      />
+                    ) : null}
+                    <div className="dialogue-audio-candidate-actions">
+                      {isSelected ? (
+                        <strong>当前已选 · {generation.id.slice(0, 6)}</strong>
+                      ) : canSelect ? (
+                        <button
+                          disabled={busy || !onSelect}
+                          onClick={() => onSelect?.(line.id, generation.id)}
+                        >
+                          选择候选 {generation.id.slice(0, 6)}
+                        </button>
+                      ) : (
+                        <span title="正文、音色或表演参数已经变化">历史候选 · 当前不可选择</span>
+                      )}
+                      {generation.allowed_actions.includes("dismiss_history") &&
+                      confirmDismiss !== generation.id ? (
+                        <button
+                          type="button"
+                          className="delete-button"
+                          aria-label={`隐藏候选 ${generation.id.slice(0, 6)}`}
+                          disabled={busy || !onDismiss}
+                          onClick={() => setConfirmDismiss(generation.id)}
+                        >
+                          隐藏
+                        </button>
+                      ) : null}
+                    </div>
+                    {confirmDismiss === generation.id ? (
+                      <div className="dialogue-dismiss-confirm">
+                        <span>隐藏后不再显示；废弃产物可随后在资产中心永久清理。</span>
+                        <button
+                          type="button"
+                          className="delete-button"
+                          aria-label={`确认隐藏候选 ${generation.id.slice(0, 6)}`}
+                          disabled={busy || !onDismiss}
+                          onClick={() => {
+                            setConfirmDismiss(null);
+                            onDismiss?.(generation.id);
+                          }}
+                        >
+                          确认隐藏
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => setConfirmDismiss(null)}
+                        >
+                          取消
+                        </button>
+                      </div>
                     ) : null}
                   </div>
-                  {confirmDismiss === generation.id ? (
-                    <div className="dialogue-dismiss-confirm">
-                      <span>隐藏后不再显示；废弃产物可随后在资产中心永久清理。</span>
-                      <button
-                        type="button"
-                        className="delete-button"
-                        aria-label={`确认隐藏候选 ${generation.id.slice(0, 6)}`}
-                        disabled={busy || !onDismiss}
-                        onClick={() => {
-                          setConfirmDismiss(null);
-                          onDismiss?.(generation.id);
-                        }}
-                      >
-                        确认隐藏
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => setConfirmDismiss(null)}
-                      >
-                        取消
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         );
       })}
