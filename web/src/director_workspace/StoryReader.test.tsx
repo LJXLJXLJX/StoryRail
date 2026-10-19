@@ -90,3 +90,29 @@ it("片段行显示服务端提供的 15 秒软约束与对白时长提示", () 
   // 共享边界 Shot 的“（续）”标签保持不变。
   expect(rows[2]).toHaveTextContent("镜头 2（续）");
 });
+
+it("片段行显示对白 TTS 与视频待生成项目", () => {
+  const base = scenes[1];
+  render(
+    <StoryNavigation
+      title="潮汐"
+      scenes={[base]}
+      target={null}
+      timingConfirmed
+      pendingGenerationItems={{
+        [base.segments[0].id]: ["对白 TTS", "视频"],
+        [base.segments[1].id]: ["视频"],
+        [base.segments[2].id]: [],
+      }}
+      onChoose={vi.fn()}
+    >
+      <p>正文</p>
+    </StoryNavigation>,
+  );
+  const rows = within(
+    screen.getByRole("list", { name: "场景 1 的生成片段" }),
+  ).getAllByRole("button");
+  expect(rows[0]).toHaveTextContent("待生成项目：对白 TTS、视频");
+  expect(rows[1]).toHaveTextContent("待生成项目：视频");
+  expect(rows[2]).not.toHaveTextContent("待生成项目");
+});

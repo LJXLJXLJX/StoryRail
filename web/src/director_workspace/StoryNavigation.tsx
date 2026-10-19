@@ -4,6 +4,8 @@ import type { DialogueTimingWarning, Scene } from "../api";
 import type { StoryTarget } from "../api/projection";
 import { segmentShotLabel } from "./script_index";
 
+export type SegmentPendingGenerationItem = "对白 TTS" | "视频";
+
 export function StoryNavigation({
   scenes,
   title,
@@ -11,6 +13,7 @@ export function StoryNavigation({
   timingConfirmed,
   timingWarnings = [],
   softDurationLimits = {},
+  pendingGenerationItems = {},
   onChoose,
   children,
 }: {
@@ -22,6 +25,8 @@ export function StoryNavigation({
   timingWarnings?: DialogueTimingWarning[];
   /** Core 视频 recipe 声明的软时长上限；没有该 recipe 时为空。 */
   softDurationLimits?: Record<string, number | null | undefined>;
+  /** 由当前快照中的对白与视频选择事实投影出的待生成项目。 */
+  pendingGenerationItems?: Record<string, SegmentPendingGenerationItem[]>;
   onChoose: (target: StoryTarget | null) => void;
   children: ReactNode;
 }) {
@@ -143,6 +148,7 @@ export function StoryNavigation({
                       const timing = timingWarnings.find(
                         (item) => item.segment_id === segment.id,
                       );
+                      const pendingItems = pendingGenerationItems[segment.id] ?? [];
                       const exceedsSoft =
                         softLimit !== null &&
                         softLimit !== undefined &&
@@ -151,7 +157,9 @@ export function StoryNavigation({
                         <li key={segment.id}>
                           <button
                             className={
-                              exceedsSoft || timing ? "has-warnings" : undefined
+                              exceedsSoft || timing || pendingItems.length
+                                ? "has-status-lines"
+                                : undefined
                             }
                             aria-current={
                               target?.id === segment.id ? "page" : undefined
@@ -175,6 +183,11 @@ export function StoryNavigation({
                             {timing ? (
                               <small className="story-reader-warning" role="note">
                                 对白约需 {timing.estimated_seconds} 秒，超过预估时长
+                              </small>
+                            ) : null}
+                            {pendingItems.length ? (
+                              <small className="story-reader-pending" role="note">
+                                待生成项目：{pendingItems.join("、")}
                               </small>
                             ) : null}
                             <span>{segment.action}</span>

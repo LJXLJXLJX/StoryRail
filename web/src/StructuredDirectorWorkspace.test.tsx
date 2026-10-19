@@ -148,6 +148,8 @@ describe("StructuredDirectorWorkspace", () => {
     const nav=screen.getByRole("navigation",{name:"故事层级"});
     fireEvent.click(within(nav).getByRole("button",{name:/场景 2.*戏剧/}));
     const sceneTwoSegments=within(nav).getByRole("list",{name:"场景 2 的生成片段"});
+    expect(within(sceneTwoSegments).getByRole("button",{name:/片段 1.*待生成项目：对白 TTS、视频/})).toBeVisible();
+    expect(within(sceneTwoSegments).getByRole("button",{name:/片段 2.*待生成项目：视频/})).toBeVisible();
     fireEvent.click(within(sceneTwoSegments).getByRole("button",{name:/片段 2 · 镜头 2.*连续推进/}));
     expect(screen.getByRole("heading",{name:/片段 2 · 连续推进/})).toBeVisible();
     expect(screen.getByLabelText("当前 视频提示词")).toBeInTheDocument();

@@ -13,7 +13,10 @@ import type {
 } from "../api";
 import type { StoryTarget } from "../api/projection";
 import type { WorkspaceFlatProps } from "./contracts";
-import { StoryNavigation } from "./StoryNavigation";
+import {
+  StoryNavigation,
+  type SegmentPendingGenerationItem,
+} from "./StoryNavigation";
 import { NodeEditor } from "./NodeEditor";
 import { SegmentKeyframeInputs } from "./keyframe";
 import { SegmentVideoPanel } from "./video";
@@ -163,6 +166,37 @@ export function StoryReader(props: WorkspaceFlatProps) {
   );
   const recommendedActions = snapshot.workflow.recommended_next_actions ?? [];
   const sceneIndex = scenes.findIndex((s) => s.id === scene?.id);
+  const dialogueAudioByLine = new Map(
+    (snapshot.dialogue_plan?.items ?? []).map((item) => [
+      item.dialogue_line_id,
+      item,
+    ]),
+  );
+  const videoBySegment = new Map(
+    (snapshot.video_plan?.segments ?? []).map((item) => [item.segment_id, item]),
+  );
+  const pendingGenerationItems: Record<string, SegmentPendingGenerationItem[]> =
+    Object.fromEntries(
+      scenes.flatMap((item) =>
+        item.segments.map((segment) => {
+          const pending: SegmentPendingGenerationItem[] = [];
+          if (
+            segment.dialogue_lines.some(
+              (line) => !dialogueAudioByLine.get(line.id)?.selected_audio_asset_id,
+            )
+          ) {
+            pending.push("对白 TTS");
+          }
+          if (
+            snapshot.workspace_layers.videos_unlocked &&
+            !videoBySegment.get(segment.id)?.selected_asset_id
+          ) {
+            pending.push("视频");
+          }
+          return [segment.id, pending];
+        }),
+      ),
+    );
   return (
     <DraftProtection.Provider value={registerDraft}>
       <StoryNavigation
@@ -181,6 +215,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
             item.recipe_state?.soft_duration_limit_seconds ?? null,
           ]),
         )}
+        pendingGenerationItems={pendingGenerationItems}
         onChoose={choose}
       >
         {notice ? <p role="status">{notice}</p> : null}
