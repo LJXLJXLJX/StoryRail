@@ -187,10 +187,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
           ) {
             pending.push("对白 TTS");
           }
-          if (
-            snapshot.workspace_layers.videos_unlocked &&
-            !videoBySegment.get(segment.id)?.selected_asset_id
-          ) {
+          if (!videoBySegment.get(segment.id)?.selected_asset_id) {
             pending.push("视频");
           }
           return [segment.id, pending];

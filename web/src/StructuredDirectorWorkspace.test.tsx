@@ -157,6 +157,21 @@ describe("StructuredDirectorWorkspace", () => {
     expect(screen.queryByLabelText("Agent 消息输入")).not.toBeInTheDocument();
     expect(load).not.toHaveBeenCalled();load.mockRestore();sessionStorage.clear();
   });
+  it("视频层尚未解锁时仍提前显示视频待生成", () => {
+    const fixture = structuredClone(
+      readerFixture.continuity.production_snapshot,
+    ) as unknown as StructuredDirectorSnapshot;
+    fixture.workspace_layers.videos_unlocked = false;
+    renderWorkspace({}, fixture, false);
+    const firstSceneSegments = within(
+      screen.getByRole("navigation", { name: "故事层级" }),
+    ).getByRole("list", { name: "场景 1 的生成片段" });
+    expect(
+      within(firstSceneSegments).getByRole("button", {
+        name: /片段 1.*待生成项目：视频/,
+      }),
+    ).toBeVisible();
+  });
   it("以非阻塞报警展示已经执行的能力缺口 repair", async () => {
     renderWorkspace(
       {},
