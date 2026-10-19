@@ -889,7 +889,15 @@ def _apply_script_operations(
             assert operation.segment_id is not None and operation.fields is not None
             scene, segment = find_segment(operation.segment_id)
             for name, value in operation.fields.items():
-                setattr(segment, name, _script_segment_field(name, value))
+                setattr(
+                    segment,
+                    name,
+                    _script_segment_field(
+                        name,
+                        value,
+                        previous_dialogue_lines=segment.dialogue_lines,
+                    ),
+                )
             changed_ids.update((scene.id, segment.id))
             continue
         if operation.op == "insert_segment":
@@ -928,8 +936,14 @@ def _apply_script_operations(
             new_id = fresh_id(operation_index, "split")
             first_id = segment.id if operation.preserve_id == "first" else new_id
             second_id = segment.id if operation.preserve_id == "second" else new_id
+            first_dialogue, second_dialogue = _reconcile_dialogue_line_groups(
+                (operation.first.dialogue_lines, operation.second.dialogue_lines),
+                segment.dialogue_lines,
+            )
             first = _script_segment_draft(operation.first, first_id, operation.first.shot_ids)
             second = _script_segment_draft(operation.second, second_id, operation.second.shot_ids)
+            first = replace(first, dialogue_lines=first_dialogue)
+            second = replace(second, dialogue_lines=second_dialogue)
             scene.segments[segment_index : segment_index + 1] = [first, second]
             changed_ids.update((scene.id, segment.id, new_id))
             continue
@@ -952,6 +966,11 @@ def _apply_script_operations(
                 raise ValueError("合并后的 shot_ids 必须是两段覆盖的并集。")
             merged_id = left.id if operation.preserve_id == "left" else right.id
             merged = _script_segment_draft(operation.segment, merged_id, union)
+            (merged_dialogue,) = _reconcile_dialogue_line_groups(
+                (operation.segment.dialogue_lines,),
+                (*left.dialogue_lines, *right.dialogue_lines),
+            )
+            merged = replace(merged, dialogue_lines=merged_dialogue)
             scene.segments[left_index : left_index + 2] = [merged]
             changed_ids.update((scene.id, left.id, right.id))
             continue
@@ -1089,6 +1108,37 @@ def _script_dialogue(value: ScriptDialogueInput) -> DialogueLine:
     )
 
 
+def _reconcile_dialogue_line_groups(
+    groups: tuple[tuple[ScriptDialogueInput, ...], ...],
+    previous: tuple[DialogueLine, ...],
+) -> tuple[tuple[DialogueLine, ...], ...]:
+    """未显式回传 ID 时，只为真正新增或改写的对白分配新 ID。"""
+    explicit_ids = {item.id for group in groups for item in group if item.id is not None}
+    used_ids = set(explicit_ids)
+    reconciled: list[tuple[DialogueLine, ...]] = []
+    for group in groups:
+        lines: list[DialogueLine] = []
+        for item in group:
+            line = _script_dialogue(item)
+            if item.id is None:
+                match = next(
+                    (
+                        old
+                        for old in previous
+                        if old.id is not None
+                        and old.id not in used_ids
+                        and replace(line, id=old.id) == old
+                    ),
+                    None,
+                )
+                if match is not None:
+                    line = match
+                    used_ids.add(match.id)
+            lines.append(line)
+        reconciled.append(tuple(lines))
+    return tuple(reconciled)
+
+
 def _dialogue_line(line: Any) -> DialogueLine:
     label = line.speaker_label
     return DialogueLine(
@@ -1116,10 +1166,16 @@ def _script_boundary(value: ScriptBoundaryInput | None) -> SegmentBoundary | Non
     )
 
 
-def _script_segment_field(name: str, value: object) -> object:
+def _script_segment_field(
+    name: str,
+    value: object,
+    *,
+    previous_dialogue_lines: tuple[DialogueLine, ...] = (),
+) -> object:
     if name == "dialogue_lines":
         assert isinstance(value, tuple)
-        return tuple(_script_dialogue(item) for item in value)
+        (dialogue_lines,) = _reconcile_dialogue_line_groups((value,), previous_dialogue_lines)
+        return dialogue_lines
     if name == "boundary_from_previous":
         assert value is None or isinstance(value, ScriptBoundaryInput)
         return _script_boundary(value)

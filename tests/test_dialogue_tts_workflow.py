@@ -9,6 +9,7 @@ from provider_factory import make_service
 from structured_director_fixtures import RecordingProvider, wav_bytes
 from test_director_commands import _visual_project
 
+from core.director_commands import DirectorCommand, DirectorCommandRegistry
 from core.model_providers.boundary import GenerationPhase
 from core.model_providers.recipe import RecipeParams
 from core.structured_director import StructuredDirectorStore
@@ -161,6 +162,167 @@ def test_dialogue_timing_rejects_overlap_and_video_shorter_than_audio(tmp_path):
                 duration_seconds=3.0,
                 expected_revision=document.revision,
             )
+
+    asyncio.run(run())
+
+
+def test_splitting_one_dialogue_preserves_other_selected_tts(tmp_path):
+    from test_prompt_worksets import fixture
+
+    async def run():
+        store, _service, document, _ = await fixture(tmp_path)
+        scene = document.director_script.scenes[0]
+        segment = scene.segments[0]
+        original = segment.dialogue_lines
+        assert len(original) == 3
+        assert document.dialogue_plan is not None
+        selected_before = {
+            item.dialogue_line_id: item.selected_audio_asset_id
+            for item in document.dialogue_plan.items
+        }
+        assert all(selected_before[line.id] is not None for line in original)
+
+        def payload(line, *, text=None):
+            return {
+                "character_id": line.character_id,
+                "speaker_label": line.speaker_label,
+                "voice_description": line.voice_description,
+                "text": line.text if text is None else text,
+                "delivery": line.delivery,
+            }
+
+        updated = (
+            DirectorCommandRegistry(store)
+            .execute(
+                DirectorCommand(
+                    "script.apply_operations",
+                    document.revision,
+                    "split-one-dialogue-line",
+                    {
+                        "scope": {"scene_ids": [scene.id]},
+                        "operations": [
+                            {
+                                "op": "update_segment_fields",
+                                "segment_id": segment.id,
+                                "fields": {
+                                    "dialogue_lines": [
+                                        payload(original[0], text="先听。"),
+                                        payload(original[0], text="我说。"),
+                                        payload(original[1]),
+                                        payload(original[2]),
+                                    ]
+                                },
+                            }
+                        ],
+                    },
+                )
+            )
+            .document
+        )
+
+        changed = updated.director_script.scenes[0].segments[0].dialogue_lines
+        assert len(changed) == 4
+        assert changed[2:] == original[1:]
+        assert changed[0].id not in selected_before
+        assert changed[1].id not in selected_before
+        assert updated.dialogue_plan is not None
+        selected_after = {
+            item.dialogue_line_id: item.selected_audio_asset_id
+            for item in updated.dialogue_plan.items
+        }
+        assert selected_after[changed[0].id] is None
+        assert selected_after[changed[1].id] is None
+        assert selected_after[original[1].id] == selected_before[original[1].id]
+        assert selected_after[original[2].id] == selected_before[original[2].id]
+
+    asyncio.run(run())
+
+
+def test_splitting_segment_preserves_unchanged_dialogue_tts_across_both_halves(tmp_path):
+    from test_prompt_worksets import fixture
+
+    async def run():
+        store, _service, document, _ = await fixture(tmp_path)
+        scene = document.director_script.scenes[0]
+        segment = scene.segments[0]
+        original = segment.dialogue_lines
+        assert document.dialogue_plan is not None
+        selected_before = {
+            item.dialogue_line_id: item.selected_audio_asset_id
+            for item in document.dialogue_plan.items
+        }
+
+        def payload(line, *, text=None):
+            return {
+                "character_id": line.character_id,
+                "speaker_label": line.speaker_label,
+                "voice_description": line.voice_description,
+                "text": line.text if text is None else text,
+                "delivery": line.delivery,
+            }
+
+        def half(action, dialogue_lines, boundary):
+            return {
+                "shot_ids": list(segment.shot_ids),
+                "duration_estimate_seconds": segment.duration_estimate_seconds / 2,
+                "action": action,
+                "dialogue_lines": dialogue_lines,
+                "boundary_from_previous": boundary,
+            }
+
+        updated = (
+            DirectorCommandRegistry(store)
+            .execute(
+                DirectorCommand(
+                    "script.apply_operations",
+                    document.revision,
+                    "split-segment-and-one-dialogue-line",
+                    {
+                        "scope": {"scene_ids": [scene.id]},
+                        "operations": [
+                            {
+                                "op": "split_segment",
+                                "segment_id": segment.id,
+                                "preserve_id": "first",
+                                "first": half(
+                                    "先说前半句。",
+                                    [
+                                        payload(original[0], text="先听。"),
+                                        payload(original[1]),
+                                    ],
+                                    None,
+                                ),
+                                "second": half(
+                                    "再说后半句。",
+                                    [
+                                        payload(original[0], text="我说。"),
+                                        payload(original[2]),
+                                    ],
+                                    {
+                                        "reason": "continuity_anchor",
+                                        "continuity_instruction": "承接同一镜头与表演状态。",
+                                    },
+                                ),
+                            }
+                        ],
+                    },
+                )
+            )
+            .document
+        )
+
+        first, second = updated.director_script.scenes[0].segments[:2]
+        assert first.dialogue_lines[1] == original[1]
+        assert second.dialogue_lines[1] == original[2]
+        assert updated.dialogue_plan is not None
+        selected_after = {
+            item.dialogue_line_id: item.selected_audio_asset_id
+            for item in updated.dialogue_plan.items
+        }
+        assert selected_after[first.dialogue_lines[0].id] is None
+        assert selected_after[second.dialogue_lines[0].id] is None
+        assert selected_after[original[1].id] == selected_before[original[1].id]
+        assert selected_after[original[2].id] == selected_before[original[2].id]
 
     asyncio.run(run())
 
