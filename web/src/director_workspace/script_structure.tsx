@@ -611,6 +611,9 @@ function SplitDialog({
   );
   const [firstAction, setFirstAction] = useState(segment.action);
   const [secondAction, setSecondAction] = useState(segment.action);
+  const [dialogueSplitIndex, setDialogueSplitIndex] = useState(
+    segment.dialogue_lines.length,
+  );
   const boundary = boundaryDraft(segment);
   const [reason, setReason] = useState(boundary.reason);
   const [continuity, setContinuity] = useState("");
@@ -619,6 +622,20 @@ function SplitDialog({
   const inside = kind === "inside";
   const firstShotIds = segment.shot_ids.slice(0, index + 1);
   const secondShotIds = segment.shot_ids.slice(inside ? index : index + 1);
+  const firstDialogueLines = segment.dialogue_lines.slice(0, dialogueSplitIndex);
+  const secondDialogueLines = segment.dialogue_lines.slice(dialogueSplitIndex);
+  const speakerName = (line: ShotSegment["dialogue_lines"][number]) =>
+    line.speaker_label ??
+    snapshot.reference_library.characters.find(
+      (character) => character.id === line.character_id,
+    )?.name ??
+    "未命名角色";
+  const dialogueSummary = (lines: ShotSegment["dialogue_lines"]) =>
+    lines.length
+      ? lines
+          .map((line) => `${speakerName(line)}：${line.text}`)
+          .join(" / ")
+      : "无对白";
   const change: ScriptChange = {
     name: "script.apply_operations",
     arguments: {
@@ -633,12 +650,13 @@ function SplitDialog({
             shot_ids: firstShotIds,
             duration_estimate_seconds: firstDuration,
             action: firstAction,
+            dialogue_lines: firstDialogueLines,
           },
           second: {
             shot_ids: secondShotIds,
             duration_estimate_seconds: secondDuration,
             action: secondAction,
-            dialogue_lines: [],
+            dialogue_lines: secondDialogueLines,
             boundary_from_previous: inside
               ? { reason, continuity_instruction: continuity }
               : null,
@@ -704,9 +722,49 @@ function SplitDialog({
           required
           onChange={setSecondAction}
         />
-        <p className="muted-copy">
-          对白默认留在前段；保存后可在片段编辑器调整。
-        </p>
+        {segment.dialogue_lines.length ? (
+          <fieldset className="script-dialogue-allocation">
+            <legend>对白分配</legend>
+            <label className="card-field">
+              <span>对白分界</span>
+              <select
+                value={dialogueSplitIndex}
+                onChange={(event) =>
+                  setDialogueSplitIndex(Number(event.target.value))
+                }
+              >
+                {Array.from(
+                  { length: segment.dialogue_lines.length + 1 },
+                  (_, splitIndex) => (
+                    <option key={splitIndex} value={splitIndex}>
+                      {splitIndex === 0
+                        ? "全部对白放入后段"
+                        : splitIndex === segment.dialogue_lines.length
+                          ? "全部对白保留在前段"
+                          : `在第 ${splitIndex} 句后拆（前段 ${splitIndex} 句，后段 ${segment.dialogue_lines.length - splitIndex} 句）`}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+            <div className="script-dialogue-allocation-preview">
+              <p>
+                <strong>前段 · {firstDialogueLines.length} 句</strong>
+                <span>{dialogueSummary(firstDialogueLines)}</span>
+              </p>
+              <p>
+                <strong>后段 · {secondDialogueLines.length} 句</strong>
+                <span>{dialogueSummary(secondDialogueLines)}</span>
+              </p>
+            </div>
+            <p className="muted-copy">
+              这里只移动完整对白，不修改正文或表演。原句 ID、生成候选和已选 TTS
+              都会保留；拆分后只需重新校准两个片段的发声起点。
+            </p>
+          </fieldset>
+        ) : (
+          <p className="muted-copy">本片段没有对白，无需分配。</p>
+        )}
         {inside ? (
           <>
             <p className="muted-copy">

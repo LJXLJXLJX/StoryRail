@@ -137,6 +137,27 @@ def test_script_contract_carries_single_visible_speaker_rule_per_shot():
     assert "on_screen=false" in h3
 
 
+def test_script_contract_splits_each_long_dialogue_line_independently_of_segments():
+    """15 秒约束必须直接作用于单条对白，不能被误写成只拆 Segment。"""
+    resources = read_contract("script")["resources"]
+    text = {item["name"]: item["text"] for item in resources}
+    for name in (
+        "SKILL.md",
+        "references/script-contract.md",
+        "references/drama-scene-craft.md",
+        "references/quality-gate.md",
+    ):
+        assert "拆 Segment 不能代替拆长对白" in text[name], name
+    contract = " ".join(text["references/script-contract.md"].split())
+    for required in (
+        "`DialogueLine` 自身有独立的 15 秒软上限",
+        "任何一条 `dialogue_lines[].text` 本身预计超过 15 秒",
+        "不删减、概括或改写原文",
+        "使每条预计不超过 15 秒",
+    ):
+        assert required in contract, required
+
+
 def test_script_contract_keeps_external_speakers_and_planned_music():
     """龙套台词不能因没有引用卡而丢失；导演方案写明的配乐不能被当成未经要求的 BGM。"""
     resources = read_contract("script")["resources"]

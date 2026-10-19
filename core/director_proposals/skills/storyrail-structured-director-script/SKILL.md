@@ -44,6 +44,8 @@ read、bash、shell、jq 或其它发现工具，也不得读取项目目录。`
    可以覆盖多个相邻 Shot（段内切镜，只用于同空间、同一节拍的紧密镜头组，实验前不超过 3 个），一个 Shot 也可以
    跨多个相邻 Segment（长镜头拆段，边界落在可截帧续拍的稳定状态）；需要精确构图控制的镜头独占 Segment；每个
    Segment 预计不超过 15 秒。确定覆盖关系、共享边界与 `boundary_from_previous`、各段时长和 `action` 区间。
+   同时逐条检查 `dialogue_lines`：任何一条对白本身按自然语速、语气和停顿预估超过 15 秒时，必须在自然语义边界
+   拆成连续的多条 DialogueLine，并保持原文、说话者和顺序；这是对白行自身的约束，拆 Segment 不能代替拆长对白。
    方案清单的每一项都落到具体 Segment 的 `action`、`dialogue_lines` 或覆盖 Shot 的 `audio_direction`。
 6. 复查后再提交：逐 Scene 按 `quality-gate.md` 复查草稿，drama Scene 同时过 `drama-scene-craft.md` 第 9 节，
    重点看每个切镜能否说出理由、同空间只换角度的相邻 Shot、揭示是否早于导演方案、覆盖是否完整连续、段内切镜

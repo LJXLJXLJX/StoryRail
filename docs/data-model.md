@@ -232,8 +232,9 @@ flowchart LR
 | `start_seconds` | 该 WAV 在 Segment 内的真实发声起点；任一句重新选音频或正文/音色变化时整段清空 |
 
 Core 按剧本顺序校验 WAV 不重叠，并要求 `Segment.duration_estimate_seconds` 不短于最后一句对白结束时间。对白音频全部选择且
-时序校准后，Core 才允许生成该 Segment 视频。脚本回改会按稳定 DialogueLine ID 重建计划：正文、说话者、音色描述或所属
-Segment 改变时清除受影响选择/时序；历史 Asset 与 Generation 保留。
+时序校准后，Core 才允许生成该 Segment 视频。脚本回改会按稳定 DialogueLine ID 重建计划：完整原句即使被分配到新的
+Segment 也保留生成候选与已选音频，只清空发声起点；正文、说话者、音色描述发生变化时才清除该句的选择与时序。
+历史 Asset 与 Generation 始终保留。
 
 ## 地点库
 

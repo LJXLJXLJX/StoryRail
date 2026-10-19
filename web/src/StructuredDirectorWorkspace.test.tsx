@@ -4534,8 +4534,15 @@ it("新增镜头并入已有片段与新建片段的整卡请求形状", () => {
   expect(newSegment.duration_estimate_seconds).toBe(3);
 });
 
-it("拆分片段时两段共享 Shot 且第二段必填延续说明；预览后提交 apply_operations", async () => {
+it("拆分片段按完整对白分界保留原句 ID，并要求共享 Shot 的延续说明", async () => {
   const value = scriptSnapshot();
+  const sourceSegment = value.director_script!.scenes[1].segments[0];
+  const firstLine = sourceSegment.dialogue_lines[0];
+  sourceSegment.dialogue_lines = [
+    firstLine,
+    { ...firstLine, id: "e".repeat(32), text: "第二句保持原音频。" },
+    { ...firstLine, id: "f".repeat(32), text: "第三句也保持原音频。" },
+  ];
   const onPreview = vi.fn().mockImplementation(async (_change: unknown, revision: number) =>
     impactFor(revision),
   );
@@ -4549,6 +4556,13 @@ it("拆分片段时两段共享 Shot 且第二段必填延续说明；预览后�
   openSegment(2, 1);
   const scene = value.director_script!.scenes[1];
   fireEvent.click(screen.getByRole("button", { name: "拆分片段" }));
+  expect(screen.getByLabelText("对白分界")).toHaveValue("3");
+  expect(screen.getByText(/原句 ID、生成候选和已选 TTS/)).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("对白分界"), {
+    target: { value: "1" },
+  });
+  expect(screen.getByText("前段 · 1 句")).toBeInTheDocument();
+  expect(screen.getByText("后段 · 2 句")).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("边界连续性说明 *"), {
     target: { value: "从同一抬手姿态继续。" },
   });
@@ -4562,6 +4576,8 @@ it("拆分片段时两段共享 Shot 且第二段必填延续说明；预览后�
   expect(operation.preserve_id).toBe("first");
   expect(operation.first.shot_ids).toEqual([scene.shots[0].id]);
   expect(operation.second.shot_ids).toEqual([scene.shots[0].id]);
+  expect(operation.first.dialogue_lines).toEqual([sourceSegment.dialogue_lines[0]]);
+  expect(operation.second.dialogue_lines).toEqual(sourceSegment.dialogue_lines.slice(1));
   expect(operation.second.boundary_from_previous).toEqual({
     reason: "continuity_anchor",
     continuity_instruction: "从同一抬手姿态继续。",

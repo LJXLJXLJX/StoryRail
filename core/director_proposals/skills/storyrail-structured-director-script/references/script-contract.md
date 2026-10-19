@@ -91,6 +91,12 @@ Shot；同一 Shot 跨多个 Segment 时是同一连续镜头的生产切片。�
 不要在同一段内让两个可见人物在同一镜头里轮流开口。没有对白时返回空数组。旁白不是角色对白，不写入这里。
 只有 drama Scene 的 Segment 可以有对白；narration Scene 的 Segment 一律返回空数组。
 
+`DialogueLine` 自身有独立的 15 秒软上限：按自然语速、`delivery` 要求与必要停顿估算，任何一条
+`dialogue_lines[].text` 本身预计超过 15 秒时，必须在自然语义或表演停顿处拆成连续的多条 DialogueLine，
+使每条预计不超过 15 秒。拆分只改变对白行边界，不删减、概括或改写原文；各条沿用同一 `character_id`，或同一
+`speaker_label`，并分别写清该段 `delivery`。这条规则与 Segment 时长约束相互独立：即使所在 Segment 可以加长、
+或已经拆成多个 Segment，也不能保留一条预计超过 15 秒的 DialogueLine；拆 Segment 不能代替拆长对白。
+
 当前默认本地 H3 对每个 Segment 有 15 秒软约束：超过可能（但不一定）OOM，Core 不会拒绝。这是生产阶段的
 机器约束，不要写成故事或镜头里的创作事实，也不要为它切碎原本完整的动作。
 Narration Scene 的 Segment 时长在 TTS 之后规划，Core 随写入按真实音频自动校准后该字段承载生产时长。

@@ -13,7 +13,8 @@ Segment 编辑器用起始/结束镜头选择连续覆盖区间并写 `shot_ids`
 `script_structure.tsx` 提供 Scene 页的新增镜头入口（并入已有 Segment 或新建一个只覆盖它的 Segment，以 Scene 整卡保存，
 新 Shot 不带地点字段）和 Segment 页的拆分/合并入口。拆分/合并提交 `script.apply_operations` 的
 `split_segment` / `merge_adjacent_segments`，提交前用 `project.preview_impact` 展示服务端影响预览，确认后才写入；
-拆分在 Shot 内部时两段共享该 Shot 且第二段必填延续说明，合并的 `shot_ids` 为两段并集。
+拆分在 Shot 内部时两段共享该 Shot 且第二段必填延续说明；有对白时可按完整对白行选择分界，前后段原样回传稳定 ID，
+保留生成候选和已选 TTS，仅由 Core 清空并重新校准发声起点。合并的 `shot_ids` 为两段并集。
 **服务端是覆盖校验的唯一来源**：Web 只组装连续区间、消费快照、影响预览与 `allowed_actions`，不复制 Core 的覆盖校验规则。
 `SceneMedia.tsx` 展示 Scene Animatic/成片与版本；其余媒体卡复用原有专业回调。
 `script_draft.ts` 只提供新 Scene 的暂存输入（默认一个 Shot 与一个覆盖它的 Segment），正式 ID 仍由 Core 分配。

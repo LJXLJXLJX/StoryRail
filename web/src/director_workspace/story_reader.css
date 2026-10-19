@@ -148,3 +148,10 @@
 .script-structure-dialog h3 { margin: 18px 0 8px; }
 .script-structure-dialog h4 { margin: 12px 0 6px; }
 .script-structure-dialog ul { margin: 0 0 10px; padding-left: 20px; }
+.script-dialogue-allocation { margin: 16px 0; padding: 14px; border: 1px solid var(--line); }
+.script-dialogue-allocation-preview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.script-dialogue-allocation-preview p { min-width: 0; margin: 0; padding: 10px 12px; border: 1px solid var(--line); background: var(--paper); }
+.script-dialogue-allocation-preview strong, .script-dialogue-allocation-preview span { display: block; }
+.script-dialogue-allocation-preview strong { margin-bottom: 5px; color: var(--ink); font-size: 11px; }
+.script-dialogue-allocation-preview span { color: var(--muted); font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .script-dialogue-allocation-preview { grid-template-columns: minmax(0, 1fr); } }
