@@ -353,7 +353,9 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
     journey.step("dialogue.tts")
     journey.prepare_dialogue_tts()
     snap = journey.snapshot()
-    dialogue_seed = snap["dialogue_plan"]["items"][0]["seed"]
+    dialogue_seed = next(
+        item["seed"] for item in snap["generations"] if item["kind"] == "dialogue_audio"
+    )
     modes = {item["segment_id"]: video_wire_mode(item) for item in snap["video_plan"]["segments"]}
     assert modes == {first_segment: "ref2va", second_segment: "fl2va", narration_segment: "fl2va"}
 
@@ -607,7 +609,7 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
         substitutions={
             _segment_seed(first_segment): "<默认 seed：drama 第 1 个 Segment ID 前 16 位>",
             _segment_seed(narration_segment): "<默认 seed：narration Segment ID 前 16 位>",
-            dialogue_seed: "<默认 seed：DialogueLine 说话者身份稳定派生>",
+            dialogue_seed: "<随机 seed：每次对白 Generation 独立分配>",
         },
     )
 

@@ -98,6 +98,7 @@ def _link_generation_retry(
 
 
 def _generation_request_signature(generation: ReferenceGeneration) -> tuple[object, ...]:
+    seed = None if generation.kind is ReferenceGenerationKind.DIALOGUE_AUDIO else generation.seed
     return (
         generation.kind,
         generation.operation,
@@ -105,7 +106,7 @@ def _generation_request_signature(generation: ReferenceGeneration) -> tuple[obje
         generation.prompt_text,
         generation.input_asset_ids,
         generation.sample_text,
-        generation.seed,
+        seed,
         generation.duration_seconds,
         generation.aspect_ratio,
         generation.panorama_capture_request,

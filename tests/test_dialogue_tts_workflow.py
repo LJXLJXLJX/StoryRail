@@ -83,6 +83,12 @@ def test_character_dialogue_uses_voice_design_without_reference_and_clone_with_r
         assert clone_generation.recipe_params.get("breeze_tts2.clone") == {
             "performance_instruction": clone_line.delivery
         }
+        assert clone_provider.requests[0].param("seed") == clone_generation.seed
+        assert clone_generation.seed != next(
+            item.seed
+            for item in clone_doc.dialogue_plan.items
+            if item.dialogue_line_id == clone_line.id
+        )
         cloned = await clone_service._generation_observer.refresh_generation(clone_generation.id)
         clone_doc = await clone_service._generation_observer.refresh_generation(clone_generation.id)
 
@@ -115,6 +121,8 @@ def test_character_dialogue_uses_voice_design_without_reference_and_clone_with_r
         assert overridden.generations[-1].recipe_params.get("breeze_tts2.clone") == {
             "performance_instruction": performance_instruction
         }
+        assert overridden.generations[-1].seed != clone_generation.seed
+        assert clone_provider.requests[-1].param("seed") == overridden.generations[-1].seed
         overridden_generation_id = overridden.generations[-1].id
         clone_provider.content = wav_bytes(duration_seconds=3)
         clone_provider.observations = [GenerationPhase.RUNNING, GenerationPhase.SUCCEEDED]
@@ -136,7 +144,121 @@ def test_character_dialogue_uses_voice_design_without_reference_and_clone_with_r
                 overridden_generation_id,
                 expected_revision=clone_doc.revision,
             )
+        selected_asset_id = next(
+            item.selected_audio_asset_id
+            for item in clone_doc.dialogue_plan.items
+            if item.dialogue_line_id == clone_line.id
+        )
+        card = next(
+            item
+            for item in clone_doc.reference_library.characters
+            if item.id == clone_line.character_id
+        )
+        clone_doc = await clone_service.update_character(
+            replace(card, voice_description=card.voice_description + "，更细腻"),
+            expected_revision=clone_doc.revision,
+        )
+        assert (
+            next(
+                item.selected_audio_asset_id
+                for item in clone_doc.dialogue_plan.items
+                if item.dialogue_line_id == clone_line.id
+            )
+            == selected_asset_id
+        )
+        card = next(
+            item
+            for item in clone_doc.reference_library.characters
+            if item.id == clone_line.character_id
+        )
+        clone_doc = await clone_service.update_character(
+            replace(card, voice_reference_transcript=transcript + "补充。"),
+            expected_revision=clone_doc.revision,
+        )
+        assert (
+            next(
+                item.selected_audio_asset_id
+                for item in clone_doc.dialogue_plan.items
+                if item.dialogue_line_id == clone_line.id
+            )
+            is None
+        )
         assert design_provider.requests == []
+
+    asyncio.run(run())
+
+
+def test_dialogue_batch_stages_every_missing_line_and_does_not_regenerate_candidates(
+    tmp_path,
+):
+    async def run():
+        store_path, _old, document, _ = await _visual_project(str(tmp_path))
+        provider = RecordingProvider(media_type="audio/wav", content=wav_bytes())
+        started = threading.Event()
+        release = threading.Event()
+        submit_count = 0
+        submit_lock = threading.Lock()
+        original_submit = provider.submit_recipe
+
+        def blocked_submit(request):
+            nonlocal submit_count
+            with submit_lock:
+                submit_count += 1
+                if submit_count == len(document.dialogue_plan.items):
+                    started.set()
+            assert release.wait(timeout=2)
+            return original_submit(request)
+
+        provider.submit_recipe = blocked_submit
+        service = make_service(
+            StructuredDirectorStore(store_path.path.parent, document.project_id),
+            voice_provider=provider,
+        )
+        task = asyncio.create_task(
+            service.generate_dialogue_batch(expected_revision=document.revision)
+        )
+        assert await asyncio.to_thread(started.wait, 2)
+        staged = service.snapshot_required()
+        assert len(
+            [item for item in staged.generations if item.kind.value == "dialogue_audio"]
+        ) == len(document.dialogue_plan.items)
+        release.set()
+        submitted = await task
+        dialogue_generations = [
+            item for item in submitted.generations if item.kind.value == "dialogue_audio"
+        ]
+        assert len(dialogue_generations) == len(document.dialogue_plan.items)
+        assert len({item.seed for item in dialogue_generations}) == len(dialogue_generations)
+        assert all(item.selected_audio_asset_id is None for item in submitted.dialogue_plan.items)
+
+        provider.observations = [GenerationPhase.SUCCEEDED] * len(dialogue_generations)
+        observed = threading.Event()
+        release_observe = threading.Event()
+        observe_count = 0
+        observe_lock = threading.Lock()
+        original_observe = provider.observe
+
+        def blocked_observe(handle):
+            nonlocal observe_count
+            with observe_lock:
+                observe_count += 1
+                if observe_count == len(dialogue_generations):
+                    observed.set()
+            assert release_observe.wait(timeout=2)
+            return original_observe(handle)
+
+        provider.observe = blocked_observe
+        refresh_task = asyncio.create_task(
+            service._generation_observer.refresh_active_generations()
+        )
+        assert await asyncio.to_thread(observed.wait, 2)
+        release_observe.set()
+        await refresh_task
+        completed = service.snapshot_required()
+        request_count = len(provider.requests)
+        unchanged = await service.generate_dialogue_batch(expected_revision=completed.revision)
+        assert len(provider.requests) == request_count
+        assert len(unchanged.generations) == len(completed.generations)
 
     asyncio.run(run())
 

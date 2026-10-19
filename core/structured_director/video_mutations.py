@@ -41,16 +41,7 @@ def _apply_reference_library_change(
         for card_id in old_cards.keys() | new_cards.keys()
         if card_id not in old_cards
         or card_id not in new_cards
-        or (
-            old_cards[card_id].voice_description,
-            old_cards[card_id].voice_reference_asset_id,
-            old_cards[card_id].voice_reference_transcript,
-        )
-        != (
-            new_cards[card_id].voice_description,
-            new_cards[card_id].voice_reference_asset_id,
-            new_cards[card_id].voice_reference_transcript,
-        )
+        or _dialogue_voice_input(old_cards[card_id]) != _dialogue_voice_input(new_cards[card_id])
     }
     affected_segments = {
         segment.id
@@ -94,6 +85,17 @@ def _apply_reference_library_change(
         keyframe_plan=prune_character_references(document.keyframe_plan, library),
         video_plan=video_plan,
         final_assembly=None if affected_segments else document.final_assembly,
+    )
+
+
+def _dialogue_voice_input(card) -> tuple[str, ...]:
+    """只比较实际进入对白 Provider 请求的角色音色输入。"""
+    if card.voice_reference_asset_id is None:
+        return ("design", card.voice_description)
+    return (
+        "clone",
+        card.voice_reference_asset_id,
+        card.voice_reference_transcript or "",
     )
 
 

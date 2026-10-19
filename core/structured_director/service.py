@@ -74,6 +74,7 @@ from .assembly_timeline import (
 from .assembly_timeline import (
     _final_transition as _final_transition,
 )
+from .candidate_eligibility import generation_is_reviewable
 from .character_look_requests import look_sheet_plan, look_sheet_prompt
 from .director_steps import (
     _ProductionCommandOutcome as _ProductionCommandOutcome,
@@ -632,24 +633,30 @@ class StructuredDirectorService:
                 item.dialogue_line_id: item.selected_audio_asset_id
                 for item in document.dialogue_plan.items
             }
-            current = document
+            targets: list[str] = []
             for scene in document.director_script.scenes:
                 for segment in scene.segments:
                     for line in segment.dialogue_lines:
                         assert line.id is not None
                         if selected[line.id] is not None:
                             continue
+                        reviewable = any(
+                            generation.kind is ReferenceGenerationKind.DIALOGUE_AUDIO
+                            and generation.target_id == line.id
+                            and generation_is_reviewable(document, generation)
+                            for generation in document.generations
+                        )
+                        if reviewable:
+                            continue
                         active = any(
                             generation.kind is ReferenceGenerationKind.DIALOGUE_AUDIO
                             and generation.target_id == line.id
                             and generation.phase not in _TERMINAL_PHASES
-                            for generation in current.generations
+                            for generation in document.generations
                         )
                         if not active:
-                            current = await self._media._submit_dialogue_generation(
-                                current, line.id
-                            )
-            return current
+                            targets.append(line.id)
+            return await self._media._submit_dialogue_batch(document, tuple(targets))
 
     async def select_dialogue_audio(
         self,

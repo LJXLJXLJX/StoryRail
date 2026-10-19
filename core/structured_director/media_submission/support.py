@@ -26,6 +26,24 @@ async def _commit_submission(
 ) -> object:
     generation = _link_generation_retry(document, generation, retry_of)
     owner._store.create_generation(generation, expected_revision=expected_revision)
+    return await _finish_submission(
+        owner,
+        generation,
+        submit=submit,
+        capability=capability,
+        queued_message=queued_message,
+    )
+
+
+async def _finish_submission(
+    owner,
+    generation: ReferenceGeneration,
+    *,
+    submit: Callable[[], ProviderHandle],
+    capability: str,
+    queued_message: str,
+) -> object:
+    """完成已经持久化为 submitting 的一次 Provider 提交。"""
     submission = asyncio.create_task(asyncio.to_thread(submit))
     interrupted: asyncio.CancelledError | None = None
     try:

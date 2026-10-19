@@ -253,7 +253,7 @@
       "cfg_scale": 4.0,
       "instruction": "年轻、克制、语速偏慢",
       "reference_transcript": null,
-      "seed": "<默认 seed：DialogueLine 说话者身份稳定派生>",
+      "seed": "<随机 seed：每次对白 Generation 独立分配>",
       "text": "还会来吗？",
       "voice": null
     },

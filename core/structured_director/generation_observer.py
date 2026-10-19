@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from contextlib import suppress
 from dataclasses import replace
 
 from core.model_providers.boundary import (
@@ -64,16 +65,19 @@ class GenerationObserver:
                 return document
             provider = self._provider_for(generation)
             handle = _provider_handle(generation)
-            try:
-                operation = provider.observe
-                if generation.cancellation_requested:
-                    operation = provider.cancel
-                observation = await asyncio.to_thread(operation, handle)
-            except Exception as exc:
-                if isinstance(exc, ModelProviderError) and exc.code == "transport_error":
+            operation = provider.cancel if generation.cancellation_requested else provider.observe
+        try:
+            observation = await asyncio.to_thread(operation, handle)
+        except Exception as exc:
+            if isinstance(exc, ModelProviderError) and exc.code == "transport_error":
+                async with self._lock:
+                    current_document = self._store.read()
+                    current = _find_generation(current_document, generation_id)
+                    if current.phase in _TERMINAL_PHASES:
+                        return current_document
                     unavailable = transition_generation(
-                        generation,
-                        generation.phase,
+                        current,
+                        current.phase,
                         message=(
                             "模型节点暂时不可达；任务句柄和最后进度已经保留。"
                             "节点恢复后可继续刷新，不会自动新建或重试任务。"
@@ -81,14 +85,33 @@ class GenerationObserver:
                         error_code="provider_unreachable",
                     )
                     return self._store.update_generation(unavailable)
-                raise RuntimeError("暂时无法读取模型任务状态，请稍后重试。") from exc
-            try:
-                return await self._apply_observation(provider, handle, generation, observation)
-            except Exception as exc:
-                if observation.phase is GenerationPhase.SUCCEEDED:
+            raise RuntimeError("暂时无法读取模型任务状态，请稍后重试。") from exc
+
+        content: bytes | None = None
+        try:
+            if observation.phase is GenerationPhase.SUCCEEDED:
+                descriptor = observation.artifact
+                if descriptor is None:
+                    raise ValueError("成功的 Provider 观察缺少 Artifact。")
+                content = await asyncio.to_thread(
+                    provider.read_artifact, handle, descriptor.artifact_id
+                )
+            async with self._lock:
+                current_document = self._store.read()
+                current = _find_generation(current_document, generation_id)
+                if current.phase in _TERMINAL_PHASES:
+                    return current_document
+                return self._apply_observation_locked(current, observation, content)
+        except Exception as exc:
+            if observation.phase is GenerationPhase.SUCCEEDED:
+                async with self._lock:
+                    current_document = self._store.read()
+                    current = _find_generation(current_document, generation_id)
+                    if current.phase in _TERMINAL_PHASES:
+                        return current_document
                     import_failed = transition_generation(
-                        generation,
-                        generation.phase,
+                        current,
+                        current.phase,
                         message=(
                             "Provider 已完成任务，但 Core 未能校验并导入产物；"
                             "请保留当前 Generation 并再次等待，不要自动新建任务。"
@@ -96,23 +119,26 @@ class GenerationObserver:
                         error_code="artifact_import_failed",
                     )
                     return self._store.update_generation(import_failed)
-                raise RuntimeError("暂时无法应用模型任务状态，请稍后重试。") from exc
+            raise RuntimeError("暂时无法应用模型任务状态，请稍后重试。") from exc
 
     async def refresh_active_generations(self) -> StructuredDirectorDocument:
-        """串行观察本轮已存在的全部非终态 Generation。"""
+        """有限并发观察本轮全部非终态 Generation；Provider I/O 不占项目锁。"""
         document = self._store.read()
         generation_ids = tuple(
             generation.id
             for generation in document.generations
             if generation.phase not in _TERMINAL_PHASES
         )
-        for generation_id in generation_ids:
-            try:
-                await self.refresh_generation(generation_id)
-            except (RuntimeError, ValueError):
+        semaphore = asyncio.Semaphore(16)
+
+        async def refresh(generation_id: str) -> None:
+            async with semaphore:
                 # Automatic observation is best-effort: a broken or temporarily
                 # unavailable Provider must not block unrelated Generation results.
-                continue
+                with suppress(RuntimeError, ValueError):
+                    await self.refresh_generation(generation_id)
+
+        await asyncio.gather(*(refresh(generation_id) for generation_id in generation_ids))
         return self._store.read()
 
     async def cancel_generation(
@@ -161,14 +187,27 @@ class GenerationObserver:
         generation: ReferenceGeneration,
         observation: GenerationObservation,
     ) -> StructuredDirectorDocument:
-        phase = _phase(observation.phase)
-        if phase is ReferenceGenerationPhase.SUCCEEDED:
+        content: bytes | None = None
+        if observation.phase is GenerationPhase.SUCCEEDED:
             descriptor = observation.artifact
             if descriptor is None:
                 raise ValueError("成功的 Provider 观察缺少 Artifact。")
             content = await asyncio.to_thread(
                 provider.read_artifact, handle, descriptor.artifact_id
             )
+        return self._apply_observation_locked(generation, observation, content)
+
+    def _apply_observation_locked(
+        self,
+        generation: ReferenceGeneration,
+        observation: GenerationObservation,
+        content: bytes | None,
+    ) -> StructuredDirectorDocument:
+        phase = _phase(observation.phase)
+        if phase is ReferenceGenerationPhase.SUCCEEDED:
+            descriptor = observation.artifact
+            if descriptor is None or content is None:
+                raise ValueError("成功的 Provider 观察缺少 Artifact。")
             completed = replace(
                 generation,
                 progress=1.0,
@@ -189,6 +228,11 @@ class GenerationObserver:
                     expected_revision=completed_document.revision,
                 )
             return completed_document
+        if (
+            generation.phase is ReferenceGenerationPhase.RUNNING
+            and phase is ReferenceGenerationPhase.QUEUED
+        ):
+            return self._store.read()
         updated = transition_generation(
             generation,
             phase,
