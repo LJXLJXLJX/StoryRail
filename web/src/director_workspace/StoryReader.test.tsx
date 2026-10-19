@@ -84,8 +84,14 @@ it("片段行显示服务端提供的 15 秒软约束与对白时长提示", () 
     screen.getByRole("list", { name: "场景 1 的生成片段" }),
   ).getAllByRole("button");
   expect(rows[0]).toHaveTextContent("超过 15 秒软约束");
+  expect(within(rows[0]).getByText("超过 15 秒软约束")).toHaveClass(
+    "is-video-duration",
+  );
   expect(rows[0]).toHaveTextContent("16 秒");
   expect(rows[1]).toHaveTextContent("对白约需 9.5 秒，超过预估时长");
+  expect(
+    within(rows[1]).getByText("对白约需 9.5 秒，超过预估时长"),
+  ).toHaveClass("is-dialogue-duration");
   expect(rows[2]).not.toHaveTextContent(/软约束|对白约需/);
   // 共享边界 Shot 的“（续）”标签保持不变。
   expect(rows[2]).toHaveTextContent("镜头 2（续）");
@@ -113,6 +119,10 @@ it("片段行显示对白 TTS 与视频待生成项目", () => {
     screen.getByRole("list", { name: "场景 1 的生成片段" }),
   ).getAllByRole("button");
   expect(rows[0]).toHaveTextContent("待生成项目：对白 TTS、视频");
+  expect(within(rows[0]).getByText("对白 TTS")).toHaveClass(
+    "is-dialogue-tts",
+  );
+  expect(within(rows[0]).getByText("视频")).toHaveClass("is-video");
   expect(rows[1]).toHaveTextContent("待生成项目：视频");
   expect(rows[2]).not.toHaveTextContent("待生成项目");
 });

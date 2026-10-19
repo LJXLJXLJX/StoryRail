@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { DialogueTimingWarning, Scene } from "../api";
 import type { StoryTarget } from "../api/projection";
 import { segmentShotLabel } from "./script_index";
@@ -176,18 +176,31 @@ export function StoryNavigation({
                               片段 {segmentIndex + 1} · {segmentShotLabel(s, segment)}
                             </small>
                             {exceedsSoft ? (
-                              <small className="story-reader-warning">
+                              <small className="story-reader-warning is-video-duration">
                                 超过 {softLimit} 秒软约束
                               </small>
                             ) : null}
                             {timing ? (
-                              <small className="story-reader-warning" role="note">
+                              <small
+                                className="story-reader-warning is-dialogue-duration"
+                                role="note"
+                              >
                                 对白约需 {timing.estimated_seconds} 秒，超过预估时长
                               </small>
                             ) : null}
                             {pendingItems.length ? (
                               <small className="story-reader-pending" role="note">
-                                待生成项目：{pendingItems.join("、")}
+                                待生成项目：
+                                {pendingItems.map((item, index) => (
+                                  <Fragment key={item}>
+                                    {index ? "、" : ""}
+                                    <span
+                                      className={`story-reader-pending-item ${item === "对白 TTS" ? "is-dialogue-tts" : "is-video"}`}
+                                    >
+                                      {item}
+                                    </span>
+                                  </Fragment>
+                                ))}
                               </small>
                             ) : null}
                             <span>{segment.action}</span>
