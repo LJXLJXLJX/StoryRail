@@ -27,6 +27,7 @@ export function StructuredDirectorWorkspace(
     globalReferencesOpen = false,
     toolbarTarget,
     onCloseGlobalReferences,
+    onUpdateDirectorPlan,
     onConfirmReferences,
     onAddCharacter,
     onUpdateCharacter,
@@ -70,6 +71,10 @@ export function StructuredDirectorWorkspace(
     (item) => item.id === assetCenterVoiceTargetId,
   );
   const [directorPlanOpen, setDirectorPlanOpen] = useState(false);
+  const [directorPlanEditing, setDirectorPlanEditing] = useState(false);
+  const [directorPlanDraft, setDirectorPlanDraft] = useState(
+    snapshot.director_plan_markdown,
+  );
   const activeRunKind = snapshot.active_director_run?.kind;
   const isPreparing =
     snapshot.director_script === null &&
@@ -85,7 +90,11 @@ export function StructuredDirectorWorkspace(
         <button
           className="director-plan-trigger"
           type="button"
-          onClick={() => setDirectorPlanOpen(true)}
+          onClick={() => {
+            setDirectorPlanDraft(snapshot.director_plan_markdown);
+            setDirectorPlanEditing(false);
+            setDirectorPlanOpen(true);
+          }}
         >
           原始导演方案
         </button>
@@ -156,20 +165,77 @@ export function StructuredDirectorWorkspace(
             >
               <header>
                 <div>
-                  <p className="eyebrow">Immutable baseline</p>
+                  <p className="eyebrow">Project source</p>
                   <h2>原始导演方案</h2>
                 </div>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => setDirectorPlanOpen(false)}
-                >
-                  关闭
-                </button>
+                <div className="director-plan-actions">
+                  {!directorPlanEditing && snapshot.allowed_actions.includes("edit_director_plan") ? (
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => setDirectorPlanEditing(true)}
+                    >
+                      编辑方案
+                    </button>
+                  ) : null}
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => setDirectorPlanOpen(false)}
+                  >
+                    关闭
+                  </button>
+                </div>
               </header>
-              <div className="director-plan-content">
-                <MarkdownText markdown={snapshot.director_plan_markdown} />
-              </div>
+              {directorPlanEditing ? (
+                <form
+                  className="director-plan-editor"
+                  onSubmit={async (event) => {
+                    event.preventDefault();
+                    if (await onUpdateDirectorPlan(directorPlanDraft)) {
+                      setDirectorPlanEditing(false);
+                    }
+                  }}
+                >
+                  <p className="form-hint">
+                    只更新项目原始方案，不会自动改写或失效已有脚本和媒体。需要把新增内容落入成片时，请随后修改结构化脚本。
+                  </p>
+                  <textarea
+                    aria-label="编辑原始导演方案"
+                    value={directorPlanDraft}
+                    maxLength={50000}
+                    disabled={busy}
+                    onChange={(event) => setDirectorPlanDraft(event.target.value)}
+                  />
+                  <div className="director-plan-editor-footer">
+                    <span>{directorPlanDraft.length.toLocaleString()} / 50,000</span>
+                    <div className="director-plan-actions">
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          setDirectorPlanDraft(snapshot.director_plan_markdown);
+                          setDirectorPlanEditing(false);
+                        }}
+                      >
+                        取消
+                      </button>
+                      <button
+                        className="primary-button"
+                        type="submit"
+                        disabled={busy || !directorPlanDraft.trim()}
+                      >
+                        保存方案
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              ) : (
+                <div className="director-plan-content">
+                  <MarkdownText markdown={snapshot.director_plan_markdown} />
+                </div>
+              )}
             </section>
           </div>
         ) : null}

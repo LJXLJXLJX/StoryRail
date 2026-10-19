@@ -34,6 +34,7 @@ BOOL = {"type": "boolean"}
 # Web 接受的动作词表。服务端只返回其中子集；这里不从 snapshot_view 反推，
 # 以免把内部动作泄漏成前端允许值。
 STRUCTURED_DIRECTOR_ACTIONS = (
+    "edit_director_plan",
     "confirm_reference_review",
     "edit_reference_library",
     "import_image_asset",

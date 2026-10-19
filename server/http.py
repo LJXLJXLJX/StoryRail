@@ -378,6 +378,11 @@ def _request_body_limit(path: str) -> int:
     if route_path == "/api/projects":
         return _MAX_PROJECT_REQUEST_BYTES
     if re.fullmatch(
+        r"/api/projects/[0-9a-f]{32}/structured-director/director-plan",
+        route_path,
+    ):
+        return _MAX_PROJECT_REQUEST_BYTES
+    if re.fullmatch(
         r"/api/projects/[0-9a-f]{32}/structured-director/application/commands",
         route_path,
     ):

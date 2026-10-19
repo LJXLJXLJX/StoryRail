@@ -65,7 +65,8 @@ erDiagram
 | `schema_version` | int | 固定 33 |
 | `project_id` | id | 项目 ID |
 | `revision` | int ≥ 1 | 项目 revision；每次持久写入恰好 +1，是全部 CAS 的基准 |
-| `title` / `aspect_ratio` / `director_plan_markdown` | 创建时固化 | 没有修改 API；导演方案最多 50,000 字符 |
+| `title` / `aspect_ratio` | 创建时固化 | 没有修改 API |
+| `director_plan_markdown` | 非空 Markdown | 最多 50,000 字符；只允许人类经 Core 手工修改。修改只推进项目 revision，不自动改写或失效已有结构化内容与媒体 |
 | `narration_languages` | 数组 | 必填，`["zh"]`、`["en"]` 或 `["zh", "en"]`；创建后不可修改 |
 | `status` | 枚举 | 主要审核位置（见下） |
 | `workspace_layers` | 4 个布尔 | 已解锁内容层，单调累加 |

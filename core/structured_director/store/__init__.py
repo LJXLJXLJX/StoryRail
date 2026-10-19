@@ -392,6 +392,7 @@ class StructuredDirectorStore:
         self._assets_directory = self._project_directory / "assets"
         self._generation_observations: dict[str, ReferenceGeneration] = {}
         self._domains: tuple = (
+            ProjectDomain(self),
             ReferenceDomain(self),
             ScriptDomain(self),
             NarrationDomain(self),
@@ -958,6 +959,7 @@ from ._domains import (  # noqa: E402
     KeyframeDomain,
     LocationDomain,
     NarrationDomain,
+    ProjectDomain,
     ReferenceDomain,
     RunDomain,
     ScriptDomain,

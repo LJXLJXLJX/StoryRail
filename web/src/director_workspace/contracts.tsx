@@ -31,6 +31,7 @@ export interface StructuredDirectorWorkspaceProps {
 }
 
 export interface WorkspaceActions {
+  onUpdateDirectorPlan: (directorPlanMarkdown: string) => Promise<boolean>;
   onPreviewLocationChange?: (change: LocationChange, revision: number) => Promise<LocationImpact>;
   onApplyLocationChange?: (change: LocationChange, revision: number) => Promise<boolean>;
   onPreviewScriptChange?: (

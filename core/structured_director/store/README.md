@@ -9,7 +9,7 @@ L3 持久化：schema v35 项目 JSON 的唯一读写入口，完整领域校验
 - `pipeline.py`：统一写骨架 `commit_mutation(store, *, loader, mutator)`：loader 读取并做 CAS 与编辑期校验，mutator 做 L2 变换与回执，
   需要写入时调用一次 `_atomic_write`。`_atomic_write` 只在三处被调用：pipeline、`create_project`（独占创建）、
   `delete_assets`（文件暂存回滚必须包裹写入）。
-- `_domains.py`：域 collaborator 的集中装配。
+- `_domains.py`：项目设置及各业务域 collaborator 的集中装配。
 - `domains/`：按域组织的 Store 方法（见其 README）。
 
 `_atomic_write` 每次都重读磁盘版本，要求新 revision 恰好 +1、`workspace_layers` 不回退、环境库变化满足主流程门禁，

@@ -299,7 +299,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `_domains.py`：域 collaborator 装配。
 - `pipeline.py`：统一 mutation commit pipeline。
 - `domains/README.md`：域 collaborator 约定。
-- `domains/asset.py`、`final.py`、`generation.py`、`keyframe.py`、`location.py`、`narration.py`、
+- `domains/project.py`、`asset.py`、`final.py`、`generation.py`、`keyframe.py`、`location.py`、`narration.py`、
   `reference.py`、`run.py`、`script.py`、`video.py`：对应域的 Store 写入方法。
 
 #### reads/ — L4 只读投影

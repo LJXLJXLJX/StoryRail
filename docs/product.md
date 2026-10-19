@@ -13,7 +13,7 @@ StoryRail 不承担前期创意。导入页提供两段可复制的提示词，�
 
 ```mermaid
 flowchart LR
-    plan[完整导演方案<br/>Markdown] --> project[创建项目<br/>固化标题·画幅·方案·旁白语言]
+    plan[完整导演方案<br/>Markdown] --> project[创建项目<br/>固化标题·画幅·旁白语言]
     project --> refs[引用库<br/>角色·非出镜声音·旁白身份]
     refs --> script[结构化脚本<br/>Scene / Shot / Segment]
     script --> narration[项目所选语言旁白<br/>TTS · 选择 · 校时]
@@ -43,7 +43,7 @@ StoryRail 不内置 Agent、不持有模型会话，也没有隐藏 fallback。�
 
 | 概念 | 说明 |
 | --- | --- |
-| Project | 生产容器；创建时固化 `title`、`aspect_ratio`（`16:9` / `9:16` / `2:1`）和 `director_plan_markdown`，三者没有修改 API |
+| Project | 生产容器；创建时固化 `title`、`aspect_ratio`（`16:9` / `9:16` / `2:1`）和旁白语言；人类可在导演台手工修改 `director_plan_markdown`，Agent 不可修改 |
 | Reference Library | 角色卡（可见角色或非出镜声音）与独立旁白身份；Core 分配 ID |
 | Scene | 叙事块；声明 `driver` 为 `narration`（旁白驱动：恰好一条旁白 Cue，无对白）或 `drama`（表演驱动：无旁白，对白可有可无）；可绑定一个地点及其状态 |
 | Shot | 创作层的连续镜头：构图、运镜、动作、声音、可见角色与转场意图；不持有地点绑定或生产状态 |

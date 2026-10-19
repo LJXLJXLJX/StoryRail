@@ -48,6 +48,7 @@ class RouteCase:
 
 NAMED_ROUTE_CASES: tuple[RouteCase, ...] = (
     RouteCase("GET", "", "_serialize_snapshot"),
+    RouteCase("PUT", "/director-plan", "_update_director_plan"),
     RouteCase("PUT", "/director-script", "_save_script"),
     RouteCase("POST", "/director-script/confirm", "_confirm_script"),
     RouteCase("POST", "/narration/generate-batch", "_generate_narration_batch"),

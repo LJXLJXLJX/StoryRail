@@ -24,6 +24,7 @@ import { ConsistencyNotice } from "./director_workspace/ConsistencyNotice";
 import { captureContentSave, savedContentChanges, mergeContentChanges, type ContentChange, type ContentSave } from "./director_workspace/consistency";
 import { useSnapshotScheduler } from "./director_workspace/useSnapshotScheduler";
 type PendingAction =
+  | "edit_director_plan"
   | "edit_location"
   | "generate_location_image"
   | "capture_location_panorama"
@@ -886,6 +887,18 @@ export function App() {
       if (stillCurrent()) setPending(null);
     }
   }
+  async function updateDirectorPlan(directorPlanMarkdown: string): Promise<boolean> {
+    if (selectedProject === null || structuredSnapshot === null) return false;
+    return mutateStructuredDirector(
+      () =>
+        structuredDirectorApi.updateDirectorPlan(
+          selectedProject.id,
+          structuredSnapshot.revision,
+          directorPlanMarkdown,
+        ),
+      "edit_director_plan",
+    );
+  }
   function returnHome() {
     activeStructuredProjectId.current = null;
     ++saveSequence.current;
@@ -1038,6 +1051,7 @@ export function App() {
             error={error}
             globalReferencesOpen={globalReferencesOpen}
             onCloseGlobalReferences={() => setGlobalReferencesOpen(false)}
+            onUpdateDirectorPlan={updateDirectorPlan}
             onRefreshProjectSnapshot={() => void reloadStructuredSnapshot()}
             onPreviewLocationChange={(change, revision) =>
               structuredDirectorApi.previewLocationChange(selectedProject.id, revision, change)}

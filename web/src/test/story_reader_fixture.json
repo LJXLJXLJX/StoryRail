@@ -1231,6 +1231,7 @@
         "final_assembly_unlocked": false
       },
       "allowed_actions": [
+        "edit_director_plan",
         "edit_reference_library",
         "import_image_asset",
         "import_media_asset",

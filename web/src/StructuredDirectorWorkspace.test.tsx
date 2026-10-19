@@ -332,12 +332,21 @@ describe("StructuredDirectorWorkspace", () => {
     );
     expect(onConfirmReferences).toHaveBeenCalledOnce();
   });
-  it("只读展示创建时固化的原始导演方案", async () => {
-    renderWorkspace();
+  it("允许人类手工修改原始导演方案并说明不会自动改写脚本", async () => {
+    const onUpdateDirectorPlan = vi.fn().mockResolvedValue(true);
+    renderWorkspace(
+      { onUpdateDirectorPlan },
+      { ...snapshot, allowed_actions: [...snapshot.allowed_actions, "edit_director_plan"] },
+    );
     fireEvent.click(screen.getByRole("button", { name: "原始导演方案" }));
     const dialog = screen.getByRole("dialog", { name: "原始导演方案" });
     expect(within(dialog).getByText("测试方案。")).toBeInTheDocument();
-    expect(within(dialog).queryByRole("textbox")).not.toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "编辑方案" }));
+    const editor = within(dialog).getByRole("textbox", { name: "编辑原始导演方案" });
+    fireEvent.change(editor, { target: { value: "# 补全方案\n\n新增结尾。" } });
+    expect(within(dialog).getByText(/不会自动改写或失效已有脚本和媒体/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "保存方案" }));
+    await waitFor(() => expect(onUpdateDirectorPlan).toHaveBeenCalledWith("# 补全方案\n\n新增结尾。"));
   });
   it("图片候选可以查看 Core 保存的完整提示词和输入参考图", async () => {
     const outputAssetId = "c".repeat(32);
@@ -3809,6 +3818,7 @@ function renderWorkspace(
     globalReferencesOpen?: boolean;
     onCloseGlobalReferences?: () => void;
     onConfirmReferences?: () => void;
+    onUpdateDirectorPlan?: WorkspaceActions["onUpdateDirectorPlan"];
     onPreviewScriptChange?: WorkspaceActions["onPreviewScriptChange"];
     onApplyScriptChange?: WorkspaceActions["onApplyScriptChange"];
     error?: string | null;
@@ -3830,6 +3840,7 @@ function renderWorkspace(
       globalReferencesOpen={overrides.globalReferencesOpen}
       onCloseGlobalReferences={overrides.onCloseGlobalReferences}
       onConfirmReferences={overrides.onConfirmReferences ?? vi.fn()}
+      onUpdateDirectorPlan={overrides.onUpdateDirectorPlan ?? vi.fn().mockResolvedValue(true)}
       onPreviewScriptChange={overrides.onPreviewScriptChange}
       onApplyScriptChange={overrides.onApplyScriptChange}
       onSaveScript={overrides.onSaveScript ?? vi.fn()}

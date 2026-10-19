@@ -251,6 +251,7 @@ const schemas: Record<string, JsonSchema> = {
   },
   "StructuredDirectorAction": {
     "enum": [
+      "edit_director_plan",
       "confirm_reference_review",
       "edit_reference_library",
       "import_image_asset",

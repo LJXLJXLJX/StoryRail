@@ -406,6 +406,22 @@ class StructuredDirectorHttpApi:
         result = await self._service.save_script(proposal, expected_revision=revision)
         return JsonResponse(200, self._serialize_snapshot(result))
 
+    async def _update_director_plan(self, body: bytes) -> JsonResponse:
+        request = _parse_request(
+            body,
+            required={"expected_revision", "director_plan_markdown"},
+        )
+        if isinstance(request, JsonResponse):
+            return request
+        plan = request["director_plan_markdown"]
+        if not isinstance(plan, str):
+            return _error(400, "invalid_request", "director_plan_markdown 必须是字符串。")
+        result = await self._service.update_director_plan(
+            plan,
+            expected_revision=_required_revision(request),
+        )
+        return JsonResponse(200, self._serialize_snapshot(result))
+
     async def _confirm_script(self, body: bytes) -> JsonResponse:
         request = _parse_request(body, required={"expected_revision"})
         if isinstance(request, JsonResponse):
@@ -2081,6 +2097,12 @@ async def _card_route(
 
 _ROUTES: tuple[_Route, ...] = (
     _Route(frozenset({"GET"}), "", _snapshot_route, "project.read", gate="none"),
+    _Route(
+        frozenset({"PUT"}),
+        "/director-plan",
+        _body_route("_update_director_plan"),
+        "project.write",
+    ),
     _Route(
         frozenset({"PUT"}),
         "/director-script",

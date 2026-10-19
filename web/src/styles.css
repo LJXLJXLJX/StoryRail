@@ -374,7 +374,11 @@ textarea::placeholder { color: #aaa49a; }
 .director-plan-reader { display: grid; grid-template-rows: auto minmax(0, 1fr); width: min(920px, 100%); max-height: calc(100vh - 56px); border: 1px solid var(--line-dark); background: var(--paper); box-shadow: 0 22px 80px rgba(0, 0, 0, 0.28); }
 .director-plan-reader > header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px 24px; border-bottom: 1px solid var(--line); }
 .director-plan-reader h2, .director-plan-reader p { margin: 0; }
+.director-plan-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .director-plan-content { overflow: auto; padding: 28px 32px 48px; line-height: 1.8; }
+.director-plan-editor { display: grid; grid-template-rows: auto minmax(280px, 1fr) auto; gap: 14px; min-height: min(680px, calc(100vh - 150px)); padding: 22px 24px; }
+.director-plan-editor textarea { width: 100%; min-height: 280px; resize: vertical; padding: 16px; border: 1px solid var(--line-dark); background: var(--paper); color: var(--ink); font: inherit; line-height: 1.65; }
+.director-plan-editor-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; color: var(--ink-muted); font-size: 12px; }
 .asset-center-dialog { width: min(1040px, 100%); }
 .asset-center-header { display: flex; align-items: start; justify-content: space-between; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
 .asset-center-header .eyebrow { margin: 0 0 5px; }

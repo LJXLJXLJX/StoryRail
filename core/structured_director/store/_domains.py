@@ -11,6 +11,7 @@ from .domains.generation import GenerationDomain
 from .domains.keyframe import KeyframeDomain
 from .domains.location import LocationDomain
 from .domains.narration import NarrationDomain
+from .domains.project import ProjectDomain
 from .domains.reference import ReferenceDomain
 from .domains.run import RunDomain
 from .domains.script import ScriptDomain
@@ -24,6 +25,7 @@ __all__ = [
     "KeyframeDomain",
     "LocationDomain",
     "NarrationDomain",
+    "ProjectDomain",
     "ReferenceDomain",
     "RunDomain",
     "ScriptDomain",

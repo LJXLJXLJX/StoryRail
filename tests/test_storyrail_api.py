@@ -137,6 +137,72 @@ class StoryRailApiTests(unittest.IsolatedAsyncioTestCase):
                 response = await api.handle("POST", "/api/projects", json.dumps(request).encode())
                 self.assertEqual(response.status, 400, request)
 
+    async def test_human_can_update_director_plan_with_strict_cas(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspaces, api = self.make_api(Path(directory), RecordingReferenceProposer())
+            created = await api.handle(
+                "POST",
+                "/api/projects",
+                json.dumps(
+                    {
+                        "title": "项目",
+                        "aspect_ratio": "16:9",
+                        "director_plan_markdown": DIRECTOR_PLAN,
+                        "narration_languages": ["zh"],
+                    }
+                ).encode(),
+            )
+            project_id = created.body["project"]["id"]
+            revision = created.body["structured_director"]["revision"]
+            path = f"/api/projects/{project_id}/structured-director/director-plan"
+            updated_plan = "# 补全导演方案\n\n新增一个结尾 Scene。"
+
+            updated = await api.handle(
+                "PUT",
+                path,
+                json.dumps(
+                    {
+                        "expected_revision": revision,
+                        "director_plan_markdown": updated_plan,
+                    }
+                ).encode(),
+            )
+            self.assertEqual(updated.status, 200)
+            self.assertEqual(updated.body["revision"], revision + 1)
+            self.assertEqual(updated.body["director_plan_markdown"], updated_plan)
+            self.assertIn("edit_director_plan", updated.body["allowed_actions"])
+            self.assertEqual(
+                workspaces.structured_director_store(project_id).read().director_plan_markdown,
+                updated_plan,
+            )
+
+            stale = await api.handle(
+                "PUT",
+                path,
+                json.dumps(
+                    {
+                        "expected_revision": revision,
+                        "director_plan_markdown": "# 过期覆盖",
+                    }
+                ).encode(),
+            )
+            self.assertEqual(stale.status, 409)
+            self.assertEqual(stale.body["error"]["code"], "revision_conflict")
+
+            invalid = await api.handle(
+                "PUT",
+                path,
+                json.dumps(
+                    {
+                        "expected_revision": revision + 1,
+                        "director_plan_markdown": "   ",
+                        "extra": True,
+                    }
+                ).encode(),
+            )
+            self.assertEqual(invalid.status, 400)
+            self.assertEqual(invalid.body["error"]["code"], "invalid_request")
+
     async def test_removed_stage_routes_return_404(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             _, api = self.make_api(Path(directory), RecordingReferenceProposer())
@@ -185,6 +251,10 @@ class StoryRailApiTests(unittest.IsolatedAsyncioTestCase):
                 "/api/projects/" + "a" * 32 + "/structured-director/application/commands"
             ),
             _MAX_APPLICATION_COMMAND_REQUEST_BYTES,
+        )
+        self.assertEqual(
+            _request_body_limit("/api/projects/" + "a" * 32 + "/structured-director/director-plan"),
+            256 * 1024,
         )
         self.assertEqual(
             _request_body_limit(

@@ -10,8 +10,8 @@
     ]
   },
   "environment": {
-    "date": "2026-10-18",
-    "git_sha": "d1c577a9f26f3599e4d4255bc5dc40b37cb542aa",
+    "date": "2026-10-19",
+    "git_sha": "dc2e10fc60bb0bcbc82247508935ba514a72ebfa",
     "python_version": "3.12.12",
     "platform": "macOS-26.6.2-arm64-arm-64bit",
     "driver": "scripts/harness/benchmark/fake_agent_driver.py"
@@ -23,22 +23,22 @@
     "tools_list_bytes": 32288,
     "scenarios": {
       "h3": {
-        "total_wire_bytes": 86998
+        "total_wire_bytes": 87019
       },
       "keyframe": {
-        "total_wire_bytes": 75327
+        "total_wire_bytes": 75348
       },
       "location": {
-        "total_wire_bytes": 47769
+        "total_wire_bytes": 47790
       },
       "ref2va": {
-        "total_wire_bytes": 88672
+        "total_wire_bytes": 88693
       },
       "reference": {
-        "total_wire_bytes": 30036
+        "total_wire_bytes": 30056
       },
       "script": {
-        "total_wire_bytes": 75503
+        "total_wire_bytes": 75524
       }
     }
   },
@@ -51,8 +51,8 @@
         "tool_count": 25,
         "requests": 6,
         "input_bytes": 1182,
-        "output_bytes": 85816,
-        "total_wire_bytes": 86998,
+        "output_bytes": 85837,
+        "total_wire_bytes": 87019,
         "contract_read_bytes": 6399,
         "workset_read_bytes": 66566,
         "pagination_rounds": 6,
@@ -66,7 +66,7 @@
           "tool": "read_workflow",
           "action": "call",
           "input_bytes": 110,
-          "output_bytes": 8247,
+          "output_bytes": 8268,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -136,8 +136,8 @@
         "tool_count": 25,
         "requests": 8,
         "input_bytes": 2019,
-        "output_bytes": 73308,
-        "total_wire_bytes": 75327,
+        "output_bytes": 73329,
+        "total_wire_bytes": 75348,
         "contract_read_bytes": 31160,
         "workset_read_bytes": 15512,
         "pagination_rounds": 8,
@@ -151,7 +151,7 @@
           "tool": "read_workflow",
           "action": "call",
           "input_bytes": 116,
-          "output_bytes": 6398,
+          "output_bytes": 6419,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -243,8 +243,8 @@
         "tool_count": 25,
         "requests": 6,
         "input_bytes": 1673,
-        "output_bytes": 46096,
-        "total_wire_bytes": 47769,
+        "output_bytes": 46117,
+        "total_wire_bytes": 47790,
         "contract_read_bytes": 13411,
         "workset_read_bytes": 15622,
         "pagination_rounds": 6,
@@ -258,7 +258,7 @@
           "tool": "read_workflow",
           "action": "call",
           "input_bytes": 116,
-          "output_bytes": 6888,
+          "output_bytes": 6909,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -328,8 +328,8 @@
         "tool_count": 25,
         "requests": 7,
         "input_bytes": 1436,
-        "output_bytes": 87236,
-        "total_wire_bytes": 88672,
+        "output_bytes": 87257,
+        "total_wire_bytes": 88693,
         "contract_read_bytes": 6403,
         "workset_read_bytes": 66570,
         "pagination_rounds": 7,
@@ -343,7 +343,7 @@
           "tool": "read_workflow",
           "action": "call",
           "input_bytes": 114,
-          "output_bytes": 8247,
+          "output_bytes": 8268,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -424,8 +424,8 @@
         "tool_count": 25,
         "requests": 5,
         "input_bytes": 1382,
-        "output_bytes": 28654,
-        "total_wire_bytes": 30036,
+        "output_bytes": 28674,
+        "total_wire_bytes": 30056,
         "contract_read_bytes": 10034,
         "workset_read_bytes": 5651,
         "pagination_rounds": 5,
@@ -439,7 +439,7 @@
           "tool": "read_workflow",
           "action": "call",
           "input_bytes": 116,
-          "output_bytes": 4986,
+          "output_bytes": 5006,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -498,8 +498,8 @@
         "tool_count": 25,
         "requests": 5,
         "input_bytes": 1662,
-        "output_bytes": 73841,
-        "total_wire_bytes": 75503,
+        "output_bytes": 73862,
+        "total_wire_bytes": 75524,
         "contract_read_bytes": 50472,
         "workset_read_bytes": 9546,
         "pagination_rounds": 5,
@@ -513,7 +513,7 @@
           "tool": "read_workflow",
           "action": "call",
           "input_bytes": 113,
-          "output_bytes": 5412,
+          "output_bytes": 5433,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null

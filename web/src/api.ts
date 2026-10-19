@@ -113,6 +113,15 @@ export const providerSettingsApi = {
     ),
 };
 export const structuredDirectorApi = {
+  updateDirectorPlan: (
+    projectId: string,
+    revision: number,
+    directorPlanMarkdown: string,
+  ) =>
+    structuredMutation(projectId, "director-plan", {
+      expected_revision: revision,
+      director_plan_markdown: directorPlanMarkdown,
+    }, "PUT"),
   confirmReferences: (projectId: string, revision: number) =>
     request(`${structuredDirectorResource(projectId)}/commands`, value => value, {
       method: "POST",

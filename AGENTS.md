@@ -51,7 +51,8 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
    更早版本的 Segment 挂在 Shot 下，或没有英文旁白、只有一套旁白音色，无法无损转换，一律拒绝读取并提示新建项目。
    `workspace_layers` 持久化旁白、Keyframe、视频和成片内容层是否已经解锁；这些事实不由 Web
    根据全局状态猜测。
-2. `title`、`aspect_ratio` 和 `director_plan_markdown` 在创建时固化；原始导演方案没有修改 API。
+2. `title` 和 `aspect_ratio` 在创建时固化；`director_plan_markdown` 可由人类在导演台手工修改，Agent 无权修改。
+   修改只更新原始方案与项目 revision，不自动改写或失效已有引用库、结构化脚本和媒体；需要反映到成片时仍须显式回改脚本。
 3. `assets/` 按媒体类型与用途保存不可变媒体字节，JSON 只保存受控项目内相对路径和资产关系；文件名使用可读语义名称并附短哈希防冲突，不得跨边界传本机绝对路径。
 4. 外部 Agent 的工作区和对话由外部管理，不是项目事实；Core 不读取这些文件。
 5. Core 不创建厂商 `.runtime/` thread；历史诊断包不参与业务流程。

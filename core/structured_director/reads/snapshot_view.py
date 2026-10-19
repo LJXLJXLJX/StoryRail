@@ -99,8 +99,9 @@ def _allowed_actions(document: StructuredDirectorDocument) -> tuple[str, ...]:
     if document.status is StructuredDirectorStatus.APPROVED:
         return ("reopen_video_production",)
     if document.status is StructuredDirectorStatus.AWAITING_PROPOSAL:
-        return ()
+        return ("edit_director_plan",)
     actions = [
+        *([] if active is not None else ["edit_director_plan"]),
         "edit_reference_library",
         "import_image_asset",
         "import_media_asset",

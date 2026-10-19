@@ -452,6 +452,19 @@ class StructuredDirectorService:
     def read_asset(self, asset_id: str) -> tuple[Asset, bytes]:
         return self._store.read_asset(asset_id)
 
+    async def update_director_plan(
+        self,
+        director_plan_markdown: str,
+        *,
+        expected_revision: int,
+    ) -> StructuredDirectorDocument:
+        """保存人类手工修改的原始方案；已有结构化内容保持不变。"""
+        async with self._lock:
+            return self._store.update_director_plan(
+                director_plan_markdown,
+                expected_revision=expected_revision,
+            )
+
     async def transcribe_audio(self, asset_id: str, *, language: str = "auto"):
         prepared = self._registry.prepare_recipe(Capability.SPEECH_RECOGNIZE)
         asset, content = self._store.read_asset(asset_id)
