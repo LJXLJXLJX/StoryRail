@@ -688,6 +688,12 @@ class StructuredDirectorService:
                 expected_revision=expected_revision,
             )
 
+    async def auto_calibrate_dialogue_timings(
+        self, *, expected_revision: int
+    ) -> StructuredDirectorDocument:
+        async with self._lock:
+            return self._store.auto_calibrate_dialogue_timings(expected_revision=expected_revision)
+
     async def unlock_visual_production(
         self, *, expected_revision: int
     ) -> StructuredDirectorDocument:

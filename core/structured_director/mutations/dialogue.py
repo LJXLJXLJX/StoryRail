@@ -184,6 +184,85 @@ def set_dialogue_timing(
     )
 
 
+def auto_calibrate_dialogue_timings(
+    document: StructuredDirectorDocument,
+) -> StructuredDirectorDocument:
+    """一次性校准所有已选齐 TTS WAV 的 Segment；未选齐的 Segment 保持不变。"""
+    plan = document.dialogue_plan
+    script = document.director_script
+    if not document.is_reviewing or script is None or plan is None:
+        raise ValueError("当前不能校准对白时序。")
+    plan_by_id = {item.dialogue_line_id: item for item in plan.items}
+    asset_by_id = {item.id: item for item in document.assets}
+    starts_by_line: dict[str, float] = {}
+    durations_by_segment: dict[str, float] = {}
+    for scene in script.scenes:
+        for segment in scene.segments:
+            if not segment.dialogue_lines:
+                continue
+            durations: list[float] = []
+            for line in segment.dialogue_lines:
+                item = plan_by_id.get(line.id or "")
+                asset = (
+                    None
+                    if item is None or item.selected_audio_asset_id is None
+                    else asset_by_id.get(item.selected_audio_asset_id)
+                )
+                if asset is None or asset.duration_seconds is None:
+                    break
+                durations.append(asset.duration_seconds)
+            if len(durations) != len(segment.dialogue_lines):
+                continue
+            cursor = 0.5
+            for line, duration in zip(segment.dialogue_lines, durations, strict=True):
+                assert line.id is not None
+                starts_by_line[line.id] = cursor
+                cursor += duration + 0.25
+            durations_by_segment[segment.id] = max(0.2, cursor + 0.25)
+    if not durations_by_segment:
+        raise ValueError("当前没有已选齐全部对白 TTS 的 Segment。")
+    current_items = {item.dialogue_line_id: item for item in plan.items}
+    current_segments = {
+        segment.id: segment for scene in script.scenes for segment in scene.segments
+    }
+    if all(
+        current_items[line_id].start_seconds == start for line_id, start in starts_by_line.items()
+    ) and all(
+        current_segments[segment_id].duration_estimate_seconds == duration
+        for segment_id, duration in durations_by_segment.items()
+    ):
+        return document
+    timed_plan = replace(
+        plan,
+        items=tuple(
+            replace(item, start_seconds=starts_by_line[item.dialogue_line_id])
+            if item.dialogue_line_id in starts_by_line
+            else item
+            for item in plan.items
+        ),
+    )
+    scenes = tuple(
+        replace(
+            scene,
+            segments=tuple(
+                replace(
+                    segment,
+                    duration_estimate_seconds=durations_by_segment[segment.id],
+                )
+                if segment.id in durations_by_segment
+                else segment
+                for segment in scene.segments
+            ),
+        )
+        for scene in script.scenes
+    )
+    return _invalidate_production_after_script_revision(
+        document,
+        scenes,
+        dialogue_plan_override=timed_plan,
+    )
+
+
 def _require_dialogue_line(document, dialogue_line_id):
     plan = document.dialogue_plan
     script = document.director_script

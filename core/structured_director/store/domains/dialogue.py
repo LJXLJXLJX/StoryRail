@@ -72,6 +72,14 @@ class DialogueDomain(_DomainBase):
             ),
         )
 
+    def auto_calibrate_dialogue_timings(
+        self, *, expected_revision: int
+    ) -> StructuredDirectorDocument:
+        return self._commit(
+            expected_revision,
+            _dialogue.auto_calibrate_dialogue_timings,
+        )
+
     def set_dialogue_timing_command(
         self,
         update: DialogueTimingUpdate,

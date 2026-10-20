@@ -75,6 +75,8 @@ Shot；同一 Shot 跨多个 Segment 时是同一连续镜头的生产切片。�
 - 需要精确构图控制的镜头独占 Segment：建立镜头、关键揭示、全场最重的镜头、需要严格首尾状态的镜头。
 - 相邻 Segment 共享边界 Shot 即延续同一镜头，后一段必须填写 `boundary_from_previous`，写清交接时刻的角色、
   摄影机、道具和光线状态；不共享边界 Shot 即剪辑，`boundary_from_previous` 必须为 null；第一个 Segment 为 null。
+  `boundary_from_previous.reason` 只允许：模型或时长约束拆段用 `model_constraint`，连续性锚点用
+  `continuity_anchor`，控制方式切换用 `control_boundary`，隔离失败成本用 `failure_cost`。
 - 初稿与回改都在 `reply_markdown` 简述打包理由：哪些镜头组合并进一个 Segment、哪些长镜头拆成相邻 Segment、
   为什么。
 

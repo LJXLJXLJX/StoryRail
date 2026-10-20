@@ -78,7 +78,7 @@
 | `delete_shot` | 同一 patch 内从覆盖它的全部 Segment 移除；任一 Segment 因此失去全部 Shot 时整批拒绝 |
 | `update_segment_fields` | 可改 `shot_ids`、时长、`action`、对白与 `boundary_from_previous`；时长不短于 0.2 秒，不设上限；对白数组改写时，显式 ID 优先，未带 ID 但内容完全未变的对白沿用原 ID 与已选 TTS，只有新增或改写的对白失效 |
 | `insert_segment` / `move_segment` / `delete_segment` | 以 `scene_id` 为容器；覆盖用 `shot_ids`，移动用 `after_segment_id` |
-| `split_segment` | 提供完整 `first`、`second` 并指定 `preserve_id`（first / second）；两段各自给 `shot_ids`，在某个 Shot 内部拆分时两段共享该 Shot，第二段必须带 `boundary_from_previous`；内容完全未变的对白跨两段保留原 ID 与已选 TTS |
+| `split_segment` | 提供完整 `first`、`second` 并指定 `preserve_id`（first / second）；两段各自给 `shot_ids`，在某个 Shot 内部拆分时两段共享该 Shot，第二段必须带 `boundary_from_previous`；其 `reason` 只允许 `model_constraint`、`continuity_anchor`、`control_boundary`、`failure_cost`；内容完全未变的对白跨两段保留原 ID 与已选 TTS |
 | `merge_adjacent_segments` | 只接受同一 Scene 中真实相邻的左右 Segment，提供完整 `merged` 并指定保留哪一侧 ID；合并后的 `shot_ids` 必须是两段覆盖的并集；内容完全未变的对白保留原 ID 与已选 TTS |
 
 插入与移动用显式 `after_*_id`，`null` 表示移到容器首位；锚点必须存在于合法容器且不能自引用。新增 Shot/Segment 的 ID 由

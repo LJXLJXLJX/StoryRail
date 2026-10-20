@@ -80,6 +80,7 @@ export interface WorkspaceActions {
     starts: Record<string, number>,
     durationSeconds: number,
   ) => void;
+  onAutoCalibrateDialogueTimings?: () => void;
   onGenerateSceneAnimatic?: (sceneId: string) => void;
   onGenerateSceneFinal?: (
     sceneId: string,

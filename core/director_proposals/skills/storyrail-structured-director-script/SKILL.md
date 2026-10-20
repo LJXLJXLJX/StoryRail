@@ -53,7 +53,5 @@ read、bash、shell、jq 或其它发现工具，也不得读取项目目录。`
    Scene。所用 Agent 支持独立上下文的子任务时，可只把导演方案、引用卡和草稿交给它复查。复查过程不写入 proposal。
 7. `reply_markdown` 按 Scene 写出方案时长与脚本合计时长、打包理由（哪些镜头组合并成一个 Segment、哪些长镜头
    拆成相邻 Segment、为什么）；有意删减或合并的方案内容逐条列出并说明原因，没有删减时明确写“无删减”。
-   提交后用 `read_story` 读 Segment 层，`dialogue_timing.exceeds_duration` 为 true 的 Segment 加长
-   `duration_estimate_seconds` 或按用户要求拆分，不压缩台词。
 
 只改单个 Segment 或少量文字时，只复查受影响的 Shot、覆盖它的全部 Segment 及相邻边界。

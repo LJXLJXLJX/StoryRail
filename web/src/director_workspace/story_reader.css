@@ -129,7 +129,6 @@
 
 .story-reader-nav .story-reader-warning { font-size: 11px; line-height: 1.4; margin-top: 3px; }
 .story-reader-nav .story-reader-warning.is-video-duration { color: #956100; }
-.story-reader-nav .story-reader-warning.is-dialogue-duration { color: #b13b2d; }
 .story-reader-nav .story-reader-pending { color: var(--muted); font-size: 11px; line-height: 1.4; margin-top: 3px; }
 .story-reader-nav .story-reader-pending-item { display: inline; font-weight: 600; }
 .story-reader-nav .story-reader-pending-item.is-dialogue-tts { color: #28678f; }

@@ -1,8 +1,14 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { Location, LocationImage, Scene, StructuredDirectorSnapshot } from "../api";
 import type { LocationChange, LocationOperation } from "../api/location";
 import type { WorkspaceFlatProps } from "./contracts";
-import { assetById, GenerationCandidateList, ZoomableImage } from "./shared";
+import {
+  assetById,
+  GenerationCandidateList,
+  MultiImageAssetPickerDialog,
+  ZoomableImage,
+} from "./shared";
 import { PanoramaCameraEditor, type CameraView } from "./PanoramaCameraEditor";
 import "./location.css";
 
@@ -62,23 +68,6 @@ function ImageCard({ props, location, image }: { props: Props; location: Locatio
   const active = props.snapshot.generations.find((item) => item.id === production?.active_generation_id);
   const can = (action: string) => production?.allowed_actions.includes(action as never) ?? false;
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(image.name);
-  const [description, setDescription] = useState(image.description);
-  const [promptText, setPromptText] = useState(image.prompt_text);
-  const [references, setReferences] = useState(image.reference_asset_ids);
-  const imageAssets = props.snapshot.assets.filter((asset) => asset.media_type.startsWith("image/"));
-
-  async function save() {
-    if (!description.trim()) return;
-    const ok = await apply(
-      props,
-      change(
-        [{ op: "update_image", image_id: image.id, fields: { name, description, prompt_text: promptText, reference_asset_ids: references } }],
-        [location.id],
-      ),
-    );
-    if (ok) setEditing(false);
-  }
 
   return (
     <article className="location-view-card">
@@ -95,32 +84,11 @@ function ImageCard({ props, location, image }: { props: Props; location: Locatio
       <div className="location-inline-actions">
         {can("generate") && image.source === null ? <button disabled={props.busy} onClick={() => props.onGenerateLocationImage?.(image.id)}>{production?.generate_label ?? "生成图片"}</button> : null}
         {can("preview_panorama") ? <PanoramaDialog props={props} image={image} /> : null}
-        {can("edit") ? <button className="secondary-button" onClick={() => setEditing((value) => !value)}>编辑</button> : null}
+        {can("edit") ? <button className="secondary-button" onClick={() => setEditing(true)}>编辑</button> : null}
         {can("clear_selection") ? <button className="secondary-button" onClick={() => void apply(props, change([{ op: "clear_image_selection", image_id: image.id }], [location.id]))}>清除选择</button> : null}
         {can("delete") ? <button className="delete-button" onClick={() => void apply(props, change([{ op: "delete_image", image_id: image.id }], [location.id]))}>删除</button> : null}
       </div>
-      {editing ? (
-        <div className="location-editor-form">
-          <label>名称<input value={name} onChange={(event) => setName(event.target.value)} /></label>
-          <label>画面说明（必填）<textarea value={description} onChange={(event) => setDescription(event.target.value)} /></label>
-          <label>生成提示词<textarea value={promptText} onChange={(event) => setPromptText(event.target.value)} /></label>
-          <fieldset>
-            <legend>任意参考图片（最多 5 张）</legend>
-            {imageAssets.map((asset) => (
-              <label key={asset.id}>
-                <input
-                  type="checkbox"
-                  checked={references.includes(asset.id)}
-                  disabled={!references.includes(asset.id) && references.length >= 5}
-                  onChange={(event) => setReferences(event.target.checked ? [...references, asset.id] : references.filter((id) => id !== asset.id))}
-                />
-                {asset.display_name ?? asset.id.slice(0, 8)}
-              </label>
-            ))}
-          </fieldset>
-          <button disabled={!name.trim() || !description.trim()} onClick={() => void save()}>保存</button>
-        </div>
-      ) : null}
+      {editing ? <ImageEditorDialog props={props} location={location} image={image} onClose={() => setEditing(false)} /> : null}
       {production ? (
         <GenerationCandidateList
           kind="location"
@@ -141,6 +109,135 @@ function ImageCard({ props, location, image }: { props: Props; location: Locatio
       ) : null}
       {active?.allowed_actions.includes("cancel") ? <button className="secondary-button" onClick={() => props.onCancelGeneration(active.id)}>取消生成</button> : null}
     </article>
+  );
+}
+
+function ImageEditorDialog({
+  props,
+  location,
+  image,
+  onClose,
+}: {
+  props: Props;
+  location: Location;
+  image: LocationImage;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(image.name);
+  const [description, setDescription] = useState(image.description);
+  const [promptText, setPromptText] = useState(image.prompt_text);
+  const [references, setReferences] = useState(image.reference_asset_ids);
+  const [assetPickerOpen, setAssetPickerOpen] = useState(false);
+  const imageAssets = props.snapshot.assets.filter((asset) => asset.media_type.startsWith("image/"));
+  const referenceAssets = references
+    .map((assetId) => assetById(props.snapshot.assets, assetId))
+    .filter((asset) => asset !== null);
+
+  async function save() {
+    if (!name.trim() || !description.trim()) return;
+    const ok = await apply(
+      props,
+      change(
+        [{
+          op: "update_image",
+          image_id: image.id,
+          fields: {
+            name,
+            description,
+            prompt_text: promptText,
+            reference_asset_ids: references,
+          },
+        }],
+        [location.id],
+      ),
+    );
+    if (ok) onClose();
+  }
+
+  return createPortal(
+    <div
+      className="scene-asset-picker-backdrop"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="scene-asset-picker-dialog location-image-editor-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`编辑地点图片：${image.name}`}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && !assetPickerOpen) onClose();
+        }}
+      >
+        <header>
+          <div>
+            <p className="eyebrow">Location image</p>
+            <h2>编辑地点图片</h2>
+            <span>{image.kind === "panorama" ? "2:1 全景图" : "普通图片"}</span>
+          </div>
+          <button autoFocus type="button" className="secondary-button" onClick={onClose}>关闭</button>
+        </header>
+        <div className="location-image-editor-scroll">
+          <div className="location-image-editor-form">
+            <label>名称<input value={name} onChange={(event) => setName(event.target.value)} /></label>
+            <label>画面说明（必填）<textarea rows={5} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
+            <label>生成提示词<textarea rows={8} value={promptText} onChange={(event) => setPromptText(event.target.value)} /></label>
+          </div>
+          <section className="location-reference-editor" aria-label="参考图片">
+            <header>
+              <div>
+                <h3>参考图片</h3>
+                <p>从项目资产库选择，最多 5 张；生成时按当前顺序提交。</p>
+              </div>
+              <button type="button" className="secondary-button" disabled={props.busy} onClick={() => setAssetPickerOpen(true)}>
+                从资产库选择参考图
+              </button>
+            </header>
+            {referenceAssets.length === 0 ? <p className="muted-copy">尚未选择参考图片。</p> : (
+              <div className="location-reference-preview-grid">
+                {referenceAssets.map((asset, index) => {
+                  const assetName = asset.display_name ?? `参考图 ${index + 1}`;
+                  return (
+                    <article key={asset.id}>
+                      <ZoomableImage src={asset.content_url} alt={assetName} />
+                      <div>
+                        <span>{index + 1}. {assetName}</span>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          disabled={props.busy}
+                          aria-label={`移除参考图 ${assetName}`}
+                          onClick={() => setReferences(references.filter((assetId) => assetId !== asset.id))}
+                        >移除</button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+        <footer className="location-image-editor-actions">
+          <span>{references.length} / 5 张参考图</span>
+          <button type="button" className="secondary-button" onClick={onClose}>取消</button>
+          <button type="button" disabled={props.busy || !name.trim() || !description.trim()} onClick={() => void save()}>保存修改</button>
+        </footer>
+        {assetPickerOpen ? (
+          <MultiImageAssetPickerDialog
+            title="选择地点图片参考图"
+            ariaLabel="从资产库选择地点图片参考图"
+            assets={imageAssets}
+            selectedAssetIds={references}
+            maxSelected={5}
+            busy={props.busy}
+            onClose={() => setAssetPickerOpen(false)}
+            onChange={setReferences}
+          />
+        ) : null}
+      </section>
+    </div>,
+    document.body,
   );
 }
 
@@ -195,28 +292,147 @@ function NewImage({ props, location }: { props: Props; location: Location }) {
   ) : <button onClick={() => setOpen(true)}>添加图片</button>;
 }
 
-export function LocationLibrary(props: Props) {
+function NewLocationDialog({ props, onClose }: { props: Props; onClose: () => void }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  return createPortal(
+    <div
+      className="scene-asset-picker-backdrop"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="scene-asset-picker-dialog location-create-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="添加地点"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onClose();
+        }}
+      >
+        <header>
+          <div><p className="eyebrow">New location</p><h2>添加地点</h2></div>
+          <button autoFocus type="button" className="secondary-button" onClick={onClose}>关闭</button>
+        </header>
+        <div className="location-image-editor-scroll">
+          <div className="location-image-editor-form">
+            <label>地点名称<input value={name} onChange={(event) => setName(event.target.value)} /></label>
+            <label>地点说明<textarea rows={7} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
+          </div>
+        </div>
+        <footer className="location-image-editor-actions">
+          <button type="button" className="secondary-button" onClick={onClose}>取消</button>
+          <button
+            type="button"
+            disabled={props.busy || !name.trim()}
+            onClick={() => void apply(
+              props,
+              change([{ op: "create_location", key: localKey("location"), name, description }]),
+            ).then((ok) => ok && onClose())}
+          >创建地点</button>
+        </footer>
+      </section>
+    </div>,
+    document.body,
+  );
+}
+
+function LocationOverviewCard({
+  snapshot,
+  location,
+  onOpen,
+}: {
+  snapshot: StructuredDirectorSnapshot;
+  location: Location;
+  onOpen: () => void;
+}) {
+  const coverImage = location.images.find((image) => image.selected_asset_id !== null);
+  const coverAsset = coverImage?.selected_asset_id
+    ? assetById(snapshot.assets, coverImage.selected_asset_id)
+    : null;
+  return (
+    <button type="button" className="location-overview-card" onClick={onOpen}>
+      <span className="location-overview-cover">
+        {coverAsset ? <img src={coverAsset.content_url} alt="" /> : <span>尚无已选地点图片</span>}
+      </span>
+      <span className="location-overview-content">
+        <strong>{location.name}</strong>
+        <span>{location.description || "暂无地点说明"}</span>
+        <small>{location.images.length} 张图片 · {location.states.length} 个状态</small>
+      </span>
+      <span className="location-overview-enter">查看地点</span>
+    </button>
+  );
+}
+
+export function LocationLibrary(props: Props) {
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [creatingLocation, setCreatingLocation] = useState(false);
+  const selectedLocation = props.snapshot.location_library.locations.find(
+    (location) => location.id === selectedLocationId,
+  ) ?? null;
+
+  if (selectedLocation) {
+    return (
+      <section className="location-library-shell">
+        <header className="location-detail-navigation">
+          <button type="button" className="secondary-button" onClick={() => setSelectedLocationId(null)}>← 返回地点列表</button>
+          <div>
+            <p className="eyebrow">Location detail</p>
+            <h2>{selectedLocation.name}</h2>
+            <p>{selectedLocation.description || "暂无地点说明"}</p>
+          </div>
+        </header>
+        <div className="location-detail-summary">
+          <span>{selectedLocation.images.length} 张图片</span>
+          <span>{selectedLocation.states.length} 个状态</span>
+          <span>{selectedLocation.fixtures.length} 项固定陈设</span>
+        </div>
+        <div className="location-inline-actions">
+          <NewImage props={props} location={selectedLocation} />
+          {selectedLocation.allowed_actions?.includes("delete") ? (
+            <button
+              className="delete-button"
+              onClick={() => void apply(
+                props,
+                change([{ op: "delete_location", location_id: selectedLocation.id }], [selectedLocation.id]),
+              ).then((ok) => ok && setSelectedLocationId(null))}
+            >删除地点</button>
+          ) : null}
+        </div>
+        {selectedLocation.images.length === 0 ? <p className="location-library-empty">这个地点还没有图片。</p> : (
+          <div className="location-view-grid">
+            {selectedLocation.images.map((image) => (
+              <ImageCard key={image.id} props={props} location={selectedLocation} image={image} />
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  }
+
   return (
     <section className="location-library-shell">
-      <header className="location-library-header"><div><p className="eyebrow">Location Library</p><h2>地点库</h2><p>地点保存空间语义；图片彼此独立，全景图只是可进入 3D 预览并取景的特殊类别。</p></div></header>
-      {props.snapshot.location_library.allowed_actions?.includes("create_location") ? (
-        <div className="location-editor-form">
-          <label>新地点名称<input value={name} onChange={(event) => setName(event.target.value)} /></label>
-          <label>地点说明<textarea value={description} onChange={(event) => setDescription(event.target.value)} /></label>
-          <button disabled={!name.trim()} onClick={() => void apply(props, change([{ op: "create_location", key: localKey("location"), name, description }])).then((ok) => { if (ok) { setName(""); setDescription(""); } })}>创建地点</button>
+      <header className="location-library-header">
+        <div><p className="eyebrow">Location Library</p><h2>地点库</h2><p>先选择地点，再查看其中的空间说明、状态与独立图片。</p></div>
+        {props.snapshot.location_library.allowed_actions?.includes("create_location") ? (
+          <button type="button" onClick={() => setCreatingLocation(true)}>添加地点</button>
+        ) : null}
+      </header>
+      {props.snapshot.location_library.locations.length === 0 ? <p className="location-library-empty">项目中还没有地点。</p> : (
+        <div className="location-overview-grid">
+          {props.snapshot.location_library.locations.map((location) => (
+            <LocationOverviewCard
+              key={location.id}
+              snapshot={props.snapshot}
+              location={location}
+              onOpen={() => setSelectedLocationId(location.id)}
+            />
+          ))}
         </div>
-      ) : null}
-      <div className="location-list">
-        {props.snapshot.location_library.locations.map((location) => (
-          <article key={location.id} className="location-detail">
-            <header className="location-card-header"><div><h3>{location.name}</h3><p>{location.description || "暂无地点说明"}</p></div></header>
-            <div className="location-inline-actions"><NewImage props={props} location={location} />{location.allowed_actions?.includes("delete") ? <button className="delete-button" onClick={() => void apply(props, change([{ op: "delete_location", location_id: location.id }], [location.id]))}>删除地点</button> : null}</div>
-            <div className="location-view-grid">{location.images.map((image) => <ImageCard key={image.id} props={props} location={location} image={image} />)}</div>
-          </article>
-        ))}
-      </div>
+      )}
+      {creatingLocation ? <NewLocationDialog props={props} onClose={() => setCreatingLocation(false)} /> : null}
     </section>
   );
 }

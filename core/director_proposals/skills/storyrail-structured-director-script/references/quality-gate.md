@@ -28,8 +28,8 @@
   情绪由可见变化承担，`action` 不靠情绪形容词，`camera_movement` 不写“捕捉 / 刻画 / 强调”类目的语；
 - 镜头时长随强度曲线变化，转折与余波镜头给足时间，不是全场等长；
 - 每个 Shot 至多一个开口说话的可见角色；一个 Segment 覆盖多个 Shot 时逐 Shot 约束，对方台词作为画外声且
-  说话者不列入该 Shot 的 `visible_character_ids`；台词按每秒约 4–5 个中文字加前后停顿能装进覆盖它的
-  Segment 时长；提交后 `read_story` 的 `dialogue_timing.exceeds_duration` 为 false（Core 用同一估算给出软提示）；
+  说话者不列入该 Shot 的 `visible_character_ids`；脚本期只按自然语速和表演停顿做创作判断，不把文字换算结果
+  当成运行时时长；生产期由已选 TTS WAV 的真实时长校准 Segment；
 - 每条 DialogueLine 自身按自然语速、`delivery` 和停顿预计不超过 15 秒；超长对白已在自然语义或表演停顿处拆成
   连续多条，原文、说话者和顺序保持不变；拆 Segment 不能代替拆长对白；
 - 每个连续镜头都给出可核对的起点、关键变化和落点；跨 Shot/Segment 的轴线、视线、动作方向、道具、光线和时代实体状态没有留给下游猜测；

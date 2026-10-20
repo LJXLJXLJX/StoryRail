@@ -3,17 +3,141 @@
     "description": "局部脚本类型化编辑，Core分配新ID。",
     "inputSchema": {
       "$defs": {
+        "Boundary": {
+          "additionalProperties": false,
+          "properties": {
+            "continuity_instruction": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "reason": {
+              "enum": [
+                "model_constraint",
+                "continuity_anchor",
+                "control_boundary",
+                "failure_cost"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason",
+            "continuity_instruction"
+          ],
+          "type": "object"
+        },
+        "Dialogue": {
+          "additionalProperties": false,
+          "properties": {
+            "character_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "delivery": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "speaker_label": {
+              "anyOf": [
+                {
+                  "maxLength": 60,
+                  "minLength": 1,
+                  "pattern": "\\S",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "text": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "voice_description": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "minLength": 1,
+                  "pattern": "\\S",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "character_id",
+            "text",
+            "delivery"
+          ],
+          "type": "object"
+        },
         "InsertShot": {
           "additionalProperties": false,
           "properties": {
-            "after_shot_id": {},
-            "attach_to_segment_id": {},
-            "new_segment": {},
+            "after_shot_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "attach_to_segment_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "new_segment": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NewSegment"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "op": {
               "const": "insert_shot"
             },
-            "scene_id": {},
-            "shot": {}
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "shot": {
+              "$ref": "#/$defs/Shot"
+            }
           },
           "required": [
             "op",
@@ -23,13 +147,373 @@
           ],
           "type": "object"
         },
+        "NarrationTrackInput": {
+          "additionalProperties": false,
+          "properties": {
+            "recipe_params": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "items": {
+                        "type": "number"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              "type": "object"
+            },
+            "seed": {
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "text": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "text",
+            "seed"
+          ],
+          "type": "object"
+        },
+        "NewSegment": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "boundary_from_previous": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Boundary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dialogue_lines": {
+              "items": {
+                "$ref": "#/$defs/Dialogue"
+              },
+              "type": "array"
+            },
+            "duration_estimate_seconds": {
+              "minimum": 0.2,
+              "type": "number"
+            },
+            "shot_indexes": {
+              "items": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "shot_indexes",
+            "duration_estimate_seconds",
+            "action",
+            "dialogue_lines",
+            "boundary_from_previous"
+          ],
+          "type": "object"
+        },
+        "SceneFields": {
+          "additionalProperties": false,
+          "properties": {
+            "setting": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "summary": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "SceneInsert": {
+          "additionalProperties": false,
+          "properties": {
+            "driver": {
+              "enum": [
+                "drama",
+                "narration"
+              ],
+              "type": "string"
+            },
+            "narration_cue": {
+              "$ref": "#/$defs/SceneNarrationCue"
+            },
+            "segments": {
+              "items": {
+                "$ref": "#/$defs/NewSegment"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            "setting": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "shots": {
+              "items": {
+                "$ref": "#/$defs/Shot"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            "summary": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "summary",
+            "setting"
+          ],
+          "type": "object"
+        },
+        "SceneNarrationCue": {
+          "additionalProperties": false,
+          "properties": {
+            "en": {
+              "$ref": "#/$defs/NarrationTrackInput"
+            },
+            "zh": {
+              "$ref": "#/$defs/NarrationTrackInput"
+            }
+          },
+          "required": [
+            "zh",
+            "en"
+          ],
+          "type": "object"
+        },
+        "Segment": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "boundary_from_previous": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Boundary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dialogue_lines": {
+              "items": {
+                "$ref": "#/$defs/Dialogue"
+              },
+              "type": "array"
+            },
+            "duration_estimate_seconds": {
+              "minimum": 0.2,
+              "type": "number"
+            },
+            "shot_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "shot_ids",
+            "duration_estimate_seconds",
+            "action",
+            "dialogue_lines",
+            "boundary_from_previous"
+          ],
+          "type": "object"
+        },
+        "SegmentFields": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "boundary_from_previous": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Boundary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dialogue_lines": {
+              "items": {
+                "$ref": "#/$defs/Dialogue"
+              },
+              "type": "array"
+            },
+            "duration_estimate_seconds": {
+              "minimum": 0.2,
+              "type": "number"
+            },
+            "shot_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
+        "Shot": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "audio_direction": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "camera_movement": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "composition": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "transition_in": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "visible_character_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array"
+            }
+          },
+          "required": [
+            "visible_character_ids",
+            "composition",
+            "camera_movement",
+            "action",
+            "audio_direction",
+            "transition_in"
+          ],
+          "type": "object"
+        },
+        "ShotFields": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "audio_direction": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "camera_movement": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "composition": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "transition_in": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "visible_character_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
         "delete_scene": {
           "additionalProperties": false,
           "properties": {
             "op": {
               "const": "delete_scene"
             },
-            "scene_id": {}
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -43,8 +527,14 @@
             "op": {
               "const": "delete_segment"
             },
-            "scene_id": {},
-            "segment_id": {}
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -59,8 +549,14 @@
             "op": {
               "const": "delete_shot"
             },
-            "scene_id": {},
-            "shot_id": {}
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "shot_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -72,11 +568,23 @@
         "insert_scene": {
           "additionalProperties": false,
           "properties": {
-            "after_scene_id": {},
+            "after_scene_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "op": {
               "const": "insert_scene"
             },
-            "scene": {}
+            "scene": {
+              "$ref": "#/$defs/SceneInsert"
+            }
           },
           "required": [
             "op",
@@ -88,12 +596,27 @@
         "insert_segment": {
           "additionalProperties": false,
           "properties": {
-            "after_segment_id": {},
+            "after_segment_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "op": {
               "const": "insert_segment"
             },
-            "scene_id": {},
-            "segment": {}
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "segment": {
+              "$ref": "#/$defs/Segment"
+            }
           },
           "required": [
             "op",
@@ -106,13 +629,27 @@
         "merge_adjacent_segments": {
           "additionalProperties": false,
           "properties": {
-            "left_segment_id": {},
-            "merged": {},
+            "left_segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "merged": {
+              "$ref": "#/$defs/Segment"
+            },
             "op": {
               "const": "merge_adjacent_segments"
             },
-            "preserve_id": {},
-            "right_segment_id": {}
+            "preserve_id": {
+              "enum": [
+                "left",
+                "right"
+              ],
+              "type": "string"
+            },
+            "right_segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -126,11 +663,24 @@
         "move_scene": {
           "additionalProperties": false,
           "properties": {
-            "after_scene_id": {},
+            "after_scene_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "op": {
               "const": "move_scene"
             },
-            "scene_id": {}
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -142,12 +692,28 @@
         "move_segment": {
           "additionalProperties": false,
           "properties": {
-            "after_segment_id": {},
+            "after_segment_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "op": {
               "const": "move_segment"
             },
-            "scene_id": {},
-            "segment_id": {}
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -160,13 +726,26 @@
         "split_segment": {
           "additionalProperties": false,
           "properties": {
-            "first": {},
+            "first": {
+              "$ref": "#/$defs/Segment"
+            },
             "op": {
               "const": "split_segment"
             },
-            "preserve_id": {},
-            "second": {},
-            "segment_id": {}
+            "preserve_id": {
+              "enum": [
+                "first",
+                "second"
+              ],
+              "type": "string"
+            },
+            "second": {
+              "$ref": "#/$defs/Segment"
+            },
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -180,11 +759,16 @@
         "update_scene_fields": {
           "additionalProperties": false,
           "properties": {
-            "fields": {},
+            "fields": {
+              "$ref": "#/$defs/SceneFields"
+            },
             "op": {
               "const": "update_scene_fields"
             },
-            "scene_id": {}
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -196,11 +780,16 @@
         "update_segment_fields": {
           "additionalProperties": false,
           "properties": {
-            "fields": {},
+            "fields": {
+              "$ref": "#/$defs/SegmentFields"
+            },
             "op": {
               "const": "update_segment_fields"
             },
-            "segment_id": {}
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -212,11 +801,16 @@
         "update_shot_fields": {
           "additionalProperties": false,
           "properties": {
-            "fields": {},
+            "fields": {
+              "$ref": "#/$defs/ShotFields"
+            },
             "op": {
               "const": "update_shot_fields"
             },
-            "shot_id": {}
+            "shot_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -435,15 +1029,76 @@
     "description": "更新 Keyframe 计划/辅助图/边界，不生成。",
     "inputSchema": {
       "$defs": {
+        "CharacterReference": {
+          "additionalProperties": false,
+          "properties": {
+            "character_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "look_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "character_id",
+            "look_id"
+          ],
+          "type": "object"
+        },
+        "FrameFields": {
+          "additionalProperties": false,
+          "properties": {
+            "character_references": {
+              "items": {
+                "$ref": "#/$defs/CharacterReference"
+              },
+              "type": "array"
+            },
+            "prompt_text": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "visible_character_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
         "bind_slot": {
           "additionalProperties": false,
           "properties": {
-            "keyframe_id": {},
+            "keyframe_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
             "op": {
               "const": "bind_slot"
             },
-            "segment_id": {},
-            "slot": {}
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "slot": {
+              "enum": [
+                "start",
+                "end"
+              ],
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -456,12 +1111,19 @@
         "set_activation": {
           "additionalProperties": false,
           "properties": {
-            "end_enabled": {},
+            "end_enabled": {
+              "type": "boolean"
+            },
             "op": {
               "const": "set_activation"
             },
-            "segment_id": {},
-            "start_enabled": {}
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "start_enabled": {
+              "type": "boolean"
+            }
           },
           "required": [
             "op",
@@ -474,11 +1136,21 @@
         "set_aux_references": {
           "additionalProperties": false,
           "properties": {
-            "asset_ids": {},
+            "asset_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
             "op": {
               "const": "set_aux_references"
             },
-            "segment_id": {}
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -490,13 +1162,42 @@
         "share_boundary": {
           "additionalProperties": false,
           "properties": {
-            "expected_adjacency": {},
-            "left_segment_id": {},
+            "expected_adjacency": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "cross_shot",
+                    "intra_shot"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "left_segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
             "op": {
               "const": "share_boundary"
             },
-            "right_segment_id": {},
-            "source_keyframe_id": {}
+            "right_segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "source_keyframe_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
           },
           "required": [
             "op",
@@ -510,13 +1211,27 @@
         "split_boundary": {
           "additionalProperties": false,
           "properties": {
-            "clone_side": {},
-            "copy_selection": {},
-            "left_segment_id": {},
+            "clone_side": {
+              "enum": [
+                "left_end",
+                "right_start"
+              ],
+              "type": "string"
+            },
+            "copy_selection": {
+              "type": "boolean"
+            },
+            "left_segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
             "op": {
               "const": "split_boundary"
             },
-            "right_segment_id": {}
+            "right_segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -530,8 +1245,13 @@
         "update_frame_fields": {
           "additionalProperties": false,
           "properties": {
-            "fields": {},
-            "keyframe_id": {},
+            "fields": {
+              "$ref": "#/$defs/FrameFields"
+            },
+            "keyframe_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
             "op": {
               "const": "update_frame_fields"
             }
@@ -601,15 +1321,145 @@
     "description": "编辑地点语义、独立图片条目与可选Scene关系；新建项以key互引，不能选候选。",
     "inputSchema": {
       "$defs": {
+        "CaptureSource": {
+          "additionalProperties": false,
+          "properties": {
+            "hfov_deg": {
+              "type": "number"
+            },
+            "panorama_image_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "pitch_deg": {
+              "type": "number"
+            },
+            "yaw_deg": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "panorama_image_id",
+            "yaw_deg",
+            "pitch_deg",
+            "hfov_deg"
+          ],
+          "type": "object"
+        },
+        "ImageFields": {
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "image",
+                "panorama"
+              ],
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "prompt_text": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "reference_asset_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 5,
+              "type": "array"
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CaptureSource"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "KeyLight": {
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "maxLength": 20000,
+              "type": "string"
+            }
+          },
+          "required": [
+            "description"
+          ],
+          "type": "object"
+        },
+        "LocationFields": {
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "key_light": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/KeyLight"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
         "bind_scene": {
           "additionalProperties": false,
           "properties": {
-            "location_id": {},
+            "location_id": {
+              "anyOf": [
+                {
+                  "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "op": {
               "const": "bind_scene"
             },
-            "scene_id": {},
-            "state_id": {}
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "state_id": {
+              "anyOf": [
+                {
+                  "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
           },
           "required": [
             "op",
@@ -622,7 +1472,10 @@
         "clear_image_selection": {
           "additionalProperties": false,
           "properties": {
-            "image_id": {},
+            "image_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
             "op": {
               "const": "clear_image_selection"
             }
@@ -636,9 +1489,17 @@
         "create_image": {
           "additionalProperties": false,
           "properties": {
-            "fields": {},
-            "key": {},
-            "location_id": {},
+            "fields": {
+              "$ref": "#/$defs/ImageFields"
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            "location_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
             "op": {
               "const": "create_image"
             }
@@ -654,9 +1515,19 @@
         "create_location": {
           "additionalProperties": false,
           "properties": {
-            "description": {},
-            "key": {},
-            "name": {},
+            "description": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
             "op": {
               "const": "create_location"
             }
@@ -672,8 +1543,14 @@
         "delete_fixture": {
           "additionalProperties": false,
           "properties": {
-            "fixture_id": {},
-            "location_id": {},
+            "fixture_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "location_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
             "op": {
               "const": "delete_fixture"
             }
@@ -688,7 +1565,10 @@
         "delete_image": {
           "additionalProperties": false,
           "properties": {
-            "image_id": {},
+            "image_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
             "op": {
               "const": "delete_image"
             }
@@ -702,7 +1582,10 @@
         "delete_location": {
           "additionalProperties": false,
           "properties": {
-            "location_id": {},
+            "location_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
             "op": {
               "const": "delete_location"
             }
@@ -716,11 +1599,17 @@
         "delete_state": {
           "additionalProperties": false,
           "properties": {
-            "location_id": {},
+            "location_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
             "op": {
               "const": "delete_state"
             },
-            "state_id": {}
+            "state_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -732,8 +1621,13 @@
         "update_image": {
           "additionalProperties": false,
           "properties": {
-            "fields": {},
-            "image_id": {},
+            "fields": {
+              "$ref": "#/$defs/ImageFields"
+            },
+            "image_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
             "op": {
               "const": "update_image"
             }
@@ -748,8 +1642,13 @@
         "update_location": {
           "additionalProperties": false,
           "properties": {
-            "fields": {},
-            "location_id": {},
+            "fields": {
+              "$ref": "#/$defs/LocationFields"
+            },
+            "location_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
             "op": {
               "const": "update_location"
             }
@@ -764,10 +1663,23 @@
         "upsert_fixture": {
           "additionalProperties": false,
           "properties": {
-            "description": {},
-            "fixture": {},
-            "location_id": {},
-            "name": {},
+            "description": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "fixture": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "location_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
             "op": {
               "const": "upsert_fixture"
             }
@@ -784,13 +1696,26 @@
         "upsert_state": {
           "additionalProperties": false,
           "properties": {
-            "description": {},
-            "location_id": {},
-            "name": {},
+            "description": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "location_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
             "op": {
               "const": "upsert_state"
             },
-            "state": {}
+            "state": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -895,16 +1820,52 @@
     "description": "新增/修改角色造型（外观、使用场合），不生成、不删除。",
     "inputSchema": {
       "$defs": {
+        "LookFields": {
+          "additionalProperties": false,
+          "properties": {
+            "appearance": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            "usage": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
         "add_look": {
           "additionalProperties": false,
           "properties": {
-            "appearance": {},
-            "character_id": {},
-            "name": {},
+            "appearance": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "character_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
             "op": {
               "const": "add_look"
             },
-            "usage": {}
+            "usage": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            }
           },
           "required": [
             "op",
@@ -918,8 +1879,13 @@
         "update_look": {
           "additionalProperties": false,
           "properties": {
-            "fields": {},
-            "look_id": {},
+            "fields": {
+              "$ref": "#/$defs/LookFields"
+            },
+            "look_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
             "op": {
               "const": "update_look"
             }

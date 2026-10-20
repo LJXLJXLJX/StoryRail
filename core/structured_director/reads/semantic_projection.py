@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 
-from ..dialogue_timing import dialogue_timing
 from ..models import StructuredDirectorDocument
 from ..prompt_worksets import keyframe_workset, video_prompt_workset
 from ..script_index import shot_segments
@@ -200,7 +199,6 @@ def build_semantic_projection(
                     }
                     for line in node.dialogue_lines
                 ],
-                dialogue_timing=dialogue_timing(node),
                 boundary_from_previous=None
                 if node.boundary_from_previous is None
                 else {

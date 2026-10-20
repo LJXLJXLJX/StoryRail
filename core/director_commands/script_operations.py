@@ -462,7 +462,10 @@ def _boundary(value: object) -> ScriptBoundaryInput | None:
     item = _exact(value, BOUNDARY_FIELDS, "boundary_from_previous")
     reason = _string(item["reason"], "reason")
     if reason not in {"model_constraint", "continuity_anchor", "control_boundary", "failure_cost"}:
-        raise ValueError("boundary.reason 不合法。")
+        raise ValueError(
+            "boundary.reason 只允许 model_constraint、continuity_anchor、"
+            "control_boundary 或 failure_cost。"
+        )
     return ScriptBoundaryInput(
         reason, _string(item["continuity_instruction"], "continuity_instruction")
     )

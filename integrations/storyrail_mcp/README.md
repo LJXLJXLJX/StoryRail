@@ -29,8 +29,8 @@ proposal 可改用 `proposal_source={kind:"workspace_json", byte_count, sha256}`
 `/workspace/proposals/<request_id>.json`，不接受模型提供路径。文件必须是 ≤1 MiB 的普通 UTF-8 JSON，大小和 SHA-256 完全匹配；
 adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和完整领域校验，文件本身不是项目事实。地点规划与引用库、脚本一样使用项目 scope：
 `read_professional_workset` / `read_professional_contract` 的 `capability="location"` 不带 `scene_ids`，`location_proposal` 的 request
-只有 `raw_user_instruction`，翻译为 `location.*_proposal`。`edit_script`、`edit_keyframes`、`edit_locations`、`edit_looks` 发布紧凑的操作 schema（只列 `op` 常量与字段名），完整校验
-由 runtime 模型执行；`edit_looks` 翻译为 `reference.apply_look_operations`，字段形状随 reference_library 契约
+只有 `raw_user_instruction`，翻译为 `location.*_proposal`。`edit_script`、`edit_keyframes`、`edit_locations`、`edit_looks` 发布严格的操作 schema：
+每个 `op` 分支同时公开嵌套字段形状、枚举和必填项，并由同一 runtime 模型校验；`edit_looks` 翻译为 `reference.apply_look_operations`，字段形状随 reference_library 契约
 （`references/look-sheets.md`）下发；`edit_locations` 各操作的字段形状随 location 专业契约（`references/location-bible.md` 附录）下发。`edit_locations` 翻译为 `location.apply_operations`，顶层 `location_ids`、`scene_ids`
 组成 scope；不提供地点图片候选选择。`generate_media` 的 `look_sheet` 翻译为 `reference.generate_look_sheet`（`identity_asset_ids` 为 0–4 张身份参考）；
 `location_image` / `panorama_capture` 分别翻译为 `location.generate_image` / `location.capture_panorama`。`media_batch` 的 `kind` 选择批次类型：`keyframe` 翻译为

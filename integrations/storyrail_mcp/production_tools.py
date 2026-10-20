@@ -72,7 +72,13 @@ Dialogue = object_model(
     },
     optional=("id", "speaker_label", "voice_description"),
 )
-Boundary = object_model("Boundary", {"reason": str, "continuity_instruction": Text})
+BoundaryReason = Literal[
+    "model_constraint",
+    "continuity_anchor",
+    "control_boundary",
+    "failure_cost",
+]
+Boundary = object_model("Boundary", {"reason": BoundaryReason, "continuity_instruction": Text})
 segment_fields = {
     # 只要求不短于 0.2 秒；15 秒是 Agent 侧软约束（超过可能 OOM），Core 与适配层都不设上限。
     "duration_estimate_seconds": Annotated[float, Field(ge=0.2, allow_inf_nan=False)],

@@ -3781,6 +3781,7 @@ function renderWorkspace(
     onGenerateDialogue?: WorkspaceActions["onGenerateDialogue"];
     onSelectDialogueAudio?: WorkspaceActions["onSelectDialogueAudio"];
     onSetDialogueTiming?: WorkspaceActions["onSetDialogueTiming"];
+    onAutoCalibrateDialogueTimings?: WorkspaceActions["onAutoCalibrateDialogueTimings"];
     onClearNarrationAudioSelection?: (sceneId: string, cueId: string) => void;
     onApproveFinalVideo?: () => void;
     onGenerateFinalVideo?: () => void;
@@ -3855,6 +3856,9 @@ function renderWorkspace(
       onGenerateDialogue={overrides.onGenerateDialogue ?? vi.fn()}
       onSelectDialogueAudio={overrides.onSelectDialogueAudio ?? vi.fn()}
       onSetDialogueTiming={overrides.onSetDialogueTiming ?? vi.fn()}
+      onAutoCalibrateDialogueTimings={
+        overrides.onAutoCalibrateDialogueTimings ?? vi.fn()
+      }
       onGenerateSceneAnimatic={overrides.onGenerateSceneAnimatic}
       onGenerateSceneFinal={overrides.onGenerateSceneFinal}
       onUnlockVisualProduction={vi.fn()}
@@ -3982,6 +3986,17 @@ it('Scene 正文覆盖全部镜头对白；旁白未规划 Shot 时保持可读�
    expect(screen.getAllByText(g.action).length).toBeGreaterThan(0);
    for(const line of g.dialogue_lines) expect(screen.getByText(line.text)).toBeInTheDocument();
  }
+});
+it('项目概览可一次校准所有已选齐 TTS 的对白片段',()=>{
+ const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;
+ const calibrate=vi.fn();
+ value.dialogue_plan!.items[0].selected_audio_asset_id='a'.repeat(32);
+ renderWorkspace({onAutoCalibrateDialogueTimings:calibrate},value,false);
+ expect(screen.getByLabelText('对白时长校准范围')).toHaveTextContent('可校准 1/2 个对白片段');
+ const button=screen.getByRole('button',{name:'按真实音频校准全部对白时长'});
+ expect(button).toBeEnabled();
+ fireEvent.click(button);
+ expect(calibrate).toHaveBeenCalledOnce();
 });
 it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物',()=>{
  const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;

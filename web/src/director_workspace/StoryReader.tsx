@@ -2,7 +2,6 @@ import { LocationBinding } from "./location";
 import { DraftProtection } from "./draft_protection";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
-  DialogueTimingWarning,
   DialogueLine,
   DialogueAudio,
   ProviderRecipeView,
@@ -175,6 +174,14 @@ export function StoryReader(props: WorkspaceFlatProps) {
   const videoBySegment = new Map(
     (snapshot.video_plan?.segments ?? []).map((item) => [item.segment_id, item]),
   );
+  const dialogueSegments = scenes.flatMap((item) =>
+    item.segments.filter((segment) => segment.dialogue_lines.length > 0),
+  );
+  const calibratableDialogueSegments = dialogueSegments.filter((segment) =>
+    segment.dialogue_lines.every(
+      (line) => dialogueAudioByLine.get(line.id)?.selected_audio_asset_id,
+    ),
+  );
   const pendingGenerationItems: Record<string, SegmentPendingGenerationItem[]> =
     Object.fromEntries(
       scenes.flatMap((item) =>
@@ -205,7 +212,6 @@ export function StoryReader(props: WorkspaceFlatProps) {
             snapshot.director_script.production_baseline_revision ===
               snapshot.director_script.revision,
         )}
-        timingWarnings={snapshot.dialogue_timing_warnings}
         softDurationLimits={Object.fromEntries(
           (snapshot.video_plan?.segments ?? []).map((item) => [
             item.segment_id,
@@ -420,11 +426,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
                     >
                       片段 {i + 1} · {segmentShotLabel(scene, g)}
                     </button>
-                    <SegmentText
-                      segment={g}
-                      character={character}
-                      timingWarnings={snapshot.dialogue_timing_warnings}
-                    />
+                    <SegmentText segment={g} character={character} />
                   </section>
                 ))}
                 {!scene.shots.length ? (
@@ -532,11 +534,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
                     </li>
                   ))}
                 </ul>
-                <SegmentText
-                  segment={segment}
-                  character={character}
-                  timingWarnings={snapshot.dialogue_timing_warnings}
-                />
+                <SegmentText segment={segment} character={character} />
                 {segment.dialogue_lines.length ? (
                   <DialogueProductionPanel
                     segment={segment}
@@ -708,6 +706,20 @@ export function StoryReader(props: WorkspaceFlatProps) {
                   >
                     生成所有缺失对白
                   </button>
+                  <button
+                    disabled={
+                      busy ||
+                      !can("set_dialogue_timing") ||
+                      !props.onAutoCalibrateDialogueTimings ||
+                      calibratableDialogueSegments.length === 0
+                    }
+                    onClick={props.onAutoCalibrateDialogueTimings}
+                  >
+                    按真实音频校准全部对白时长
+                  </button>
+                  <p aria-label="对白时长校准范围">
+                    {`可校准 ${calibratableDialogueSegments.length}/${dialogueSegments.length} 个对白片段；未选齐全部对白 WAV 的片段会跳过。`}
+                  </p>
                 </>
               ) : null}
               {can("unlock_visual_production") ? (
@@ -1216,13 +1228,10 @@ function DialogueRecipeControls({
 function SegmentText({
   segment,
   character,
-  timingWarnings,
 }: {
   segment: ShotSegment;
   character: (id: string) => string;
-  timingWarnings: DialogueTimingWarning[];
 }) {
-  const timing = timingWarnings.find((item) => item.segment_id === segment.id);
   return (
     <section className="story-segment-text">
       <p>{segment.action}</p>
@@ -1235,11 +1244,6 @@ function SegmentText({
         </blockquote>
       ))}
       <small>预计 {segment.duration_estimate_seconds} 秒</small>
-      {timing ? (
-        <em role="note">
-          对白约需 {timing.estimated_seconds} 秒，超过预估时长；建议加长 Segment 或拆分，不压缩台词
-        </em>
-      ) : null}
       {segment.boundary_from_previous ? (
         <p>
           延续上一片段 · {segment.boundary_from_previous.reason}：

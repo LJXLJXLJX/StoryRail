@@ -201,9 +201,11 @@ def test_script_contract_requires_plan_coverage_and_duration_reconciliation():
     assert "列出方案清单" in text["SKILL.md"]
     assert "合并镜号只合并摄影，不删内容" in text["SKILL.md"]
     assert "没有删减时明确写“无删减”" in text["SKILL.md"]
-    assert "dialogue_timing.exceeds_duration" in text["SKILL.md"]
+    assert "任何一条对白本身按自然语速、语气和停顿预估超过 15 秒" in text["SKILL.md"]
+    assert "dialogue_timing.exceeds_duration" not in text["SKILL.md"]
     quality = text["references/quality-gate.md"]
     assert "方案覆盖：方案清单逐项落到了具体 Segment 或 Shot" in quality
     assert "偏差超过约 30% 已在" in quality
+    assert "model_constraint" in text["references/script-contract.md"]
     intent = text["references/cinematic-director-intent.md"]
     assert "最少切镜原则只约束剪辑点，不减少内容" in intent

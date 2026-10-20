@@ -493,15 +493,6 @@ def snapshot_schemas() -> dict[str, dict]:
                 ["source_script_revision", "items"],
                 **{"x-ts-name": "DialoguePlan"},
             ),
-            "DialogueTimingWarning": _obj(
-                {
-                    "segment_id": ID,
-                    "estimated_seconds": {"type": "number"},
-                    "duration_seconds": {"type": "number"},
-                },
-                ["segment_id", "estimated_seconds", "duration_seconds"],
-                **{"x-ts-name": "DialogueTimingWarning"},
-            ),
             "SegmentBoundary": _obj(
                 {
                     "reason": _ref("SegmentBoundaryReason"),
@@ -1445,7 +1436,6 @@ def snapshot_schemas() -> dict[str, dict]:
                     "workspace_layers": _ref("WorkspaceLayers"),
                     "allowed_actions": _array(_ref("StructuredDirectorAction"), uniqueItems=True),
                     "workflow": _ref("WorkflowState"),
-                    "dialogue_timing_warnings": _array(_ref("DialogueTimingWarning")),
                     "provider_availability": _ref("ProviderAvailability"),
                     "assets": _array(_ref("ProjectAsset")),
                     "generations": _array(_ref("ReferenceGeneration")),
@@ -1480,7 +1470,6 @@ def snapshot_schemas() -> dict[str, dict]:
                     "workspace_layers",
                     "allowed_actions",
                     "workflow",
-                    "dialogue_timing_warnings",
                     "provider_availability",
                     "assets",
                     "generations",

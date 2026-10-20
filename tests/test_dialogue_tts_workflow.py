@@ -288,6 +288,60 @@ def test_dialogue_timing_rejects_overlap_and_video_shorter_than_audio(tmp_path):
     asyncio.run(run())
 
 
+def test_auto_calibrate_all_ready_dialogue_segments_uses_selected_wav_durations(tmp_path):
+    from test_prompt_worksets import fixture
+
+    async def run():
+        _store, service, document, _ = await fixture(tmp_path)
+        segment = document.director_script.scenes[0].segments[0]
+        first_line_id = segment.dialogue_lines[0].id
+        first_item = next(
+            item for item in document.dialogue_plan.items if item.dialogue_line_id == first_line_id
+        )
+        generation = next(
+            item
+            for item in document.generations
+            if item.output_asset_id == first_item.selected_audio_asset_id
+        )
+        selected_assets = {
+            item.dialogue_line_id: item.selected_audio_asset_id
+            for item in document.dialogue_plan.items
+        }
+        document = await service.select_dialogue_audio(
+            dialogue_line_id=first_line_id,
+            generation_id=generation.id,
+            expected_revision=document.revision,
+        )
+        assert all(
+            item.start_seconds is None
+            for item in document.dialogue_plan.items
+            if item.dialogue_line_id in {line.id for line in segment.dialogue_lines}
+        )
+
+        calibrated = await service.auto_calibrate_dialogue_timings(
+            expected_revision=document.revision
+        )
+        assets = {item.id: item for item in calibrated.assets}
+        plan = {item.dialogue_line_id: item for item in calibrated.dialogue_plan.items}
+        cursor = 0.5
+        for line in segment.dialogue_lines:
+            assert plan[line.id].start_seconds == cursor
+            cursor += assets[plan[line.id].selected_audio_asset_id].duration_seconds + 0.25
+        calibrated_segment = calibrated.director_script.scenes[0].segments[0]
+        assert calibrated_segment.duration_estimate_seconds == cursor + 0.25
+        assert {
+            item.dialogue_line_id: item.selected_audio_asset_id
+            for item in calibrated.dialogue_plan.items
+        } == selected_assets
+
+        unchanged = await service.auto_calibrate_dialogue_timings(
+            expected_revision=calibrated.revision
+        )
+        assert unchanged.revision == calibrated.revision
+
+    asyncio.run(run())
+
+
 def test_splitting_one_dialogue_preserves_other_selected_tts(tmp_path):
     from test_prompt_worksets import fixture
 

@@ -57,7 +57,10 @@ class SegmentBoundaryProposal:
 
     def __post_init__(self) -> None:
         if self.reason not in _BOUNDARY_REASONS:
-            raise ValueError("boundary.reason 不合法。")
+            raise ValueError(
+                "boundary.reason 只允许 model_constraint、continuity_anchor、"
+                "control_boundary 或 failure_cost。"
+            )
         _require_text(
             self.continuity_instruction,
             "boundary.continuity_instruction",

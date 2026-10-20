@@ -10,7 +10,6 @@ from ..assembly_timeline import (
 )
 from ..candidate_eligibility import dialogue_inputs_unchanged, generation_is_reviewable
 from ..codec.keyframe import serialize_character_references
-from ..dialogue_timing import dialogue_timing_warnings
 from ..models import (
     Asset,
     DirectorRunKind,
@@ -784,8 +783,6 @@ def serialize_snapshot(
             }
             for item in document.capability_gap_alerts
         ],
-        # 软提示：对白按字数估算装不进 Segment 预估时长；不阻止任何写入。
-        "dialogue_timing_warnings": dialogue_timing_warnings(document),
         "provider_availability": {
             "image_generation": service.image_generation_available,
             "voice_design": service.voice_design_available,

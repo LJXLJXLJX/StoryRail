@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Fragment, useEffect, useState } from "react";
-import type { DialogueTimingWarning, Scene } from "../api";
+import type { Scene } from "../api";
 import type { StoryTarget } from "../api/projection";
 import { segmentShotLabel } from "./script_index";
 
@@ -11,7 +11,6 @@ export function StoryNavigation({
   title,
   target,
   timingConfirmed,
-  timingWarnings = [],
   softDurationLimits = {},
   pendingGenerationItems = {},
   onChoose,
@@ -21,8 +20,6 @@ export function StoryNavigation({
   title: string;
   target: StoryTarget | null;
   timingConfirmed: boolean;
-  /** Core 的对白时长软提示（dialogue_timing_warnings），Web 不复算。 */
-  timingWarnings?: DialogueTimingWarning[];
   /** Core 视频 recipe 声明的软时长上限；没有该 recipe 时为空。 */
   softDurationLimits?: Record<string, number | null | undefined>;
   /** 由当前快照中的对白与视频选择事实投影出的待生成项目。 */
@@ -145,9 +142,6 @@ export function StoryNavigation({
                   >
                     {s.segments.map((segment, segmentIndex) => {
                       const softLimit = softDurationLimits[segment.id];
-                      const timing = timingWarnings.find(
-                        (item) => item.segment_id === segment.id,
-                      );
                       const pendingItems = pendingGenerationItems[segment.id] ?? [];
                       const exceedsSoft =
                         softLimit !== null &&
@@ -157,7 +151,7 @@ export function StoryNavigation({
                         <li key={segment.id}>
                           <button
                             className={
-                              exceedsSoft || timing || pendingItems.length
+                              exceedsSoft || pendingItems.length
                                 ? "has-status-lines"
                                 : undefined
                             }
@@ -178,14 +172,6 @@ export function StoryNavigation({
                             {exceedsSoft ? (
                               <small className="story-reader-warning is-video-duration">
                                 超过 {softLimit} 秒软约束
-                              </small>
-                            ) : null}
-                            {timing ? (
-                              <small
-                                className="story-reader-warning is-dialogue-duration"
-                                role="note"
-                              >
-                                对白约需 {timing.estimated_seconds} 秒，超过预估时长
                               </small>
                             ) : null}
                             {pendingItems.length ? (

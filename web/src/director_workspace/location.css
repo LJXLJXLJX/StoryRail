@@ -1,6 +1,126 @@
-/* 地点库：左侧地点索引，右侧当前地点详情（语义 → 陈设与状态 → 独立图片）。 */
+/* 地点库：地点卡总览 → 单个地点详情 → 图片编辑与资产选择。 */
 .global-references-dialog.location-library-dialog {
   width: min(1180px, 100%);
+}
+.location-library-shell {
+  display: grid;
+  gap: 22px;
+}
+.location-library-header,
+.location-detail-navigation {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 24px;
+}
+.location-library-header h2,
+.location-detail-navigation h2 {
+  margin: 4px 0 8px;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 28px;
+}
+.location-library-header p,
+.location-detail-navigation p {
+  margin: 0;
+  max-width: 72ch;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.location-library-header > button {
+  flex: none;
+}
+.location-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+}
+.location-overview-card {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  text-align: left;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+.location-overview-card:hover,
+.location-overview-card:focus-visible {
+  border-color: var(--red);
+  box-shadow: 0 10px 28px rgba(43, 38, 32, 0.1);
+  outline: none;
+  transform: translateY(-2px);
+}
+.location-overview-cover {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  place-items: center;
+  overflow: hidden;
+  background: var(--paper-deep);
+  color: var(--muted);
+  font-size: 11px;
+}
+.location-overview-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.location-overview-content {
+  display: grid;
+  gap: 7px;
+  padding: 15px 16px 10px;
+}
+.location-overview-content strong {
+  font-size: 17px;
+}
+.location-overview-content > span {
+  display: -webkit-box;
+  min-height: 3.2em;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.location-overview-content small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.location-overview-enter {
+  margin: 0 16px;
+  padding: 10px 0 13px;
+  border-top: 1px solid var(--line);
+  color: var(--red-dark);
+  font-size: 11px;
+  font-weight: 700;
+}
+.location-detail-navigation {
+  justify-content: flex-start;
+}
+.location-detail-navigation > button {
+  flex: none;
+  margin-top: 2px;
+}
+.location-detail-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.location-detail-summary span {
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 11px;
+}
+.scene-asset-picker-dialog.location-create-dialog {
+  width: min(620px, calc(100vw - 40px));
 }
 .location-library-toolbar {
   display: flex;
@@ -420,6 +540,118 @@
 }
 
 /* 编辑弹窗 */
+.scene-asset-picker-dialog.location-image-editor-dialog {
+  width: min(900px, calc(100vw - 40px));
+}
+.location-image-editor-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 22px;
+  padding: 18px 4px 18px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.location-image-editor-form {
+  display: grid;
+  gap: 14px;
+}
+.location-image-editor-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.location-image-editor-form textarea {
+  resize: vertical;
+}
+.location-reference-editor {
+  display: grid;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.location-reference-editor > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.location-reference-editor h3,
+.location-reference-editor p {
+  margin: 0;
+}
+.location-reference-editor h3 {
+  font-size: 14px;
+}
+.location-reference-editor p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.location-reference-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.location-reference-preview-grid article {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid var(--line);
+  background: var(--white);
+}
+.location-reference-preview-grid .image-preview-trigger {
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: var(--paper-deep);
+}
+.location-reference-preview-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.location-reference-preview-grid article > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 7px;
+}
+.location-reference-preview-grid span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.location-reference-preview-grid .secondary-button {
+  flex: none;
+  min-height: 28px;
+  padding: 0 9px;
+}
+.location-image-editor-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.location-image-editor-actions span {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
 .location-editor form {
   display: grid;
   gap: 14px;
@@ -616,6 +848,19 @@
 }
 
 @media (max-width: 760px) {
+  .location-library-header,
+  .location-detail-navigation {
+    display: grid;
+  }
+  .location-detail-navigation > button {
+    justify-self: start;
+  }
+  .location-reference-editor > header {
+    display: grid;
+  }
+  .location-reference-editor > header button {
+    justify-self: start;
+  }
   .location-library-toolbar {
     flex-direction: column;
     align-items: stretch;

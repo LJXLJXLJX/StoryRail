@@ -415,6 +415,10 @@ export const structuredDirectorApi = {
       },
       "PUT",
     ),
+  autoCalibrateDialogueTimings: (projectId: string, revision: number) =>
+    structuredMutation(projectId, "dialogue/auto-calibrate-timing", {
+      expected_revision: revision,
+    }),
   clearNarrationAudioSelection: (
     projectId: string,
     revision: number,

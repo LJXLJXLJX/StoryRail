@@ -1196,28 +1196,11 @@ class Journey:
                         "generation_id": candidates[-1]["id"],
                     },
                 )
-        snap = self.snapshot()
-        plan_by_id = {item["dialogue_line_id"]: item for item in snap["dialogue_plan"]["items"]}
-        assets = {item["id"]: item for item in snap["assets"]}
-        for scene in snap["director_script"]["scenes"]:
-            for segment in scene["segments"]:
-                if not segment["dialogue_lines"]:
-                    continue
-                cursor = 0.5
-                starts = {}
-                for line in segment["dialogue_lines"]:
-                    starts[line["id"]] = cursor
-                    asset_id = plan_by_id[line["id"]]["selected_audio_asset_id"]
-                    cursor += assets[asset_id]["duration_seconds"] + 0.25
-                self._put(
-                    "prepare_dialogue_tts.timing",
-                    f"{self.resource}/segments/{segment['id']}/dialogue-timing",
-                    {
-                        "expected_revision": self._revision(),
-                        "starts": starts,
-                        "duration_seconds": max(0.2, cursor + 0.25),
-                    },
-                )
+        self._post(
+            "prepare_dialogue_tts.timing",
+            f"{self.resource}/dialogue/auto-calibrate-timing",
+            {"expected_revision": self._revision()},
+        )
         return self.snapshot()
 
     def assemble_scene_finals(self) -> dict:

@@ -618,6 +618,20 @@ class StructuredDirectorHttpApi:
             return _error(409, "action_not_allowed", str(exc))
         return JsonResponse(200, self._serialize_snapshot(result))
 
+    async def _auto_calibrate_dialogue_timings(self, body: bytes) -> JsonResponse:
+        request = _parse_request(body, required={"expected_revision"})
+        if isinstance(request, JsonResponse):
+            return request
+        try:
+            result = await self._service.auto_calibrate_dialogue_timings(
+                expected_revision=_required_revision(request)
+            )
+        except RevisionConflictError as exc:
+            return _error(409, "revision_conflict", str(exc), recoverable=True)
+        except (RuntimeError, ValueError) as exc:
+            return _error(409, "action_not_allowed", str(exc))
+        return JsonResponse(200, self._serialize_snapshot(result))
+
     async def _extract_asset_video_frame(self, asset_id: str, body: bytes) -> JsonResponse:
         request = _parse_request(body, required={"expected_revision", "frame_index"})
         if isinstance(request, JsonResponse):
@@ -2126,6 +2140,12 @@ _ROUTES: tuple[_Route, ...] = (
         frozenset({"POST"}),
         "/dialogue/generate-batch",
         _body_route("_generate_dialogue_batch"),
+        "project.write",
+    ),
+    _Route(
+        frozenset({"POST"}),
+        "/dialogue/auto-calibrate-timing",
+        _body_route("_auto_calibrate_dialogue_timings"),
         "project.write",
     ),
     _Route(

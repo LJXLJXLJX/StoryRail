@@ -3,7 +3,7 @@
 `StructuredDirectorWorkspace.tsx` 组合准备区、引用库、地点库与唯一故事工作台。
 `StoryNavigation.tsx` 管理左侧 Scene → Segment 导航，Segment 标签按 `shot_ids` 显示覆盖的镜头（“镜头 1–2”，
 与上一段共享边界 Shot 时附“（续）”），并展示 Core 提供的片段时长、视频 recipe 软时长上限
-（`recipe_state.soft_duration_limit_seconds`）与 `dialogue_timing_warnings` 对白时长提示；Web 不重算这些规则。
+（`recipe_state.soft_duration_limit_seconds`）；Web 不重算这些规则。对白时长只读取已选 TTS WAV 的真实时长与校准结果。
 Shot 在 Scene 页的“镜头设计”中列出，每行同时显示被哪些 Segment 覆盖；Segment 页顶部列出覆盖的 Shot 描述。
 `script_index.ts` 是 Segment↔Shot 覆盖关系的只读查找，不复制 Core 的覆盖校验。
 `NodeEditor.tsx` 暂存当前节点编辑输入，携带起点 project revision 保存，冲突保留草稿。Shot 编辑器只包含创作字段，
@@ -33,13 +33,16 @@ Segment 的对白 TTS 卡片展示全部成功且未隐藏的候选：当前 Ass
 卡片标题保留序号、角色、音色路由与选择状态，展开后依次分为“对白与表演”“当前选择”“生成与候选”；候选列表也可单独折叠。
 故事导航的每个 Segment 根据当前快照中的选择事实显示“待生成项目”：有对白但仍缺已选 TTS 时列出“对白 TTS”，仍缺已选视频时
 列出“视频”（不以视频层是否已经解锁为门禁，以便提前暴露后续待办）；没有缺项时不显示该行。导航用稳定的颜色语义区分
-视频软时长、对白超时、待生成对白 TTS 与待生成视频；同一待生成行中的不同项目也分别着色，文字仍完整保留。
-`location.tsx` 内的 `LocationLibrary` 在常驻工具栏“地点库”浮层中以左侧地点索引 + 右侧详情展示：
-详情按地点语义与主光 → 固定陈设 / 地点状态 → 独立图片卡分区，状态徽标只按 Core 的 `status` 着色；
+视频软时长、待生成对白 TTS 与待生成视频；同一待生成行中的不同项目也分别着色，文字仍完整保留。项目概览提供全局
+“按真实音频校准全部对白时长”：一次提交只校准已选齐全部对白 WAV 的 Segment，未选齐的 Segment 保持不变；Core 在一次
+原子写入中按真实 WAV 时长加入基础停顿并更新对应 Segment 时长。
+`location.tsx` 内的 `LocationLibrary` 在常驻工具栏“地点库”浮层中分级展示：入口页只列地点卡，点击后进入单个
+地点详情，再查看其空间说明、状态与独立图片；新增地点使用独立浮窗，状态徽标只按 Core 的 `status` 着色；
 `LocationBinding` 只嵌入当前 Scene，编辑地点与状态绑定。
 `LocationEditor` 暂存编辑起点 revision；共用 `useLocationChange` 读取服务端影响预览，
 确认后调用人类 HTTP 入口，预览过期时禁止保存，失败保留输入。
 每张独立图片的权限、状态、生成文案与候选 ID 全部消费 Core snapshot。普通图与全景图都可任意选参考图生成；
+图片“编辑”打开独立浮窗，参考图在项目资产库弹窗中多选，编辑浮窗展示已选缩略图并支持放大预览与移除；
 全景图有选图时点击进入 Pannellum 3D 查看器，调整 yaw/pitch/hfov 后填写子图名称与强制说明并显式取景。
 卡片复用 `references.tsx` 的卡片样式、`CardHeading`、`TextField/TextArea`、
 `GenerationCandidateList`、`MultiImageAssetPickerDialog` 与 `ZoomableImage`。

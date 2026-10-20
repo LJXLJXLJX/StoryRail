@@ -202,6 +202,72 @@ def test_edit_script_segment_duration_has_no_mcp_upper_limit():
     assert all(item["minimum"] == 0.2 for item in schemas)
 
 
+def test_published_split_segment_schema_exposes_nested_fields_and_boundary_reason_enum():
+    from jsonschema import Draft202012Validator
+
+    from core.director_commands.script_operations import parse_script_operations_patch
+    from integrations.storyrail_mcp.app import published_tool_schema
+
+    schema = published_tool_schema("edit_script", MODELS["edit_script"])
+    split = schema["$defs"]["split_segment"]
+    assert split["properties"]["first"] == {"$ref": "#/$defs/Segment"}
+    assert split["properties"]["second"] == {"$ref": "#/$defs/Segment"}
+    assert set(schema["$defs"]["Boundary"]["properties"]["reason"]["enum"]) == {
+        "model_constraint",
+        "continuity_anchor",
+        "control_boundary",
+        "failure_cost",
+    }
+    segment = {
+        "shot_ids": [TARGET],
+        "duration_estimate_seconds": 9.0,
+        "action": "延续同一镜头。",
+        "dialogue_lines": [],
+        "boundary_from_previous": None,
+    }
+    request = {
+        **BASE,
+        "scene_ids": [TARGET],
+        "operations": [
+            {
+                "op": "split_segment",
+                "segment_id": TARGET,
+                "preserve_id": "first",
+                "first": segment,
+                "second": {
+                    **segment,
+                    "boundary_from_previous": {
+                        "reason": "model_constraint",
+                        "continuity_instruction": "保持机位、动作与光线状态继续。",
+                    },
+                },
+            }
+        ],
+    }
+    validator = Draft202012Validator(schema)
+    assert validator.is_valid(request)
+    invalid = {
+        **request,
+        "operations": [
+            {
+                **request["operations"][0],
+                "second": {
+                    **request["operations"][0]["second"],
+                    "boundary_from_previous": {
+                        "reason": "long_take",
+                        "continuity_instruction": "保持连续。",
+                    },
+                },
+            }
+        ],
+    }
+    assert not validator.is_valid(invalid)
+    with pytest.raises(ValueError, match="model_constraint.*continuity_anchor"):
+        parse_script_operations_patch(
+            {"scope": {"scene_ids": [TARGET]}, "operations": invalid["operations"]}
+        )
+
+
 def test_edit_narration_clear_selected_audio_has_strict_schema_and_translation():
     data = {
         **BASE,

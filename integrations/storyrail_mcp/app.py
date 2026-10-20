@@ -579,9 +579,9 @@ def _compact_operation_schema(schema: dict[str, object]) -> dict[str, object]:
             continue
         # const 已精确限定字符串取值，type 冗余。
         operation_properties: dict[str, object] = {"op": {"const": op["const"]}}
-        for field in properties:
+        for field, field_schema in properties.items():
             if field != "op":
-                operation_properties[field] = {}
+                operation_properties[field] = field_schema
         operations[name] = {
             "type": "object",
             "additionalProperties": False,
@@ -591,7 +591,7 @@ def _compact_operation_schema(schema: dict[str, object]) -> dict[str, object]:
     if not operations:
         return schema
     compact = dict(schema)
-    compact["$defs"] = operations
+    compact["$defs"] = {**definitions, **operations}
     return compact
 
 
