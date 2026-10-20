@@ -31,6 +31,7 @@ def test_plain_image_moves_from_ready_to_selection_without_auto_select(tmp_path)
     assert production["status"] == "ready"
     assert production["generation_step"] == "image"
     assert "generate" in production["allowed_actions"]
+    assert "select_asset" in production["allowed_actions"]
     rig.generate_image(ids["front"])
     active = library(rig)["locations"][0]["images"][0]["production"]
     assert active["status"] == "in_progress"
@@ -91,6 +92,7 @@ def test_capture_row_is_blocked_until_panorama_selected(tmp_path):
     assert child["status"] == "blocked"
     assert "尚未选择" in child["reason"]
     assert "generate" not in child["allowed_actions"]
+    assert "select_asset" not in child["allowed_actions"]
 
 
 def test_bound_scene_blocks_location_and_state_delete_but_not_image_delete(tmp_path):

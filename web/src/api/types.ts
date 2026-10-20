@@ -316,7 +316,7 @@ export interface LocationProduction {
   active_generation_id: string | null;
   candidate_generation_ids: string[];
   selectable_generation_ids: string[];
-  allowed_actions: ("generate" | "select" | "edit" | "delete" | "clear_selection" | "preview_panorama")[];
+  allowed_actions: ("generate" | "select" | "select_asset" | "edit" | "delete" | "clear_selection" | "preview_panorama")[];
 }
 
 export interface LocationFixture {

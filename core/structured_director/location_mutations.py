@@ -155,13 +155,17 @@ def select_location_image(
     work = _Workspace(document)
     location, image = work.image_owner(selection.image_id)
     index = LocationActionIndex(document)
-    require_location_candidate(
-        index,
-        ReferenceGenerationKind.LOCATION_IMAGE,
-        image.id,
-        selection.asset_id,
-        "地点图片只能选择该图片条目成功且未隐藏的候选。",
-    )
+    asset = index.assets.get(selection.asset_id)
+    if asset is None or not asset.media_type.startswith("image/"):
+        raise ValueError("地点图片只能选择项目资产库中的图片 Asset。")
+    if image.source is not None:
+        require_location_candidate(
+            index,
+            ReferenceGenerationKind.PANORAMA_CAPTURE,
+            image.id,
+            selection.asset_id,
+            "全景取景子图只能选择该条目成功且未隐藏的裁切候选。",
+        )
     require_location_selection_idle(index, image, selection.asset_id)
     work.replace_image(location.id, replace(image, selected_asset_id=selection.asset_id))
     return _commit(document, work)

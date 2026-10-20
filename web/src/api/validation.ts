@@ -1924,6 +1924,7 @@ const schemas: Record<string, JsonSchema> = {
           "enum": [
             "generate",
             "select",
+            "select_asset",
             "edit",
             "delete",
             "clear_selection",

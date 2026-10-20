@@ -7,6 +7,7 @@ import {
   assetById,
   GenerationCandidateList,
   MultiImageAssetPickerDialog,
+  SingleImageAssetPickerDialog,
   ZoomableImage,
 } from "./shared";
 import { PanoramaCameraEditor, type CameraView } from "./PanoramaCameraEditor";
@@ -68,6 +69,8 @@ function ImageCard({ props, location, image }: { props: Props; location: Locatio
   const active = props.snapshot.generations.find((item) => item.id === production?.active_generation_id);
   const can = (action: string) => production?.allowed_actions.includes(action as never) ?? false;
   const [editing, setEditing] = useState(false);
+  const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
+  const imageAssets = props.snapshot.assets.filter((asset) => asset.media_type.startsWith("image/"));
 
   return (
     <article className="location-view-card">
@@ -83,12 +86,27 @@ function ImageCard({ props, location, image }: { props: Props; location: Locatio
       {image.source ? <p className="location-production-reason">来源：全景取景（{image.source.yaw_deg}° / {image.source.pitch_deg}° / {image.source.hfov_deg}°）</p> : null}
       <div className="location-inline-actions">
         {can("generate") && image.source === null ? <button disabled={props.busy} onClick={() => props.onGenerateLocationImage?.(image.id)}>{production?.generate_label ?? "生成图片"}</button> : null}
+        {can("select_asset") ? <button className="secondary-button" disabled={props.busy} onClick={() => setLibraryPickerOpen(true)}>从资产库选择</button> : null}
         {can("preview_panorama") ? <PanoramaDialog props={props} image={image} /> : null}
         {can("edit") ? <button className="secondary-button" onClick={() => setEditing(true)}>编辑</button> : null}
         {can("clear_selection") ? <button className="secondary-button" onClick={() => void apply(props, change([{ op: "clear_image_selection", image_id: image.id }], [location.id]))}>清除选择</button> : null}
         {can("delete") ? <button className="delete-button" onClick={() => void apply(props, change([{ op: "delete_image", image_id: image.id }], [location.id]))}>删除</button> : null}
       </div>
       {editing ? <ImageEditorDialog props={props} location={location} image={image} onClose={() => setEditing(false)} /> : null}
+      {libraryPickerOpen ? (
+        <SingleImageAssetPickerDialog
+          title="选择地点图片"
+          ariaLabel={`从资产库选择地点图片：${image.name}`}
+          assets={imageAssets}
+          selectedAssetId={image.selected_asset_id}
+          busy={props.busy}
+          onClose={() => setLibraryPickerOpen(false)}
+          onSelect={(assetId) => void apply(
+            props,
+            { name: "location.select_image", arguments: { image_id: image.id, asset_id: assetId } },
+          ).then((ok) => ok && setLibraryPickerOpen(false))}
+        />
+      ) : null}
       {production ? (
         <GenerationCandidateList
           kind="location"

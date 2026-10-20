@@ -85,7 +85,8 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 同目标非终态 Generation 仍阻止冲突修改。
 
 `location_requests.py` 为每张图片编译生成：普通图跟随项目画幅，全景图固定 2:1 并加入等距柱状和左右无缝约束；
-`reference_asset_ids` 是至多 5 张任意项目图片。成功回调只新增候选，人类通过 `location.select_image` 采用。
+`reference_asset_ids` 是至多 5 张任意项目图片。成功回调只新增候选；人类通过 `location.select_image` 采用候选，
+或直接把资产库已有图片设为当前地点图片。全景图仍校验 2:1；带冻结 `source` 的全景取景子图只接受自己的裁切产物。
 
 全景图是唯一特殊类别。Web 用已选全景 Asset 打开 3D 查看器，用户调整 yaw/pitch/hfov、填写新图片名称与强制说明后调用
 全景取景入口。Core 原子创建普通图片及冻结 `source`，提交 `PANO_VIEW`；成功回调直接选择确定性产物。父全景图后续变化不级联。

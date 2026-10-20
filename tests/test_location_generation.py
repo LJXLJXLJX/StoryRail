@@ -8,7 +8,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from structured_director_fixtures import png_header_bytes
+from structured_director_fixtures import add_image_asset, png_header_bytes
 from test_director_commands import _visual_project
 
 from core.application.caller import _AGENT_OPERATIONS
@@ -229,6 +229,41 @@ def test_plain_image_uses_project_aspect_and_candidate_requires_human_selection(
     assert rig.image_row(ids["front"]).selected_asset_id is None
     rig.select_image(ids["front"], candidate)
     assert rig.image_row(ids["front"]).selected_asset_id == candidate
+
+
+def test_plain_image_accepts_an_existing_project_library_image(rig):
+    ids = rig.build()
+    asset_id = add_image_asset(rig.store, width=1920, height=1080)
+    rig.select_image(ids["front"], asset_id)
+    assert rig.image_row(ids["front"]).selected_asset_id == asset_id
+
+
+def test_panorama_capture_child_rejects_an_unrelated_library_image(rig):
+    ids = rig.build(
+        {
+            "key": "pano",
+            "name": "空间全景",
+            "kind": "panorama",
+            "description": "客厅完整全景。",
+            "prompt_text": "客厅等距柱状全景。",
+        },
+        {
+            "key": "child",
+            "name": "沙发方向",
+            "kind": "image",
+            "description": "从全景中截取的沙发方向中景。",
+            "prompt_text": "",
+            "source": {
+                "panorama_image_id": "pano",
+                "yaw_deg": 45.0,
+                "pitch_deg": -5.0,
+                "hfov_deg": 70.0,
+            },
+        },
+    )
+    asset_id = add_image_asset(rig.store, width=1920, height=1080)
+    with pytest.raises(ValueError, match="全景取景子图只能选择"):
+        rig.select_image(ids["child"], asset_id)
 
 
 def test_panorama_is_optional_independent_image_and_always_2_1(rig):

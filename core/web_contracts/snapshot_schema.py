@@ -690,6 +690,7 @@ def snapshot_schemas() -> dict[str, dict]:
                             (
                                 "generate",
                                 "select",
+                                "select_asset",
                                 "edit",
                                 "delete",
                                 "clear_selection",

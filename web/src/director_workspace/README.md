@@ -43,6 +43,7 @@ Segment 的对白 TTS 卡片展示全部成功且未隐藏的候选：当前 Ass
 确认后调用人类 HTTP 入口，预览过期时禁止保存，失败保留输入。
 每张独立图片的权限、状态、生成文案与候选 ID 全部消费 Core snapshot。普通图与全景图都可任意选参考图生成；
 图片“编辑”打开独立浮窗，参考图在项目资产库弹窗中多选，编辑浮窗展示已选缩略图并支持放大预览与移除；
+普通地点图片与全景图还可通过卡片上的“从资产库选择”直接采用已有项目图片，全景图的 2:1 合法性仍由 Core 校验；
 全景图有选图时点击进入 Pannellum 3D 查看器，调整 yaw/pitch/hfov 后填写子图名称与强制说明并显式取景。
 卡片复用 `references.tsx` 的卡片样式、`CardHeading`、`TextField/TextArea`、
 `GenerationCandidateList`、`MultiImageAssetPickerDialog` 与 `ZoomableImage`。

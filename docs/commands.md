@@ -142,7 +142,7 @@ Core 分配。不支持单独移动 Shot：重排或跨 Scene 迁移 Shot 时，
 | `location.generate_image` | A | `image_id`；普通图跟随项目画幅，全景图固定 2:1；使用该条目保存的任意显式图片参考 |
 | `location.capture_panorama` | A/H | `image_id`（全景）、新子图 `name` / 强制 `description`、yaw/pitch/hfov；创建普通图片并提交确定性取景 |
 | `location.generate_set` | A | `target_ids`（地点图片 ID）启动批次，或 `run_id` 继续；全景取景不进入批次 |
-| `location.select_image` | H | `image_id`、`asset_id`：只接受该图片条目成功、未隐藏的候选 |
+| `location.select_image` | H | `image_id`、`asset_id`：可采用该图片条目成功且未隐藏的候选，或直接采用项目资产库中的图片；全景图仍校验 2:1，全景取景子图只接受自己的裁切产物 |
 
 人类 HTTP 另有：`POST locations/operations`、`POST location-images/{id}/generate`、`POST location-images/{id}/select`、
 `POST location-images/{id}/capture`，都构造同一命令执行。

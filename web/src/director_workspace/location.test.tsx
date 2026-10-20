@@ -51,7 +51,7 @@ function snapshot(): StructuredDirectorSnapshot {
               active_generation_id: null,
               candidate_generation_ids: [],
               selectable_generation_ids: [],
-              allowed_actions: ["generate", "edit", "delete"],
+              allowed_actions: ["generate", "select_asset", "edit", "delete"],
             },
           },
         ],
@@ -135,6 +135,40 @@ describe("location image library", () => {
       value.revision,
     );
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "编辑地点图片：空间全景" })).not.toBeInTheDocument());
+  });
+
+  it("selects an existing project image directly for a location image entry", async () => {
+    const onApplyLocationChange = vi.fn(async () => true);
+    const value = snapshot();
+    value.assets = [imageAsset(1), imageAsset(2)];
+    render(
+      <LocationLibrary
+        snapshot={value}
+        busy={false}
+        onApplyLocationChange={onApplyLocationChange}
+        onCancelGeneration={vi.fn()}
+        onDismissGeneration={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /大厅/ }));
+    fireEvent.click(screen.getByRole("button", { name: "从资产库选择" }));
+    const library = screen.getByRole("dialog", { name: "从资产库选择地点图片：空间全景" });
+    expect(within(library).getByRole("button", { name: "查看全图：参考图 1.png" })).toBeInTheDocument();
+    fireEvent.click(within(library).getByRole("button", { name: "选择 参考图 1.png" }));
+
+    await waitFor(() => expect(onApplyLocationChange).toHaveBeenCalledTimes(1));
+    expect(onApplyLocationChange).toHaveBeenCalledWith(
+      {
+        name: "location.select_image",
+        arguments: {
+          image_id: "c".repeat(32),
+          asset_id: value.assets[0].id,
+        },
+      },
+      value.revision,
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "从资产库选择地点图片：空间全景" })).not.toBeInTheDocument());
   });
 
   it("keeps location creation behind a dialog on the overview", async () => {

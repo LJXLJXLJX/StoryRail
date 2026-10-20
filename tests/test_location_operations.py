@@ -282,7 +282,7 @@ def test_stale_retry_is_rejected_without_duplicate_location(rig: Rig):
     )
 
 
-def test_selection_rejects_candidate_from_another_image(rig: Rig):
+def test_selection_can_reuse_another_location_images_output_from_the_asset_library(rig: Rig):
     ids = rig.build(
         {
             "key": "a",
@@ -302,5 +302,7 @@ def test_selection_rejects_candidate_from_another_image(rig: Rig):
     rig.generate_image(ids["a"])
     generation = rig.last(KIND.LOCATION_IMAGE, ids["a"])
     rig.finish(generation.id)
-    with pytest.raises(ValueError, match="该图片条目"):
-        rig.select_image(ids["b"], rig.last(KIND.LOCATION_IMAGE, ids["a"]).output_asset_id)
+    asset_id = rig.last(KIND.LOCATION_IMAGE, ids["a"]).output_asset_id
+    assert asset_id is not None
+    rig.select_image(ids["b"], asset_id)
+    assert rig.image_row(ids["b"]).selected_asset_id == asset_id

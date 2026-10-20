@@ -130,6 +130,8 @@ def location_library_projection(document, service):
             actions.append("generate")
         if selectable:
             actions.append("select")
+        if editable and active is None and image.source is None:
+            actions.append("select_asset")
         if editable:
             actions.append("edit")
         if image.kind is LocationImageKind.PANORAMA and image.selected_asset_id is not None:
