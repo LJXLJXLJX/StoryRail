@@ -311,7 +311,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `snapshot_view.py`：完整 Web 快照、`allowed_actions` 与生产可用性投影。
 - `location_image.py`：独立地点图片卡的类型、说明、状态、候选、选图、全景取景能力与允许动作投影。
 - `workflow_state.py`：主流程阶段、必需下一步、可选推荐动作与门禁投影。
-- `semantic_projection.py`：人和 Agent 共源的故事投影。
+- `semantic_projection.py`：人和 Agent 共源的故事投影；Segment 生产扩展包含其他图片规划、选图状态与实际媒体绑定。
 - `professional_worksets.py`：专业能力工作集读取。
 - `execution_reads.py`：外部恢复与人类审核衔接的最小状态。
 - `read_tools.py`：`project.*` 只读命令分派。
@@ -375,7 +375,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
   request ID 唯一确定的工作区 JSON 读取，校验大小与 SHA-256 后再走原 Core 命令。
 - `storyrail_mcp/playground_tools.py`：Playground scope 的 5 个工具输入模型与命令翻译。
 - `storyrail_mcp/bridge.py`：固定地址的无状态 HTTP 翻译。
-- `storyrail_mcp/production_tools.py`：生产工具输入 schema 与固定命令翻译。
+- `storyrail_mcp/production_tools.py`：生产工具输入 schema 与固定命令翻译，含 Segment 任意内容图片的单卡规划与生成入口。
 
 ## web/ — React + TypeScript + Vite 单页应用
 

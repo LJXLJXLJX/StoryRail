@@ -1940,7 +1940,7 @@
     "name": "edit_looks"
   },
   {
-    "description": "只生成明确地点图片候选或执行一次全景取景，需精确用户授权。",
+    "description": "生成明确授权的图片、音频或视频候选，或执行一次全景取景；其他图片用 kind=reference_image，target_id 为 reference_image_plans 中的规划 ID；不自动选择。",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -2632,6 +2632,121 @@
     "name": "set_dialogue_timing"
   },
   {
+    "description": "新建或编辑一个 Segment 的其他图片规划，slot_index 为 0–3；可规划任意画面内容，不限角色或地点，无时间位置；不生成、不选择。用 read_story 的 selection/keyframe 扩展读取 video_inputs 中的规划 ID 和实际绑定。",
+    "inputSchema": {
+      "$defs": {
+        "CharacterReference": {
+          "additionalProperties": false,
+          "properties": {
+            "character_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "look_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "character_id",
+            "look_id"
+          ],
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "character_references": {
+          "items": {
+            "$ref": "#/$defs/CharacterReference"
+          },
+          "type": "array"
+        },
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "prompt_text": {
+          "maxLength": 18000,
+          "minLength": 1,
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "reference_asset_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "segment_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "slot_index": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "visible_character_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "scene_ids",
+        "segment_id",
+        "slot_index",
+        "prompt_text",
+        "description",
+        "visible_character_ids",
+        "character_references",
+        "reference_asset_ids"
+      ],
+      "type": "object"
+    },
+    "name": "save_reference_image_plan"
+  },
+  {
     "description": "读取当前项目实际图片/音频Asset，校验SHA-256，最多8 MiB；不接受路径。返回的图片直接用原生视觉能力查看，不要再用 ffmpeg 等命令行工具处理；当前模型无视觉能力时直接拒绝看图任务。",
     "inputSchema": {
       "additionalProperties": false,
@@ -2670,7 +2785,7 @@
     "name": "read_media_input"
   },
   {
-    "description": "按 level 的公开 oneOf 契约读取故事；outline 使用项目 scope，scene/shot/segment 必须给 scene_ids；Shot 与 Segment 都直接属于 Scene，shot 层给出覆盖它的 segment_ids，segment 层给出 shot_ids；h3/keyframe 扩展只用于 segment。",
+    "description": "按 level 的公开 oneOf 契约读取故事；outline 使用项目 scope，scene/shot/segment 必须给 scene_ids；Shot 与 Segment 都直接属于 Scene，shot 层给出覆盖它的 segment_ids，segment 层给出 shot_ids；video_prompt/keyframe 扩展只用于 segment；selection、keyframe 或 video_prompt 扩展同时返回 video_inputs：其他图片规划 ID、slot_index、正文、选图状态及显式媒体绑定。",
     "inputSchema": {
       "additionalProperties": false,
       "oneOf": [

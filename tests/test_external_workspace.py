@@ -1,6 +1,7 @@
 """外部工作区来源、媒体实际字节及人类视图契约。"""
 
 import asyncio
+import base64
 from dataclasses import replace
 
 from mcp import Client
@@ -59,7 +60,11 @@ def test_mcp_image_audio_read_uses_controlled_assets_and_no_writes(tmp_path):
             for asset in assets:
                 result = await client.call_tool("read_media_input", {**base, "asset_id": asset.id})
                 assert not result.is_error, result
-                assert all(block.type == "text" for block in result.content)
+                assert result.content[0].type == "text"
+                media = result.content[1]
+                assert media.type == ("image" if asset.media_type.startswith("image/") else "audio")
+                assert media.mime_type == asset.media_type
+                assert base64.b64decode(media.data) == store.read_asset(asset.id)[1]
                 content_url = result.structured_content["content_url"]
                 assert content_url.endswith(f"/assets/{asset.id}/content")
                 assert result.structured_content["sha256"] == asset.sha256

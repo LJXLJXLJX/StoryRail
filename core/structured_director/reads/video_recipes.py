@@ -176,7 +176,7 @@ def keyframe_video_context(document, segment_id, views=(), catalog=None):
                     document, segment_id, require_ready=False
                 )
             )
-        for asset_id, description, source in inputs:
+        for index, (asset_id, description, source) in enumerate(inputs):
             asset = assets.get(asset_id)
             result["reference_inputs"].append(
                 {
@@ -185,6 +185,8 @@ def keyframe_video_context(document, segment_id, views=(), catalog=None):
                     "asset_id": asset_id,
                     "description": description,
                     "source": source,
+                    "slot_index": index,
+                    "name": None if asset is None else asset.display_name,
                     "media_type": None if asset is None else asset.media_type,
                 }
             )

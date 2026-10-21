@@ -4,13 +4,17 @@ import asyncio
 from dataclasses import replace
 
 import pytest
+from mcp import Client
 from provider_factory import provider_registry
 from structured_director_fixtures import RecordingProvider
 from test_external_script_proposals import confirm_references
 from test_prompt_worksets import fixture
+from test_storyrail_mcp import endpoint
 
+from core.application.caller import Caller
 from core.director_commands import DirectorCommand
 from core.structured_director.reads.professional_worksets import workset_read
+from core.structured_director.reads.semantic_projection import build_semantic_projection
 from core.structured_director.reads.video_recipes import keyframe_video_context
 from core.structured_director.reads.workflow_state import workflow_state
 
@@ -27,6 +31,128 @@ def image_update(doc, index=0):
         "character_references": [],
         "reference_asset_ids": [],
     }
+
+
+def test_agent_can_discover_plan_and_generate_arbitrary_other_image_through_mcp(tmp_path):
+    store, service, doc, _ = asyncio.run(fixture(tmp_path))
+    service._registry.install(
+        provider_registry(
+            image_provider=RecordingProvider(
+                media_type="image/png", content=b"\x89PNG\r\n\x1a\nabstract-diagram"
+            )
+        )._plugins["codex_image"]
+    )
+    caller = Caller(
+        "reference-image-agent",
+        "agent",
+        frozenset({doc.project_id}),
+        frozenset({"project.read", "project.mutate", "project.execute"}),
+        4102444800,
+        (),
+        True,
+    )
+    scene = doc.director_script.scenes[0]
+    segment = scene.segments[0]
+
+    async def run(server):
+        async with Client(server) as client:
+            tools = {tool.name: tool for tool in (await client.list_tools()).tools}
+            assert "save_reference_image_plan" in tools
+            assert "reference_image" in tools["generate_media"].description
+            assert "select_reference_image" not in tools
+            args = image_update(doc, 2)
+            args.pop("scope")
+            args.update(
+                project_id=doc.project_id,
+                expected_revision=doc.revision,
+                idempotency_key="mcp-other-image-plan",
+                scene_ids=[scene.id],
+                prompt_text="抽象色块与线条构成的几何示意图，不含人物或地点。",
+                description="几何示意图，用于视觉风格参考。",
+            )
+            before = store.path.read_bytes()
+            for invalid in ({"slot_index": 4}, {"asset_id": "f" * 32}, {"scene_ids": ["f" * 32]}):
+                rejected = await client.call_tool("save_reference_image_plan", {**args, **invalid})
+                assert rejected.is_error
+                assert store.path.read_bytes() == before
+            saved = await client.call_tool("save_reference_image_plan", args)
+            assert not saved.is_error, saved.structured_content
+            replay = await client.call_tool("save_reference_image_plan", args)
+            assert replay.structured_content["replay"]
+            current = store.read()
+            image = current.video_plan.segments[0].reference_images[0]
+            assert image.visible_character_ids == ()
+            assert current.generations == doc.generations
+            for extension in ("selection", "keyframe", "video_prompt"):
+                read = await client.call_tool(
+                    "read_story",
+                    {
+                        "project_id": doc.project_id,
+                        "level": "segment",
+                        "scene_ids": [scene.id],
+                        "ids": [segment.id],
+                        "extensions": [extension],
+                    },
+                )
+                assert not read.is_error, read.structured_content
+                inputs = read.structured_content["data"]["items"][0]["video_inputs"]
+                assert inputs["reference_image_plans"][0]["id"] == image.id
+                assert inputs["reference_image_plans"][0]["slot_index"] == 2
+                assert inputs["reference_image_plans"][0]["prompt_text"] == args["prompt_text"]
+                assert inputs["reference_image_plans"][0]["selected_asset_id"] is None
+            generate_args = {
+                "project_id": doc.project_id,
+                "expected_revision": current.revision,
+                "idempotency_key": "mcp-other-image-generate",
+                "kind": "reference_image",
+                "target_id": image.id,
+            }
+            generated = await client.call_tool("generate_media", generate_args)
+            assert not generated.is_error, generated.structured_content
+            current = store.read()
+            assert current.generations[-1].target_id == image.id
+            assert current.generations[-1].kind.value == "video_reference_image"
+            assert (
+                current.video_plan.segments[0].recipe_inputs
+                == doc.video_plan.segments[0].recipe_inputs
+            )
+            replay = await client.call_tool("generate_media", generate_args)
+            assert not replay.is_error
+            assert replay.structured_content["replay"]
+            assert store.read().generations == current.generations
+            generation_id = current.generations[-1].id
+            for _ in range(3):
+                observed = await client.call_tool(
+                    "manage_generation",
+                    {
+                        "project_id": doc.project_id,
+                        "action": "wait",
+                        "generation_ids": [generation_id],
+                    },
+                )
+                assert not observed.is_error, observed.structured_content
+                if store.read().generations[-1].output_asset_id is not None:
+                    break
+            candidates = await client.call_tool(
+                "list_candidates",
+                {
+                    "project_id": doc.project_id,
+                    "kind": "video_reference_image",
+                    "target_ids": [image.id],
+                },
+            )
+            assert not candidates.is_error
+            candidate = candidates.structured_content["data"]["items"][0]
+            assert candidate["reviewable"] and not candidate["selected"]
+            media = await client.call_tool(
+                "read_media_input",
+                {"project_id": doc.project_id, "asset_id": candidate["output_asset"]["id"]},
+            )
+            assert not media.is_error, media.structured_content
+            assert any(block.type == "image" for block in media.content)
+
+    with endpoint(tmp_path, store, service, caller, full_api=True) as (server, _):
+        asyncio.run(run(server))
 
 
 def test_reference_image_planning_preserves_v35_and_video_bindings(tmp_path):
@@ -57,6 +183,48 @@ def test_reference_image_planning_preserves_v35_and_video_bindings(tmp_path):
         assert "none" in facts["frame_strategies"]
         assert facts["reference_inputs"]
         assert store.read().revision == doc.revision
+
+    asyncio.run(run())
+
+
+def test_bound_arbitrary_image_is_readable_without_a_generation_plan(tmp_path):
+    async def run():
+        store, service, doc, asset_id = await fixture(tmp_path)
+        args = {
+            key: value
+            for key, value in image_update(doc).items()
+            if key in {"scope", "segment_id", "slot_index"}
+        }
+        args.update(asset_id=asset_id, description="用户导入的任意图片，作为视觉参考。")
+        doc = (
+            await service.execute_director_command(
+                DirectorCommand(
+                    "video.select_reference_image", doc.revision, "choose-any-image", args
+                )
+            )
+        ).document
+        before = store.path.read_bytes()
+        item = build_semantic_projection(
+            doc,
+            {
+                "level": "segment",
+                "scope": args["scope"],
+                "ids": [args["segment_id"]],
+                "extensions": ["selection"],
+            },
+            provider_recipes=service.provider_recipe_views(),
+            provider_catalog=service.provider_catalog,
+        )["items"][0]
+        assert item["video_inputs"]["reference_image_plans"] == []
+        image = next(
+            binding
+            for binding in item["video_inputs"]["reference_inputs"]
+            if binding["role"] == "reference_image"
+        )
+        assert image["asset_id"] == asset_id
+        assert image["slot_index"] == 0
+        assert image["description"] == args["description"]
+        assert store.path.read_bytes() == before
 
     asyncio.run(run())
 
@@ -116,6 +284,20 @@ def test_reference_image_generation_is_candidate_only_and_selection_binds_same_s
         assert video.reference_images[0].id == image.id
         assert video.reference_images[0].slot_index == 0
         assert store.read().video_plan.segments[0].reference_images == video.reference_images
+        # 人类选中的任意图片必须出现在可读工作集，不能只收录首尾帧或地点图片。
+        request = {
+            "capability": "video_prompt",
+            "scope": image_update(doc)["scope"],
+            "target_ids": [video.segment_id],
+        }
+        facts = workset_read(
+            doc,
+            request,
+            provider_recipes=service.provider_recipe_views(),
+            provider_catalog=service.provider_catalog,
+        )["core_facts"]
+        assert asset_id in {item["asset_id"] for item in facts["bindable_assets"]}
+        assert facts["video_inputs"][0]["reference_image_plans"][0]["selected_asset_id"] == asset_id
 
     asyncio.run(run())
 

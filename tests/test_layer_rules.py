@@ -412,6 +412,11 @@ DIRECTION_WHITELIST = [
         "L4 内部",
     ),
     (
+        "core.structured_director.prompt_worksets",
+        "core.structured_director.reads.video_recipes",
+        "L4 复用实际 recipe 参考图规划与绑定投影，专业工作集和故事读取保持同源。",
+    ),
+    (
         "core.structured_director.reads.workflow_state",
         "core.structured_director.keyframe_requests",
         "L4 内部",

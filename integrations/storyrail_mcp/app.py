@@ -1,5 +1,6 @@
 """公开受控业务工具；MCP 协议生命周期交给官方 SDK。"""
 
+import base64
 import copy
 import hashlib
 import json
@@ -9,7 +10,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from mcp.server import Server
-from mcp.types import CallToolResult, ListToolsResult, TextContent, Tool
+from mcp.types import AudioContent, CallToolResult, ImageContent, ListToolsResult, TextContent, Tool
 from pydantic import Field, model_validator
 
 from .bridge import CoreBridge
@@ -59,7 +60,9 @@ class Read(ReadRequest):
     extensions: list[Literal["text", "selection", "dependencies", "video_prompt", "keyframe"]] = (
         Field(
             default_factory=list,
-            description="h3/keyframe 专业扩展只允许 segment level。",
+            description="video_prompt/keyframe 专业扩展只允许 segment level；"
+            "Segment 的 selection/keyframe/video_prompt 扩展同时给出 video_inputs，"
+            "含其他图片规划与绑定。",
         )
     )
     cursor: str | None = None
@@ -753,7 +756,8 @@ def create_server(bridge: CoreBridge, *, proposal_directory: Path | None = None)
             "按 level 的公开 oneOf 契约读取故事；outline 使用项目 scope，"
             "scene/shot/segment 必须给 scene_ids；Shot 与 Segment 都直接属于 Scene，"
             "shot 层给出覆盖它的 segment_ids，segment 层给出 shot_ids；"
-            "h3/keyframe 扩展只用于 segment。"
+            "video_prompt/keyframe 扩展只用于 segment；selection、keyframe 或 video_prompt 扩展"
+            "同时返回 video_inputs：其他图片规划 ID、slot_index、正文、选图状态及显式媒体绑定。"
         ),
         "locate_story": (
             "按“场景 N”“场景 N－镜头 N”或“场景 N－片段 N”（片段在场景内编号）"
@@ -810,10 +814,21 @@ def create_server(bridge: CoreBridge, *, proposal_directory: Path | None = None)
                     request.expected_revision,
                     request.idempotency_key,
                 )
-                del content
                 result = {"http_status": status, **value}
+                blocks = _response_text_blocks(result)
+                if status == 200 and content is not None:
+                    media = (
+                        ImageContent if value["media_type"].startswith("image/") else AudioContent
+                    )
+                    blocks.append(
+                        media(
+                            type="image" if media is ImageContent else "audio",
+                            data=base64.b64encode(content).decode("ascii"),
+                            mime_type=value["media_type"],
+                        )
+                    )
                 return CallToolResult(
-                    content=_response_text_blocks(result),
+                    content=blocks,
                     structured_content=result,
                     is_error=status != 200,
                 )

@@ -11,6 +11,7 @@ from .keyframe_requests import (
     _keyframe_reference_prompt,
 )
 from .models import StructuredDirectorDocument
+from .reads.video_recipes import keyframe_video_context
 from .script_index import (
     find_segment,
     scene_segments,
@@ -175,6 +176,9 @@ def video_prompt_workset(
         and segment.duration_estimate_seconds > soft,
         "dialogue_timing": actual_dialogue_timing(document, segment),
         "required_dialogue_prompt": required_dialogue_prompt(labels, segment.dialogue_lines),
+        "video_inputs": [
+            keyframe_video_context(document, segment_id, provider_recipes, provider_catalog)
+        ],
     }
 
     return (
@@ -206,7 +210,7 @@ def required_dialogue_prompt(labels, dialogue_lines):
 def _bindable_assets(document: StructuredDirectorDocument, scene, recipe) -> list[dict]:
     """当前 recipe 显式槽位可绑定的项目 Asset，按媒体类型与时长匹配槽位。
 
-    只列导入素材、引用库与地点库的已选资源，以及本 Scene 已选的关键帧、旁白和视频；
+    只列导入素材、引用库与地点库的已选资源，以及本 Scene 已选的关键帧、旁白、视频与显式参考；
     未被选择的生成候选不列出。Core 校验仍接受任意本项目 Asset。
     """
     slots = explicit_slots(recipe)
@@ -235,6 +239,11 @@ def _bindable_assets(document: StructuredDirectorDocument, scene, recipe) -> lis
         for item in document.video_plan.segments:
             if item.segment_id in segment_ids:
                 used.update((item.selected_asset_id, item.upscaled_asset_id))
+                used.update(
+                    binding.asset_id
+                    for _, bindings in item.recipe_inputs.bindings
+                    for binding in bindings
+                )
     result = []
     for asset in document.assets:
         accepted = [

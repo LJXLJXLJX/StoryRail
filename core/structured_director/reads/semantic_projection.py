@@ -15,6 +15,7 @@ from .common import (
     _validate_result_bounds,
 )
 from .dependencies import _get_dependencies
+from .video_recipes import keyframe_video_context
 
 PROJECTION_VERSION = 2
 _TEXT_PREVIEW = 240
@@ -224,6 +225,10 @@ def build_semantic_projection(
         if "keyframe" in extensions:
             item["keyframe"] = keyframe_workset(
                 document, node.id, provider_catalog=provider_catalog
+            )
+        if kind == "segment" and set(extensions) & {"selection", "keyframe", "video_prompt"}:
+            item["video_inputs"] = keyframe_video_context(
+                document, node.id, provider_recipes, provider_catalog
             )
         items.append(item)
     next_offset = offset + len(items)

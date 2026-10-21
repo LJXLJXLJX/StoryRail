@@ -6,7 +6,7 @@ ARRIVE   真实 stdio 子进程起官方 MCP server（`python -m integrations.st
          （OracleHttpServer 的受信 agent caller）；journey 驱动双 Scene 项目到
          视觉生产解锁，经 MCP client 发写/读请求。
 ORACLE   断言可达状态谓词：
-         - tools/list 与进程内 create_server().tool_schema() 一致（25 个工具，
+         - tools/list 与进程内 create_server().tool_schema() 一致（26 个工具，
            名称 + input_schema + description 逐一相等）；
          - 三个写工具翻译到正确 Core 命令并有真实副作用：script_proposal
            （request→建立 SCRIPT_PROPOSAL run→显式 cancel）、save_video_prompt
@@ -97,13 +97,13 @@ def test_oracle_mcp_wire_tools_translation_pagination_and_errors(journey, http_s
 
     async def wire_check() -> None:
         async with Client(mcp_params) as stdio:
-            # ORACLE：stdio tools/list 与进程内 published schema 一致（24 个）。
+            # ORACLE：stdio tools/list 与进程内 published schema 一致（26 个）。
             wire_tools = {tool.name: tool for tool in (await stdio.list_tools()).tools}
             in_process_bridge = CoreBridge("http://127.0.0.1:9", Path("unused-token"))
             async with Client(create_server(in_process_bridge)) as local:
                 local_tools = {tool.name: tool for tool in (await local.list_tools()).tools}
             assert set(wire_tools) == EXPECTED_TOOLS
-            assert len(wire_tools) == 25
+            assert len(wire_tools) == 26
             assert set(local_tools) == set(wire_tools)
             for name, tool in wire_tools.items():
                 assert tool.input_schema == local_tools[name].input_schema, name

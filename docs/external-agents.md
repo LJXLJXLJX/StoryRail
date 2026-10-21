@@ -113,13 +113,13 @@ flowchart LR
 
 ## MCP 工具
 
-项目 scope 的 `tools/list` 发布 25 个工具（逐字节基线：`tests/fixtures/mcp_project_tools.json`）。没有任意 command、shell、文件、
+项目 scope 的 `tools/list` 发布 26 个工具（逐字节基线：`tests/fixtures/mcp_project_tools.json`）。没有任意 command、shell、文件、
 路径、URL、模型目录、候选采用或 Approval 工具。所有工具顶层与嵌套参数都拒绝未知字段，条件参数用公开 `oneOf` 表达，MCP runtime
 与 schema 共用同一参数矩阵。
 
 | 分组 | 工具 | 翻译为 |
 | --- | --- | --- |
-| 读取 | `read_story` | `project.get_projection`（outline 用项目 scope；scene/shot/segment 必须给 `scene_ids`；`parent_id` 只用于 segment 且是 Scene ID；Shot 与 Segment 都直接属于 Scene，shot 层给出 `segment_ids`、segment 层给出 `shot_ids`；Segment 的 `dialogue_lines` 给出稳定 `id` 与完整写回字段，脚本编辑前应带 `text` 扩展读取完整正文；`h3` / `keyframe` 扩展只用于 segment） |
+| 读取 | `read_story` | `project.get_projection`（outline 用项目 scope；scene/shot/segment 必须给 `scene_ids`；`parent_id` 只用于 segment 且是 Scene ID；Shot 与 Segment 都直接属于 Scene，shot 层给出 `segment_ids`、segment 层给出 `shot_ids`；Segment 的 `dialogue_lines` 给出稳定 `id` 与完整写回字段，脚本编辑前应带 `text` 扩展读取完整正文；`video_prompt` / `keyframe` 扩展只用于 segment；Segment 的 `selection` / `keyframe` / `video_prompt` 扩展同时给出 `video_inputs`，含其他图片规划与实际绑定） |
 | | `locate_story` | `project.locate_story` |
 | | `read_professional_contract` / `read_professional_workset` | `project.get_contract` / `get_workset`（支持 `if_hash` 内容协商与分块续读） |
 | | `read_workflow` | 主流程 + handoff + contract hashes |
@@ -128,9 +128,10 @@ flowchart LR
 | 规划 | `submit_proposal` | 统一入口：`capability` + `payload`；schema 按 capability 与 `payload.action` 公开完整字段：request（`raw_user_instruction`；keyframe 另需 `scene_ids` 与 Segment `target_ids`）/ get、cancel（`request_id`）/ submit（`request_id` 加内联 `proposal` 或受限 `proposal_source`）/ reject（`request_id`、`reason`） |
 | 编辑 | `edit_script` / `edit_narration` / `edit_locations` / `edit_keyframes` / `edit_looks` | 各自的 `*.apply_operations` / `narration.update_cue` / `reference.apply_look_operations`（`add_look` / `update_look`，字段形状随 `reference_library` 契约下发）；`edit_narration.fields.clear_selected_audio = "zh"\|"en"` 独占一次调用并翻译为 `narration.clear_selection`；`edit_locations` 的 scope 是 `location_ids` / `scene_ids`，可编辑地点、状态、陈设、独立图片和 Scene 绑定，字段形状随 `location` 契约下发；`edit_script` 的 `insert_shot` 必须给出 `attach_to_segment_id` 或 `new_segment`，Segment 操作以 `scene_id` 为容器 |
 | | `save_video_prompt` / `save_keyframe_prompt` | 不带 `recipe_inputs` 时 `video.set_prompt`；带 `recipe_inputs: {bindings, params}` 时 `video.update_recipe_inputs`（正文、当前 recipe 绑定与参数整体替换）/ 单项 `update_frame_fields` |
+| | `save_reference_image_plan` | `video.save_reference_image_plan`（Scene scope、Segment ID、0–3 槽位与完整画面计划；可规划任意图片内容，不生成、不选择） |
 | | `set_video_recipe` | `video.set_recipe` |
 | | `unlock_production` | `visual_production.unlock` |
-| 生产 | `generate_media` | 单目标 `narration.generate`（必须给 `language`）/ `location.generate_image`（`location_image`）/ `location.capture_panorama`（`panorama_capture`，创建带说明的普通子图）/ `keyframe.generate` / `video.generate` / `video.upscale` / `reference.generate_look_sheet`（`look_sheet`：`target_id` 为造型 ID，必须给 0–4 张 `identity_asset_ids` 身份参考） |
+| 生产 | `generate_media` | 单目标 `narration.generate`（必须给 `language`）/ `location.generate_image`（`location_image`）/ `location.capture_panorama`（`panorama_capture`，创建带说明的普通子图）/ `keyframe.generate` / `video.generate_reference_image`（`reference_image`：`target_id` 为图片规划 ID）/ `video.generate` / `video.upscale` / `reference.generate_look_sheet`（`look_sheet`：`target_id` 为造型 ID，必须给 0–4 张 `identity_asset_ids` 身份参考） |
 | | `media_batch` | 必填 `kind`：`keyframe` 的 `start` / `continue` 翻译为 `keyframe.generate_batch` / `keyframe.continue_batch`；`location` 的两种 action 都翻译为 `location.generate_set`（`target_ids` 启动、`run_id` 继续） |
 | | `assemble_media` | `animatic.generate_scene` / `final.assemble_scene` / `final.assemble` |
 | | `manage_generation` | `generation.wait`（只观察，可省略 `expected_revision` 与 `idempotency_key`）/ `cancel` / `retry` / `dismiss` |
@@ -179,11 +180,14 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
   - 地点工作集给出完整导演方案、画幅、每个 Scene 的标题/梗概/设定与当前地点/状态，全部 Shot 的构图、运镜、动作与可见角色，
     以及完整地点库（每张独立图片带 kind、强制说明、生成计划、参考图与选图状态）和图片插件的
     `image_prompt` 约定。request 回执内嵌的冻结工作集不带 `image_prompt`，以 `read_professional_workset` 为准。
-  - Keyframe 工作集的 `video_inputs[]` 给出每个 Segment 的当前 recipe、合法 `frame_strategies`、媒体槽位与
+  - Keyframe 与视频工作集的 `video_inputs[]` 给出每个 Segment 的当前 recipe、合法 `frame_strategies`、媒体槽位与
     `require_any`、已绑定独立参考与已保存 `reference_image_plans`。没有时间约束时可按 recipe 选择 `none`；
     关闭端点无需编造正文，Core 保留其历史计划。可选 `segments[].reference_images[]` 按 0–3 的 `slot_index`
     增补无时间位置参考图规划，不生成、不选择、不改变已有视频绑定；已有成功候选和选图受到规划保护。
+    其他图片可为任意内容，不限角色、地点或关键帧。`save_reference_image_plan` 可单独新建或编辑其中一张；
     `generate_media(kind="reference_image", target_id=<规划ID>)` 单独生成候选，人类在对应卡片选择后才进入视频输入。
+    `reference_image_plans` 给出稳定 ID、正文与选图状态；没有生成计划的已绑定图片也会出现在 `reference_inputs`，
+    其中 `slot_index` 是当前媒体槽位中的位置，`asset_id` 可直接交给 `read_media_input` 查看真实图片。
   - Keyframe 工作集另给出当前 Scene 使用的 `location_library` 语义与扁平 `location_images`（图片 ID、名称、kind、强制说明、
     所属地点和已选图）；这些只帮助 Agent 理解空间，不会自动成为 Provider 图片输入。
   - 视频工作集给出当前 `video_recipe`（槽位与参数声明、`editable_params`）、`context`（含 `scene.driver`，决定无对白时是否声明预留旁白通道；
@@ -192,7 +196,7 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
     `segment.dialogue[]` 的 `on_screen` 为 null 表示引用库外的临时说话者）、`dialogue_timing`（已选 WAV 的真实起点、时长与最晚结束时间；未完成 TTS 时明确标记未就绪）、`required_dialogue_prompt`（H3 必须原样置于正文开头的 Audio 标签与原台词映射）、`asset_inputs`、`plugin_skills`（随插件发布的
     Skill 与参考正文），以及 `recipe_inputs`（已保存的 `{bindings, params}`，即 `save_video_prompt.recipe_inputs` 的整体替换形状）与
     `bindable_assets`（当前 recipe 显式槽位可接受的项目 Asset：`asset_id`、`name`、`media_type`、`duration_seconds`、`slots`；
-    只列导入素材、引用库与地点库已选资源、本 Scene 已选的关键帧/旁白/视频）。标签按 manifest namespace 由 Core 计算，绑定变化后重读
+    只列导入素材、引用库与地点库已选资源、本 Scene 已选的关键帧/旁白/视频与显式媒体参考）。标签按 manifest namespace 由 Core 计算，绑定变化后重读
     工作集取新标签；插件只转换自己的专业格式。软时长提示来自插件 hints；H3 声明 15 秒，超过可能 OOM但不拒绝；缺帧直接拒绝。
 - 用户的修改要求与语言偏好由 Agent 作为用户输入单独处理，不当作 Core 事实。
 

@@ -81,7 +81,7 @@ Scene、Shot、Segment、对白、旁白、动作结果或时长；若上游镜�
 - 首帧对应第一个覆盖 Shot 的开头，尾帧对应最后一个覆盖 Shot 的结尾。段内切镜主要由视频提示词表达，不为所有 Shot 强制画边界帧。
 - `continues_from_previous=true` 表示显式共用同一交接图，首帧字段为空；真正共享边界仍要求前段尾帧、后段首帧启用。不要为了减少图片破坏已经明确的共享交接。
 - `reference_images` 是可选增补数组，最多 4 项：`slot_index`（0–3）、`prompt_text`、`description`、`visible_character_ids`、`character_references`、`reference_asset_ids`。只规划当前 recipe 支持的其他图片槽位，沿用已有槽位，不重复规划已选图片或已有成功候选；未列出的规划保留。
-- 其他图片没有视频时间位置，可是角色姿态/多人关系、场景空间或道具资料。按缺失信息选择最少必要图片，不能因为有四张卡片就填满四张。`description` 说明预期参考用途，生成后人类按真实画面确认；规划不生成、不选择、不改已有视频输入绑定。
+- 其他图片没有视频时间位置，可以是任意画面内容，包括人物、空间、物件、图案、风格示意或用户指定的其他图片；不要求来自关键帧、角色卡或地点库。按缺失信息选择最少必要图片，不能因为有四张卡片就填满四张。`description` 说明预期参考用途，生成后人类按真实画面确认；规划不生成、不选择、不改已有视频输入绑定。
 - 首帧应是“动作即将发生”的稳定时刻：意图可读、动势未耗尽、运动空间明确。
 - 尾帧应是“动作已经成立”的稳定时刻：结果清楚，可作为停顿或剪辑点。
 
@@ -108,6 +108,16 @@ Director 本轮采用的连续长镜头方案即使记录在 `director_hypothese
 共享同一图片只约束交接画面，不保证运动自动无缝；还要沿原脚本核对动作阶段、运动方向和摄影机运动的衔接。
 
 ## 实际视频输入边界
+
+单独规划或编辑某张其他图片时，使用 MCP `save_reference_image_plan`，指定 `scene_ids`、`segment_id`、
+`slot_index`（0–3）和完整画面计划；无角色或无生图参考时，相应数组为空。无需重交整个 Segment 的首尾帧计划。
+通过 `read_story(level="segment", extensions=["selection"])` 的 `video_inputs`，或专业工作集
+`core_facts.video_inputs[]`，读取当前 recipe 的 `reference_image_plans` 与实际 `reference_inputs`。
+规划的稳定 `id` 用于 `generate_media(kind="reference_image", target_id=<id>)`；只有用户明确要求生成时才调用。
+候选用 `list_candidates(kind="video_reference_image", target_ids=[<id>])` 查看，取得产物 Asset ID 后用
+`read_media_input` 审看真实图片；已有选图也可以直接使用 `selected_asset_id` 读取。人类在 Web 中选择后才进入视频输入。
+从资产库直接绑定的图片可能没有生图计划，仍可按 `reference_inputs` 的 `asset_id`、`slot_index` 和说明读取，
+不能因没有 `reference_image_plans` 就忽略它。
 
 实际视频输入以 `video_inputs[].slots`、`require_any` 和 `reference_inputs` 为准。首尾槽位只提交已启用且已选择的图；独立图片、音频和视频参考按当前 recipe 显式绑定。
 FL2VA 至少需要一个边界帧；Ref2VA 可以没有首尾帧，但必须有至少一项媒体输入。规划阶段不能自动切换 recipe。

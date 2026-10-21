@@ -1,5 +1,7 @@
 # StoryRail 项目连接
 
+Segment 的“其他图片”可以是任意画面内容，无时间位置，不限角色、地点或关键帧。用 `read_story` 的 Segment `selection` / `keyframe` / `video_prompt` 扩展读取 `video_inputs.reference_image_plans` 与 `reference_inputs`，或读 `keyframe` / `video_prompt` 专业工作集的 `core_facts.video_inputs[]`。单卡规划或编辑用 `save_reference_image_plan`（slot_index 为 0–3），用户明确要求生成时用 `generate_media(kind="reference_image", target_id=<规划ID>)`；候选用 `list_candidates(kind="video_reference_image")` 读取，图片本身用 `read_media_input(asset_id=...)` 查看。没有生图计划的已绑定图片仍在 `reference_inputs` 中，不应忽略。候选由人类在 Web 选入视频，不能通过通用绑定接口绕过选择。
+
 当前工作区只提供项目连接上下文，不包含待自动执行的任务。等待用户输入，不主动整理引用库或启动任何业务动作。
 模型、推理强度、登录和动态切换均由用户通过当前 Agent 原生功能管理。
 

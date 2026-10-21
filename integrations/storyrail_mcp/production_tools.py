@@ -316,6 +316,17 @@ class FrameEdit(Request):
     operations: Annotated[list[FrameOperation], Field(min_length=1, max_length=100)]
 
 
+class ReferenceImagePlan(Request):
+    scene_ids: Targets
+    segment_id: ID
+    slot_index: Annotated[int, Field(ge=0, le=3, description="其他图片子卡片，0–3。")]
+    prompt_text: Annotated[str, Field(min_length=1, max_length=18000, pattern=r"\S")]
+    description: Annotated[str, Field(min_length=1, max_length=2000, pattern=r"\S")]
+    visible_character_ids: IDs
+    character_references: list[CharacterReference]
+    reference_asset_ids: Annotated[list[ID], Field(max_length=5)]
+
+
 class LocationEdit(Request):
     location_ids: IDs
     scene_ids: IDs
@@ -538,6 +549,7 @@ MODELS = {
     "list_candidates": Candidates,
     "set_video_recipe": VideoRecipe,
     "set_dialogue_timing": DialogueTiming,
+    "save_reference_image_plan": ReferenceImagePlan,
 }
 DESCRIPTIONS = {
     name: description
@@ -549,7 +561,9 @@ DESCRIPTIONS = {
             "更新 Keyframe 计划/辅助图/边界，不生成。",
             "编辑地点语义、独立图片条目与可选Scene关系；新建项以key互引，不能选候选。",
             "新增/修改角色造型（外观、使用场合），不生成、不删除。",
-            "只生成明确地点图片候选或执行一次全景取景，需精确用户授权。",
+            "生成明确授权的图片、音频或视频候选，或执行一次全景取景；"
+            "其他图片用 kind=reference_image，target_id 为 reference_image_plans 中的规划 ID；"
+            "不自动选择。",
             "观察/取消/重试/隐藏明确Generation。",
             "成套生成批次：keyframe 波次或 location 成套参考图；continue 带原批次 ID。",
             "解锁视觉生产，建立 Keyframe 与视频计划；不生成。",
@@ -562,6 +576,9 @@ DESCRIPTIONS = {
             "分页读取明确目标候选，不选择。",
             "设置单Segment视频模式，不生成。",
             "按已选 TTS WAV 的真实时长设置逐句发声起点与 Segment 视频时长。",
+            "新建或编辑一个 Segment 的其他图片规划，slot_index 为 0–3；"
+            "可规划任意画面内容，不限角色或地点，无时间位置；不生成、不选择。"
+            "用 read_story 的 selection/keyframe 扩展读取 video_inputs 中的规划 ID 和实际绑定。",
         ),
         strict=True,
     )
@@ -596,6 +613,7 @@ def translate(name, request):
         "list_candidates": "project.list_candidates",
         "set_video_recipe": "video.set_recipe",
         "set_dialogue_timing": "dialogue.set_timing",
+        "save_reference_image_plan": "video.save_reference_image_plan",
     }
     if name in direct:
         return direct[name], args

@@ -22,7 +22,7 @@ caller 策略（本机一键接入或 `--access-policy-file`）的既有单写�
 
 ## 项目 scope（默认）
 
-`tools/list` 发布 25 个工具，逐字节基线是 `tests/fixtures/mcp_project_tools.json`。`read_human_handoff`、`read_workflow_state`、
+`tools/list` 发布 26 个工具，逐字节基线是 `tests/fixtures/mcp_project_tools.json`。`read_human_handoff`、`read_workflow_state`、
 `script_proposal`、`reference_proposal`、`location_proposal`、`keyframe_proposal` 仍可调用但不下发 schema；统一提交入口是
 `submit_proposal`（`capability` 为 `script`、`reference_library`、`location` 或 `keyframe`）。submit 可直接内联 `proposal`；大型
 proposal 可改用 `proposal_source={kind:"workspace_json", byte_count, sha256}`，adapter 只读取固定
@@ -33,6 +33,10 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 每个 `op` 分支同时公开嵌套字段形状、枚举和必填项，并由同一 runtime 模型校验；`edit_looks` 翻译为 `reference.apply_look_operations`，字段形状随 reference_library 契约
 （`references/look-sheets.md`）下发；`edit_locations` 各操作的字段形状随 location 专业契约（`references/location-bible.md` 附录）下发。`edit_locations` 翻译为 `location.apply_operations`，顶层 `location_ids`、`scene_ids`
 组成 scope；不提供地点图片候选选择。`generate_media` 的 `look_sheet` 翻译为 `reference.generate_look_sheet`（`identity_asset_ids` 为 0–4 张身份参考）；
+`reference_image` 翻译为 `video.generate_reference_image`（`target_id` 为图片规划 ID）；`save_reference_image_plan`
+以 Scene scope、Segment ID 和 0–3 槽位保存一张任意内容的其他图片规划，完整字段在 tools/list 下发，不生成、不选择。
+`read_story` 的 Segment `selection` / `keyframe` / `video_prompt` 扩展返回 `video_inputs`，Keyframe 与视频专业工作集也给出
+`video_inputs[]`：包含规划 ID、画面正文、选图状态与实际绑定；已绑定图片即使没有规划也可按 Asset ID 读取。
 `location_image` / `panorama_capture` 分别翻译为 `location.generate_image` / `location.capture_panorama`。`media_batch` 的 `kind` 选择批次类型：`keyframe` 翻译为
 `keyframe.generate_batch` / `keyframe.continue_batch`，`location` 翻译为 `location.generate_set`
 （start 带 `target_ids` 固定地点图片范围，continue 带原 `batch_id` 或关联 `execution_run_id`）。
@@ -58,6 +62,7 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
   不夹带 Web 全项目快照。
 - `/application/commands` 接受至多 2 MiB 的 JSON，以容纳 adapter 已验证、重组后的 ≤1 MiB proposal 与命令信封；其它普通 JSON 路由仍保持 64 KiB 上限。
 - text content 始终是完整 JSON，`structured_content` 携带同一份数据；只读 text 的客户端（如 AGY）也能直接拿到结果。
+- `read_media_input` 校验受控 Asset 后同时返回原生 image/audio 内容块，供模型实际看图或听音；JSON 保存媒体清单与校验信息，图片字节不混入正文。读取失败时只返回错误。
 - `read_professional_contract` / `read_professional_workset` 在完整 JSON 超过 64 KiB 时进入 `json_utf8_chunks` 模式，单页 ≤ 24 KiB；续读必须
   沿用同一 project/revision/capability/scope/target_ids/page_bytes 并携带 `next_cursor`，拼接后校验 `content_sha256` 再解析。
 - `read_request` 查询 proposal request 时只返回紧凑状态与 `workset_recovery`；原始工作集用对应 proposal 的 get 恢复，最新事实用
