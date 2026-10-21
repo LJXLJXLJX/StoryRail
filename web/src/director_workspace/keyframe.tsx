@@ -1020,6 +1020,19 @@ export function KeyframeSlot({
                                   {asset.display_name ?? "项目图片"}
                                 </strong>
                                 <span>手工辅助参考</span>
+                                <button
+                                  type="button"
+                                  className="secondary-button"
+                                  aria-label={`取消引用 ${asset.display_name ?? `图${index + 1}`}`}
+                                  disabled={busy || !enabled}
+                                  onClick={() =>
+                                    onReferenceAssetIdsChange(
+                                      referenceAssetIds.filter((id) => id !== assetId),
+                                    )
+                                  }
+                                >
+                                  取消引用
+                                </button>
                               </figcaption>
                             </figure>
                           );
