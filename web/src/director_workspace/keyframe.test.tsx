@@ -371,13 +371,27 @@ it("多套造型须为本帧显式选择，保存只提交选中的那一套", (
   );
 });
 
-it("关键帧编辑器不再绑定地点视图", () => {
+it("关键帧编辑器不绑定地点视图，手工参考允许选择地点与角色图片", () => {
   const snapshot = structuredClone(
     fixture.continuity.production_snapshot,
   ) as unknown as StructuredDirectorSnapshot;
   const binding = snapshot.keyframe_plan!.segments.find(
     (item) => item.end_enabled,
   )!;
+  const locationId = "b".repeat(32);
+  const panoramaId = "c".repeat(32);
+  const characterId = "d".repeat(32);
+  snapshot.assets.push(...[
+    { id: locationId, display_name: "地点参考图.png", image_category: "location_image" as const },
+    { id: panoramaId, display_name: "地点全景图.png", image_category: "location_image" as const },
+    { id: characterId, display_name: "角色造型图.png", image_category: "character_reference" as const },
+  ].map((asset) => ({
+    ...asset, media_type: "image/png" as const, byte_count: 1024, duration_seconds: null,
+    content_url: `/${asset.id}.png`, is_in_use: false, usage_reasons: [],
+    retains_derived_assets_on_delete: false, allowed_actions: [],
+  })));
+  binding.reference_asset_ids = [locationId];
+  const onSaveReferences = vi.fn();
   render(
     <SegmentKeyframeInputs
       projectId={"a".repeat(32)}
@@ -391,7 +405,7 @@ it("关键帧编辑器不再绑定地点视图", () => {
       onSaveKeyframe={vi.fn()}
       onGenerate={vi.fn()}
       onSelect={vi.fn()}
-      onSaveReferences={vi.fn()}
+      onSaveReferences={onSaveReferences}
       onSaveActivation={vi.fn()}
       onDismissGeneration={vi.fn()}
     />,
@@ -402,6 +416,14 @@ it("关键帧编辑器不再绑定地点视图", () => {
   const dialog = screen.getByRole("dialog", { name: /手动修改/ });
   expect(within(dialog).queryByLabelText("地点视图")).toBeNull();
   expect(within(dialog).queryByLabelText("地点视图使用方式")).toBeNull();
+  fireEvent.click(within(dialog).getByRole("button", { name: "调整已选的 1 张图片" }));
+  const picker = screen.getByRole("dialog", { name: "从资产库选择关键帧参考图片" });
+  expect(within(picker).getByRole("button", { name: "取消选择 地点参考图.png" })).toHaveAttribute("aria-pressed", "true");
+  expect(within(picker).getByRole("button", { name: "选择 角色造型图.png" })).toBeInTheDocument();
+  fireEvent.click(within(picker).getByRole("button", { name: "选择 地点全景图.png" }));
+  fireEvent.click(within(picker).getByRole("button", { name: "完成" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "保存图片引用" }));
+  expect(onSaveReferences).toHaveBeenCalledWith(binding.segment_id, [locationId, panoramaId]);
 });
 
 it("其他图片固定四张子卡片，规划与生成动作携带独立槽位", () => {

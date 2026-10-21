@@ -1052,7 +1052,7 @@ export function KeyframeSlot({
                     <MultiImageAssetPickerDialog
                       title="选择关键帧参考图片"
                       ariaLabel="从资产库选择关键帧参考图片"
-                      assets={imageAssets(snapshot.assets, "keyframe")}
+                      assets={imageAssets(snapshot.assets)}
                       selectedAssetIds={referenceAssetIds}
                       maxSelected={4}
                       busy={busy || !enabled}
