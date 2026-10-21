@@ -785,7 +785,7 @@ class StructuredDirectorService:
             inputs = _keyframe_generation_inputs(preview_document, keyframe_id)
             if inputs is None:
                 return KeyframeSubmissionPreview(
-                    "图片引用：\n前一时间边界 Keyframe 尚未就绪。",
+                    "实际图片输入：\n前一时间边界 Keyframe 尚未就绪。",
                     None,
                     False,
                     GenerationOperation.EDIT,

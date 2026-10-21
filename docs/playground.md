@@ -203,14 +203,15 @@ Web 复制到项目前先读目标项目 revision；遇到 `revision_conflict` �
 
 | 工具 | 输入 | 翻译为 |
 | --- | --- | --- |
-| `playground_capabilities` | `{}` | `playground.list_capabilities`（含全部能力的参数 schema） |
+| `playground_capabilities` | `{}` | `playground.list_capabilities`（含全部能力的参数 schema 与 `image_prompt` 写作指南） |
 | `playground_submit` | `capability`、`parameters`、`note?`、`idempotency_key` | `playground.submit_run` |
 | `playground_runs` | 按 `action` 严格 oneOf 的 `list` / `get` / `wait` | `list_runs` / `get_runs` / `wait_runs` |
 | `playground_manage_run` | `action` ∈ `cancel` / `retry` / `dismiss` / `set_note`，`run_id`，`note?`，`idempotency_key` | 对应写命令 |
 | `playground_assets` | `limit?`、`cursor?`、`media_kind?` | `playground.list_assets` |
 
 - `capability` 不在 MCP 侧枚举，由 Core 校验，新增能力不需要改 MCP。
-- 没有读取 Playground 媒体字节的工具：Agent 用元数据引用素材，人在页面查看产物。
+- 没有读取 Playground 媒体字节的工具：元数据只用于绑定素材，不能代替看图。带图提示词统一遵守全局生图 Skill；
+  Agent 无法看到实际图片时，请用户提供各图内容与参考用途，必要信息不足时暂停相关编写与生成，不能凭文件名猜图。
 - `PLAYGROUND_PROMPT.md` 要求：提交多个视频 run 之前先说明排队情况，并在当轮取得用户明确同意；“一次做完”“不用问我”不构成同意。
 
 ## 调度

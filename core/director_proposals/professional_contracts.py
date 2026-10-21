@@ -5,6 +5,8 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
+from core.model_providers.image_prompt_skill import image_prompt_skill
+
 _SKILLS = Path(__file__).resolve().parent / "skills"
 
 
@@ -60,6 +62,12 @@ def read_contract(capability, *, include: tuple[str, ...] = ()):
         content = (directory / name).read_text(encoding="utf-8")
         resources.append(
             {"name": name, "text": content, "sha256": hashlib.sha256(content.encode()).hexdigest()}
+        )
+    if capability in {"keyframe", "location"}:
+        skill_resource = image_prompt_skill()
+        resources.extend(
+            {**resource, "name": f"global/{skill_resource['name']}/{resource['name']}"}
+            for resource in skill_resource["resources"]
         )
     if "consistency-review" in include:
         content = (_SKILLS / "storyrail-consistency-review" / "SKILL.md").read_text(

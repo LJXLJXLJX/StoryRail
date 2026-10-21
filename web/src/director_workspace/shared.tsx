@@ -110,7 +110,7 @@ export function ImagePromptEditorFields({
   return (
     <>
       <label className="card-field">
-        <span>图片引用（Core 固定，只读）</span>
+        <span>实际图片输入（仅供核对，不进入提示词）</span>
         <textarea readOnly rows={6} value={referencePrompt} />
       </label>
       <label className="card-field">
@@ -123,7 +123,8 @@ export function ImagePromptEditorFields({
         />
       </label>
       <p className="muted-copy">
-        可直接编辑提示词，或在外部 Agent 中读取当前图片与专业工作集后提交。
+        引用用途由你或看图后的 Agent 写进下方完整提示词；有图时逐图写标签与用途，正文明确引用。
+        Agent 无法看图时，应请你提供图片内容与用途说明。
       </p>
     </>
   );

@@ -171,12 +171,17 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
 - 六个契约共同附带 `storyrail-consistency-review`：修改前预检授权范围内的上下层联动，提交后重读核对；只读校对不修改；
   需要越出授权范围时先说明。它是共享工作原则，不是第七个生产阶段。
 - 工作集返回当前 revision 的事实、输出 schema 与 provenance：
+  - 图片写作统一遵守 `storyrail-image-prompt-writing`。地点与 Keyframe 契约默认附带 `global/` 下的该 Skill，
+    图片工作集的 `image_prompt.global_skills` 同样交付正文与哈希，`recipes`、`plugin_skills` 补充当前模型标签与写法。
+    有输入图时在 `prompt_text` 顶部逐图写“真实标签: 用途与保留边界”，空行后正文逐图引用，不写文件名；无图时只写正文。
+    默认标签为 `<PictureN>`，Qwen 多图为 `<imageN>`、单图为“图片”。
   - Keyframe 工作集读取目标 Segment 所属完整 Scene 作上下文，并明确 `context_segment_ids` / `writable_segment_ids`
     （`target_segment_ids` 与后者相同）、锁定节点、辅助图映射，以及按 Scene 裁剪的 `saved_keyframe_plan`（未建立时为
     `not_established`）。`scenes[].segments[]` 按顺序给出覆盖的 `shots[]`、派生可见角色与 `continues_from_previous`；
     Scene 给出可选 `location_id` / `state_id`，proposal 写 `segments[]`，每个 Segment 给 `frame_strategy=none|start|end|both`、启用端点计划与可选 `reference_images` 规划，以及
     `continues_from_previous`。每个可见角色的造型条目给出 `look_id`、名称、使用场合、已选造型图 `selected_asset_id` 和派生的
     `has_image`，Agent 可将该 Asset ID 直接交给 `read_media_input` 查看受控原图。
+    已建立关键帧的实际 `image_inputs` 给出 `asset_id`、`label`、`roles`；这些只表示实际输入，不代表图片内容或使用意图，输入变更后重新读取映射。
   - 地点工作集给出完整导演方案、画幅、每个 Scene 的标题/梗概/设定与当前地点/状态，全部 Shot 的构图、运镜、动作与可见角色，
     以及完整地点库（每张独立图片带 kind、强制说明、生成计划、参考图与选图状态）和图片插件的
     `image_prompt` 约定。request 回执内嵌的冻结工作集不带 `image_prompt`，以 `read_professional_workset` 为准。
@@ -187,6 +192,7 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
     其他图片可为任意内容，不限角色、地点或关键帧。`save_reference_image_plan` 可单独新建或编辑其中一张；
     `generate_media(kind="reference_image", target_id=<规划ID>)` 单独生成候选，人类在对应卡片选择后才进入视频输入。
     `reference_image_plans` 给出稳定 ID、正文与选图状态；没有生成计划的已绑定图片也会出现在 `reference_inputs`，
+    每张已保存规划还给出其生图用 `image_inputs`（含角色造型参考），无法解析时给出 `image_inputs_error`；
     其中 `slot_index` 是当前媒体槽位中的位置，`asset_id` 可直接交给 `read_media_input` 查看真实图片。
   - Keyframe 工作集另给出当前 Scene 使用的 `location_library` 语义与扁平 `location_images`（图片 ID、名称、kind、强制说明、
     所属地点和已选图）；这些只帮助 Agent 理解空间，不会自动成为 Provider 图片输入。
@@ -245,8 +251,9 @@ WAV、MP3，单项 ≤ 8 MiB，逐项核对 MIME、长度与 SHA-256；拒绝任
 5. 生成、选择、批准是三件事：Agent 只做生成与观察，提醒用户在 Web 中采用与批准；地点图片同样只能由人类选择。
 6. Segment 视频的参考素材与机制参数只在用户明确要求时增删或替换；未改动的已有绑定原样回传。
 7. 查看项目图片只用 `read_media_input`，直接以 Agent 原生多模态视觉能力判读；不调用 ffmpeg、ImageMagick、Python/PIL 等命令行工具
-   抽取、转码或分析图片。读取被拒绝时如实报告原因，不自行绕道。当前模型本身没有多模态视觉能力时，直接拒绝需要看图的任务并建议
-   用户切换到支持多模态的模型，不用命令行工具、文件名、元数据、提示词或计划文字推测画面来冒充看图。
+   抽取、转码或分析图片。读取被拒绝时如实报告原因，不自行绕道。当前模型没有多模态视觉能力或看不到图片时，
+   告知用户并请其提供各图的内容、参考用途和保留/修改要求；已有充分说明时可据此编写并说明信息来源，缺必要说明则暂停相关提示词编写与生成。
+   不用命令行工具、文件名、元数据、提示词或计划文字推测画面来冒充看图。
 
 ## Playground Agent
 

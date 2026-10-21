@@ -163,7 +163,8 @@ MCP 或 Director 权限。
 
 recipe 参数：`prompt` / `aspect_ratio` / `seed` 由 Core 按领域事实填写；`width` / `height` 默认留空，Playground 可显式填写
 256–2048 内 32 的倍数（须同时填写）以覆盖档位计算。采样器 euler / simple、参考图像素预算 1024、模型文件与 KV cache
-由服务端固定。manifest 的 `image_prompt` 约定让 Core 用 `<imageN>` 编译输入图映射、单图称“图片”、不写画幅句；
+由服务端固定。manifest 的 `image_prompt` 约定让 Core 用 `<imageN>` 提供实际输入标签、单图称“图片”、不写画幅句；
+Core 不把输入清单、默认用途或参考方式指令拼入最终提示词，全局生图 Skill 要求人或看图后的 Agent 编写引用说明与正文。
 随插件发布的 `qwen-image-prompt-writing` Skill（含 Qwen 官方文生图与编辑提示词模板）经 Keyframe / 地点规划工作集的
 `image_prompt.plugin_skills` 交付给 Agent。
 

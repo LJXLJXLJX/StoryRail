@@ -12,7 +12,8 @@
 
 Agent 启动提示、MCP instructions 和 Web 校对任务里的一致性说明，以本文件为唯一事实源；
 加载器只引用 `consistency_instruction.md` 或 `read_professional_contract(include=["consistency-review"])`，
-不在这三处各自改写新的规则。`read_professional_contract` 默认只返回专业 Skill 与参考；
+不在这三处各自改写新的规则。`read_professional_contract` 默认返回专业 Skill 与参考；地点与 Keyframe 还附带
+`global/storyrail-image-prompt-writing/SKILL.md`，其唯一源文件位于 `core/model_providers/skills/`，是跨图片插件的强制写作规范；
 需要共享校对原则时必须显式传 `include=["consistency-review"]`。
 
 Keyframe 入口 `storyrail-keyframe-planner` 读取 Scene 地点、状态与地点图片说明来理解空间，但不输出地点图片绑定；只有人类显式加入

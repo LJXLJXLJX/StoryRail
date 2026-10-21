@@ -349,7 +349,9 @@ def test_arbitrary_explicit_image_references_keep_order(rig):
     rig.generate_image(ids["second"])
     generation = rig.last(KIND.LOCATION_IMAGE, ids["second"])
     assert generation.input_asset_ids == (reference,)
-    assert "地点「客厅」图片「第一张」" in generation.prompt_text
+    assert generation.prompt_text.startswith("第二张。")
+    assert "第一张地点图片。" not in generation.prompt_text
+    assert "输入图对应关系" not in generation.prompt_text
 
 
 def test_panorama_capture_freezes_geometry_and_directly_selects_child(rig):

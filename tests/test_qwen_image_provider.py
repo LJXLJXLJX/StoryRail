@@ -216,9 +216,18 @@ def _keyframe_generations(document, keyframe_id):
     ]
 
 
-def test_keyframe_prompt_uses_plugin_labels_and_omits_aspect_sentence(tmp_path) -> None:
+@pytest.mark.parametrize("explicit_references", [False, True])
+def test_qwen_submission_only_uses_authored_reference_instructions(
+    tmp_path, explicit_references
+) -> None:
     store, _service, document, keyframe_id = asyncio.run(_project_with_costumes(tmp_path))
     character, other = document.reference_library.characters
+    authored = (
+        "<image1>: 甲的身份和造型。\n<image2>: 乙的身份和造型。\n\n"
+        "保留<image1>与<image2>的人物，甲在左、乙在右，平视中景。"
+        if explicit_references
+        else "甲乙并排，平视中景。"
+    )
     # 两个同框角色各提交一张造型图。
     document = _select(
         store,
@@ -227,13 +236,17 @@ def test_keyframe_prompt_uses_plugin_labels_and_omits_aspect_sentence(tmp_path) 
         character.id,
         character.looks[0].id,
         visible_character_ids=[character.id, other.id],
+        prompt_text=authored,
     )
     service, provider, _registry = _qwen_service(store)
     document = asyncio.run(
         service.generate_keyframe(keyframe_id=keyframe_id, expected_revision=document.revision)
     )
     prompt = provider.requests[0].param("prompt")
-    assert "<image1>「" in prompt and "<image2>「" in prompt
+    assert prompt.startswith(authored)
+    assert prompt.count("<image1>: ") == int(explicit_references)
+    assert prompt.count("<image2>: ") == int(explicit_references)
+    assert "只约束对应局部细节" not in prompt and "不照搬其机位" not in prompt
     assert "第 1 张输入图" not in prompt
     assert "项目固定画幅" not in prompt and "保持项目画幅比例" not in prompt
     assert _keyframe_generations(document, keyframe_id)[0].prompt_text == prompt
@@ -248,7 +261,7 @@ def test_single_input_image_is_called_picture_without_label(tmp_path) -> None:
         service.generate_keyframe(keyframe_id=keyframe_id, expected_revision=document.revision)
     )
     prompt = provider.requests[0].param("prompt")
-    assert "图片「" in prompt and "<image1>" not in prompt
+    assert "图片: " not in prompt and "<image1>" not in prompt
 
 
 def test_core_assigns_new_seed_per_submission_and_retry_keeps_it(tmp_path) -> None:
@@ -306,7 +319,10 @@ def test_image_prompt_guide_delivers_skill_once(tmp_path) -> None:
     assert [skill["name"] for skill in guide["plugin_skills"]] == ["qwen-image-prompt-writing"]
     names = {item["name"] for item in guide["plugin_skills"][0]["resources"]}
     assert names == {"SKILL.md", "references/edit-en.txt", "references/t2i-en.txt"}
-    assert image_prompt_guide(None) == {"recipes": [], "plugin_skills": []}
+    unbound = image_prompt_guide(None)
+    assert unbound["recipes"] == [] and unbound["plugin_skills"] == []
+    assert unbound["global_skills"] == guide["global_skills"]
+    assert [skill["name"] for skill in guide["global_skills"]] == ["storyrail-image-prompt-writing"]
 
 
 # ---- Windows 私有服务：请求构造、内部请求、固定图与进度 ----

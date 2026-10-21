@@ -68,9 +68,9 @@ def location_image_plan(document: StructuredDirectorDocument, image_id: str) -> 
                 asset_id,
                 "地点参考" if described is not None else "图片参考",
                 (
-                    f"地点「{described[0]}」图片「{described[1]}」：{described[2]}"
+                    f"地点「{described[0]}」图片「{described[1]}」的内容说明：{described[2]}"
                     if described is not None
-                    else "用户显式选择的图片参考；仅使用与本次创作目标相关的视觉信息。"
+                    else "用户显式选择的图片。"
                 ),
             )
         )
@@ -118,8 +118,7 @@ def location_image_prompt(
     style: ImagePromptStyle = DEFAULT_IMAGE_PROMPT_STYLE,
 ) -> str:
     location, image = plan.location, plan.image
-    mapping = plan.inputs.lines(style)
-    prefix = "输入图对应关系（按实际传入顺序）：\n" + "\n".join(mapping) + "\n\n" if mapping else ""
+    prompt = plan.inputs.validate_prompt(image.prompt_text, style)
     aspect = plan.aspect_ratio or document.aspect_ratio.value
     aspect_sentence = f"固定画幅：{aspect}。" if style.aspect_ratio_in_prompt else ""
     if image.kind is LocationImageKind.PANORAMA:
@@ -137,15 +136,14 @@ def location_image_prompt(
         )
     light = "" if location.key_light is None else f"\n主光：{location.key_light.description}"
     return (
-        prefix
+        prompt
+        + "\n\n"
         + aspect_sentence
         + rule
         + f"\n地点「{location.name}」：{location.description or '（未补充总体说明）'}"
         + fixtures
         + light
         + f"\n本图片实际内容说明目标：{image.description}"
-        + "\n\n图片创作正文：\n"
-        + image.prompt_text.strip()
     )
 
 

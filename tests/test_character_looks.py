@@ -209,7 +209,7 @@ def test_sheet_prompt_layout_and_canvas_sentence_follow_plugin_convention(tmp_pa
     qwen = look_sheet_prompt(plan, ImagePromptStyle(QWEN_MANIFEST, "qwen_image.generate"))
     codex = look_sheet_prompt(plan, ImagePromptStyle(CODEX_MANIFEST, "codex_image.generate"))
     for prompt in (qwen, codex):
-        assert prompt.startswith("输入图对应关系")
+        assert "输入图对应关系" not in prompt and "身份依据" not in prompt
         assert (
             "浅灰色" in prompt
             and "纯白色（#FFFFFF）" not in prompt
@@ -220,7 +220,7 @@ def test_sheet_prompt_layout_and_canvas_sentence_follow_plugin_convention(tmp_pa
         assert "全片日常场景" not in prompt
         # 主体描述在版式之前：先确定画什么，版式只约束构图。
         assert prompt.index("主体「") < prompt.index("设定图硬约束")
-    assert "图片「" in qwen and "4K" not in qwen and "2:1" not in qwen
+    assert "4K" not in qwen and "2:1" not in qwen
     assert "4K" in codex and "2:1" in codex
 
 

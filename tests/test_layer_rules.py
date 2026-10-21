@@ -132,6 +132,11 @@ LAYER_MAP = {
 # 保持按钮与写入规则同源；不允许借此调用 Store 写入或 Provider。
 DIRECTION_WHITELIST = [
     (
+        "core.structured_director.reads.video_recipes",
+        "core.structured_director.reference_image_requests",
+        "L4 复用其他图片的真实生图输入顺序、角色造型与标签，供 Agent 编写引用正文。",
+    ),
+    (
         "core.structured_director.store.domains.video",
         "core.application.caller",
         "阻止 Agent 通过通用 recipe 写入绕过参考图片候选的人类选择",

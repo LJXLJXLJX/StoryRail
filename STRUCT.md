@@ -135,6 +135,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `manifest.py`：语义能力、语义角色、Widget 词汇、manifest DSL 与 `ProviderSnapshot`。
 - `recipe.py`：通用 recipe 请求、媒体槽位线上形状、参数 schema 与按 recipe 保存的机制参数。
 - `registry.py`：`ProviderRegistry`：已安装插件实例、全局能力绑定、插件设置与按绑定解析的提交准备。
+- `image_prompt_skill.py`、`skills/storyrail-image-prompt-writing/SKILL.md`：项目与 Playground 共用的全局图片提示词规范及当前插件指代约定，随图片工作集交付。
 - `settings.py`：`.runtime/providers.json` 的严格读写与原子替换。
 - `http.py`：插件共享的低级 HTTP 传输与响应校验。
 - 每个插件子目录都有 `README.md`（用法与契约）、`provider.py`（请求翻译与 submit/observe/cancel/read_artifact）

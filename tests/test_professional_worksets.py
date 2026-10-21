@@ -33,16 +33,23 @@ def test_all_contract_resources_are_the_published_sources():
         directory = Path(core.director_proposals.__file__).parent / "skills" / skill
         default = read_contract(capability)
         assert default["skill_name"] == skill
-        assert len(default["resources"]) == len(references) + 1
+        global_names = (
+            {"global/storyrail-image-prompt-writing/SKILL.md"}
+            if capability in {"keyframe", "location"}
+            else set()
+        )
+        assert len(default["resources"]) == len(references) + 1 + len(global_names)
         assert {r["name"] for r in default["resources"]} == {
             "SKILL.md",
             *("references/" + name for name in references),
+            *global_names,
         }
         included = read_contract(capability, include=("consistency-review",))
         assert {r["name"] for r in included["resources"]} == {
             "SKILL.md",
             *("references/" + name for name in references),
             "shared/storyrail-consistency-review/SKILL.md",
+            *global_names,
         }
         for resource in included["resources"]:
             name = resource["name"]
@@ -51,6 +58,13 @@ def test_all_contract_resources_are_the_published_sources():
                 if name == "shared/storyrail-consistency-review/SKILL.md"
                 else directory / name
             )
+            if name in global_names:
+                source = (
+                    directory.parents[2]
+                    / "model_providers"
+                    / "skills"
+                    / name.removeprefix("global/")
+                )
             text = source.read_text()
             assert resource["text"] == text
             assert resource["sha256"] == hashlib.sha256(text.encode()).hexdigest()

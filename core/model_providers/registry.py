@@ -12,6 +12,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
+from .image_prompt_skill import image_prompt_skill
 from .manifest import (
     CAPABILITY_LABELS,
     TOOL_LABELS,
@@ -326,7 +327,10 @@ class ProviderRegistry:
 
     def format_prompt_workset(self, capability, recipe_id, value):
         plugin, _recipe = self.recipe_definition(capability, recipe_id)
-        return value if plugin.prompt_formatter is None else plugin.prompt_formatter(value)
+        result = value if plugin.prompt_formatter is None else plugin.prompt_formatter(value)
+        if capability in {Capability.IMAGE_GENERATE, Capability.IMAGE_EDIT}:
+            result = {**result, "global_skills": [image_prompt_skill()]}
+        return result
 
     def recipe_definition(
         self, capability: Capability, recipe_id: str

@@ -338,12 +338,12 @@ _IMAGE_CAPABILITIES = frozenset({Capability.IMAGE_GENERATE, Capability.IMAGE_EDI
 
 @dataclass(frozen=True, slots=True)
 class ImagePromptConvention:
-    """图片插件要求 Core 怎样编译输入图对应关系与画幅句；插件不改写 Core 文本。
+    """图片插件的实际输入标签与画幅句约定；Core 不生成参考用途说明。
 
     ``namespace`` 指向各图片 recipe 的 ``label_namespaces``，输入图按传入顺序编号；
     ``single_image_label`` 非空时，只有一张输入图就改用这个自然指代而不加标签；
     ``aspect_ratio_in_prompt`` 为 False 表示画幅由插件画布保证，Core 不在提示词里写画幅。
-    未声明约定的图片插件使用 Core 默认中文编号与画幅句。
+    未声明约定的图片插件使用 Core 默认 Picture 标签与画幅句。
     """
 
     namespace: str

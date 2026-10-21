@@ -1,5 +1,6 @@
 """从项目领域事实与 recipe 声明构造专业输入；不解释插件采样机制。"""
 
+from core.model_providers.image_prompt_skill import image_prompt_guide as image_prompt_guide
 from core.model_providers.manifest import Capability, Role, recipe_from_json
 from core.model_providers.recipe import SlotBinding, binding_labels, explicit_slots
 
@@ -290,6 +291,7 @@ def keyframe_workset(
         inputs = _keyframe_generation_inputs(document, frame_id)
         if inputs is None:
             raise ValueError("前置Keyframe候选尚未完成，不能提供可执行Prompt输入。")
+        style = image_prompt_style(provider_catalog, inputs.operation)
         result.append(
             {
                 "workset_version": 1,
@@ -298,44 +300,8 @@ def keyframe_workset(
                 "context": json.loads(_keyframe_prompt_context_json(document, frame_id)),
                 "aspect_ratio": document.aspect_ratio.value,
                 "operation": inputs.operation.value,
-                "reference_mapping": _keyframe_reference_prompt(
-                    inputs, image_prompt_style(provider_catalog, inputs.operation)
-                ),
-                "image_inputs": [
-                    {"index": index, "asset_id": asset_id}
-                    for index, asset_id in enumerate(inputs.asset_ids, 1)
-                ],
+                "reference_mapping": _keyframe_reference_prompt(inputs, style),
+                "image_inputs": inputs.describe(style),
             }
         )
     return result
-
-
-def image_prompt_guide(provider_catalog) -> dict[str, object]:
-    """当前绑定的生图/改图 recipe 的输入图指代约定与随插件发布的 Skill。
-
-    Agent 编写 Keyframe 或独立地点图片正文时据此选择写法；输入图映射头与画幅句仍由 Core 编译。
-    同名 Skill 只附带一次。
-    """
-    recipes: list[dict[str, object]] = []
-    skills: dict[str, object] = {}
-    for capability in (Capability.IMAGE_GENERATE, Capability.IMAGE_EDIT):
-        found = None if provider_catalog is None else provider_catalog.recipe_for(capability)
-        if found is None:
-            continue
-        plugin, recipe = found
-        convention = plugin.manifest.image_prompt
-        value = provider_catalog.format_prompt_workset(
-            capability,
-            recipe.id,
-            {
-                "capability": capability.value,
-                "plugin_id": plugin.plugin_id,
-                "recipe_id": recipe.id,
-                "image_prompt": None if convention is None else convention.to_json(),
-                "label_namespaces": dict(recipe.label_namespaces),
-            },
-        )
-        for skill in value.pop("plugin_skills", ()):
-            skills.setdefault(skill["name"], skill)
-        recipes.append(value)
-    return {"recipes": recipes, "plugin_skills": list(skills.values())}

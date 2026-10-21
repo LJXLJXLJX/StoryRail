@@ -107,6 +107,9 @@ def test_capabilities_command_includes_schema(playground_factory) -> None:
         result = await execute_command(
             service, envelope("playground.list_capabilities", {}, "caps"), HUMAN
         )
+        guide = result["data"]["image_prompt"]
+        assert guide["global_skills"][0]["name"] == "storyrail-image-prompt-writing"
+        assert "没有任何实际图片输入时" in guide["global_skills"][0]["resources"][0]["text"]
         for descriptor in result["data"]["capabilities"]:
             assert set(descriptor) == {
                 "id",

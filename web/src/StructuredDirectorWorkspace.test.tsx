@@ -2085,7 +2085,7 @@ describe("StructuredDirectorWorkspace", () => {
     );
     expect(within(manualPlan).queryByLabelText("地点视图使用方式")).toBeNull();
     fireEvent.change(
-      within(manualPlan).getByLabelText("静态画面提示词（自由编写）"),
+      within(manualPlan).getByLabelText("完整图片提示词（引用说明与静态画面正文）"),
       { target: { value: "角色尚未迈步，海风掠过。" } },
     );
     fireEvent.click(

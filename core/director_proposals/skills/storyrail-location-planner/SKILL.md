@@ -35,11 +35,14 @@ description: 从完整结构化脚本规划跨 Scene 共享的地点语义、状
 
 ## 图片规则
 
+- 图片提示词必须遵守全局 `storyrail-image-prompt-writing`，由契约 `global/` 资源及工作集 `image_prompt.global_skills`
+  交付。有输入图时逐张写真实标签与用途，正文逐张明确引用；没有输入图时只写画面正文。
 - 每张地点图片都是独立条目，有自己的 `name`、`kind`、强制 `description`、可选 `prompt_text`、
   `reference_asset_ids` 与人类选定的候选。
 - `description` 是人或 Agent 根据图片实际内容填写的纯文本说明，必须能让后来者不看生成提示词也理解画面；不得只复制
   `prompt_text`。规划还没有真实图片时，应明确写预期承载的画面内容，生成并审阅后再按实际结果修订。
-- `prompt_text` 是下一次生成意图，和实际图片说明分离。只写静态环境，不写人物、剧情动作、图号或画幅标签。
+- `prompt_text` 是下一次生成意图，和实际图片说明分离。画面只描述静态环境，不写人物、剧情动作或画幅标签；
+  有实际参考图时必须按全局规范保留引用说明与正文中的真实标签，不写文件名。
 - `reference_asset_ids` 可任意选择至多 5 张项目图片作为本次生图参考，不要求来自同一地点，也没有“主图”特权。
 - `source` 只用于记录普通图片由全景取景而来的冻结来源 `{panorama_image_id,yaw_deg,pitch_deg,hfov_deg}`。
   通常由 Web 的全景查看器按钮创建，不应由 Planner 批量预造。取景结果生成后是独立图片，不随来源变化或删除而失效。

@@ -17,6 +17,8 @@ Scene、Shot、Segment、对白、旁白、动作结果或时长；若上游镜�
 [`references/cinematic-keyframe-design.md`](references/cinematic-keyframe-design.md)；
 撰写每张帧的画面正文前，必须阅读
 [`references/cinematic-frame-prompting.md`](references/cinematic-frame-prompting.md)。
+必须遵守全局 `storyrail-image-prompt-writing`（契约 `global/` 资源或工作集 `image_prompt.global_skills`）：
+有输入图时把“逐图标签与用途 + 正文显式引用”完整写进提示词，不写文件名；没有输入图时只写画面正文。
 工作集 `image_prompt` 给出当前生图/改图插件的输入图指代约定；其 `plugin_skills` 非空时，正文写法还必须遵守
 随插件发布的专业 Skill（例如 `qwen-image-prompt-writing`），它只改变正文的组织方式，不改变本 Skill 的画面决定。
 
@@ -66,7 +68,7 @@ Scene、Shot、Segment、对白、旁白、动作结果或时长；若上游镜�
 - `2:1` 是更宽更扁的宽银幕，用横向留白、左右分区和前景遮挡组织画面；头顶与脚下空间更少，
   不要先按 16:9 构图再裁上下。
 - 无论画幅如何，必须保持清晰轮廓、可读视线和足够的动作空间。
-- `start_prompt_text` 和 `end_prompt_text` 只写可见画面正文，不写 `9:16`、`16:9`、`2:1`、竖幅、横幅或宽银幕标签；
+- `start_prompt_text` 和 `end_prompt_text` 保存全局 Skill 要求的完整提示词，有输入图时包含逐图用途与正文；不写 `9:16`、`16:9`、`2:1`、竖幅、横幅或宽银幕标签；
   画幅由 Core 在实际提交时固定编译，不能形成两个来源。
 
 ## 首尾槽位与最少约束
@@ -176,4 +178,5 @@ Shot 构图和动作一起用于写出自洽空间，但不能把地点图片当
 
 用户明确指定的提示词语言优先于示例或旧正文。提交前逐项核对明确排除项，例如无字幕、无水印、
 无新增角色：必须在最终静态画面正文中表达，不能只留在分析或工作集，也不能以“场景不变”代替。
-未要求的排除项不自动新增。图片映射由 Core 编译，正文仍只描述静态可见状态；这不授权静默改写已保存提示词。
+未要求的排除项不自动新增。引用说明与正文必须按全局生图 Skill 逐图对应；Core 只校验实际标签，不生成用途或引用段。
+正文仍只描述静态可见状态；这不授权静默改写已保存提示词。

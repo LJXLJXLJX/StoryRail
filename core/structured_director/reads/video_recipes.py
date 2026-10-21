@@ -4,6 +4,9 @@ from core.model_providers.manifest import Capability, Role
 from core.model_providers.recipe import SlotBinding, binding_labels, validate_required_slots
 
 from ..codec.video import _serialize_reference_image
+from ..image_prompt_style import image_prompt_style
+from ..models import GenerationOperation
+from ..reference_image_requests import reference_image_inputs
 from ..video_inputs import binding_for, dialogue_audio_inputs, resolve_video_inputs, segment_context
 
 
@@ -113,6 +116,17 @@ def keyframe_video_context(document, segment_id, views=(), catalog=None):
             for image in video.reference_images
             if image.recipe_id == recipe_id
         ]
+        for plan in result["reference_image_plans"]:
+            image = next(item for item in video.reference_images if item.id == plan["id"])
+            try:
+                inputs = reference_image_inputs(document, video, image)
+                plan["image_inputs"] = inputs.describe(
+                    image_prompt_style(catalog, GenerationOperation.GENERATE)
+                )
+                plan["image_inputs_error"] = None
+            except ValueError as exc:
+                plan["image_inputs"] = []
+                plan["image_inputs_error"] = str(exc)
     if recipe is None:
         return result
     slots = recipe["slots"]

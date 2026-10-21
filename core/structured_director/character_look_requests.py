@@ -78,8 +78,7 @@ def look_sheet_plan(
             ImageInput(
                 asset_id,
                 "身份参考",
-                f"「{card.name}」身份参考；只保持身份识别特征、体型与比例一致，外观以本造型描述为准，"
-                "不复制其构图、姿势或背景。",
+                f"用户为「{card.name}」显式选择的身份参考图。",
             )
         )
     return LookSheetPlan(
@@ -94,8 +93,6 @@ def look_sheet_plan(
 def look_sheet_prompt(
     plan: LookSheetPlan, style: ImagePromptStyle = DEFAULT_IMAGE_PROMPT_STYLE
 ) -> str:
-    lines = plan.inputs.lines(style)
-    mapping = "输入图对应关系（按实际传入顺序）：\n" + "\n".join(lines) + "\n\n" if lines else ""
     # 画幅由插件画布保证时不写画幅与分辨率句，避免提示词与画布形成两个来源。
     canvas = (
         f"固定画幅：{LOOK_SHEET_ASPECT_RATIO} 横构图；"
@@ -106,8 +103,7 @@ def look_sheet_prompt(
     card, look = plan.card, plan.look
     # 主体描述放在版式之前：先确定“画的是什么”，版式只约束构图。
     return (
-        mapping
-        + canvas
+        canvas
         + f"主体「{card.name}」：{(card.visual_description or '').strip()}"
         + f"\n本次造型「{look.name}」：{look.appearance.strip()}"
         + "\n\n"

@@ -11,6 +11,7 @@ authority 是 `.stories/.playground/playground.json`（schema v2）与同目录�
 
 ## 文件职责
 
+- `commands.py`：读写命令入口；`playground.list_capabilities` 附带 `image_prompt`，交付全局生图 Skill 与当前图片插件约定，供 Agent 编写有明确参考用途与正文标签的提示词。
 - `models.py`（L0）：领域模型与自洽校验。
 - `codec.py`（L1）：`playground.json` 严格编解码。
 - `parameters.py`（L1）：所有模型根据 recipe 解析参数、seed 与输入标签，运行记录保存声明；确定性工具按固定参数契约解析。

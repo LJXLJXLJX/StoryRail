@@ -88,4 +88,6 @@ def test_agent_entries_view_images_natively_without_cli_tools():
         assert "不要调用 ffmpeg、ImageMagick、Python/PIL" in text
         assert "如实报告" in text
         assert "没有多模态视觉能力" in text
-        assert "直接拒绝需要看图的任务" in text
+        assert "请用户提供各图的内容" in text
+        assert "暂停相关提示词编写与生成" in text
+        assert "直接拒绝需要看图的任务" not in text

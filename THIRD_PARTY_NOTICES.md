@@ -72,6 +72,10 @@ StoryRail 仓库不包含 whisper.cpp 源码、二进制或模型权重，只包
 （`NoctQ_V4_int8_convrot.safetensors`）是 Qwen Image 2.1 的 Civitai 社区微调权重，StoryRail 仓库不包含
 任何 Qwen 权重。
 
+StoryRail 独立编写的适配层将参考图写作规则统一到全局 `storyrail-image-prompt-writing`：
+逐图说明用途、正文显式引用插件标签、引用说明不含文件名；Qwen 专用层保留 `<imageN>`、单图“图片”与画幅约定。
+上述调整不修改两个上游模板原文或许可证。
+
 ## DirectorSKILL 导演方法参考
 
 - 上游项目：DirectorSKILL（cinematic-director）

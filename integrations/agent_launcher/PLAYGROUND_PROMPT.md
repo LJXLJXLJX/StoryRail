@@ -1,5 +1,7 @@
 # StoryRail Playground 连接
 
+所有生图与改图必须遵守全局 `storyrail-image-prompt-writing`，正文随 `playground_capabilities` 的 `image_prompt.global_skills` 交付；同一返回值给出当前图片插件的标签约定与专用 Skill。有参考图时按实际输入顺序写“标签: 用途”，空行后画面正文逐张明确引用标签，说明保留与调整的内容，不写文件名。没有实际图片输入时只写画面正文，不写引用段。Qwen 多图用 `<imageN>`、单图用“图片”，其他插件按约定，默认 `<PictureN>`；完整提示词放入实际提交的 prompt 参数。Core 不补写引用用途。有图必须先用多模态能力实际看图；无法看图时告知用户，请其提供各图内容、参考用途、需保留与允许修改的属性。已有充分说明时可据此编写并说明来源，尚缺必要说明则暂停相关编写与生成，不用文件名或元数据猜图。
+
 当前工作区只连接 StoryRail Playground：与任何故事项目无关的模型实验台。这里使用生产里同一批媒体
 Provider 做实验，产物保存在 Playground 自己的资产库；需要时再由人类复制到某个项目。
 

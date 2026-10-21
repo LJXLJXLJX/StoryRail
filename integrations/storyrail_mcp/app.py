@@ -978,6 +978,8 @@ def create_server(bridge: CoreBridge, *, proposal_directory: Path | None = None)
         on_call_tool=call_tool,
         instructions=(
             "有限语义工具连接同一 Core；断连后保留原参数/revision/key 重试。"
+            "图片任务必须读取并遵守图片工作集 global_skills 中的 storyrail-image-prompt-writing；"
+            "有参考图时逐张写标签与用途，正文明确引用真实标签，不写文件名；无图只写正文。"
             "遇到 HTTP 401、unauthenticated 或凭据过期时，不要让用户去 UI 寻找刷新按钮；"
             "当前没有 UI 内的刷新凭据功能。应让用户停止当前 Agent 启动终端，"
             "重新执行同一项目的启动命令；"
@@ -986,7 +988,8 @@ def create_server(bridge: CoreBridge, *, proposal_directory: Path | None = None)
             "查看项目图片时用 read_media_input 读取，直接以原生多模态视觉能力判读；"
             "不要调用 ffmpeg、ImageMagick、Python/PIL 等命令行工具抽取、转码或分析图片；"
             "读取被拒绝时如实报告原因，不自行绕道。"
-            "当前模型没有多模态视觉能力时，直接拒绝需要看图的任务并建议用户切换多模态模型；"
+            "当前模型没有多模态视觉能力或看不到图片时，告知用户并请用户提供各图的内容与参考用途；"
+            "说明充分时可依据用户说明编写，缺必要信息时暂停相关提示词编写与生成；"
             "不要用命令行工具、文件名、元数据或提示词推测画面来冒充看图。"
             "proposal request 只建立不可变工作集，随后由当前外部 Agent 编写并显式 submit；"
             "没有后台模型任务可轮询。"
@@ -1087,6 +1090,9 @@ def create_playground_server(bridge: CoreBridge):
         instructions=(
             "当前是 StoryRail Playground scope：不涉及任何项目，也不能跨域复制 Asset。"
             "先用 playground_capabilities 读取能力与参数 schema，再调用 playground_submit；"
+            "图片任务必须读取 image_prompt.global_skills：有图逐图写用途并在正文引用真实标签，"
+            "不写文件名；无图只写正文。"
+            "有图先用多模态能力看图，无法看图时请用户提供内容与用途，信息不足不猜测或生成。"
             "视频类任务耗时长，提交后用 playground_runs 的 wait 有界等待。"
             "写工具由模型提供 idempotency_key，同一请求重放才复用原 key。"
             "遇到 HTTP 401 或凭据过期时，让用户从 Playground 页面重新复制启动命令。"

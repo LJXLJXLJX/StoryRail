@@ -32,7 +32,7 @@ def reference_image_inputs(document, video, image):
                 ImageInput(
                     look.selected_asset_id,
                     "角色造型",
-                    f"角色「{character.name}」的造型「{look.name}」；只参考身份、外观和服装，不复制背景与设定图版式。",
+                    f"角色「{character.name}」的造型「{look.name}」已选图。",
                 )
             )
     entries.extend(
@@ -47,9 +47,7 @@ def reference_image_inputs(document, video, image):
 def reference_image_prompt(document, image, inputs, style):
     if not image.prompt_text.strip():
         raise ValueError("请先规划或填写这张其他图片的画面正文。")
-    lines = inputs.lines(style)
-    return (
-        (("输入图对应关系（按实际提交顺序）：\n" + "\n".join(lines) + "\n\n") if lines else "")
-        + (f"项目画幅：{document.aspect_ratio.value}。\n" if style.aspect_ratio_in_prompt else "")
-        + image.prompt_text.strip()
+    prompt = inputs.validate_prompt(image.prompt_text, style)
+    return prompt + (
+        f"\n\n项目画幅：{document.aspect_ratio.value}。" if style.aspect_ratio_in_prompt else ""
     )

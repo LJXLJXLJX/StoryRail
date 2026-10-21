@@ -219,7 +219,7 @@ def _keyframe_generation_inputs(
         predecessor_input = ImageInput(
             predecessor_asset,
             "前置帧",
-            "前一时间边界 Keyframe；用于保持相邻画面的动作、位置和构图连续。",
+            "前一时间边界 Keyframe 的图片。",
         )
         if source_asset_id is None:
             source_asset_id = predecessor_asset
@@ -235,9 +235,8 @@ def _keyframe_generation_inputs(
             character_inputs.append(
                 ImageInput(
                     look.selected_asset_id,
-                    f"角色「{character.name}」造型",
-                    f"角色「{character.name}」造型「{look.name}」的造型图；"
-                    "保持人物外观、服装和识别特征，只取人物本身，不复制其背景与版式。",
+                    f"角色「{character.name}」造型「{look.name}」",
+                    f"角色「{character.name}」造型「{look.name}」的已选图。",
                 )
             )
     related_bindings = (
@@ -259,7 +258,7 @@ def _keyframe_generation_inputs(
                 f"地点「{described_assets[asset_id][0]}」的图片"
                 f"「{described_assets[asset_id][1]}」：{described_assets[asset_id][2]}"
                 if asset_id in described_assets
-                else "用户为本 Segment 显式选择的辅助参考；只约束对应局部细节。"
+                else "用户为本 Segment 显式选择的图片。"
             ),
         )
         for related in related_bindings
@@ -342,7 +341,7 @@ def _keyframe_reference_prompt(
     inputs: ImageInputs, style: ImagePromptStyle = DEFAULT_IMAGE_PROMPT_STYLE
 ) -> str:
     lines = inputs.lines(style)
-    return "图片引用：\n" + "\n".join(lines) if lines else "图片引用：\n本次未选择引用图片。"
+    return "实际图片输入：\n" + "\n".join(lines) if lines else "本次未选择引用图片。"
 
 
 def _keyframe_effective_prompt(
@@ -352,35 +351,16 @@ def _keyframe_effective_prompt(
     style: ImagePromptStyle = DEFAULT_IMAGE_PROMPT_STYLE,
 ) -> str:
     prompt_text = normalize_keyframe_prompt_text(keyframe.prompt_text)
-    lines = inputs.lines(style)
-    input_context = (
-        "输入图对应关系（按实际传入顺序，禁止混淆身份）：\n" + "\n".join(lines) + "\n\n"
-        if lines
-        else ""
-    )
-    input_rule = (
-        "严格遵守上述每张输入图的用途：编辑底图或前一时间边界是画面基础；"
-        "标记为仅参考或辅助参考的图片只提供其文字说明对应的空间关系或辅助信息，不是编辑底图，"
-        "不照搬其机位、视角与构图，允许按本帧目标重新构图；"
-        if inputs.asset_ids
-        else "根据本帧描述建立完整且自洽的空间、陈设、光线与画风；"
-    )
+    prompt_text = inputs.validate_prompt(prompt_text, style)
     # 画幅由插件画布保证时不写画幅句，避免提示词与画布形成两个来源。
     aspect = style.aspect_ratio_in_prompt
     return (
-        input_context
+        prompt_text
+        + "\n\n"
         + (f"项目固定画幅：{document.aspect_ratio.value}。" if aspect else "")
         + "关键帧硬约束：只生成一张单一静态画面，不得生成分镜拼图、文字或水印；"
-        "准确表现这一时刻的可见状态，并"
-        + input_rule
-        + (
-            "未显式选择的地点图片不得进入输入或影响画面；输出必须保持项目画幅比例与横竖方向，"
-            "不得在连续关键帧之间改变画幅。"
-            if aspect
-            else "未显式选择的地点图片不得进入输入或影响画面。"
-        )
-        + "\n\n本帧创作正文：\n"
-        + prompt_text
+        "准确表现这一时刻的可见状态。"
+        + ("输出必须保持项目画幅比例与横竖方向，不得在连续关键帧之间改变画幅。" if aspect else "")
     )
 
 

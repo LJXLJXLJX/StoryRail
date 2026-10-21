@@ -25,9 +25,10 @@
 ## 提示词约定
 
 manifest 声明 `image_prompt`：输入图标签为 `<image{n}>`，只有一张输入图时称“图片”，画幅不写进提示词。
-Core 按这一约定编译 Keyframe 的输入图映射头。随插件发布的
-`skills/qwen-image-prompt-writing/` 通过 Keyframe 规划工作集的 `image_prompt.plugin_skills`
-交付给 Agent，`references/` 下是 Qwen 官方文生图与编辑提示词模板原文。
+Core 按这一约定提供实际输入标签，不拼接引用清单、默认用途或参考方式指令。全局 `storyrail-image-prompt-writing` 要求有图时逐行写标签与用途、
+正文逐图使用同一标签说明保留与调整，不写文件名；无图只写正文。随插件发布的
+`skills/qwen-image-prompt-writing/` 通过 `image_prompt.plugin_skills` 交付模型专用补充，
+全局规则通过 `image_prompt.global_skills` 交付，项目与 Playground 共用；`references/` 下是 Qwen 官方模板原文。
 
 `manifest.py` 声明槽位、参数与提示词约定，`plugin.py` 提供安装工厂与 Skill 交付，`provider.py`
 把 Core 校验后的通用请求翻译为本插件 HTTP DTO。

@@ -11,7 +11,7 @@ from .models import GenerationOperation
 
 @dataclass(frozen=True, slots=True)
 class ImagePromptStyle:
-    """未绑定插件或插件未声明约定时，使用 Core 默认中文编号并写画幅句。"""
+    """未绑定插件或插件未声明约定时，使用 Core 默认 Picture 标签并写画幅句。"""
 
     manifest: PluginManifest | None = None
     recipe_id: str | None = None

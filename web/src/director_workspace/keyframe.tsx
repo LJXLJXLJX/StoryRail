@@ -938,9 +938,8 @@ export function KeyframeSlot({
                   <div>
                     <h3>当前实际图片输入</h3>
                     <p>
-                      这里合并 Agent 计划、Core
-                      自动引用与手工辅助图；下方实际提交顺序与 Provider
-                      完全一致。
+                      这里列出当前角色造型图、前置帧和手工图片；顺序与实际提交一致。
+                      清单只供核对，参考用途由你或看图后的 Agent 写进完整提示词。
                     </p>
                   </div>
                   {effectivePreview?.error ? (
@@ -1107,9 +1106,9 @@ export function KeyframeSlot({
                         "正在更新图片引用…")
                       : "正在更新图片引用…"
                   }
-                  promptLabel="静态画面提示词（自由编写）"
+                  promptLabel="完整图片提示词（引用说明与静态画面正文）"
                   promptText={promptText}
-                  promptPlaceholder="只描述这个时间边界的一张静态画面……"
+                  promptPlaceholder="有图时逐行写实际标签与用途，空行后写明确引用标签的静态画面正文；无图时只写正文。"
                   onPromptChange={setPromptText}
                   disabled={busy || !enabled}
                 />

@@ -1,5 +1,7 @@
 # StoryRail 项目连接
 
+所有生图与改图必须先遵守全局 `storyrail-image-prompt-writing`（图片工作集 `image_prompt.global_skills`，Keyframe/地点契约的 `global/` 资源）。有参考图时把按实际顺序的“标签: 用途”与逐图显式引用标签的画面正文完整保存，不写文件名；没有实际图片输入时只写画面正文。Qwen 多图用 `<imageN>`、单图用“图片”，其他插件按工作集约定，默认 `<PictureN>`。每次生成前核对当前引用与已保存正文，不能仅在对话里说明用途。Core 只给实际图片输入清单，不会自动生成或拼接引用用途；有图必须先看图，不能把清单当作看图结果。
+
 Segment 的“其他图片”可以是任意画面内容，无时间位置，不限角色、地点或关键帧。用 `read_story` 的 Segment `selection` / `keyframe` / `video_prompt` 扩展读取 `video_inputs.reference_image_plans` 与 `reference_inputs`，或读 `keyframe` / `video_prompt` 专业工作集的 `core_facts.video_inputs[]`。单卡规划或编辑用 `save_reference_image_plan`（slot_index 为 0–3），用户明确要求生成时用 `generate_media(kind="reference_image", target_id=<规划ID>)`；候选用 `list_candidates(kind="video_reference_image")` 读取，图片本身用 `read_media_input(asset_id=...)` 查看。没有生图计划的已绑定图片仍在 `reference_inputs` 中，不应忽略。候选由人类在 Web 选入视频，不能通过通用绑定接口绕过选择。
 
 当前工作区只提供项目连接上下文，不包含待自动执行的任务。等待用户输入，不主动整理引用库或启动任何业务动作。
@@ -22,7 +24,7 @@ Core 仍校验状态、目标、revision 和请求归属。遇到 403 应报告�
 不同工具/动作使用不同 idempotency_key；同一请求的精确重放才复用原 key。未知响应先读取 Core request/run，不能推断未提交。
 四类 proposal 的 request 只建立原始不可变工作集；返回 `awaiting_agent_submission` 时由当前 Agent 直接编写并调用同一 proposal 工具的 submit。不要把持久 run 的 `running` 理解为 Core 正在后台调用模型，也不要无参数轮询 `run.get_status` 等待草稿自行出现。get/read_run 的相同 command_id 是确定性只读命令标识，不是缓存；应同时区分 source_revision 与 observation_revision。
 大型 proposal 不要强行内联进一次工具调用。紧凑 UTF-8 JSON 接近或超过 48 KiB 时，先创建 `/workspace/proposals`，把根为 object 的完整 JSON 写入 `/workspace/proposals/<request_id>.json`，计算实际 `byte_count` 与小写 SHA-256，再用 `submit_proposal.payload.proposal_source={"kind":"workspace_json","byte_count":...,"sha256":"..."}` 提交；不要同时传 `proposal`。该文件只是不受信的出站传输缓冲，不是项目事实；不得放入 Token、凭据或项目之外的内容。Core 仍对重组后的完整 proposal 做同一套严格校验并一次原子落库。
-查看项目图片时，用 read_media_input 读取 Asset，直接以你原生的多模态视觉能力判读画面；不要调用 ffmpeg、ImageMagick、Python/PIL 等命令行工具去抽取、转码、缩放或分析图片，也不要先把图片转成文字再判断。read_media_input 被拒绝（如超过 8 MiB 或格式不支持）时如实报告原因，不自行绕道读取。如果当前模型本身没有多模态视觉能力、看不到返回的图片内容，直接拒绝需要看图的任务，告诉用户当前模型无法查看图片、建议切换到支持多模态的模型；不要用命令行工具、文件名、元数据、提示词或计划文字推测画面内容来冒充看图。
+查看项目图片时，用 read_media_input 读取 Asset，直接以你原生的多模态视觉能力判读画面；不要调用 ffmpeg、ImageMagick、Python/PIL 等命令行工具去抽取、转码、缩放或分析图片，也不要先把图片转成文字再判断。read_media_input 被拒绝（如超过 8 MiB 或格式不支持）时如实报告原因，不自行绕道读取。如果当前模型本身没有多模态视觉能力、看不到返回的图片内容，告知用户无法看图，请用户提供各图的内容、参考用途及需保留和允许修改的属性；已获充分说明时可据此编写并如实说明来源，缺必要信息时暂停相关提示词编写与生成；不要用命令行工具、文件名、元数据、提示词或计划文字推测画面内容来冒充看图。
 业务数据只能通过 Core HTTP/MCP 读取或提交；禁止直接写项目文件、采用候选、Approval 或直接调用媒体 Provider。明确撤回旁白音频只允许使用 `edit_narration.fields.clear_selected_audio="zh"|"en"`；用户审核始终在 StoryRail 页面进行。
 
 读取专业契约前先调用 read_workflow 获取 `contract_hashes[capability]`，再带 `if_hash` 调用 `read_professional_contract`；返回 `unchanged` 时复用本地已读 resources。契约读取与 consistency-review 规则以 `core/director_proposals/skills/README.md` 为单一事实源；默认契约不含 consistency-review，需要时显式 `include=["consistency-review"]`。

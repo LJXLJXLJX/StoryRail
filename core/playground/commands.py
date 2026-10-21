@@ -16,6 +16,7 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from core.application.caller import Caller
+from core.model_providers.image_prompt_skill import image_prompt_guide
 
 from .errors import IdempotencyConflictError, RunNotFoundError
 from .lifecycle import utc_timestamp
@@ -204,7 +205,8 @@ def _execute_read(service, name: str, arguments: dict[str, Any]) -> dict[str, An
     document = service.snapshot()
     if name == "playground.list_capabilities":
         data: dict[str, Any] = {
-            "capabilities": capability_descriptors(service, include_schema=True)
+            "capabilities": capability_descriptors(service, include_schema=True),
+            "image_prompt": image_prompt_guide(service._registry),
         }
     elif name == "playground.list_runs":
         runs = list(document.runs)
