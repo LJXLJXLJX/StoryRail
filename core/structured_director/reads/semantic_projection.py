@@ -16,7 +16,7 @@ from .common import (
 )
 from .dependencies import _get_dependencies
 
-PROJECTION_VERSION = 1
+PROJECTION_VERSION = 2
 _TEXT_PREVIEW = 240
 
 
@@ -192,8 +192,10 @@ def build_semantic_projection(
                 duration_estimate_seconds=node.duration_estimate_seconds,
                 dialogue_lines=[
                     {
+                        "id": line.id,
                         "character_id": line.character_id,
                         "speaker_label": line.speaker_label,
+                        "voice_description": text(line.voice_description),
                         "text": text(line.text),
                         "delivery": text(line.delivery),
                     }

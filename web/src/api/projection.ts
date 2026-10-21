@@ -10,7 +10,8 @@ export type StoryNode = {
   segment_ids?: string[]; shot_ids?: string[];
   narration?: { id: string; zh: StoryNarrationTrack; en: StoryNarrationTrack; timing: string }[];
   dialogue_lines?: {
-    character_id: string | null; speaker_label: string | null; text: string; delivery: string;
+    id: string; character_id: string | null; speaker_label: string | null;
+    voice_description: string | null; text: string; delivery: string;
   }[];
   boundary_from_previous?: { reason: string; continuity_instruction: string } | null;
 };
@@ -48,7 +49,8 @@ const narration = shape({
   id: text, zh: narrationTrack, en: narrationTrack, timing: text,
 });
 const dialogue = shape({
-  character_id: nullable(text), speaker_label: nullable(text), text, delivery: text,
+  id: text, character_id: nullable(text), speaker_label: nullable(text),
+  voice_description: nullable(text), text, delivery: text,
 });
 const boundary = nullable(shape({
   reason: oneOf("model_constraint", "continuity_anchor", "control_boundary", "failure_cost"),
@@ -78,7 +80,7 @@ const detailFields: Record<string, Record<string, Check>> = {
 // 阅读只请求默认故事字段或 text；生产 selection/dependencies 由既有详情入口处理。
 export function parseStoryProjection(value: unknown): StoryProjection {
   if (!isRecord(value) || !shape({
-    projection_version: oneOf(1), project_id: text, revision: integer,
+    projection_version: oneOf(2), project_id: text, revision: integer,
     script_revision: nullable(integer), level: oneOf("outline", "scene", "shot", "segment"),
     scope: isRecord, extensions: array(oneOf("text")), text_mode: oneOf("preview", "full"),
     text_preview_characters: integer, items: array(isRecord), total: integer,

@@ -50,8 +50,10 @@ async def _mixed(tmp_path):
     assert segment["shot_ids"] == list(drama.segments[0].shot_ids)
     assert segment["dialogue_lines"] == [
         {
+            "id": line.id,
             "character_id": line.character_id,
             "speaker_label": line.speaker_label,
+            "voice_description": line.voice_description,
             "text": line.text,
             "delivery": line.delivery,
         }

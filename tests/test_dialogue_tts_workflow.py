@@ -14,6 +14,7 @@ from core.model_providers.boundary import GenerationPhase
 from core.model_providers.recipe import RecipeParams
 from core.structured_director import StructuredDirectorStore
 from core.structured_director.models import GenerationOperation
+from core.structured_director.reads.semantic_projection import build_semantic_projection
 from core.structured_director.reads.snapshot_view import serialize_snapshot
 
 
@@ -499,6 +500,98 @@ def test_splitting_segment_preserves_unchanged_dialogue_tts_across_both_halves(t
         assert selected_after[second.dialogue_lines[0].id] is None
         assert selected_after[original[1].id] == selected_before[original[1].id]
         assert selected_after[original[2].id] == selected_before[original[2].id]
+
+    asyncio.run(run())
+
+
+def test_read_story_dialogue_round_trip_preserves_selected_tts_when_splitting(tmp_path):
+    """Agent 从 read_story 读取的完整对白可原样回填 split_segment，不丢身份或选音。"""
+    from test_prompt_worksets import fixture
+
+    async def run():
+        store, _service, document, _ = await fixture(tmp_path)
+        scene = document.director_script.scenes[0]
+        segment = scene.segments[0]
+        assert document.dialogue_plan is not None
+        selected_before = {
+            item.dialogue_line_id: item.selected_audio_asset_id
+            for item in document.dialogue_plan.items
+        }
+        assert all(selected_before[line.id] is not None for line in segment.dialogue_lines)
+
+        projection = build_semantic_projection(
+            document,
+            {
+                "level": "segment",
+                "scope": {"scene_ids": [scene.id]},
+                "ids": [segment.id],
+                "extensions": ["text"],
+            },
+        )
+        dialogue_lines = projection["items"][0]["dialogue_lines"]
+        assert [line["id"] for line in dialogue_lines] == [
+            line.id for line in segment.dialogue_lines
+        ]
+
+        def half(action, lines, boundary):
+            return {
+                "shot_ids": list(segment.shot_ids),
+                "duration_estimate_seconds": segment.duration_estimate_seconds / 2,
+                "action": action,
+                "dialogue_lines": lines,
+                "boundary_from_previous": boundary,
+            }
+
+        split_at = max(1, len(dialogue_lines) // 2)
+        updated = (
+            DirectorCommandRegistry(store)
+            .execute(
+                DirectorCommand(
+                    "script.apply_operations",
+                    document.revision,
+                    "split-segment-from-read-story",
+                    {
+                        "scope": {"scene_ids": [scene.id]},
+                        "operations": [
+                            {
+                                "op": "split_segment",
+                                "segment_id": segment.id,
+                                "preserve_id": "first",
+                                "first": half(
+                                    "前半段。",
+                                    dialogue_lines[:split_at],
+                                    None,
+                                ),
+                                "second": half(
+                                    "后半段。",
+                                    dialogue_lines[split_at:],
+                                    {
+                                        "reason": "continuity_anchor",
+                                        "continuity_instruction": "承接同一镜头与表演状态。",
+                                    },
+                                ),
+                            }
+                        ],
+                    },
+                )
+            )
+            .document
+        )
+
+        split_lines = [
+            line
+            for item in updated.director_script.scenes[0].segments[:2]
+            for line in item.dialogue_lines
+        ]
+        assert split_lines == list(segment.dialogue_lines)
+        assert updated.dialogue_plan is not None
+        selected_after = {
+            item.dialogue_line_id: item.selected_audio_asset_id
+            for item in updated.dialogue_plan.items
+        }
+        assert {line.id: selected_after[line.id] for line in split_lines} == {
+            line.id: selected_before[line.id] for line in segment.dialogue_lines
+        }
 
     asyncio.run(run())
 

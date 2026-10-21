@@ -119,7 +119,7 @@ flowchart LR
 
 | 分组 | 工具 | 翻译为 |
 | --- | --- | --- |
-| 读取 | `read_story` | `project.get_projection`（outline 用项目 scope；scene/shot/segment 必须给 `scene_ids`；`parent_id` 只用于 segment 且是 Scene ID；Shot 与 Segment 都直接属于 Scene，shot 层给出 `segment_ids`、segment 层给出 `shot_ids`；`h3` / `keyframe` 扩展只用于 segment） |
+| 读取 | `read_story` | `project.get_projection`（outline 用项目 scope；scene/shot/segment 必须给 `scene_ids`；`parent_id` 只用于 segment 且是 Scene ID；Shot 与 Segment 都直接属于 Scene，shot 层给出 `segment_ids`、segment 层给出 `shot_ids`；Segment 的 `dialogue_lines` 给出稳定 `id` 与完整写回字段，脚本编辑前应带 `text` 扩展读取完整正文；`h3` / `keyframe` 扩展只用于 segment） |
 | | `locate_story` | `project.locate_story` |
 | | `read_professional_contract` / `read_professional_workset` | `project.get_contract` / `get_workset`（支持 `if_hash` 内容协商与分块续读） |
 | | `read_workflow` | 主流程 + handoff + contract hashes |

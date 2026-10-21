@@ -325,6 +325,14 @@ def test_prompt_scope_and_no_generation(tmp_path):
                 },
             )
             assert not read.is_error
+            projected_dialogue = read.structured_content["data"]["items"][0]["dialogue_lines"]
+            assert projected_dialogue
+            assert [item["id"] for item in projected_dialogue] == [
+                item.id for item in segment.dialogue_lines
+            ]
+            assert [item["voice_description"] for item in projected_dialogue] == [
+                item.voice_description for item in segment.dialogue_lines
+            ]
             from core.structured_director.reads.semantic_projection import build_semantic_projection
 
             assert read.structured_content["data"] == build_semantic_projection(

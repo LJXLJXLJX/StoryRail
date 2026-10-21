@@ -24,7 +24,8 @@
   返回每张独立图片的类型、说明、生成状态、候选、选图、全景取景能力和允许动作。
   删除、清除与选择通过一次性索引复用正式 mutation 的纯拒绝判定，不重建文档；
   全景字节校验由 Service 的只读接口访问 Store 的 SHA-256 进程缓存。
-- `semantic_projection.py`：显式 Scene scope 的版本化共源故事投影与语义树。
+- `semantic_projection.py`：显式 Scene scope 的版本化共源故事投影与语义树；Segment 对白投影包含稳定
+  `id` 与临时说话者 `voice_description`，可在完整文本模式下无损回填脚本编辑命令。
 - `professional_worksets.py`：`project.get_contract`/`project.get_workset` 分页专业工作集。
 - `execution_reads.py`：handoff（workflow + allowed_actions + task discovery）、request 与
   asset manifest 只读衔接。
