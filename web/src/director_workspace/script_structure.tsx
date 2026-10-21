@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "../DismissibleDialog";
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type {
@@ -470,7 +471,7 @@ function DialogFrame({
 }) {
   return createPortal(
     <div className="scene-asset-picker-backdrop">
-      <section
+      <DismissibleDialog onClose={onClose}
         className="scene-asset-picker-dialog script-structure-dialog"
         role="dialog"
         aria-modal="true"
@@ -488,7 +489,7 @@ function DialogFrame({
           </button>
         </header>
         {children}
-      </section>
+      </DismissibleDialog>
     </div>,
     document.body,
   );

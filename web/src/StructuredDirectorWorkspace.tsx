@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "./DismissibleDialog";
 import { LocationLibrary } from "./director_workspace/location";
 import { StoryReader } from "./director_workspace/StoryReader";
 import { type ReactNode, lazy, Suspense, useContext, useState } from "react";
@@ -135,7 +136,7 @@ export function StructuredDirectorWorkspace(
         {content}
         {locationsOpen ? (
           <div className="director-plan-backdrop">
-            <section className="global-references-dialog location-library-dialog"
+            <DismissibleDialog onClose={() => setLocationsOpen(false)} className="global-references-dialog location-library-dialog"
               role="dialog" aria-modal="true" aria-label="项目地点库">
               <header>
                 <h2>项目地点库</h2>
@@ -144,7 +145,7 @@ export function StructuredDirectorWorkspace(
                 </button>
               </header>
               <LocationLibrary {...flat} />
-            </section>
+            </DismissibleDialog>
           </div>
         ) : null}
         {toolbarTarget ? createPortal(toolbar, toolbarTarget) : toolbar}
@@ -157,7 +158,7 @@ export function StructuredDirectorWorkspace(
                 setDirectorPlanOpen(false);
             }}
           >
-            <section
+            <DismissibleDialog onClose={() => setDirectorPlanOpen(false)}
               className="director-plan-reader"
               role="dialog"
               aria-modal="true"
@@ -236,7 +237,7 @@ export function StructuredDirectorWorkspace(
                   <MarkdownText markdown={snapshot.director_plan_markdown} />
                 </div>
               )}
-            </section>
+            </DismissibleDialog>
           </div>
         ) : null}
         {assetCenterOpen ? (
@@ -322,7 +323,7 @@ export function StructuredDirectorWorkspace(
                 onCloseGlobalReferences?.();
             }}
           >
-            <section
+            <DismissibleDialog onClose={() => onCloseGlobalReferences?.()}
               className="global-references-dialog"
               role="dialog"
               aria-modal="true"
@@ -402,7 +403,7 @@ export function StructuredDirectorWorkspace(
                 ) : null}
                 {error !== null ? <p role="alert">{error}</p> : null}
               </footer>
-            </section>
+            </DismissibleDialog>
           </div>
         ) : null}
       </>
@@ -553,14 +554,14 @@ export function StructuredDirectorWorkspace(
         />
         {editingLibrary ? (
           <div className="director-plan-backdrop">
-            <section
+            <DismissibleDialog onClose={() => setEditingLibrary(false)}
               className="story-reference-editor"
               role="dialog"
               aria-modal="true"
               aria-label="编辑引用库"
             >
               {renderLibrary()}
-            </section>
+            </DismissibleDialog>
           </div>
         ) : null}
       </>,

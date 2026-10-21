@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "../DismissibleDialog";
 import {
   useCallback,
   useEffect,
@@ -357,7 +358,7 @@ export function AssetPanel({
 
   return (
     <div className="playground-window-layer" role="presentation">
-      <section
+      <DismissibleDialog onClose={onClose}
         ref={windowRef}
         className={
           dragging ? "playground-window is-dragging" : "playground-window"
@@ -663,7 +664,7 @@ export function AssetPanel({
             </>
           )}
         </div>
-      </section>
+      </DismissibleDialog>
       {copyTarget === null ? null : (
         <CopyToProjectDialog
           asset={copyTarget}

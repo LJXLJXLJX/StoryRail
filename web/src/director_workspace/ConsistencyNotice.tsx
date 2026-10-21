@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useEscapeDismiss } from "../DismissibleDialog";
 import { copyText } from "./clipboard";
 import { consistencySummary, formatConsistencyTask, type ContentChange } from "./consistency";
 
@@ -8,7 +9,9 @@ export function ConsistencyNotice({ project, changes, reminder, onDismiss }: {
 }) {
   const text = formatConsistencyTask(project, changes);
   const [result, setResult] = useState<{ text: string; copied: boolean } | null>(null);
-  return <aside className="consistency-notice" aria-label="内容修改提醒">
+  const layer = useRef<HTMLElement>(null);
+  useEscapeDismiss(layer, onDismiss);
+  return <aside ref={layer} className="consistency-notice" aria-label="内容修改提醒">
     <p role="status">{consistencySummary(changes)}</p>
     {reminder ? <p>{reminder}</p> : null}
     <div className="consistency-actions">

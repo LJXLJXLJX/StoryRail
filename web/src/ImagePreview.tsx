@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "./DismissibleDialog";
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -15,16 +16,12 @@ function ImagePreviewDialog({ src, alt, onClose }: { src: string; alt: string; o
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <section
+      <DismissibleDialog onClose={onClose}
         className="image-preview-dialog"
         role="dialog"
         aria-modal="true"
         aria-label={`${alt}全图`}
         onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.stopPropagation();
-            onClose();
-          }
           if (event.key === "Tab") event.preventDefault();
         }}
       >
@@ -32,7 +29,7 @@ function ImagePreviewDialog({ src, alt, onClose }: { src: string; alt: string; o
           关闭全图
         </button>
         <img src={src} alt={alt} />
-      </section>
+      </DismissibleDialog>
     </div>,
     document.body,
   );

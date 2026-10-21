@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "../DismissibleDialog";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import type { Location, LocationImage, Scene, StructuredDirectorSnapshot } from "../api";
@@ -179,14 +180,11 @@ function ImageEditorDialog({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <section
+      <DismissibleDialog onClose={onClose}
         className="scene-asset-picker-dialog location-image-editor-dialog"
         role="dialog"
         aria-modal="true"
         aria-label={`编辑地点图片：${image.name}`}
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && !assetPickerOpen) onClose();
-        }}
       >
         <header>
           <div>
@@ -253,7 +251,7 @@ function ImageEditorDialog({
             onChange={setReferences}
           />
         ) : null}
-      </section>
+      </DismissibleDialog>
     </div>,
     document.body,
   );
@@ -271,7 +269,7 @@ function PanoramaDialog({ props, image }: { props: Props; image: LocationImage }
       <button onClick={() => setOpen(true)}>3D 预览</button>
       {open ? (
         <div className="scene-asset-picker-backdrop">
-          <section className="scene-asset-picker-dialog location-panorama-dialog" role="dialog" aria-modal="true" aria-label="全景图 3D 预览">
+          <DismissibleDialog onClose={() => setOpen(false)} className="scene-asset-picker-dialog location-panorama-dialog" role="dialog" aria-modal="true" aria-label="全景图 3D 预览">
             <header><h3>{image.name}</h3><button className="secondary-button" onClick={() => setOpen(false)}>关闭</button></header>
             <PanoramaCameraEditor panoramaUrl={asset.content_url} aspectRatio={props.snapshot.aspect_ratio} view={camera} onChange={setCamera} />
             <label>子图名称<input value={name} onChange={(event) => setName(event.target.value)} /></label>
@@ -283,7 +281,7 @@ function PanoramaDialog({ props, image }: { props: Props; image: LocationImage }
                 setOpen(false);
               }}
             >生成这个视角的子图</button>
-          </section>
+          </DismissibleDialog>
         </div>
       ) : null}
     </>
@@ -320,14 +318,11 @@ function NewLocationDialog({ props, onClose }: { props: Props; onClose: () => vo
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <section
+      <DismissibleDialog onClose={onClose}
         className="scene-asset-picker-dialog location-create-dialog"
         role="dialog"
         aria-modal="true"
         aria-label="添加地点"
-        onKeyDown={(event) => {
-          if (event.key === "Escape") onClose();
-        }}
       >
         <header>
           <div><p className="eyebrow">New location</p><h2>添加地点</h2></div>
@@ -350,7 +345,7 @@ function NewLocationDialog({ props, onClose }: { props: Props; onClose: () => vo
             ).then((ok) => ok && onClose())}
           >创建地点</button>
         </footer>
-      </section>
+      </DismissibleDialog>
     </div>,
     document.body,
   );

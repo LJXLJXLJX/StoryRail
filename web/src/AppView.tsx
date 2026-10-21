@@ -16,6 +16,7 @@ import {
   type KeyframeCharacterReference,
 } from "./api";
 import { ProviderSettingsControl } from "./provider_settings/ProviderSettingsControl";
+import { useEscapeDismiss } from "./DismissibleDialog";
 const StructuredDirectorWorkspace = lazy(() => import("./StructuredDirectorWorkspace").then((module) => ({ default: module.StructuredDirectorWorkspace })));
 const PlaygroundPage = lazy(() => import("./playground/PlaygroundPage").then((module) => ({ default: module.PlaygroundPage })));
 const CreativePartnerPrompt = lazy(() => import("./CreativePartnerPrompt").then((module) => ({ default: module.CreativePartnerPrompt })));
@@ -1725,8 +1726,10 @@ export function FloatingErrorNotice({
   message: string;
   onDismiss: () => void;
 }) {
+  const layer = useRef<HTMLDivElement>(null);
+  useEscapeDismiss(layer, onDismiss);
   return (
-    <div className="floating-error-notice" role="alert" aria-live="assertive">
+    <div ref={layer} className="floating-error-notice" role="alert" aria-live="assertive">
       <span aria-hidden="true">!</span>
       <p>{message}</p>
       <button type="button" aria-label="关闭错误提示" onClick={onDismiss}>
@@ -1742,8 +1745,10 @@ export function FloatingActionNotice({
   message: string;
   onDismiss: () => void;
 }) {
+  const layer = useRef<HTMLDivElement>(null);
+  useEscapeDismiss(layer, onDismiss);
   return (
-    <div className="floating-action-notice" role="status" aria-live="polite">
+    <div ref={layer} className="floating-action-notice" role="status" aria-live="polite">
       <span aria-hidden="true">i</span>
       <p>{message}</p>
       <button type="button" aria-label="关闭操作提示" onClick={onDismiss}>

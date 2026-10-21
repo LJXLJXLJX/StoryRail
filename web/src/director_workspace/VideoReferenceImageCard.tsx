@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "../DismissibleDialog";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import type {
@@ -55,6 +56,12 @@ export function VideoReferenceImageCard({
     character_references: plan?.character_references ?? [],
     reference_asset_ids: plan?.reference_asset_ids ?? [],
   });
+  function closeEditor() {
+    if (!draft.dirty || window.confirm("关闭并放弃未保存的图片规划？")) {
+      draft.reset();
+      setOpen(false);
+    }
+  }
   const asset = binding ? assetById(snapshot.assets, binding.asset_id) : null;
   const sourceKeyframe = binding
     ? snapshot.keyframe_plan?.keyframes.find(
@@ -238,7 +245,7 @@ export function VideoReferenceImageCard({
       {open
         ? createPortal(
             <div className="scene-asset-picker-backdrop">
-              <section
+              <DismissibleDialog onClose={closeEditor}
                 className="scene-asset-picker-dialog reference-image-plan-dialog"
                 role="dialog"
                 aria-modal="true"
@@ -416,15 +423,7 @@ export function VideoReferenceImageCard({
                   <button
                     className="secondary-button"
                     type="button"
-                    onClick={() => {
-                      if (
-                        !draft.dirty ||
-                        window.confirm("关闭并放弃未保存的图片规划？")
-                      ) {
-                        draft.reset();
-                        setOpen(false);
-                      }
-                    }}
+                    onClick={closeEditor}
                   >
                     关闭
                   </button>
@@ -448,7 +447,7 @@ export function VideoReferenceImageCard({
                     }
                   />
                 ) : null}
-              </section>
+              </DismissibleDialog>
             </div>,
             document.body,
           )

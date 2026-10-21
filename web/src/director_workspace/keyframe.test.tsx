@@ -4,7 +4,42 @@ import type { StructuredDirectorSnapshot } from "../api";
 import { structuredDirectorApi } from "../api";
 import fixture from "../test/story_reader_fixture.json";
 import { SegmentKeyframeInputs } from "./keyframe";
+import { VideoReferenceImageCard } from "./VideoReferenceImageCard";
 import { SegmentVideoDraftProvider } from "./RecipeInputsControl";
+
+it("其他图片规划支持 Esc，并保留草稿确认与嵌套素材窗的关闭边界", () => {
+  const snapshot = structuredClone(fixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;
+  const command = vi.fn();
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  render(<VideoReferenceImageCard snapshot={snapshot} segmentId="segment" sceneId="scene"
+    index={3} label="其他图片 4" disabled={false} selectionDisabled={false}
+    onCommand={command} onChoose={vi.fn()} onRemove={vi.fn()} onDescribe={vi.fn()} />);
+  const open = screen.getByRole("button", { name: "规划 / 编辑" });
+  fireEvent.click(open);
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(confirm).not.toHaveBeenCalled();
+  fireEvent.click(open);
+  const editor = screen.getByRole("dialog", { name: "规划其他图片 4" });
+  const input = within(editor).getByRole("textbox", { name: "参考图片用途" });
+  fireEvent.change(input, { target: { value: "展示道具" } });
+  fireEvent.click(within(editor).getByRole("button", { name: "选择生图参考" }));
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(screen.queryByRole("dialog", { name: "参考图片生图输入" })).not.toBeInTheDocument();
+  expect(editor).toBeInTheDocument();
+  expect(confirm).not.toHaveBeenCalled();
+  input.focus();
+  fireEvent.keyDown(input, { key: "Escape" });
+  expect(confirm).toHaveBeenCalledWith("关闭并放弃未保存的图片规划？");
+  expect(input).toHaveValue("展示道具");
+  confirm.mockReturnValue(true);
+  fireEvent.keyDown(input, { key: "Escape" });
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(command).not.toHaveBeenCalled();
+  fireEvent.click(open);
+  expect(screen.getByRole("textbox", { name: "参考图片用途" })).toHaveValue("");
+  confirm.mockRestore();
+});
 
 it("Ref2VA 其他图片在首尾帧下方分别从关键帧与资产库选择并写回 recipe 输入簿", () => {
   const snapshot = structuredClone(

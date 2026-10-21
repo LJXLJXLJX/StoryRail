@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "../DismissibleDialog";
 import { VideoReferenceImageCard } from "./VideoReferenceImageCard";
 import { stableStringify, useProtectedValue } from "./draft_protection";
 import { ImageZoomButton } from "../ImagePreview";
@@ -908,14 +909,11 @@ export function KeyframeSlot({
                 if (event.target === event.currentTarget) closeEditor();
               }}
             >
-              <section
+              <DismissibleDialog onClose={closeEditor}
                 className="scene-submission-preview-dialog keyframe-plan-dialog"
                 role="dialog"
                 aria-modal="true"
                 aria-label={`手动修改${label}关键帧计划`}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") closeEditor();
-                }}
               >
                 <header>
                   <div>
@@ -1171,7 +1169,7 @@ export function KeyframeSlot({
                     onClose={() => setSubmissionPreviewOpen(false)}
                   />
                 ) : null}
-              </section>
+              </DismissibleDialog>
             </div>,
             document.body,
           )

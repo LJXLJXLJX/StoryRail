@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "../DismissibleDialog";
 import { useEffect, useRef, useState } from "react";
 import { ZoomableImage } from "../ImagePreview";
 import type { ClipboardEvent as ReactClipboardEvent } from "react";
@@ -393,7 +394,7 @@ export function AssetCenter({
   }
 
   return <div className="reference-image-dialog-backdrop" role="presentation">
-    <section ref={dialogRef} className="reference-image-dialog asset-center-dialog" role="dialog"
+    <DismissibleDialog onClose={onClose} ref={dialogRef} className="reference-image-dialog asset-center-dialog" role="dialog"
       aria-modal="true" aria-label="资产中心" tabIndex={-1}
       onPaste={pasteImage}>
       <header className="asset-center-header">
@@ -707,7 +708,7 @@ export function AssetCenter({
       )}
       {audioCreatorOpen ? (
         <div className="audio-effect-dialog-backdrop" role="presentation">
-          <section className="audio-effect-dialog audio-generation-dialog" role="dialog" aria-modal="true"
+          <DismissibleDialog onClose={closeAudioCreator} className="audio-effect-dialog audio-generation-dialog" role="dialog" aria-modal="true"
             aria-label="创建音频">
             <header>
               <div>
@@ -849,12 +850,12 @@ export function AssetCenter({
                   disabled={busy || !validAudioGeneration}>提交生成</button>
               </footer>
             </form>
-          </section>
+          </DismissibleDialog>
         </div>
       ) : null}
       {trimAsset !== null ? (
         <div className="audio-effect-dialog-backdrop" role="presentation">
-          <section className="audio-effect-dialog" role="dialog" aria-modal="true"
+          <DismissibleDialog onClose={() => setTrimAssetId(null)} className="audio-effect-dialog" role="dialog" aria-modal="true"
             aria-label="截取音频">
             <header>
               <div>
@@ -906,13 +907,13 @@ export function AssetCenter({
                   disabled={busy || !validTrimRange}>创建截取副本</button>
               </footer>
             </form>
-          </section>
+          </DismissibleDialog>
         </div>
       ) : null}
       {effectAsset !== null ? (
         <div className={`audio-effect-dialog-backdrop${effectTargetTrack === null
           ? "" : " is-nested"}`} role="presentation">
-          <section className="audio-effect-dialog" role="dialog" aria-modal="true"
+          <DismissibleDialog onClose={() => { setEffectAssetId(null); setEffectTargetTrack(null); }} className="audio-effect-dialog" role="dialog" aria-modal="true"
             aria-label="音频后处理">
             <header>
               <div>
@@ -1020,12 +1021,12 @@ export function AssetCenter({
                 </button>
               </footer>
             </form>
-          </section>
+          </DismissibleDialog>
         </div>
       ) : null}
       {videoEditorAsset !== null ? (
         <div className="audio-effect-dialog-backdrop" role="presentation">
-          <section className="audio-effect-dialog audio-track-editor" role="dialog"
+          <DismissibleDialog onClose={() => setVideoEditorAssetId(null)} className="audio-effect-dialog audio-track-editor" role="dialog"
             aria-modal="true" aria-label="视频音轨编辑器">
             <header>
               <div>
@@ -1091,7 +1092,7 @@ export function AssetCenter({
                 </footer>
               </div>
             )}
-          </section>
+          </DismissibleDialog>
         </div>
       ) : null}
       {frameAsset !== null && onLoadVideoFrameInfo !== undefined ? (
@@ -1109,7 +1110,7 @@ export function AssetCenter({
           }}
         />
       ) : null}
-    </section>
+    </DismissibleDialog>
   </div>;
 }
 

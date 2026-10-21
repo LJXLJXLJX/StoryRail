@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { copyText } from "./director_workspace/clipboard";
+import { useEscapeDismiss } from "./DismissibleDialog";
 
 export type ExternalAgentTarget =
   | { kind: "project"; projectId: string }
@@ -9,22 +10,18 @@ export function ExternalAgentEntry({ target }: { target: ExternalAgentTarget }) 
   const [open, setOpen] = useState(false);
   const entry = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  useEscapeDismiss(entry, () => {
+    setOpen(false);
+    trigger.current?.focus();
+  }, open);
   useEffect(() => {
     if (!open) return;
     function closeOutside(event: PointerEvent) {
       if (event.target instanceof Node && !entry.current?.contains(event.target)) setOpen(false);
     }
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-        trigger.current?.focus();
-      }
-    }
     document.addEventListener("pointerdown", closeOutside);
-    document.addEventListener("keydown", closeOnEscape);
     return () => {
       document.removeEventListener("pointerdown", closeOutside);
-      document.removeEventListener("keydown", closeOnEscape);
     };
   }, [open]);
   return (

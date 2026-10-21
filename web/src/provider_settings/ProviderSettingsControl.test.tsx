@@ -110,6 +110,18 @@ function open() {
   fireEvent(details, new Event("toggle"));
 }
 
+it("Esc 关闭顶栏设置并将焦点还给入口", async () => {
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(response(view()));
+  render(<ProviderSettingsControl />);
+  open();
+  const input = await screen.findByRole("combobox", { name: "基础模型" });
+  input.focus();
+  fireEvent.keyDown(input, { key: "Escape" });
+  const summary = screen.getByText("Provider 设置");
+  expect(summary.closest("details")).not.toHaveAttribute("open");
+  expect(summary).toHaveFocus();
+});
+
 it("展开时才读取设置，并按 manifest widget 渲染插件设置与能力绑定", async () => {
   const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValue(response(view()));
   render(<ProviderSettingsControl />);

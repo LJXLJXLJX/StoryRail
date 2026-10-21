@@ -387,6 +387,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `src/api.ts`：HTTP 客户端（项目、设置、结构化导演台全部接口）。
 - `src/StructuredDirectorWorkspace.tsx`：外部 Agent 衔接与单一故事工作台组合。
 - `src/ExternalAgentConnect.tsx`：Agent 选择与当前项目启动命令复制。
+- `src/DismissibleDialog.tsx`：浮窗的统一 Esc 关闭入口，按显示层级处理嵌套窗口、portal 与顶栏面板。
 - `src/provider_settings/SettingField.tsx`：全局设置与 recipe 共用的字段渲染器。
 - `src/provider_settings/ProviderSettingsControl.tsx`：顶栏全局 Provider 设置（能力绑定与按 manifest widget 渲染的插件设置）。
 - `src/CreativePartnerPrompt.tsx`：导入页创作搭档与方案整理两段提示词的复制入口。

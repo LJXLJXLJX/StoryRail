@@ -14,10 +14,12 @@ React + TypeScript + Vite 单页应用。首页导入完整导演方案并管理
 | `playground/` | Playground 页面（独立于项目）；`forms/RecipeForm.tsx` 渲染模型槽位与参数 |
 | `provider_settings/` | 全局能力绑定与实例设置；`SettingField.tsx` 供设置、旁白、资产音频与 recipe 表单共用 |
 | `ExternalAgentConnect.tsx` | 「连接 Agent」面板：选择 Agent 并复制当前项目或 Playground 的启动命令 |
+| `DismissibleDialog.tsx` | 浮窗共用的 Esc 关闭行为；按显示层级每次只关闭最上层，支持嵌套与 portal |
 | `CreativePartnerPrompt.tsx` / `creativePrompts.ts` | 导入页可复制的创作搭档与方案整理提示词；`creative-partner-prompt.md`、`director-plan-convert-prompt.md` 共用 `director-plan-format.md` 交付格式 |
 
 ## 导演台
 
+- 所有浮窗均可按 Esc 关闭，包括编辑器、素材选择器、图片预览、Playground 资产与对比窗口、顶栏面板和浮动提示；嵌套浮窗逐层关闭，关闭不触发保存。
 - 项目创建后立即进入导演台；引用库尚未建立时提示用户在外部 Agent 中整理引用。原始导演方案可只读查看。
 - 结构化脚本生成后，旁白、Keyframe、视频与成片都嵌在同一个 Scene → Shot → Segment 层级里累加显示，不切换专用页面；
   地点库是常驻工具栏中的浮层，Scene 显示所绑定的地点与状态，Shot 显示所绑定视图的缩略图。

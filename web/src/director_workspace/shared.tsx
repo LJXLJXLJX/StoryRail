@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "../DismissibleDialog";
 import { Children, type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 // 图片放大查看已抽到 web/src/ImagePreview.tsx，供导演台外的其它页面（如 Playground 资产窗口）复用。
@@ -145,14 +146,11 @@ export function ImageSubmissionPreviewDialog({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <section
+      <DismissibleDialog onClose={onClose}
         className="scene-submission-preview-dialog"
         role="dialog"
         aria-modal="true"
         aria-label="最终完整提示词预览"
-        onKeyDown={(event) => {
-          if (event.key === "Escape") onClose();
-        }}
       >
         <header>
           <div>
@@ -222,7 +220,7 @@ export function ImageSubmissionPreviewDialog({
             </label>
           </>
         )}
-      </section>
+      </DismissibleDialog>
     </div>,
     document.body,
   );
@@ -251,14 +249,11 @@ export function SingleImageAssetPickerDialog({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <section
+      <DismissibleDialog onClose={onClose}
         className="scene-asset-picker-dialog"
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") onClose();
-        }}
       >
         <header>
           <div>
@@ -300,7 +295,7 @@ export function SingleImageAssetPickerDialog({
             <p className="muted-copy">项目中还没有可用图片。</p>
           ) : null}
         </div>
-      </section>
+      </DismissibleDialog>
     </div>,
     document.body,
   );
@@ -325,14 +320,11 @@ export function SingleAudioAssetPickerDialog({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <section
+      <DismissibleDialog onClose={onClose}
         className="scene-asset-picker-dialog"
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") onClose();
-        }}
       >
         <header>
           <div>
@@ -371,7 +363,7 @@ export function SingleAudioAssetPickerDialog({
             <p className="muted-copy">项目中还没有 WAV 音频。</p>
           ) : null}
         </div>
-      </section>
+      </DismissibleDialog>
     </div>,
     document.body,
   );
@@ -408,14 +400,11 @@ export function SingleVideoAssetPickerDialog({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <section
+      <DismissibleDialog onClose={onClose}
         className="scene-asset-picker-dialog"
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") onClose();
-        }}
       >
         <header>
           <div>
@@ -466,7 +455,7 @@ export function SingleVideoAssetPickerDialog({
             <p className="muted-copy">{emptyMessage}</p>
           ) : null}
         </div>
-      </section>
+      </DismissibleDialog>
     </div>,
     document.body,
   );
@@ -497,14 +486,11 @@ export function MultiImageAssetPickerDialog({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <section
+      <DismissibleDialog onClose={onClose}
         className="scene-asset-picker-dialog"
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") onClose();
-        }}
       >
         <header>
           <div>
@@ -551,7 +537,7 @@ export function MultiImageAssetPickerDialog({
             <p className="muted-copy">项目中还没有可用图片。</p>
           ) : null}
         </div>
-      </section>
+      </DismissibleDialog>
     </div>,
     document.body,
   );
@@ -937,14 +923,11 @@ export function VideoFrameExtractDialog({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <section
+      <DismissibleDialog onClose={onClose}
         className="scene-asset-picker-dialog video-frame-extract-dialog"
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") onClose();
-        }}
       >
         <header>
           <div>
@@ -1005,7 +988,7 @@ export function VideoFrameExtractDialog({
             </form>
           )}
         </div>
-      </section>
+      </DismissibleDialog>
     </div>,
     document.body,
   );

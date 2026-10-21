@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "../DismissibleDialog";
 import {
   useEffect,
   useRef,
@@ -99,7 +100,7 @@ export function GenerationCandidates({
       />
       {promptGeneration !== null ? (
         <div className="reference-image-dialog-backdrop" role="presentation">
-          <section className="reference-image-dialog generation-prompt-dialog" role="dialog"
+          <DismissibleDialog onClose={() => setPromptGenerationId(null)} className="reference-image-dialog generation-prompt-dialog" role="dialog"
             aria-modal="true" aria-labelledby="generation-prompt-title">
             <header className="reference-image-dialog-header">
               <div><p className="eyebrow">Generation prompt</p>
@@ -133,7 +134,7 @@ export function GenerationCandidates({
               <button type="button" className="primary-button"
                 onClick={() => setPromptGenerationId(null)}>完成</button>
             </footer>
-          </section>
+          </DismissibleDialog>
         </div>
       ) : null}
     </div>

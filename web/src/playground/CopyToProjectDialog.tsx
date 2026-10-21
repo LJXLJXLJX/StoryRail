@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "../DismissibleDialog";
 import { useEffect, useState } from "react";
 
 import {
@@ -72,7 +73,7 @@ export function CopyToProjectDialog({
 
   return (
     <div className="playground-dialog-backdrop" role="presentation">
-      <section
+      <DismissibleDialog onClose={onClose}
         className="playground-dialog"
         role="dialog"
         aria-label="复制到项目"
@@ -147,7 +148,7 @@ export function CopyToProjectDialog({
             {pending ? "复制中…" : "确认复制"}
           </button>
         </div>
-      </section>
+      </DismissibleDialog>
     </div>
   );
 }

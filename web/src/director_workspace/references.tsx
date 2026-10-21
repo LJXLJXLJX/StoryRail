@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "../DismissibleDialog";
 import { stableStringify } from "./draft_protection";
 import { ImageZoomButton, ZoomableImage } from "../ImagePreview";
 import {
@@ -392,7 +393,7 @@ function LookImageDialog({
   const assetLabel = (assetId: string) =>
     lookImages.has(assetId) ? `造型：${lookImages.get(assetId)}` : `@${assetId.slice(0, 6)}`;
   return <div className="reference-image-dialog-backdrop" role="presentation">
-    <section className="reference-image-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <DismissibleDialog onClose={onClose} className="reference-image-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <header className="reference-image-dialog-header">
         <div><p className="eyebrow">Look image</p><h2 id={titleId}>造型图：{look.name}</h2></div>
         <button type="button" className="dialog-close-button" aria-label="关闭造型图"
@@ -483,7 +484,7 @@ function LookImageDialog({
           })}</div>
         )}
       </div> : null}
-    </section>
+    </DismissibleDialog>
   </div>;
 }
 
@@ -516,7 +517,7 @@ export function ReferenceVoiceDialog({
   const wavAssets = assets.filter((asset) => asset.media_type === "audio/wav");
   const titleId = `create-reference-voice-${cardId}`;
   return <div className="reference-image-dialog-backdrop" role="presentation">
-    <section className="reference-image-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <DismissibleDialog onClose={onClose} className="reference-image-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <header className="reference-image-dialog-header">
         <div><p className="eyebrow">Reference voice</p><h2 id={titleId}>{title}</h2></div>
         <button type="button" className="dialog-close-button" aria-label={`关闭${title}`}
@@ -570,7 +571,7 @@ export function ReferenceVoiceDialog({
             busy={busy} onAttach={onAttach} onCancel={onCancel} onDismiss={onDismiss} />
         </div>
       ) : null}
-    </section>
+    </DismissibleDialog>
   </div>;
 }
 

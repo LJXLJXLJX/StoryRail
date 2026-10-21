@@ -1,3 +1,4 @@
+import { DismissibleDialog } from "../DismissibleDialog";
 import { useRef } from "react";
 import { ZoomableImage } from "../ImagePreview";
 
@@ -32,7 +33,7 @@ export function CompareDrawer({
   const keys = differingKeys(runs);
   return (
     <div className="playground-compare-drawer" role="presentation">
-      <section
+      <DismissibleDialog onClose={onClose}
         className="playground-compare-panel"
         role="dialog"
         aria-label="对比所选实验"
@@ -122,7 +123,7 @@ export function CompareDrawer({
             </tbody>
           </table>
         )}
-      </section>
+      </DismissibleDialog>
     </div>
   );
 }

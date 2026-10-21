@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useEscapeDismiss } from "../DismissibleDialog";
 import {
   providerSettingsApi,
   type ProviderPluginView,
@@ -14,6 +15,15 @@ export function ProviderSettingsControl({ onChanged }: { onChanged?: () => void 
   const [view, setView] = useState<ProviderSettingsView | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const details = useRef<HTMLDetailsElement>(null);
+  useEscapeDismiss(details, () => {
+    if (details.current) {
+      details.current.open = false;
+      details.current.querySelector("summary")?.focus();
+    }
+    setOpen(false);
+  }, open);
 
   // 首次展开时才读取，避免每次进入页面都请求设置。
   function load(open: boolean) {
@@ -39,9 +49,13 @@ export function ProviderSettingsControl({ onChanged }: { onChanged?: () => void 
 
   return (
     <details
+      ref={details}
       className="provider-settings"
       title="只影响之后新提交的任务"
-      onToggle={(event) => load(event.currentTarget.open)}
+      onToggle={(event) => {
+        setOpen(event.currentTarget.open);
+        load(event.currentTarget.open);
+      }}
     >
       <summary aria-label="全局 Provider 设置">Provider 设置</summary>
       <div className="provider-settings-panel">
