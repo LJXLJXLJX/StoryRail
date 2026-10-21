@@ -362,6 +362,24 @@ export function VideoReferenceImageCard({
                   ))}
                 </fieldset>
                 <p>显式生图参考：{draft.value.reference_asset_ids.length}/5</p>
+                {draft.value.reference_asset_ids.length > 0 ? (
+                  <div className="reference-image-plan-thumbnails" aria-label="已选生图参考">
+                    {draft.value.reference_asset_ids.map((assetId, referenceIndex) => {
+                      const reference = assetById(snapshot.assets, assetId);
+                      const name = reference?.display_name ?? `参考图 ${referenceIndex + 1}`;
+                      return (
+                        <figure key={assetId}>
+                          {reference ? (
+                            <ZoomableImage src={reference.content_url} alt={name} />
+                          ) : (
+                            <span className="reference-thumbnail-missing">图片不可用</span>
+                          )}
+                          <figcaption title={name}>{referenceIndex + 1}. {name}</figcaption>
+                        </figure>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <button
                   className="secondary-button"
                   disabled={disabled}

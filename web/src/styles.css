@@ -616,6 +616,10 @@ body.is-resizing-agent-sidebar { cursor: ew-resize; user-select: none; }
 .reference-image-plan-dialog { max-width: 780px; overflow-y: auto; max-height: 90vh; }
 .reference-image-plan-dialog > label { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
 .reference-image-plan-dialog textarea { width: 100%; box-sizing: border-box; min-height: 100px; }
+.reference-image-plan-thumbnails { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin: 12px 0; }
+.reference-image-plan-thumbnails figure { min-width: 0; margin: 0; padding: 6px; border: 1px solid var(--line); background: var(--white); }
+.reference-image-plan-thumbnails .image-preview-trigger > img, .reference-image-plan-thumbnails .reference-thumbnail-missing { width: 100%; height: 90px; object-fit: contain; background: var(--paper-deep); }
+.reference-image-plan-thumbnails figcaption { margin-top: 6px; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 1100px) { .segment-other-image-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 680px) { .segment-other-image-list { grid-template-columns: minmax(0, 1fr); } }
 .segment-other-image-source-actions, .segment-other-image-save-actions { display: flex; flex-wrap: wrap; gap: 8px; }

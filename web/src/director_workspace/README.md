@@ -23,6 +23,7 @@ Segment 编辑器用起始/结束镜头选择连续覆盖区间并写 `shot_ids`
 Web 不推断映射。
 同一文件在首尾帧下方展示 Ref2VA“其他图片”，由 `VideoReferenceImageCard.tsx` 渲染四个独立槽位卡片。
 每张支持规划正文、用途、角色造型与显式生图参考，提交生成候选、人工选图，也可从已选关键帧或资产库选图。
+规划弹窗按当前草稿的参考图顺序展示已选缩略图与名称，点击可查看全图；在素材窗增减选择后即时更新。
 图片没有时间位置，排除当前已启用边界；候选回调不自动绑定。规划存于 `SegmentVideo.reference_images`，实际选图
 只存于当前 recipe 的 `additional_images`。`RecipeInputsControl.tsx` 共享草稿保持视频参数与输入修改原子保存。
 
