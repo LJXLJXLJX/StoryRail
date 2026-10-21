@@ -1256,22 +1256,22 @@ export function App() {
                 ),
               )
             }
-            onImportImage={(file, category) =>
+            onImportImage={(files, category) =>
               void mutateStructuredDirector(() =>
-                structuredDirectorApi.importImageAsset(
+                structuredDirectorApi.importImageAssets(
                   selectedProject.id,
                   structuredSnapshot.revision,
-                  file,
+                  files,
                   category,
                 ),
               )
             }
-            onImportMedia={(file) =>
+            onImportMedia={(files) =>
               void mutateStructuredDirector(() =>
-                structuredDirectorApi.importMediaAsset(
+                structuredDirectorApi.importMediaAssets(
                   selectedProject.id,
                   structuredSnapshot.revision,
-                  file,
+                  files,
                 ),
               )
             }

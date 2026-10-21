@@ -726,6 +726,25 @@ export const structuredDirectorApi = {
       expected_revision: String(revision),
       category,
     }),
+  importImageAssets: async (
+    projectId: string,
+    revision: number,
+    files: File[],
+    category: ImageAssetCategory,
+  ) => {
+    if (files.length === 0) throw new Error("请选择至少一个图片文件。");
+    let updated = await binaryAssetUpload(projectId, "assets/images", files[0], {
+      expected_revision: String(revision),
+      category,
+    });
+    for (const file of files.slice(1)) {
+      updated = await binaryAssetUpload(projectId, "assets/images", file, {
+        expected_revision: String(updated.revision),
+        category,
+      });
+    }
+    return updated;
+  },
   importMediaAsset: (
     projectId: string,
     revision: number,
@@ -738,6 +757,30 @@ export const structuredDirectorApi = {
       { expected_revision: String(revision) },
       canonicalImportedMediaType(file),
     ),
+  importMediaAssets: async (
+    projectId: string,
+    revision: number,
+    files: File[],
+  ) => {
+    if (files.length === 0) throw new Error("请选择至少一个媒体文件。");
+    let updated = await binaryAssetUpload(
+      projectId,
+      "assets/media",
+      files[0],
+      { expected_revision: String(revision) },
+      canonicalImportedMediaType(files[0]),
+    );
+    for (const file of files.slice(1)) {
+      updated = await binaryAssetUpload(
+        projectId,
+        "assets/media",
+        file,
+        { expected_revision: String(updated.revision) },
+        canonicalImportedMediaType(file),
+      );
+    }
+    return updated;
+  },
   deleteAsset: (projectId: string, revision: number, assetId: string) =>
     request(
       `${structuredDirectorResource(projectId)}/assets/${assetId}`,

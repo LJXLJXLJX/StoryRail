@@ -41,6 +41,45 @@ describe("StoryRail App", () => {
       }),
     );
   });
+  it("多选导入按每次 Core 响应的 revision 串行上传图片和媒体", async () => {
+    const snapshots = [8, 9, 10, 11].map((revision) => ({
+      ...reviewingSnapshot,
+      revision,
+    }));
+    const fetcher = vi.spyOn(globalThis, "fetch");
+    snapshots.forEach((current) => fetcher.mockResolvedValueOnce(response(current)));
+    const firstImage = new File(["png-1"], "第一张.png", { type: "image/png" });
+    const secondImage = new File(["webp-2"], "第二张.webp", { type: "image/webp" });
+    const firstAudio = new File(["wav-1"], "第一段.wav", { type: "audio/x-wav" });
+    const secondVideo = new File(["mp4-2"], "第二段.mp4", { type: "video/mp4" });
+
+    await structuredDirectorApi.importImageAssets(
+      projectId,
+      7,
+      [firstImage, secondImage],
+      "keyframe",
+    );
+    await structuredDirectorApi.importMediaAssets(
+      projectId,
+      9,
+      [firstAudio, secondVideo],
+    );
+
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      `/api/projects/${projectId}/structured-director/assets/images?expected_revision=7&category=keyframe&filename=${encodeURIComponent(firstImage.name)}`,
+      `/api/projects/${projectId}/structured-director/assets/images?expected_revision=8&category=keyframe&filename=${encodeURIComponent(secondImage.name)}`,
+      `/api/projects/${projectId}/structured-director/assets/media?expected_revision=9&filename=${encodeURIComponent(firstAudio.name)}`,
+      `/api/projects/${projectId}/structured-director/assets/media?expected_revision=10&filename=${encodeURIComponent(secondVideo.name)}`,
+    ]);
+    expect(fetcher.mock.calls[2]?.[1]).toEqual(expect.objectContaining({
+      headers: { "Content-Type": "audio/wav" },
+      body: firstAudio,
+    }));
+    expect(fetcher.mock.calls[3]?.[1]).toEqual(expect.objectContaining({
+      headers: { "Content-Type": "video/mp4" },
+      body: secondVideo,
+    }));
+  });
   it.each(["awaiting_reference_proposal", "reviewing_references", "reviewing_videos", "reviewing_final"])("%s 阶段均在 Logo 旁提供只打开 Agent 的命令", async (status) => {
     const current = status === "reviewing_videos" || status === "reviewing_final"
       ? productionSnapshot({ status }) : snapshot(status, []);

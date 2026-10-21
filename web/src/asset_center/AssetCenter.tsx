@@ -63,8 +63,8 @@ interface AssetCenterProps {
   canImportMedia: boolean;
   canDeleteAssets: boolean;
   onClose: () => void;
-  onImportImage: (file: File, category: ImageAssetCategory) => void;
-  onImportMedia: (file: File) => void;
+  onImportImage: (files: File[], category: ImageAssetCategory) => void;
+  onImportMedia: (files: File[]) => void;
   onDelete: (assetId: string) => void;
   onDeleteMany: (assetIds: string[]) => void;
   onGenerateAudio: (settings: AudioGenerationSettings) => Promise<boolean>;
@@ -312,18 +312,18 @@ export function AssetCenter({
     }
   }
 
-  function importImage(file: File | undefined) {
-    if (file === undefined) return;
+  function importImages(files: File[]) {
+    if (files.length === 0) return;
     if (importCategory === "") {
       setImportError("请先选择图片分类，再导入图片。");
       return;
     }
-    if (!isSupportedImage(file)) {
+    if (!files.every(isSupportedImage)) {
       setImportError("只支持 PNG、JPEG 或 WebP 图片。");
       return;
     }
     setImportError(null);
-    onImportImage(file, importCategory);
+    onImportImage(files, importCategory);
     if (inputRef.current !== null) inputRef.current.value = "";
   }
 
@@ -332,19 +332,19 @@ export function AssetCenter({
     if (file === null) return;
     event.preventDefault();
     if (busy || !canImportImage) return;
-    importImage(file);
+    importImages([file]);
   }
 
-  function importMedia(file: File | undefined) {
-    if (file === undefined) return;
-    const supported = filter === "audio" ? isSupportedAudio(file) :
-      filter === "video" ? isSupportedVideo(file) : false;
+  function importMedia(files: File[]) {
+    if (files.length === 0) return;
+    const supported = filter === "audio" ? files.every(isSupportedAudio) :
+      filter === "video" ? files.every(isSupportedVideo) : false;
     if (!supported) {
       setImportError(filter === "audio" ? "只支持 WAV 音频。" : "只支持 MP4 视频。");
       return;
     }
     setImportError(null);
-    onImportMedia(file);
+    onImportMedia(files);
     if (mediaInputRef.current !== null) mediaInputRef.current.value = "";
   }
 
@@ -445,11 +445,11 @@ export function AssetCenter({
           <span className="asset-import-paste-hint">
             {filter === "audio" ? "仅支持 WAV" : "仅支持 MP4"}
           </span>
-          <input ref={mediaInputRef} type="file" hidden
+          <input ref={mediaInputRef} type="file" hidden multiple
             aria-label={filter === "audio" ? "选择要导入的本地音频" : "选择要导入的本地视频"}
             accept={filter === "audio" ? ".wav,audio/wav" : ".mp4,video/mp4"}
             disabled={busy || !canImportMedia}
-            onChange={(event) => importMedia(event.target.files?.[0])} />
+            onChange={(event) => importMedia(Array.from(event.target.files ?? []))} />
         </> : <>
           <label className="asset-import-category">
             <span>导入为</span>
@@ -471,10 +471,10 @@ export function AssetCenter({
             加入本地图片
           </button>
           <span className="asset-import-paste-hint">或按 ⌘V / Ctrl+V 粘贴图片</span>
-          <input ref={inputRef} type="file" hidden
+          <input ref={inputRef} type="file" hidden multiple
             aria-label="选择要加入资产中心的本地图片" accept="image/png,image/jpeg,image/webp"
             disabled={busy || !canImportImage}
-            onChange={(event) => importImage(event.target.files?.[0])} />
+            onChange={(event) => importImages(Array.from(event.target.files ?? []))} />
         </>}
         {filter === "audio" ? (
           <button className="primary-button" type="button"

@@ -505,13 +505,20 @@ describe("StructuredDirectorWorkspace", () => {
       },
     );
     const file = new File(["png-bytes"], "character.png", { type: "image/png" });
+    const secondFile = new File(["png-bytes-2"], "character-2.webp", {
+      type: "image/webp",
+    });
     fireEvent.click(screen.getByRole("button", { name: "设置造型图" }));
     fireEvent.click(screen.getByRole("tab", { name: "从资产库选择" }));
     expect(screen.getByAltText("角色图片资产预览")).toHaveAttribute("src", "/asset.png");
     fireEvent.change(screen.getByLabelText("选择要加入资产库的本地图片"), {
-      target: { files: [file] },
+      target: { files: [file, secondFile] },
     });
-    expect(onImportImage).toHaveBeenCalledWith(file, "character_reference");
+    expect(screen.getByLabelText("选择要加入资产库的本地图片")).toHaveAttribute("multiple");
+    expect(onImportImage).toHaveBeenCalledWith(
+      [file, secondFile],
+      "character_reference",
+    );
     // 选择卡片角落的放大按钮只放大，不改变选择。
     fireEvent.click(screen.getByRole("button", { name: "查看全图：@aaaaaa" }));
     const fullImage = screen.getByRole("dialog", { name: "@aaaaaa全图" });
@@ -1476,13 +1483,15 @@ describe("StructuredDirectorWorkspace", () => {
     });
     expect(importButton).toBeEnabled();
     const file = new File(["png"], "关键帧.png", { type: "image/png" });
+    const secondFile = new File(["webp"], "关键帧-2.webp", { type: "image/webp" });
     const fileInput =
       within(dialog).getByLabelText("选择要加入资产中心的本地图片");
     expect(fileInput).toHaveAttribute("hidden");
+    expect(fileInput).toHaveAttribute("multiple");
     fireEvent.change(fileInput, {
-      target: { files: [file] },
+      target: { files: [file, secondFile] },
     });
-    expect(onImportImage).toHaveBeenCalledWith(file, "keyframe");
+    expect(onImportImage).toHaveBeenCalledWith([file, secondFile], "keyframe");
     fireEvent.click(within(dialog).getByRole("tab", { name: "角色参考图" }));
     expect(within(dialog).getByAltText("角色图.png")).toBeInTheDocument();
     expect(within(dialog).queryByAltText("场景图.png")).not.toBeInTheDocument();
@@ -1513,16 +1522,17 @@ describe("StructuredDirectorWorkspace", () => {
     });
     fireEvent.paste(dialog, { clipboardData });
     expect(onImportImage).toHaveBeenCalledTimes(1);
-    const [file, category] = onImportImage.mock.calls[0];
-    expect(file).toBeInstanceOf(File);
-    expect(file.name).toBe("剪贴板图片.png");
-    expect(file.type).toBe("image/png");
+    const [files, category] = onImportImage.mock.calls[0];
+    expect(files).toHaveLength(1);
+    expect(files[0]).toBeInstanceOf(File);
+    expect(files[0].name).toBe("剪贴板图片.png");
+    expect(files[0].type).toBe("image/png");
     expect(category).toBe("location_image");
     expect(
       within(dialog).getByText("或按 ⌘V / Ctrl+V 粘贴图片"),
     ).toBeInTheDocument();
   });
-  it("资产中心可分别导入 WAV 音频和 MP4 视频", async () => {
+  it("资产中心可分别多选导入 WAV 音频和 MP4 视频", async () => {
     const onImportMedia = vi.fn();
     renderWorkspace({ onImportMedia });
     fireEvent.click(screen.getByRole("button", { name: "资产中心" }));
@@ -1531,18 +1541,24 @@ describe("StructuredDirectorWorkspace", () => {
     fireEvent.click(within(dialog).getByRole("tab", { name: "音频" }));
     expect(within(dialog).getByText("仅支持 WAV")).toBeInTheDocument();
     const wav = new File(["wav"], "现场录音.wav", { type: "audio/wav" });
-    fireEvent.change(within(dialog).getByLabelText("选择要导入的本地音频"), {
-      target: { files: [wav] },
+    const secondWav = new File(["wav-2"], "环境声.wav", { type: "audio/wav" });
+    const audioInput = within(dialog).getByLabelText("选择要导入的本地音频");
+    expect(audioInput).toHaveAttribute("multiple");
+    fireEvent.change(audioInput, {
+      target: { files: [wav, secondWav] },
     });
-    expect(onImportMedia).toHaveBeenCalledWith(wav);
+    expect(onImportMedia).toHaveBeenCalledWith([wav, secondWav]);
 
     fireEvent.click(within(dialog).getByRole("tab", { name: "视频" }));
     expect(within(dialog).getByText("仅支持 MP4")).toBeInTheDocument();
     const mp4 = new File(["mp4"], "现场素材.mp4", { type: "video/mp4" });
-    fireEvent.change(within(dialog).getByLabelText("选择要导入的本地视频"), {
-      target: { files: [mp4] },
+    const secondMp4 = new File(["mp4-2"], "补充素材.mp4", { type: "video/mp4" });
+    const videoInput = within(dialog).getByLabelText("选择要导入的本地视频");
+    expect(videoInput).toHaveAttribute("multiple");
+    fireEvent.change(videoInput, {
+      target: { files: [mp4, secondMp4] },
     });
-    expect(onImportMedia).toHaveBeenLastCalledWith(mp4);
+    expect(onImportMedia).toHaveBeenLastCalledWith([mp4, secondMp4]);
   });
   it("音色描述只在 AI 设计入口出现并用于 Breeze 音色设计", async () => {
     const onDesignVoice = vi.fn<DesignVoiceHandler>();
@@ -3748,8 +3764,8 @@ function renderWorkspace(
     onDesignVoice?: DesignVoiceHandler;
     onDesignNarratorVoice?: WorkspaceActions["onDesignNarratorVoice"];
     onUpdateNarrator?: WorkspaceActions["onUpdateNarrator"];
-    onImportImage?: (file: File) => void;
-    onImportMedia?: (file: File) => void;
+    onImportImage?: WorkspaceActions["onImportImage"];
+    onImportMedia?: WorkspaceActions["onImportMedia"];
     onDeleteAsset?: (assetId: string) => void;
     onDeleteAssets?: (assetIds: string[]) => void;
     onGenerateAudio?: WorkspaceActions["onGenerateAudio"];

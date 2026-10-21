@@ -32,7 +32,7 @@ React + TypeScript + Vite 单页应用。首页导入完整导演方案并管理
 
 ## 资产中心
 
-图片分为角色参考、地点图片、全景取景图、Keyframe 与抽帧图；导入本地图片必须先选分类（全景取景图与抽帧图由 Core 生成，不接受导入）。音频与视频页导入 WAV/MP4，Core 从实际字节读取时长，
+图片分为角色参考、地点图片、全景取景图、Keyframe 与抽帧图；导入本地图片必须先选分类（全景取景图与抽帧图由 Core 生成，不接受导入）。图片、音频与视频文件选择器都允许多选；Web 按文件逐项调用现有导入入口，并用每次响应的最新 revision 串行提交。音频与视频页导入 WAV/MP4，Core 从实际字节读取时长，
 只登记为未绑定 Asset。音频栏目可按当前 voice.design / speech.synthesize recipe“创建音频”：领域输入提供描述、正文或参考 WAV/文字稿，机制参数按 editable_params 渲染，发送 recipe_params。
 可对 WAV 截取或后处理（preset、strength、seed、起止时间），产出保留原文件的副本。每个 MP4 提供“处理音轨”：分离并预览人声与背景，
 分别调节音量及其时间区间、即时试听、选择原始或处理后副本，再重新混音为新 MP4。使用状态与删除许可只看 Core 给出的 `usage_reasons` 与

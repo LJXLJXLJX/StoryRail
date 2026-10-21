@@ -131,8 +131,8 @@ export interface WorkspaceActions {
   onUpdateCharacter: (card: CharacterCardDraft) => void;
   onUpdateNarrator: (profile: NarratorProfile) => void;
   onDiscard: (kind: CardKind, cardId: string) => void;
-  onImportImage: (file: File, category: ImageAssetCategory) => void;
-  onImportMedia: (file: File) => void;
+  onImportImage: (files: File[], category: ImageAssetCategory) => void;
+  onImportMedia: (files: File[]) => void;
   onDeleteAsset: (assetId: string) => void;
   onDeleteAssets: (assetIds: string[]) => void;
   onGenerateAudio: (settings: AudioGenerationSettings) => Promise<boolean>;
@@ -189,6 +189,6 @@ export type WorkspaceFlatProps = Omit<StructuredDirectorWorkspaceProps, "actions
 export const WorkspaceActionsContext = createContext<WorkspaceActions | null>(null);
 
 export type ImportImageHandler = (
-  file: File,
+  files: File[],
   category: ImageAssetCategory,
 ) => void;

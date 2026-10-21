@@ -456,12 +456,13 @@ function LookImageDialog({
             加入本地文件到资产库
           </button>
           <input ref={importInput} className="asset-import-input" type="file"
+            multiple
             aria-label="选择要加入资产库的本地图片"
             accept="image/png,image/jpeg,image/webp" disabled={busy}
             onChange={(event) => {
-              const file = event.target.files?.[0] ?? null;
-              if (file !== null && isSupportedImageType(file.type)) {
-                onImportImage(file, "character_reference");
+              const files = Array.from(event.target.files ?? []);
+              if (files.length > 0 && files.every((file) => isSupportedImageType(file.type))) {
+                onImportImage(files, "character_reference");
               }
               event.target.value = "";
             }} />

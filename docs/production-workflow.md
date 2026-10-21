@@ -418,7 +418,7 @@ sequenceDiagram
 
 资产中心与生产层并列，不改变主流程：
 
-- 导入图片（先选分类：角色参考 / 地点图片 / Keyframe）、WAV、MP4；Core 校验签名、读取真实时长，只登记未绑定 Asset；
+- 可一次多选导入图片（先选分类：角色参考 / 地点图片 / Keyframe）、WAV 或 MP4；Web 按文件串行提交并沿用 Core 返回的最新 revision，Core 逐项校验签名、读取真实时长，只登记未绑定 Asset；
 - 通用音频生成（当前绑定的 voice.design 或 speech.synthesize recipe），产物进入 `assets/audio/generated/`，不绑定任何节点；
 - WAV 截取与后处理（`radio` 效果，可限定时间区间），生成保留原文件的新副本；
 - 视频音轨编辑：分离人声/背景 → 可对任一轨后处理 → 选择原始或处理后副本 → 各自增益与时间区间 → 重新混音为新 MP4；
