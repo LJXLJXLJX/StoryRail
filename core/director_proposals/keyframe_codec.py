@@ -36,18 +36,23 @@ _CHARACTER_REFERENCES_SCHEMA = {
 }
 _KEYFRAME_OVERRIDES = {
     "segments[].segment_id": {"pattern": "^[0-9a-f]{32}$"},
-    "segments[].frame_strategy": {"enum": ["start", "end", "both"]},
+    "segments[].frame_strategy": {"enum": ["none", "start", "end", "both"]},
     # 承接上一 Segment 时首帧必须为空；非承接时由 dataclass 校验非空。
     "segments[].start_prompt_text": {"maxLength": 18_000},
     "segments[].start_visible_character_ids": {
         "items": {"type": "string", "pattern": "^[0-9a-f]{32}$"}
     },
     "segments[].start_character_references": _CHARACTER_REFERENCES_SCHEMA,
-    "segments[].end_prompt_text": {"minLength": 1, "maxLength": 18_000},
+    "segments[].end_prompt_text": {"maxLength": 18_000},
     "segments[].end_visible_character_ids": {
         "items": {"type": "string", "pattern": "^[0-9a-f]{32}$"}
     },
     "segments[].end_character_references": _CHARACTER_REFERENCES_SCHEMA,
+    "segments[].reference_images": {"maxItems": 4},
+    "segments[].reference_images[].slot_index": {"minimum": 0, "maximum": 3},
+    "segments[].reference_images[].prompt_text": {"minLength": 1, "maxLength": 18000},
+    "segments[].reference_images[].description": {"minLength": 1, "maxLength": 2000},
+    "segments[].reference_images[].character_references": _CHARACTER_REFERENCES_SCHEMA,
     "segments[].continues_from_previous": {"__required__": True},
 }
 _STATIC_OUTPUT_SCHEMA = generate_schema(KeyframePlanProposal, _KEYFRAME_OVERRIDES)
@@ -77,7 +82,11 @@ def parse_keyframe_plan(raw_response: str) -> KeyframePlanProposal:
                         if segment.start_prompt_text.strip()
                         else ""
                     ),
-                    end_prompt_text=normalize_keyframe_prompt_text(segment.end_prompt_text),
+                    end_prompt_text=(
+                        normalize_keyframe_prompt_text(segment.end_prompt_text)
+                        if segment.end_prompt_text.strip()
+                        else ""
+                    ),
                 )
                 for segment in proposal.segments
             ),
@@ -186,7 +195,7 @@ def compile_plan_operations(
                     )
             if slot.locked:
                 continue
-            if not planned.continues_from_previous:
+            if not planned.continues_from_previous and planned.frame_strategy in {"start", "both"}:
                 operations.append(
                     UpdateKeyframeFields(
                         keyframe_id=slot.start_keyframe_id,
@@ -195,14 +204,15 @@ def compile_plan_operations(
                         character_references=_selections(planned.start_character_references),
                     )
                 )
-            operations.append(
-                UpdateKeyframeFields(
-                    keyframe_id=slot.end_keyframe_id,
-                    prompt_text=planned.end_prompt_text,
-                    visible_character_ids=planned.end_visible_character_ids,
-                    character_references=_selections(planned.end_character_references),
+            if planned.frame_strategy in {"end", "both"}:
+                operations.append(
+                    UpdateKeyframeFields(
+                        keyframe_id=slot.end_keyframe_id,
+                        prompt_text=planned.end_prompt_text,
+                        visible_character_ids=planned.end_visible_character_ids,
+                        character_references=_selections(planned.end_character_references),
+                    )
                 )
-            )
             operations.append(
                 SetKeyframeActivation(
                     segment_id=slot.segment_id,
@@ -338,6 +348,12 @@ def _enforce_required_shared_boundaries(
                 "invalid_proposal",
                 f"Core 指定的共享边界越出授权；请至少扩大到相邻 Segment：{missing}。",
             )
+        if left.frame_strategy == "none" or right.frame_strategy == "none":
+            raise ProposalError(
+                "keyframe",
+                "invalid_proposal",
+                "共享边界必须启用前段尾帧和后段首帧，不能选择 none。",
+            )
         if left.frame_strategy == "start":
             left = replace(left, frame_strategy="both")
         if right.frame_strategy == "end":
@@ -356,50 +372,18 @@ def _enforce_required_shared_boundaries(
     return replace(proposal, segments=tuple(segments))
 
 
-def _enforce_segment_anchors(
-    proposal: KeyframePlanProposal, scene: KeyframeSceneInput
-) -> tuple[KeyframeSegmentProposal, ...]:
-    """保住段内连续交接与已声明角色覆盖，不推测图片的实际视觉内容。"""
-    proposal_by_id = {item.segment_id: item for item in proposal.segments}
-    segments: list[KeyframeSegmentProposal] = []
-    for index, segment in enumerate(scene.segments):
-        planned = proposal_by_id.get(segment.id)
-        if planned is None:
-            continue
-        if planned.continues_from_previous:
-            previous = scene.segments[index - 1] if index > 0 else None
-            previous_plan = None if previous is None else proposal_by_id.get(previous.id)
-            start_characters = (
-                set(previous_plan.end_visible_character_ids) if previous_plan is not None else set()
-            )
-        else:
-            start_characters = set(planned.start_visible_character_ids)
-        end_characters = set(planned.end_visible_character_ids)
-        start_enabled = planned.frame_strategy in {"start", "both"}
-        end_enabled = planned.frame_strategy in {"end", "both"}
-        # 单帧不能漏掉另一端已明确出现的角色；不向空镜伪加角色。
-        if start_characters - end_characters:
-            start_enabled = True
-        if end_characters - start_characters:
-            end_enabled = True
-        strategy = (
-            "both" if start_enabled and end_enabled else ("start" if start_enabled else "end")
-        )
-        segments.append(replace(planned, frame_strategy=strategy))
-    return tuple(segments)
-
-
-def _output_schema(scenes: tuple[KeyframeSceneInput, ...]) -> dict[str, object]:
+def _output_schema(scenes: tuple[KeyframeSceneInput, ...], video_inputs=()) -> dict[str, object]:
     segments = [
         segment for scene in scenes for segment in scene.segments if segment.planning_enabled
     ]
     schema = deepcopy(_STATIC_OUTPUT_SCHEMA)
+    by_id = {item["segment_id"]: item for item in video_inputs}
     segments_schema = schema["properties"]["segments"]
     segments_schema.update(
         minItems=len(segments),
         maxItems=len(segments),
         prefixItems=[
-            _segment_schema(scene, index)
+            _segment_schema(scene, index, by_id.get(segment.id))
             for scene in scenes
             for index, segment in enumerate(scene.segments)
             if segment.planning_enabled
@@ -409,7 +393,7 @@ def _output_schema(scenes: tuple[KeyframeSceneInput, ...]) -> dict[str, object]:
     return schema
 
 
-def _segment_schema(scene: KeyframeSceneInput, index: int) -> dict[str, object]:
+def _segment_schema(scene: KeyframeSceneInput, index: int, video_input=None) -> dict[str, object]:
     segment = scene.segments[index]
     character_ids = [item.id for item in segment.visible_characters]
     boundary_character_ids = list(character_ids)
@@ -426,11 +410,12 @@ def _segment_schema(scene: KeyframeSceneInput, index: int) -> dict[str, object]:
     segment_schema = deepcopy(_STATIC_OUTPUT_SCHEMA["properties"]["segments"]["items"])
     properties = segment_schema["properties"]
     properties["segment_id"] = {"type": "string", "const": segment.id}
+    if video_input is not None and video_input["available"]:
+        properties["frame_strategy"] = {"type": "string", "enum": video_input["frame_strategies"]}
     if index == 0:
         properties["continues_from_previous"] = {"type": "boolean", "const": False}
         properties["start_prompt_text"] = {
             "type": "string",
-            "minLength": 1,
             "maxLength": 18_000,
         }
     else:
@@ -489,7 +474,7 @@ def compile_keyframe_proposal(proposal, scenes, required_shared_boundaries=()):
             if boundary[0] in planned_ids and boundary[1] in planned_ids
         )
         partial = _enforce_required_shared_boundaries(partial, scene, required + declared)
-        normalized.extend(_enforce_segment_anchors(partial, scene))
+        normalized.extend(partial.segments)
     proposal = replace(proposal, segments=tuple(normalized))
     _validate_scope(proposal, scenes)
     operations = compile_plan_operations(proposal, _scene_slots(scenes))

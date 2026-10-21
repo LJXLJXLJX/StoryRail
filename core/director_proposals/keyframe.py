@@ -120,6 +120,29 @@ class KeyframeSceneInput:
 
 
 @dataclass(frozen=True, slots=True)
+class KeyframeReferenceImageProposal:
+    slot_index: int
+    prompt_text: str
+    description: str
+    visible_character_ids: tuple[str, ...]
+    character_references: tuple[KeyframeCharacterReferenceProposal, ...] = ()
+    reference_asset_ids: tuple[str, ...] = ()
+
+    def __post_init__(self):
+        if type(self.slot_index) is not int or not 0 <= self.slot_index < 4:
+            raise ValueError("其他图片槽位必须为 0–3。")
+        if not self.prompt_text.strip() or len(self.prompt_text) > 18000:
+            raise ValueError("其他图片画面正文不能为空或过长。")
+        if not self.description.strip() or len(self.description) > 2000:
+            raise ValueError("其他图片说明不能为空或过长。")
+        _validate_character_ids(self.visible_character_ids)
+        _validate_character_references(self.character_references, self.visible_character_ids)
+        _validate_character_ids(self.reference_asset_ids)
+        if len(self.reference_asset_ids) > 5:
+            raise ValueError("其他图片的生图输入最多 5 张。")
+
+
+@dataclass(frozen=True, slots=True)
 class KeyframeSegmentProposal:
     """一个 Segment 的首尾计划；承接上一 Segment 时首帧字段必须为空。"""
 
@@ -132,14 +155,20 @@ class KeyframeSegmentProposal:
     end_visible_character_ids: tuple[str, ...]
     start_character_references: tuple[KeyframeCharacterReferenceProposal, ...] = ()
     end_character_references: tuple[KeyframeCharacterReferenceProposal, ...] = ()
+    reference_images: tuple[KeyframeReferenceImageProposal, ...] = ()
 
     def __post_init__(self) -> None:
+        positions = [item.slot_index for item in self.reference_images]
+        if len(positions) > 4 or len(positions) != len(set(positions)):
+            raise ValueError("其他图片规划最多 4 张且槽位不得重复。")
         if type(self.continues_from_previous) is not bool:
             raise ValueError("Segment 是否承接上一 Segment 必须是布尔值。")
-        if self.frame_strategy not in {"start", "end", "both"}:
-            raise ValueError("Segment 关键帧策略必须是 start、end 或 both。")
-        if not self.end_prompt_text.strip() or len(self.end_prompt_text) > 18_000:
-            raise ValueError("Segment 尾帧提示词不能为空或过长。")
+        if self.frame_strategy not in {"none", "start", "end", "both"}:
+            raise ValueError("Segment 关键帧策略必须是 none、start、end 或 both。")
+        if len(self.end_prompt_text) > 18_000 or (
+            self.frame_strategy in {"end", "both"} and not self.end_prompt_text.strip()
+        ):
+            raise ValueError("启用的尾帧提示词不能为空，正文不能过长。")
         _validate_character_ids(self.end_visible_character_ids)
         _validate_character_references(
             self.end_character_references, self.end_visible_character_ids
@@ -162,8 +191,10 @@ class KeyframeSegmentProposal:
                     "请清空 start_character_references。"
                 )
             return
-        if not self.start_prompt_text.strip() or len(self.start_prompt_text) > 18_000:
-            raise ValueError("Segment 首帧提示词不能为空或过长。")
+        if len(self.start_prompt_text) > 18_000 or (
+            self.frame_strategy in {"start", "both"} and not self.start_prompt_text.strip()
+        ):
+            raise ValueError("启用的首帧提示词不能为空，正文不能过长。")
         _validate_character_ids(self.start_visible_character_ids)
         _validate_character_references(
             self.start_character_references, self.start_visible_character_ids

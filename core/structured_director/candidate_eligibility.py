@@ -42,6 +42,16 @@ def generation_is_reviewable(document, generation) -> bool:
         # 对白候选由人类试听判断；正文、音色或表演参数变化只作软提示。
         # target_id 已把候选约束在同一条 DialogueLine，不能替用户拒绝历史 WAV。
         return _dialogue_line(document, target_id) is not None and asset.media_type == "audio/wav"
+    if kind is ReferenceGenerationKind.VIDEO_REFERENCE_IMAGE:
+        return (
+            document.video_plan is not None
+            and any(
+                image.id == target_id
+                for video in document.video_plan.segments
+                for image in video.reference_images
+            )
+            and asset.media_type.startswith("image/")
+        )
     if kind is ReferenceGenerationKind.KEYFRAME_IMAGE:
         return (
             document.keyframe_plan is not None

@@ -72,7 +72,7 @@ def _segment_plan(
 
 
 class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
-    async def test_single_anchor_must_cover_characters_at_both_endpoints(self) -> None:
+    async def test_character_changes_do_not_override_planner_strategy(self) -> None:
         scene = _scene(
             (
                 KeyframeSegmentInput(
@@ -84,8 +84,8 @@ class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
             )
         )
         for strategy, start_ids, end_ids, expected in (
-            ("start", [], [CHARACTER.id], "both"),
-            ("end", [CHARACTER.id], [], "both"),
+            ("start", [], [CHARACTER.id], "start"),
+            ("end", [CHARACTER.id], [], "end"),
             ("start", [CHARACTER.id], [CHARACTER.id], "start"),
             ("end", [CHARACTER.id], [CHARACTER.id], "end"),
             ("start", [], [], "start"),
@@ -102,6 +102,43 @@ class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(actual.frame_strategy, expected)
                 self.assertEqual(list(actual.start_visible_character_ids), start_ids)
                 self.assertEqual(list(actual.end_visible_character_ids), end_ids)
+
+    async def test_unused_endpoints_can_be_empty_and_do_not_overwrite_saved_plans(self):
+        scene = _scene(
+            (
+                KeyframeSegmentInput(
+                    "2" * 32,
+                    "小幅动作",
+                    (_shot("1" * 32),),
+                    start_keyframe_id="3" * 32,
+                    end_keyframe_id="4" * 32,
+                ),
+            )
+        )
+        for strategy, start_prompt, end_prompt, expected in (
+            ("none", "", "", []),
+            ("start", "起点", "", ["3" * 32]),
+            ("end", "", "终点", ["4" * 32]),
+        ):
+            proposal = _segment_plan(
+                "2" * 32, strategy=strategy, start_prompt=start_prompt, end_prompt=end_prompt
+            )
+            result = compile_fixture(_plan([proposal]), scenes=(scene,))
+            self.assertEqual(
+                [
+                    item.keyframe_id
+                    for item in result.operations
+                    if isinstance(item, UpdateKeyframeFields)
+                ],
+                expected,
+            )
+            activation = next(
+                item for item in result.operations if isinstance(item, SetKeyframeActivation)
+            )
+            self.assertEqual(
+                (activation.start_enabled, activation.end_enabled),
+                (strategy == "start", strategy == "end"),
+            )
 
     async def test_independent_segments_follow_planner_strategy(self) -> None:
         """相邻 Segment 独立边界时按各自策略启用，不强制共享。"""
@@ -154,8 +191,9 @@ class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
                                 keyframe_id
                                 for segment in segments
                                 for keyframe_id in (
-                                    segment.start_keyframe_id,
-                                    segment.end_keyframe_id,
+                                    segment.start_keyframe_id
+                                    if strategy == "start"
+                                    else segment.end_keyframe_id,
                                 )
                             },
                         )
@@ -212,7 +250,7 @@ class PureKeyframeSemanticsTests(unittest.IsolatedAsyncioTestCase):
         activations = [
             item for item in proposal.operations if isinstance(item, SetKeyframeActivation)
         ]
-        self.assertEqual([item.keyframe_id for item in updates], [start_id, end_id])
+        self.assertEqual([item.keyframe_id for item in updates], [start_id])
         self.assertEqual([item.segment_id for item in activations], [segment_id])
         self.assertTrue(activations[0].start_enabled)
         self.assertFalse(activations[0].end_enabled)

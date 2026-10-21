@@ -173,12 +173,17 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
   - Keyframe 工作集读取目标 Segment 所属完整 Scene 作上下文，并明确 `context_segment_ids` / `writable_segment_ids`
     （`target_segment_ids` 与后者相同）、锁定节点、辅助图映射，以及按 Scene 裁剪的 `saved_keyframe_plan`（未建立时为
     `not_established`）。`scenes[].segments[]` 按顺序给出覆盖的 `shots[]`、派生可见角色与 `continues_from_previous`；
-    Scene 给出可选 `location_id` / `state_id`，proposal 只写 `segments[]`，每个 Segment 给 `start` / `end` 计划与
+    Scene 给出可选 `location_id` / `state_id`，proposal 写 `segments[]`，每个 Segment 给 `frame_strategy=none|start|end|both`、启用端点计划与可选 `reference_images` 规划，以及
     `continues_from_previous`。每个可见角色的造型条目给出 `look_id`、名称、使用场合、已选造型图 `selected_asset_id` 和派生的
     `has_image`，Agent 可将该 Asset ID 直接交给 `read_media_input` 查看受控原图。
   - 地点工作集给出完整导演方案、画幅、每个 Scene 的标题/梗概/设定与当前地点/状态，全部 Shot 的构图、运镜、动作与可见角色，
     以及完整地点库（每张独立图片带 kind、强制说明、生成计划、参考图与选图状态）和图片插件的
     `image_prompt` 约定。request 回执内嵌的冻结工作集不带 `image_prompt`，以 `read_professional_workset` 为准。
+  - Keyframe 工作集的 `video_inputs[]` 给出每个 Segment 的当前 recipe、合法 `frame_strategies`、媒体槽位与
+    `require_any`、已绑定独立参考与已保存 `reference_image_plans`。没有时间约束时可按 recipe 选择 `none`；
+    关闭端点无需编造正文，Core 保留其历史计划。可选 `segments[].reference_images[]` 按 0–3 的 `slot_index`
+    增补无时间位置参考图规划，不生成、不选择、不改变已有视频绑定；已有成功候选和选图受到规划保护。
+    `generate_media(kind="reference_image", target_id=<规划ID>)` 单独生成候选，人类在对应卡片选择后才进入视频输入。
   - Keyframe 工作集另给出当前 Scene 使用的 `location_library` 语义与扁平 `location_images`（图片 ID、名称、kind、强制说明、
     所属地点和已选图）；这些只帮助 Agent 理解空间，不会自动成为 Provider 图片输入。
   - 视频工作集给出当前 `video_recipe`（槽位与参数声明、`editable_params`）、`context`（含 `scene.driver`，决定无对白时是否声明预留旁白通道；

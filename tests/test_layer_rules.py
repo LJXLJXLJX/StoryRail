@@ -85,6 +85,8 @@ LAYER_MAP = {
     "core.structured_director.asset_metadata": 2,
     "core.structured_director.narration_timing": 2,
     "core.structured_director.planning_inputs": 2,
+    "core.structured_director.reference_image_mutations": 2,
+    "core.structured_director.reference_image_requests": 4,
     "core.structured_director.store": 3,
     "core.structured_director.reads": 4,
     "core.structured_director.reads.common": 4,
@@ -129,6 +131,26 @@ LAYER_MAP = {
 # 地点权限投影可依赖同层 location_requests 的只读编译，
 # 保持按钮与写入规则同源；不允许借此调用 Store 写入或 Provider。
 DIRECTION_WHITELIST = [
+    (
+        "core.structured_director.store.domains.video",
+        "core.application.caller",
+        "阻止 Agent 通过通用 recipe 写入绕过参考图片候选的人类选择",
+    ),
+    (
+        "core.structured_director.reference_image_mutations",
+        "core.structured_director.video_mutations",
+        "共享视频目标 scope 与冲突 Generation 拒绝规则",
+    ),
+    (
+        "core.structured_director.reference_image_requests",
+        "core.structured_director.keyframe_requests",
+        "复用同一角色造型选择与就绪校验",
+    ),
+    (
+        "core.structured_director.planning_proposals",
+        "core.director_commands.video_commands",
+        "专业 proposal 编译为严格的视频命令输入值对象",
+    ),
     (
         "core.structured_director.reads.location_image",
         "core.structured_director.location_requests",

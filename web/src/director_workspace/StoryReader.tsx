@@ -583,6 +583,7 @@ export function StoryReader(props: WorkspaceFlatProps) {
                       }
                       busy={busy}
                       videoDependenciesEditable={can("edit_segment_video_plan")}
+                      onReferenceImageAction={props.onReferenceImageAction}
                       onSaveVideoInputs={props.onSaveSegmentVideoInputs}
                       onSaveKeyframe={props.onSaveKeyframe}
                       onGenerate={props.onGenerateKeyframe}

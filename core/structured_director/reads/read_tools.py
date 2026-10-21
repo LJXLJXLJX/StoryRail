@@ -48,8 +48,12 @@ def execute_project_read(
 ) -> dict[str, object]:
     readers = {
         "project.get_asset_manifest": asset_manifest,
-        "project.get_handoff": handoff_read,
-        "project.get_workflow_state": handoff_read,
+        "project.get_handoff": lambda current, args: handoff_read(
+            current, args, provider_catalog=provider_catalog
+        ),
+        "project.get_workflow_state": lambda current, args: handoff_read(
+            current, args, provider_catalog=provider_catalog
+        ),
         "project.get_request": request_read,
         "project.get_contract": contract_page_read,
         "project.get_workset": lambda current, args: workset_page_read(

@@ -145,6 +145,7 @@ import type {
   VideoPromptProposal,
   VideoRecipeOption,
   VideoRecipeState,
+  VideoReferenceImagePlan,
   WorkflowAction,
   WorkflowSemantics,
   WorkflowState,
@@ -422,6 +423,7 @@ const schemas: Record<string, JsonSchema> = {
       "location_image",
       "panorama_capture",
       "keyframe_image",
+      "video_reference_image",
       "segment_video",
       "video_frame",
       "video_upscale",
@@ -2630,6 +2632,66 @@ const schemas: Record<string, JsonSchema> = {
     ],
     "additionalProperties": false
   },
+  "VideoReferenceImagePlan": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{32}$"
+      },
+      "recipe_id": {
+        "type": "string",
+        "minLength": 1,
+        "x-trimmed-nonempty": true
+      },
+      "slot_index": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 3
+      },
+      "prompt_text": {
+        "type": "string",
+        "maxLength": 18000
+      },
+      "description": {
+        "type": "string",
+        "minLength": 1,
+        "x-trimmed-nonempty": true
+      },
+      "visible_character_ids": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        }
+      },
+      "character_references": {
+        "type": "array",
+        "items": {
+          "$ref": "KeyframeCharacterReference"
+        }
+      },
+      "reference_asset_ids": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "maxItems": 5
+      }
+    },
+    "required": [
+      "id",
+      "recipe_id",
+      "slot_index",
+      "prompt_text",
+      "description",
+      "visible_character_ids",
+      "character_references",
+      "reference_asset_ids"
+    ],
+    "additionalProperties": false
+  },
   "SegmentVideo": {
     "type": "object",
     "properties": {
@@ -2653,6 +2715,12 @@ const schemas: Record<string, JsonSchema> = {
       },
       "recipe_state": {
         "$ref": "VideoRecipeState"
+      },
+      "reference_images": {
+        "type": "array",
+        "items": {
+          "$ref": "VideoReferenceImagePlan"
+        }
       },
       "recipes": {
         "type": "object",
@@ -5882,6 +5950,7 @@ const schemas: Record<string, JsonSchema> = {
             "frame_strategy": {
               "type": "string",
               "enum": [
+                "none",
                 "start",
                 "end",
                 "both"
@@ -5900,7 +5969,6 @@ const schemas: Record<string, JsonSchema> = {
             },
             "end_prompt_text": {
               "type": "string",
-              "minLength": 1,
               "maxLength": 18000
             },
             "end_visible_character_ids": {
@@ -5965,6 +6033,78 @@ const schemas: Record<string, JsonSchema> = {
                 ],
                 "additionalProperties": false
               }
+            },
+            "reference_images": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "slot_index": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 3
+                  },
+                  "prompt_text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 18000
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "visible_character_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "character_references": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "character_id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{32}$"
+                        },
+                        "look_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{32}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "character_id",
+                        "look_id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "reference_asset_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "slot_index",
+                  "prompt_text",
+                  "description",
+                  "visible_character_ids",
+                  "character_references"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 4
             }
           },
           "required": [

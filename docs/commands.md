@@ -222,3 +222,12 @@ Core 分配。不支持单独移动 Shot：重排或跨 Scene 迁移 Shot 时，
 资产中心处理（`audio-trim`、`audio-effect`、`transcription`、`audio-remix`、`video-frame`、`audio-generations`）、
 跨域资产复制、`generations/refresh` 观察、全局设置。它们与命令共享同一 Service、Store、CAS 与 Generation 规则，
 不是第二套 authority。路由与实现的对应由 `tests/test_http_api_route_matrix.py` 守卫。
+
+## Segment 其他图片
+
+`video.save_reference_image_plan` 以 Scene scope、Segment ID 和 `slot_index`（0–3）保存当前 recipe
+的一张无时间位置参考图规划，包含画面正文、用途说明、可见角色/造型与显式生图参考；Core 分配稳定规划 ID。
+`video.generate_reference_image` 只接收该 `image_id`，通过当前图片 Provider 生成独立候选，回调不改视频输入。
+`video.select_reference_image` 是人类操作，以 Scene scope、Segment ID、槽位序号、项目 `asset_id` 和
+实际内容/参考用途说明原子更新当前 recipe 的图片输入；`asset_id=null` 移除该图片。未填的槽位不占提交名额。
+规划与生成可由 Agent 明确调用，候选采用保留给人类；Agent 的通用 recipe 输入写入不能采用尚未经人类选入的参考图候选。

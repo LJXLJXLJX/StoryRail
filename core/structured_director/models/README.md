@@ -21,3 +21,5 @@ L0 领域模型：不可变 dataclass，构造即校验不变量。`__init__.py`
 
 域文件之间相对导入；仅用于注解的跨域引用放在 `TYPE_CHECKING` 下以避免运行时环。L0 只依赖 stdlib 与 L1 公共词汇
 （schema、video_contracts、project_settings）。
+
+`SegmentVideo.reference_images` 是可选的无时间位置图片规划，按 recipe 与槽位位置保存正文、用途、角色造型与显式生图参考。选中的图片唯一保存在 `recipes.bindings`；规划自身不保存另一份选图状态。项目 schema 保持 v35，缺省规划为空。

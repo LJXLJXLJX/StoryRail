@@ -88,6 +88,7 @@ export interface WorkspaceActions {
     narrationAudioVolume?: number,
   ) => void;
   onUnlockVisualProduction: () => void;
+  onReferenceImageAction?: (name: string, arguments_: Record<string, unknown>) => void;
   onSaveKeyframe: (
     keyframeId: string,
     segmentId: string,

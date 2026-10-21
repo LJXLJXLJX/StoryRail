@@ -321,6 +321,7 @@ describe("StoryRail App", () => {
       generation("narration_audio", "succeeded"),
       generation("dialogue_audio", "running"),
       generation("keyframe_image", "running"),
+      generation("video_reference_image", "succeeded"),
       generation("location_image", "failed"),
       generation("segment_video", "queued"),
       generation("video_upscale", "cancelled"),
@@ -333,8 +334,8 @@ describe("StoryRail App", () => {
       failed: 0,
     });
     expect(progress.image).toEqual({
-      total: 2,
-      succeeded: 0,
+      total: 3,
+      succeeded: 1,
       active: 1,
       failed: 1,
     });

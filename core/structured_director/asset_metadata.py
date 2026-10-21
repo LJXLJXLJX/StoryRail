@@ -75,6 +75,18 @@ def _generation_asset_location(
         return "images/locations/captures", f"地点-{_location_name(document, generation)}-全景取景"
     if kind is ReferenceGenerationKind.LOCATION_IMAGE:
         return "images/locations", f"地点-{_location_name(document, generation)}-图片候选"
+    if kind is ReferenceGenerationKind.VIDEO_REFERENCE_IMAGE:
+        for video in () if document.video_plan is None else document.video_plan.segments:
+            for image in video.reference_images:
+                if image.id == generation.target_id:
+                    return (
+                        "images/video-references",
+                        (
+                            f"{_segment_location(document, video.segment_id)}-"
+                            f"其他图片{image.slot_index + 1}-候选"
+                        ),
+                    )
+        return "images/video-references", "其他图片-历史候选"
     if kind is ReferenceGenerationKind.KEYFRAME_IMAGE:
         return "images/keyframes", f"{_keyframe_location(document, generation.target_id)}-候选"
     if kind is ReferenceGenerationKind.VIDEO_FRAME:

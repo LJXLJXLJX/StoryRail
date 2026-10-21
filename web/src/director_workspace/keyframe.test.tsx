@@ -93,10 +93,7 @@ it("Ref2VA 其他图片在首尾帧下方分别从关键帧与资产库选择并
   );
   const onSaveVideoInputs = vi.fn();
   render(
-    <SegmentVideoDraftProvider
-      snapshot={snapshot}
-      segmentId={video.segment_id}
-    >
+    <SegmentVideoDraftProvider snapshot={snapshot} segmentId={video.segment_id}>
       <SegmentKeyframeInputs
         projectId={"a".repeat(32)}
         snapshot={snapshot}
@@ -121,7 +118,7 @@ it("Ref2VA 其他图片在首尾帧下方分别从关键帧与资产库选择并
   const section = screen.getByLabelText("Segment 其他图片");
   expect(within(section).getByText("0/4")).toBeInTheDocument();
   fireEvent.click(
-    within(section).getByRole("button", { name: "从关键帧选择" }),
+    within(section).getAllByRole("button", { name: "从关键帧选择" })[0],
   );
   let dialog = screen.getByRole("dialog", {
     name: "从关键帧选择其他图片",
@@ -151,7 +148,7 @@ it("Ref2VA 其他图片在首尾帧下方分别从关键帧与资产库选择并
   });
 
   fireEvent.click(
-    within(section).getByRole("button", { name: "从资产库选择参考图" }),
+    within(section).getAllByRole("button", { name: "从资产库选择参考图" })[1],
   );
   dialog = screen.getByRole("dialog", { name: "从资产库选择其他图片" });
   expect(
@@ -195,10 +192,19 @@ it("独立首帧可以按帧号从上一 Segment 已采用视频抽取候选", a
   const [previous, binding] = plan.segments;
   const startId = "9".repeat(32);
   const videoId = "8".repeat(32);
-  const source = plan.keyframes.find((item) => item.id === binding.start_keyframe_id)!;
-  plan.keyframes.push({ ...source, id: startId, owner_segment_id: binding.segment_id, predecessor_keyframe_id: null });
+  const source = plan.keyframes.find(
+    (item) => item.id === binding.start_keyframe_id,
+  )!;
+  plan.keyframes.push({
+    ...source,
+    id: startId,
+    owner_segment_id: binding.segment_id,
+    predecessor_keyframe_id: null,
+  });
   plan.keyframes = plan.keyframes.map((item) =>
-    item.id === binding.end_keyframe_id ? { ...item, predecessor_keyframe_id: startId } : item,
+    item.id === binding.end_keyframe_id
+      ? { ...item, predecessor_keyframe_id: startId }
+      : item,
   );
   binding.start_keyframe_id = startId;
   binding.start_frame_extraction = {
@@ -207,7 +213,10 @@ it("独立首帧可以按帧号从上一 Segment 已采用视频抽取候选", a
     state: "ready",
     message: "可以从上一段视频抽取。",
   };
-  snapshot.allowed_actions = [...snapshot.allowed_actions, "extract_video_frame"];
+  snapshot.allowed_actions = [
+    ...snapshot.allowed_actions,
+    "extract_video_frame",
+  ];
   snapshot.assets.push({
     id: videoId,
     display_name: "上一段.mp4",
@@ -240,7 +249,9 @@ it("独立首帧可以按帧号从上一 Segment 已采用视频抽取候选", a
       onSaveActivation={vi.fn()}
       onSaveBoundary={onSaveBoundary}
       onExtractFrame={onExtractFrame}
-      onLoadVideoFrameInfo={() => Promise.resolve({ frame_count: 96, duration_seconds: 4 })}
+      onLoadVideoFrameInfo={() =>
+        Promise.resolve({ frame_count: 96, duration_seconds: 4 })
+      }
       onDismissGeneration={vi.fn()}
     />,
   );
@@ -248,9 +259,13 @@ it("独立首帧可以按帧号从上一 Segment 已采用视频抽取候选", a
   const share = screen.getByRole("checkbox", { name: "与上一段尾帧共享" });
   expect(share).not.toBeChecked();
   fireEvent.click(screen.getByRole("button", { name: "从上一 seg 抽取" }));
-  const picker = await screen.findByRole("dialog", { name: "从上一 Segment 视频抽取首帧" });
+  const picker = await screen.findByRole("dialog", {
+    name: "从上一 Segment 视频抽取首帧",
+  });
   expect(await within(picker).findByText(/可选范围 0-95/)).toBeInTheDocument();
-  fireEvent.change(within(picker).getByLabelText("抽帧帧号"), { target: { value: "90" } });
+  fireEvent.change(within(picker).getByLabelText("抽帧帧号"), {
+    target: { value: "90" },
+  });
   fireEvent.click(within(picker).getByRole("button", { name: "抽取第 90 帧" }));
   expect(onExtractFrame).toHaveBeenCalledWith(startId, videoId, 90);
   fireEvent.click(share);
@@ -267,8 +282,20 @@ it("多套造型须为本帧显式选择，保存只提交选中的那一套", (
   const [youngId, crownId] = ["1".repeat(32), "2".repeat(32)];
   const [youngLook, crownLook] = ["3".repeat(32), "4".repeat(32)];
   character.looks = [
-    { id: youngLook, name: "青年军服", appearance: "军服", usage: "青年时期", selected_asset_id: youngId },
-    { id: crownLook, name: "加冕华服", appearance: "华服", usage: "加冕之后", selected_asset_id: crownId },
+    {
+      id: youngLook,
+      name: "青年军服",
+      appearance: "军服",
+      usage: "青年时期",
+      selected_asset_id: youngId,
+    },
+    {
+      id: crownLook,
+      name: "加冕华服",
+      appearance: "华服",
+      usage: "加冕之后",
+      selected_asset_id: crownId,
+    },
   ];
   for (const id of [youngId, crownId])
     snapshot.assets.push({
@@ -286,7 +313,11 @@ it("多套造型须为本帧显式选择，保存只提交选中的那一套", (
     });
   plan.keyframes = plan.keyframes.map((item) =>
     item.id === binding.end_keyframe_id
-      ? { ...item, prompt_text: "小满戴冠。", visible_character_ids: [character.id] }
+      ? {
+          ...item,
+          prompt_text: "小满戴冠。",
+          visible_character_ids: [character.id],
+        }
       : item,
   );
   vi.spyOn(structuredDirectorApi, "previewKeyframe").mockResolvedValue({
@@ -316,14 +347,20 @@ it("多套造型须为本帧显式选择，保存只提交选中的那一套", (
     />,
   );
   const endSlot = document.querySelector<HTMLElement>(".keyframe-slot.is-end")!;
-  fireEvent.click(within(endSlot).getByRole("button", { name: "手动修改关键帧计划" }));
+  fireEvent.click(
+    within(endSlot).getByRole("button", { name: "手动修改关键帧计划" }),
+  );
   const dialog = screen.getByRole("dialog", { name: "手动修改尾帧关键帧计划" });
-  expect(within(dialog).getByText(/尚未选择：多套造型必须为本帧选择/)).toBeInTheDocument();
+  expect(
+    within(dialog).getByText(/尚未选择：多套造型必须为本帧选择/),
+  ).toBeInTheDocument();
   const crown = within(dialog).getByRole("radio", { name: /加冕华服/ });
   expect(crown).not.toBeChecked();
   fireEvent.click(crown);
   expect(within(dialog).getByText("已选造型「加冕华服」")).toBeInTheDocument();
-  fireEvent.click(within(dialog).getByRole("button", { name: "保存关键帧计划" }));
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "保存关键帧计划" }),
+  );
   expect(onSaveKeyframe).toHaveBeenCalledWith(
     binding.end_keyframe_id,
     binding.segment_id,
@@ -335,8 +372,12 @@ it("多套造型须为本帧显式选择，保存只提交选中的那一套", (
 });
 
 it("关键帧编辑器不再绑定地点视图", () => {
-  const snapshot = structuredClone(fixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;
-  const binding = snapshot.keyframe_plan!.segments.find((item) => item.end_enabled)!;
+  const snapshot = structuredClone(
+    fixture.continuity.production_snapshot,
+  ) as unknown as StructuredDirectorSnapshot;
+  const binding = snapshot.keyframe_plan!.segments.find(
+    (item) => item.end_enabled,
+  )!;
   render(
     <SegmentKeyframeInputs
       projectId={"a".repeat(32)}
@@ -355,8 +396,89 @@ it("关键帧编辑器不再绑定地点视图", () => {
       onDismissGeneration={vi.fn()}
     />,
   );
-  fireEvent.click(screen.getAllByRole("button", { name: "填写关键帧计划" }).at(-1)!);
+  fireEvent.click(
+    screen.getAllByRole("button", { name: "填写关键帧计划" }).at(-1)!,
+  );
   const dialog = screen.getByRole("dialog", { name: /手动修改/ });
   expect(within(dialog).queryByLabelText("地点视图")).toBeNull();
   expect(within(dialog).queryByLabelText("地点视图使用方式")).toBeNull();
+});
+
+it("其他图片固定四张子卡片，规划与生成动作携带独立槽位", () => {
+  const snapshot = structuredClone(
+    fixture.continuity.production_snapshot,
+  ) as unknown as StructuredDirectorSnapshot;
+  const video = snapshot.video_plan!.segments.find(
+    (item) => item.active_recipe === "minimax_h3.ref2va",
+  )!;
+  const scene = snapshot.director_script!.scenes.find((item) =>
+    item.segments.some((segment) => segment.id === video.segment_id),
+  )!;
+  video.reference_images = [
+    {
+      id: "a".repeat(32),
+      recipe_id: video.active_recipe!,
+      slot_index: 0,
+      prompt_text: "控制台全貌",
+      description: "空间布局",
+      visible_character_ids: [],
+      character_references: [],
+      reference_asset_ids: [],
+    },
+  ];
+  const onReferenceImageAction = vi.fn();
+  render(
+    <SegmentVideoDraftProvider snapshot={snapshot} segmentId={video.segment_id}>
+      <SegmentKeyframeInputs
+        projectId="p"
+        snapshot={snapshot}
+        segmentId={video.segment_id}
+        sceneIndex={0}
+        segmentIndex={0}
+        continuesPrevious={false}
+        continuesNext={false}
+        busy={false}
+        videoDependenciesEditable={true}
+        onReferenceImageAction={onReferenceImageAction}
+        onSaveVideoInputs={vi.fn()}
+        onSaveKeyframe={vi.fn()}
+        onGenerate={vi.fn()}
+        onSelect={vi.fn()}
+        onSaveReferences={vi.fn()}
+        onSaveActivation={vi.fn()}
+        onDismissGeneration={vi.fn()}
+      />
+    </SegmentVideoDraftProvider>,
+  );
+  const section = screen.getByLabelText("Segment 其他图片");
+  const cards = within(section).getAllByRole("article");
+  expect(cards).toHaveLength(4);
+  fireEvent.click(within(cards[0]).getByRole("button", { name: "生成候选" }));
+  expect(onReferenceImageAction).toHaveBeenCalledWith(
+    "video.generate_reference_image",
+    { image_id: "a".repeat(32) },
+  );
+  fireEvent.click(
+    within(cards[2]).getByRole("button", { name: "规划 / 编辑" }),
+  );
+  const dialog = screen.getByRole("dialog", { name: "规划其他图片 3" });
+  fireEvent.change(
+    within(dialog).getByRole("textbox", { name: "参考图片用途" }),
+    { target: { value: "道具结构" } },
+  );
+  fireEvent.change(
+    within(dialog).getByRole("textbox", { name: "参考图片画面正文" }),
+    { target: { value: "正面展示通话器按键布局" } },
+  );
+  fireEvent.click(within(dialog).getByRole("button", { name: "保存规划" }));
+  expect(onReferenceImageAction).toHaveBeenLastCalledWith(
+    "video.save_reference_image_plan",
+    expect.objectContaining({
+      scope: { scene_ids: [scene.id] },
+      segment_id: video.segment_id,
+      slot_index: 2,
+      prompt_text: "正面展示通话器按键布局",
+      description: "道具结构",
+    }),
+  );
 });

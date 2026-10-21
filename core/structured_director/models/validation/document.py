@@ -532,7 +532,27 @@ def _validate_video_plan(document, asset_by_id) -> None:
         }
         if {item.segment_id for item in document.video_plan.segments} != segment_ids:
             raise ValueError("视频计划必须完整对应当前 Segment。")
+        reference_ids = [
+            image.id for video in document.video_plan.segments for image in video.reference_images
+        ]
+        if len(reference_ids) != len(set(reference_ids)):
+            raise ValueError("视频参考图片 ID 不得跨 Segment 重复。")
+        characters = {card.id: card for card in document.reference_library.characters}
         for item in document.video_plan.segments:
+            for image in item.reference_images:
+                if not set(image.visible_character_ids) <= characters.keys():
+                    raise ValueError("参考图片的可见角色不存在。")
+                for choice in image.character_references:
+                    if choice.look_id is not None and not any(
+                        look.id == choice.look_id for look in characters[choice.character_id].looks
+                    ):
+                        raise ValueError("参考图片选择的造型不存在。")
+                if any(
+                    asset_id not in asset_by_id
+                    or not asset_by_id[asset_id].media_type.startswith("image/")
+                    for asset_id in image.reference_asset_ids
+                ):
+                    raise ValueError("参考图片的生图输入必须为项目图片。")
             for _recipe_id, inputs in item.recipes.entries:
                 if any(asset_id not in asset_by_id for asset_id in inputs.asset_ids):
                     raise ValueError("视频参考输入必须引用本项目 Asset。")

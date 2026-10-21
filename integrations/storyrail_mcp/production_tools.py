@@ -386,6 +386,7 @@ class Generate(Request):
         "narration",
         "dialogue",
         "keyframe",
+        "reference_image",
         "video",
         "upscale",
         "look_sheet",
@@ -485,6 +486,7 @@ class ProjectRead(ReadRequest):
 
 class Candidates(ReadRequest):
     kind: Literal[
+        "video_reference_image",
         "character_look_sheet",
         "character_voice",
         "narrator_voice",
@@ -602,6 +604,7 @@ def translate(name, request):
             "narration": ("narration.generate", "cue_id"),
             "dialogue": ("dialogue.generate", "dialogue_line_id"),
             "keyframe": ("keyframe.generate", "keyframe_id"),
+            "reference_image": ("video.generate_reference_image", "image_id"),
             "video": ("video.generate", "segment_id"),
             "upscale": ("video.upscale", "segment_id"),
             "look_sheet": ("reference.generate_look_sheet", "look_id"),

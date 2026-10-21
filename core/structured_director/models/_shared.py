@@ -17,7 +17,7 @@ _COMMAND_NAME = re.compile(r"[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+")
 
 _ASSET_PATH = re.compile(
     r"assets/(?:"
-    r"images/(?:library|characters|locations(?:/(?:captures|master|crops|views))?|keyframes|video-frames)|"
+    r"images/(?:library|characters|locations(?:/(?:captures|master|crops|views))?|keyframes|video-frames|video-references)|"
     r"audio/(?:voice-references|narration|dialogue|generated|effects|trims|stems|imported)|"
     r"videos/(?:segments|upscaled|final|scene-final|animatics|audio-remixes|imported)"
     r")/[^/\\\x00-\x1f]+\.(?:png|jpg|webp|wav|mp4)"
@@ -98,6 +98,7 @@ class ReferenceGenerationKind(StrEnum):
     LOCATION_IMAGE = "location_image"
     PANORAMA_CAPTURE = "panorama_capture"
     KEYFRAME_IMAGE = "keyframe_image"
+    VIDEO_REFERENCE_IMAGE = "video_reference_image"
     SEGMENT_VIDEO = "segment_video"
     VIDEO_FRAME = "video_frame"
     VIDEO_UPSCALE = "video_upscale"

@@ -237,6 +237,8 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 媒体、时序与资产：
 
 - `keyframe_requests.py`：Keyframe 生图的角色造型、前置帧、手工辅助图实际输入映射与提交预览。
+- `reference_image_requests.py`：Segment 无时间位置参考图片的角色造型、显式生图输入与提示词编译。
+- `reference_image_mutations.py`：参考图片规划及人类选图，保持 recipe 输入簿为唯一选图绑定来源。
 - `character_look_requests.py`：造型设定图的身份参考校验、固定版式与提示词编译（固定 2:1，按插件约定写画幅与 4K）。
 - `location_requests.py`：独立地点图片生成与全景取景的前置检查、输入映射、名额、提示词编译及批次分类。
 - `image_inputs.py`：单次图片调用的输入名额（`MAX_IMAGE_INPUTS`）、优先级去重与超额拒绝；Keyframe 与地点生成共用。
@@ -263,7 +265,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `narration.py`：旁白 Cue 与待处理旁白编辑。
 - `location.py`：Location（地点）、固定陈设、状态变体、机位视图与地点库（含视图依赖无环校验）。
 - `keyframe.py`：Keyframe、Segment 首尾绑定与 Keyframe 计划（含依赖无环校验）。
-- `video.py`：Segment 视频计划、模式与参考图片/音频/视频。
+- `video.py`：Segment 视频计划、按 recipe 保存的媒体输入，以及无时间位置参考图片规划。
 - `final.py`：成片装配计划、转场与最终 Approval。
 - `generation.py`：`ReferenceGeneration` 与状态迁移。
 - `asset.py`：Asset、图片分类、使用原因与删除闭包判定。
@@ -439,6 +441,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `web/third_party/pannellum/`：随 Web 分发的 Pannellum MIT 许可证与使用说明；运行时代码由 npm 锁定版本提供。
 - `src/director_workspace/narration.tsx`：旁白 Cue 卡片。
 - `src/director_workspace/keyframe.tsx`：Segment 首尾帧卡、Ref2VA 其他图片（已选关键帧 / 资产库参考图，排除当前已启用边界）、共享开关、“从上一 seg 抽取”与手动计划弹窗（正文、角色造型、实际提交映射）。
+- `src/director_workspace/VideoReferenceImageCard.tsx`：四张无时间位置参考图片子卡片、规划弹窗、候选生成与显式选图。
 - `src/director_workspace/RecipeInputsControl.tsx`、`video.tsx`：共享受保护的视频 recipe 草稿，以及 Segment 视频卡（模式、参考素材、候选、超分、抽帧）；首尾帧区与视频卡原子编辑同一份 recipe 输入簿。
 - `src/director_workspace/SceneMedia.tsx`：Scene Animatic 与 Scene 成片。
 - `src/director_workspace/final.tsx`：全片装配与 Approval。

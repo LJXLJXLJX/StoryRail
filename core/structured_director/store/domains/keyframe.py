@@ -54,6 +54,10 @@ from core.structured_director.models import (
     VideoPlan,
     blank_keyframe,
 )
+from core.structured_director.reference_image_mutations import (
+    reference_image_slot,
+    save_reference_image_plan,
+)
 from core.structured_director.run_state import _active_run_is as _active_run_is
 from core.structured_director.run_state import _start_director_run as _start_director_run
 from core.structured_director.script_mutations import _finish_director_run as _finish_director_run
@@ -527,6 +531,7 @@ class KeyframeDomain(_DomainBase):
         *,
         target_segment_ids: tuple[str, ...] = (),
         required_shared_boundaries: tuple[tuple[str, str], ...] = (),
+        reference_image_updates: tuple = (),
     ) -> StructuredDirectorDocument:
         """在规划锁内校验并应用 compiler operations，然后一次性回到审核态。"""
 
@@ -551,14 +556,24 @@ class KeyframeDomain(_DomainBase):
                 protected_keyframe_ids=protected_keyframe_ids,
                 locked_segment_ids=locked_segment_ids,
             )
-            return MutationResult(
-                _finish_keyframe_operation_plan(
-                    document,
-                    proposal.operations,
-                    required_shared_boundaries=required_shared_boundaries,
-                ),
-                None,
+            updated = _finish_keyframe_operation_plan(
+                document, proposal.operations, required_shared_boundaries=required_shared_boundaries
             )
+            for update in reference_image_updates:
+                if update.segment_id not in allowed_segment_ids:
+                    raise ValueError("其他图片规划越出授权 Segment。")
+                video = next(
+                    item
+                    for item in updated.video_plan.segments
+                    if item.segment_id == update.segment_id
+                )
+                updated = save_reference_image_plan(
+                    updated,
+                    update,
+                    reference_image_slot(self._provider_catalog, video),
+                    planning=True,
+                )
+            return MutationResult(updated, None)
 
         updated, _receipt = commit_mutation(self, loader=self.read, mutator=mutate)
         return updated

@@ -1973,6 +1973,7 @@
             "narration",
             "dialogue",
             "keyframe",
+            "reference_image",
             "video",
             "upscale",
             "look_sheet",
@@ -2478,6 +2479,7 @@
         },
         "kind": {
           "enum": [
+            "video_reference_image",
             "character_look_sheet",
             "character_voice",
             "narrator_voice",

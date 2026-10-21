@@ -68,6 +68,37 @@ def _apply_reference_library_change(
             ),
         )
     video_plan = document.video_plan
+    if video_plan is not None:
+        card_looks = {card.id: {look.id for look in card.looks} for card in library.characters}
+        video_plan = replace(
+            video_plan,
+            segments=tuple(
+                replace(
+                    video,
+                    reference_images=tuple(
+                        replace(
+                            image,
+                            visible_character_ids=tuple(
+                                character_id
+                                for character_id in image.visible_character_ids
+                                if character_id in card_looks
+                            ),
+                            character_references=tuple(
+                                choice
+                                for choice in image.character_references
+                                if choice.character_id in card_looks
+                                and (
+                                    choice.look_id is None
+                                    or choice.look_id in card_looks[choice.character_id]
+                                )
+                            ),
+                        )
+                        for image in video.reference_images
+                    ),
+                )
+                for video in video_plan.segments
+            ),
+        )
     if video_plan is not None and affected_segments:
         video_plan = replace(
             video_plan,

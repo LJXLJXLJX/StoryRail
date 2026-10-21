@@ -205,6 +205,12 @@ def asset_project_usage_reasons(
         reasons.append(AssetUsageReason.KEYFRAME_SELECTED_ASSET)
     if document.video_plan is not None:
         segments = document.video_plan.segments
+        if any(
+            asset_id in image.reference_asset_ids
+            for item in segments
+            for image in item.reference_images
+        ):
+            reasons.append(AssetUsageReason.KEYFRAME_REFERENCE_IMAGE)
         if any(item.selected_asset_id == asset_id for item in segments):
             reasons.append(AssetUsageReason.SEGMENT_VIDEO_SELECTED)
         if any(item.upscaled_asset_id == asset_id for item in segments):

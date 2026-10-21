@@ -99,3 +99,101 @@ def _id(value: object, label: str) -> str:
     if not isinstance(value, str) or _ID.fullmatch(value) is None:
         raise ValueError(f"{label} 必须是 32 位小写十六进制 ID。")
     return value
+
+
+@dataclass(frozen=True, slots=True)
+class VideoReferenceCharacter:
+    character_id: str
+    look_id: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class VideoReferenceImageUpdate:
+    scope_scene_ids: tuple[str, ...]
+    segment_id: str
+    slot_index: int
+    prompt_text: str
+    description: str
+    visible_character_ids: tuple[str, ...]
+    character_references: tuple[VideoReferenceCharacter, ...]
+    reference_asset_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class VideoReferenceImageSelection:
+    scope_scene_ids: tuple[str, ...]
+    segment_id: str
+    slot_index: int
+    asset_id: str | None
+    description: str
+
+
+def _reference_slot(value):
+    if type(value) is not int or not 0 <= value < 4:
+        raise ValueError("slot_index 必须为 0–3。")
+    return value
+
+
+def parse_video_reference_image_update(value):
+    item = _exact(
+        value,
+        {
+            "scope",
+            "segment_id",
+            "slot_index",
+            "prompt_text",
+            "description",
+            "visible_character_ids",
+            "character_references",
+            "reference_asset_ids",
+        },
+        "video.save_reference_image_plan",
+    )
+
+    def ids(key):
+        values = item[key]
+        if not isinstance(values, list):
+            raise ValueError(f"{key} 必须是数组。")
+        return tuple(_id(value, key) for value in values)
+
+    references = item["character_references"]
+    if not isinstance(references, list):
+        raise ValueError("character_references 必须是数组。")
+    parsed = []
+    for reference in references:
+        fields = _exact(reference, {"character_id", "look_id"}, "character_reference")
+        parsed.append(
+            VideoReferenceCharacter(
+                _id(fields["character_id"], "character_id"),
+                None if fields["look_id"] is None else _id(fields["look_id"], "look_id"),
+            )
+        )
+    if not isinstance(item["description"], str):
+        raise ValueError("description 必须是字符串。")
+    return VideoReferenceImageUpdate(
+        _scope(item["scope"]),
+        _id(item["segment_id"], "segment_id"),
+        _reference_slot(item["slot_index"]),
+        _prompt(item["prompt_text"]),
+        item["description"],
+        ids("visible_character_ids"),
+        tuple(parsed),
+        ids("reference_asset_ids"),
+    )
+
+
+def parse_video_reference_image_selection(value):
+    item = _exact(
+        value,
+        {"scope", "segment_id", "slot_index", "asset_id", "description"},
+        "video.select_reference_image",
+    )
+    if not isinstance(item["description"], str):
+        raise ValueError("description 必须是字符串。")
+    return VideoReferenceImageSelection(
+        _scope(item["scope"]),
+        _id(item["segment_id"], "segment_id"),
+        _reference_slot(item["slot_index"]),
+        None if item["asset_id"] is None else _id(item["asset_id"], "asset_id"),
+        item["description"],
+    )

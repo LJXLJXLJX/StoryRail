@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { editableScenePayload } from "./refine";
+import { editableScenePayload, refineGeneration } from "./refine";
 import type { Scene } from "./types";
 
 const SHOT_A = "1".repeat(32);
@@ -84,4 +84,9 @@ it("新 Scene 草稿把临时 ID 归为 null，覆盖用序号保持", () => {
     expect(payload.shots.map((shot) => shot.id)).toEqual([null, null]);
     expect(payload.segments.map((segment) => segment.id)).toEqual([null, null]);
     expect(payload.segments.map((segment) => segment.shot_indexes)).toEqual([[0, 1], [1]]);
+});
+
+it("视频参考图片的 63 位 seed 保持十进制字符串", () => {
+    expect(refineGeneration({kind: "video_reference_image", seed: "9007199254740993"})).toBe(true);
+    expect(refineGeneration({kind: "video_reference_image", seed: 123})).toBe(false);
 });

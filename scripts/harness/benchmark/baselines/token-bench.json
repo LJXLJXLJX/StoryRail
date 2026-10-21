@@ -10,8 +10,8 @@
     ]
   },
   "environment": {
-    "date": "2026-10-20",
-    "git_sha": "448d5dd073069291d844b19df7dc6b7ae96587f5",
+    "date": "2026-10-21",
+    "git_sha": "93889cff391c2f7e56d0c66418e1a332f3c76fa7",
     "python_version": "3.12.12",
     "platform": "macOS-26.6.2-arm64-arm-64bit",
     "driver": "scripts/harness/benchmark/fake_agent_driver.py"
@@ -20,13 +20,13 @@
     "scenario_total_multiplier": 1.0
   },
   "frozen": {
-    "tools_list_bytes": 43142,
+    "tools_list_bytes": 43184,
     "scenarios": {
       "h3": {
         "total_wire_bytes": 87036
       },
       "keyframe": {
-        "total_wire_bytes": 75348
+        "total_wire_bytes": 83502
       },
       "location": {
         "total_wire_bytes": 47790
@@ -47,7 +47,7 @@
       "capability": "video_prompt",
       "bootstrap": "keyframes",
       "summary": {
-        "tools_list_bytes": 43142,
+        "tools_list_bytes": 43184,
         "tool_count": 25,
         "requests": 6,
         "input_bytes": 1182,
@@ -132,14 +132,14 @@
       "capability": "keyframe",
       "bootstrap": "unlocked",
       "summary": {
-        "tools_list_bytes": 43142,
+        "tools_list_bytes": 43184,
         "tool_count": 25,
         "requests": 8,
         "input_bytes": 2019,
-        "output_bytes": 73329,
-        "total_wire_bytes": 75348,
-        "contract_read_bytes": 31160,
-        "workset_read_bytes": 15512,
+        "output_bytes": 81483,
+        "total_wire_bytes": 83502,
+        "contract_read_bytes": 32247,
+        "workset_read_bytes": 20251,
         "pagination_rounds": 8,
         "wait_rounds": 1,
         "error_responses": 0
@@ -151,7 +151,7 @@
           "tool": "read_workflow",
           "action": "call",
           "input_bytes": 116,
-          "output_bytes": 6419,
+          "output_bytes": 6335,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -162,7 +162,7 @@
           "tool": "read_professional_contract",
           "action": "pages",
           "input_bytes": 159,
-          "output_bytes": 31001,
+          "output_bytes": 32088,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -173,7 +173,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 207,
-          "output_bytes": 7206,
+          "output_bytes": 9533,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -184,7 +184,7 @@
           "tool": "keyframe_proposal",
           "action": "request",
           "input_bytes": 313,
-          "output_bytes": 9968,
+          "output_bytes": 12380,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -206,7 +206,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 205,
-          "output_bytes": 7894,
+          "output_bytes": 10306,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -239,7 +239,7 @@
       "capability": "location",
       "bootstrap": "timing",
       "summary": {
-        "tools_list_bytes": 43142,
+        "tools_list_bytes": 43184,
         "tool_count": 25,
         "requests": 6,
         "input_bytes": 1673,
@@ -324,7 +324,7 @@
       "capability": "video_prompt",
       "bootstrap": "keyframes",
       "summary": {
-        "tools_list_bytes": 43142,
+        "tools_list_bytes": 43184,
         "tool_count": 25,
         "requests": 7,
         "input_bytes": 1436,
@@ -420,7 +420,7 @@
       "capability": "reference_library",
       "bootstrap": "empty",
       "summary": {
-        "tools_list_bytes": 43142,
+        "tools_list_bytes": 43184,
         "tool_count": 25,
         "requests": 5,
         "input_bytes": 1382,
@@ -494,7 +494,7 @@
       "capability": "script",
       "bootstrap": "ready",
       "summary": {
-        "tools_list_bytes": 43142,
+        "tools_list_bytes": 43184,
         "tool_count": 25,
         "requests": 5,
         "input_bytes": 1662,

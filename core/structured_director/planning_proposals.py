@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from core.director_commands.video_commands import VideoReferenceCharacter, VideoReferenceImageUpdate
 from core.director_proposals import KeyframeOperationsProposal
 from core.director_proposals import keyframe_codec as keyframe
 
@@ -10,6 +11,7 @@ from .models import DirectorRunKind
 from .planning_inputs import keyframe_inputs
 from .reads.professional_worksets import workset_read
 from .reads.read_tools import _json_value
+from .reads.video_recipes import keyframe_video_context
 
 
 @dataclass(frozen=True)
@@ -17,6 +19,7 @@ class PlanningProposalHandler:
     """Keyframe 规划请求：scope 随请求持久化，恢复时不能扩大。"""
 
     capability: str = "keyframe"
+    provider_recipes: tuple = ()
 
     def parse_proposal(self, raw):
         return keyframe.parse_keyframe_plan(raw)
@@ -32,7 +35,7 @@ class PlanningProposalHandler:
             "scope": args["scope"],
             "target_ids": args["target_ids"],
         }
-        data = workset_read(document, request)
+        data = workset_read(document, request, provider_recipes=self.provider_recipes)
         _, _, boundaries = keyframe_inputs(
             document, tuple(args["target_ids"]), args["raw_user_instruction"]
         )
@@ -73,11 +76,45 @@ class PlanningProposalHandler:
         scenes, segments, boundaries = keyframe_inputs(
             document, tuple(args["target_ids"]), args["raw_user_instruction"]
         )
+        for planned in proposal.segments:
+            context = keyframe_video_context(document, planned.segment_id, self.provider_recipes)
+            if context["available"] and planned.frame_strategy not in context["frame_strategies"]:
+                raise ValueError(
+                    "当前视频 recipe 不支持所选帧策略；请保留必要边界帧或显式切换 recipe。"
+                )
+            if not context["available"] and planned.frame_strategy == "none":
+                raise ValueError(
+                    "当前视频 recipe 不可用，无法确认无边界帧方案；请先配置 Provider。"
+                )
         proposal, operations = keyframe.compile_keyframe_proposal(proposal, scenes, boundaries)
         if operations is None:
             raise ValueError("当前 Keyframe 槽位缺失，不能重新分配替代恢复。")
+        updates = []
+        for planned in proposal.segments:
+            scene_id = next(
+                scene.id
+                for scene in scenes
+                if any(segment.id == planned.segment_id for segment in scene.segments)
+            )
+            for image in planned.reference_images:
+                updates.append(
+                    VideoReferenceImageUpdate(
+                        (scene_id,),
+                        planned.segment_id,
+                        image.slot_index,
+                        image.prompt_text,
+                        image.description,
+                        image.visible_character_ids,
+                        tuple(
+                            VideoReferenceCharacter(item.character_id, item.look_id)
+                            for item in image.character_references
+                        ),
+                        image.reference_asset_ids,
+                    )
+                )
         return store.apply_keyframe_operation_plan(
             KeyframeOperationsProposal(operations, "已按原始外部规划 scope 编译。"),
             target_segment_ids=segments,
             required_shared_boundaries=boundaries,
+            reference_image_updates=tuple(updates),
         )

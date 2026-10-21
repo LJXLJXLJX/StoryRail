@@ -21,9 +21,10 @@ Segment 编辑器用起始/结束镜头选择连续覆盖区间并写 `shot_ids`
 `keyframe.tsx` 的手动关键帧计划弹窗与 Keyframe Planner 读写同一组正文、可见角色和角色造型字段；地点语义由 Planner 工作集提供，
 地点图片不会自动成为输入。“当前实际图片输入”只展示 Core 预览给出的角色参考、前置帧和手工辅助图及其 `input_roles` / `purpose`，
 Web 不推断映射。
-同一文件在首尾帧下方展示 Ref2VA“其他图片”：来源分为已选关键帧与资产库参考图，排除当前已启用边界，每张必填用途说明；它只写当前
-recipe 的 `additional_images`，不进入 KeyframePlan，也不获得时间位置。`RecipeInputsControl.tsx` 的共享草稿 Provider
-让该入口与视频卡共同编辑并原子保存同一份正文、bindings 和 params；视频卡不重复渲染图片槽位。
+同一文件在首尾帧下方展示 Ref2VA“其他图片”，由 `VideoReferenceImageCard.tsx` 渲染四个独立槽位卡片。
+每张支持规划正文、用途、角色造型与显式生图参考，提交生成候选、人工选图，也可从已选关键帧或资产库选图。
+图片没有时间位置，排除当前已启用边界；候选回调不自动绑定。规划存于 `SegmentVideo.reference_images`，实际选图
+只存于当前 recipe 的 `additional_images`。`RecipeInputsControl.tsx` 共享草稿保持视频参数与输入修改原子保存。
 
 导航和正文使用 App 已有权威 snapshot，不叠加投影请求，不另存业务稿。
 媒体选择和权限始终来自当前快照的 workspace_layers / allowed_actions。

@@ -1186,6 +1186,11 @@ export function App() {
               )
             }
             onPreviewSegmentVideoInputs={(segmentId, inputs) => structuredDirectorApi.previewSegmentVideoInputs(selectedProject.id, structuredSnapshot.revision, segmentId, inputs)}
+            onReferenceImageAction={(name, arguments_) => {
+              if (selectedProject === null || structuredSnapshot === null) return;
+              void mutateStructuredDirector(() => structuredDirectorApi.referenceImageCommand(selectedProject.id,
+                structuredSnapshot.revision, name, arguments_), "edit_segment_video_plan");
+            }}
             onSaveSegmentVideoInputs={(segmentId, promptText, inputs) => void saveSegmentVideoInputs(segmentId, promptText, inputs)}
             onSaveSegmentVideoRecipe={(segmentId, recipeId) => void saveSegmentVideoRecipe(segmentId, recipeId)}
             onSaveSegmentKeyframeBoundary={(segmentId, shared) => void saveSegmentKeyframeBoundary(segmentId, shared)}
@@ -1464,7 +1469,7 @@ export function summarizeGenerationProgress(
         : generation.kind === "character_look_sheet" ||
             generation.kind === "location_image" ||
             generation.kind === "panorama_capture" ||
-            generation.kind === "keyframe_image"
+            (generation.kind === "keyframe_image" || generation.kind === "video_reference_image")
           ? "image"
           : "video";
     const item = result[category];

@@ -14,12 +14,12 @@ from .snapshot_view import human_allowed_actions
 from .workflow_state import workflow_state
 
 
-def handoff_read(document, arguments):
+def handoff_read(document, arguments, *, provider_catalog=None):
     _exact_arguments(arguments, optional={"cursor", "limit"})
     return {
         "project_id": document.project_id,
         "revision": document.revision,
-        "workflow": workflow_state(document),
+        "workflow": workflow_state(document, provider_catalog=provider_catalog),
         "contract_hashes": contract_hashes(),
         "web_path": f"/?project={document.project_id}",
         "allowed_actions": list(human_allowed_actions(document)),

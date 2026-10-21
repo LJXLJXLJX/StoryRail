@@ -485,3 +485,16 @@ stateDiagram-v2
 规范化 operation 与反向 operation、前后 revision、发生次数与开闭状态。白名单字段只有
 Scene `title/summary/setting`、Shot `composition/camera_movement/action/audio_direction/transition_in`、
 Segment `duration_estimate_seconds/action`。
+
+## Segment 无时间位置参考图片
+
+`video_plan.segments[].reference_images` 为可选图片规划数组，未建立时为空且可省略，项目 schema 仍为 v35。
+每项保存 Core 分配的 `id`、`recipe_id`、`slot_index`（0–3）、`prompt_text`、`description`、
+`visible_character_ids`、`character_references` 和 `reference_asset_ids`。它没有视频时间位置，也不保存独立选图状态；
+实际提交的视频图片仍唯一来自 `recipes[recipe_id].bindings`。同一 recipe 的槽位位置不重复。
+生成记录使用 `video_reference_image` kind，产物存于 `assets/images/video-references/`，回调只新增候选。
+人类从候选或项目 Asset 选图时，Core 原子更新对应 recipe 输入簿；未填前面的槽位不占媒体名额。
+
+边界规划 proposal 支持 `none/start/end/both`，合法策略由当前 recipe 的媒体槽位和 `require_any` 派生。
+关闭端点不需要正文，已有正文与历史候选保留；角色进出不会自动把单帧改为双帧。
+主流程对支持无边界帧的 recipe 不要求关键帧，媒体输入是否齐备由视频依赖检查回答。

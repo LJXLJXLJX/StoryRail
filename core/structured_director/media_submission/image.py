@@ -39,6 +39,11 @@ from ..models import (
     transition_generation,
 )
 from ..production_context import _TERMINAL_PHASES
+from ..reference_image_requests import (
+    reference_image_inputs,
+    reference_image_owner,
+    reference_image_prompt,
+)
 from .support import _commit_submission
 
 
@@ -80,6 +85,48 @@ def _image_recipe(
 
 
 class ImageSubmission:
+    async def generate_video_reference_image(self, *, image_id, expected_revision, _retry_of=None):
+        async with self._lock:
+            document = self._store._editable_document(expected_revision)
+            video, image = reference_image_owner(document, image_id)
+            if video.active_recipe != image.recipe_id:
+                raise ValueError("该图片属于其它 recipe，请先切回对应 recipe。")
+            if any(
+                item.target_id == image_id and item.phase not in _TERMINAL_PHASES
+                for item in document.generations
+            ):
+                raise ValueError("该图片已有进行中或提交不确定的任务。")
+            inputs = reference_image_inputs(document, video, image)
+            operation = GenerationOperation.GENERATE
+            prepared, style = _prepare_image(self, operation)
+            prompt = reference_image_prompt(document, image, inputs, style)
+            kind = ReferenceGenerationKind.VIDEO_REFERENCE_IMAGE
+            seed = _image_seed(document, prepared, kind, image_id, _retry_of)
+            request, params = _image_recipe(
+                self, document, prepared, operation, prompt, inputs.asset_ids, seed
+            )
+            generation = _image_generation(
+                kind,
+                operation,
+                image_id,
+                prompt,
+                inputs.asset_ids,
+                seed,
+                prepared,
+                params,
+                message="正在提交其他图片任务。",
+            )
+            return await _commit_submission(
+                self,
+                document,
+                generation,
+                expected_revision=document.revision,
+                submit=lambda: prepared.submit(request),
+                capability="其他图片",
+                queued_message="其他图片任务已提交。",
+                retry_of=_retry_of,
+            )
+
     async def generate_look_sheet(
         self,
         *,

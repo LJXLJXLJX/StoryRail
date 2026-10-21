@@ -1,3 +1,4 @@
+import { VideoReferenceImageCard } from "./VideoReferenceImageCard";
 import { stableStringify, useProtectedValue } from "./draft_protection";
 import { ImageZoomButton } from "../ImagePreview";
 import { useEffect, useState } from "react";
@@ -39,6 +40,7 @@ export function SegmentKeyframeInputs({
   busy,
   videoDependenciesEditable = false,
   onSaveVideoInputs,
+  onReferenceImageAction,
   onSaveKeyframe,
   onGenerate,
   onSelect,
@@ -61,6 +63,10 @@ export function SegmentKeyframeInputs({
   continuesNext: boolean;
   busy: boolean;
   videoDependenciesEditable?: boolean;
+  onReferenceImageAction?: (
+    name: string,
+    args: Record<string, unknown>,
+  ) => void;
   onSaveVideoInputs?: (
     segmentId: string,
     promptText: string,
@@ -83,7 +89,11 @@ export function SegmentKeyframeInputs({
     endEnabled: boolean,
   ) => void;
   onSaveBoundary?: (segmentId: string, shared: boolean) => void;
-  onExtractFrame?: (keyframeId: string, sourceVideoAssetId: string, frameIndex: number) => void;
+  onExtractFrame?: (
+    keyframeId: string,
+    sourceVideoAssetId: string,
+    frameIndex: number,
+  ) => void;
   onLoadVideoFrameInfo?: (assetId: string) => Promise<VideoFrameInfo>;
   onDismissGeneration: (generationId: string) => void;
   onCancel?: (generationId: string) => void;
@@ -105,7 +115,8 @@ export function SegmentKeyframeInputs({
   // 共享首帧由上一段拥有；Core 投影是唯一事实，Web 不推断连续性。
   const sharesPrevious = start.owner_segment_id !== segmentId;
   const sharesNext = plan.segments.some(
-    (item) => item.segment_id !== segmentId && item.start_keyframe_id === end.id,
+    (item) =>
+      item.segment_id !== segmentId && item.start_keyframe_id === end.id,
   );
   const startRelation = sharesPrevious
     ? continuesPrevious
@@ -126,14 +137,21 @@ export function SegmentKeyframeInputs({
       ? null
       : assetById(snapshot.assets, extraction.source_video_asset_id);
   const frameGeneration = snapshot.generations
-    .filter((item) => item.kind === "video_frame" && item.target_id === start.id && !item.dismissed)
+    .filter(
+      (item) =>
+        item.kind === "video_frame" &&
+        item.target_id === start.id &&
+        !item.dismissed,
+    )
     .at(-1);
   const frameInProgress =
     frameGeneration !== undefined &&
     ["submitting", "queued", "running"].includes(frameGeneration.phase);
   const frameFailed =
     frameGeneration !== undefined &&
-    ["failed", "cancelled", "submission_uncertain"].includes(frameGeneration.phase);
+    ["failed", "cancelled", "submission_uncertain"].includes(
+      frameGeneration.phase,
+    );
   const canExtract =
     extraction.state === "ready" &&
     sourceVideo !== null &&
@@ -243,6 +261,9 @@ export function SegmentKeyframeInputs({
         segmentId={segmentId}
         busy={busy}
         dependenciesEditable={videoDependenciesEditable}
+        onCommand={onReferenceImageAction}
+        onDismiss={onDismissGeneration}
+        onCancel={onCancel}
         onSave={onSaveVideoInputs}
       />
       {extraction.source_segment_id !== null ? (
@@ -258,10 +279,15 @@ export function SegmentKeyframeInputs({
               <span role="status">{extraction.message}</span>
             ) : null}
             {frameInProgress ? (
-              <span role="status">{frameGeneration?.message || "正在抽帧…"}</span>
+              <span role="status">
+                {frameGeneration?.message || "正在抽帧…"}
+              </span>
             ) : frameFailed ? (
               <span role="status">
-                抽帧失败：{frameGeneration?.message || frameGeneration?.error_code || "请重试"}
+                抽帧失败：
+                {frameGeneration?.message ||
+                  frameGeneration?.error_code ||
+                  "请重试"}
               </span>
             ) : null}
           </div>
@@ -271,7 +297,12 @@ export function SegmentKeyframeInputs({
                 <input
                   type="checkbox"
                   checked={sharesPrevious}
-                  disabled={busy || !snapshot.allowed_actions.includes("edit_keyframe_references")}
+                  disabled={
+                    busy ||
+                    !snapshot.allowed_actions.includes(
+                      "edit_keyframe_references",
+                    )
+                  }
                   onChange={() => onSaveBoundary(segmentId, !sharesPrevious)}
                 />
                 与上一段尾帧共享
@@ -282,7 +313,11 @@ export function SegmentKeyframeInputs({
                 type="button"
                 className="secondary-button"
                 disabled={busy || frameInProgress || !canExtract}
-                title={canExtract ? "按帧号从上一段已采用视频抽取一帧，作为本首帧候选" : extraction.message}
+                title={
+                  canExtract
+                    ? "按帧号从上一段已采用视频抽取一帧，作为本首帧候选"
+                    : extraction.message
+                }
                 onClick={() => setFrameDialogOpen(true)}
               >
                 {frameInProgress ? "正在抽帧…" : "从上一 seg 抽取"}
@@ -315,11 +350,17 @@ function SegmentOtherImages({
   busy,
   dependenciesEditable,
   onSave,
+  onCommand,
+  onDismiss,
+  onCancel,
 }: {
   snapshot: StructuredDirectorSnapshot;
   segmentId: string;
   busy: boolean;
   dependenciesEditable: boolean;
+  onCommand?: (name: string, args: Record<string, unknown>) => void;
+  onDismiss?: (generationId: string) => void;
+  onCancel?: (generationId: string) => void;
   onSave?: (
     segmentId: string,
     promptText: string,
@@ -327,7 +368,10 @@ function SegmentOtherImages({
   ) => void;
 }) {
   const draft = useSegmentVideoDraft();
-  const [picker, setPicker] = useState<"keyframe" | "reference" | null>(null);
+  const [picker, setPicker] = useState<{
+    kind: "keyframe" | "reference";
+    index: number;
+  } | null>(null);
   if (draft === null || draft.segmentId !== segmentId) return null;
   const video = snapshot.video_plan?.segments.find(
     (item) => item.segment_id === segmentId,
@@ -338,10 +382,10 @@ function SegmentOtherImages({
   const recipe = recipeView?.recipe;
   const slot = recipe?.slots.find((item) => item.role === "reference_image");
   const referenceImageRecipe = video?.recipe_state?.options
-    .map((option) =>
-      snapshot.provider_recipes?.find(
-        (item) => item.recipe.id === option.id,
-      )?.recipe,
+    .map(
+      (option) =>
+        snapshot.provider_recipes?.find((item) => item.recipe.id === option.id)
+          ?.recipe,
     )
     .find((item) =>
       item?.slots.some((candidate) => candidate.role === "reference_image"),
@@ -424,7 +468,29 @@ function SegmentOtherImages({
       bindings: { ...current.bindings, [slot.key]: next },
     }));
   const choose = (assetId: string) => {
-    updateItems([...items, { asset_id: assetId, description: "" }]);
+    const index = picker?.index ?? items.length;
+    const plan = video.reference_images?.find(
+      (item) =>
+        item.recipe_id === video.active_recipe && item.slot_index === index,
+    );
+    if (plan && !otherDirty && onCommand) {
+      const scene = snapshot.director_script?.scenes.find((item) =>
+        item.segments.some((segment) => segment.id === segmentId),
+      );
+      onCommand("video.select_reference_image", {
+        scope: { scene_ids: scene ? [scene.id] : [] },
+        segment_id: segmentId,
+        slot_index: index,
+        asset_id: assetId,
+        description: plan.description,
+      });
+    } else {
+      const next = [...items];
+      if (index < next.length)
+        next[index] = { asset_id: assetId, description: "" };
+      else next.push({ asset_id: assetId, description: "" });
+      updateItems(next);
+    }
     setPicker(null);
   };
   const inputsError = recipeInputsError(recipe, draft.inputs.value);
@@ -451,95 +517,65 @@ function SegmentOtherImages({
           {items.length}/{slot.maximum}
         </small>
       </header>
-      {items.length === 0 ? <p>尚未添加其他图片。</p> : null}
       <div className="segment-other-image-list">
-        {items.map((binding, index) => {
-          const asset = assetById(snapshot.assets, binding.asset_id);
-          const keyframe = keyframesByAsset.get(binding.asset_id);
-          const label =
-            video.recipe_state?.slot_labels[slot.key]?.[index] ??
-            `其他图片 ${index + 1}`;
+        {Array.from({ length: Math.min(slot.maximum, 4) }, (_, index) => {
+          const plan = video.reference_images?.find(
+            (item) =>
+              item.recipe_id === video.active_recipe &&
+              item.slot_index === index,
+          );
+          const scene = snapshot.director_script?.scenes.find((item) =>
+            item.segments.some((segment) => segment.id === segmentId),
+          );
           return (
-            <article key={binding.asset_id}>
-              {asset ? (
-                <ZoomableImage
-                  src={asset.content_url}
-                  alt={asset.display_name ?? label}
-                />
-              ) : (
-                <span className="segment-video-reference-missing">
-                  图片不可用
-                </span>
-              )}
-              <div>
-                <strong>{label}</strong>
-                <small>
-                  {keyframe
-                    ? `关键帧 @${keyframe.id.slice(0, 6)}`
-                    : "资产库参考图"}
-                </small>
-                <label>
-                  <span>{label} 说明</span>
-                  <textarea
-                    aria-label={`其他图片 ${index + 1} 描述`}
-                    aria-invalid={!binding.description?.trim()}
-                    maxLength={2000}
-                    value={binding.description ?? ""}
-                    disabled={disabled}
-                    placeholder="说明这张图定义的角色、场景、道具或视觉关系。"
-                    onChange={(event) =>
-                      updateItems(
-                        items.map((item, position) =>
-                          position === index
-                            ? { ...item, description: event.target.value }
-                            : item,
-                        ),
-                      )
-                    }
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={disabled}
-                  onClick={() =>
-                    updateItems(
-                      items.filter((_, position) => position !== index),
-                    )
-                  }
-                >
-                  移除其他图片
-                </button>
-              </div>
-            </article>
+            <VideoReferenceImageCard
+              key={plan?.id ?? `slot-${index}`}
+              snapshot={snapshot}
+              segmentId={segmentId}
+              sceneId={scene?.id ?? ""}
+              index={index}
+              label={
+                video.recipe_state?.slot_labels[slot.key]?.[index] ??
+                `其他图片 ${index + 1}`
+              }
+              plan={plan}
+              binding={items[index]}
+              disabled={disabled}
+              selectionDisabled={
+                otherDirty || draft.inputs.conflict || draft.prompt.dirty
+              }
+              onCommand={onCommand}
+              onDismiss={onDismiss}
+              onCancel={onCancel}
+              onChoose={(kind) => setPicker({ kind, index })}
+              onRemove={() => {
+                if (
+                  video.reference_images?.length &&
+                  !otherDirty &&
+                  onCommand
+                ) {
+                  onCommand("video.select_reference_image", {
+                    scope: { scene_ids: scene ? [scene.id] : [] },
+                    segment_id: segmentId,
+                    slot_index: index,
+                    asset_id: null,
+                    description: "",
+                  });
+                } else
+                  updateItems(
+                    items.filter((_, position) => position !== index),
+                  );
+              }}
+              onDescribe={(description) =>
+                updateItems(
+                  items.map((item, position) =>
+                    position === index ? { ...item, description } : item,
+                  ),
+                )
+              }
+            />
           );
         })}
-      </div>
-      <div className="segment-other-image-source-actions">
-        <button
-          type="button"
-          className="secondary-button"
-          disabled={
-            disabled ||
-            items.length >= slot.maximum ||
-            keyframeImages.length === 0
-          }
-          onClick={() => setPicker("keyframe")}
-        >
-          从关键帧选择
-        </button>
-        <button
-          type="button"
-          className="secondary-button"
-          disabled={
-            disabled ||
-            items.length >= slot.maximum ||
-            referenceImages.length === 0
-          }
-          onClick={() => setPicker("reference")}
-        >
-          从资产库选择参考图
-        </button>
       </div>
       {items.some((item) => !item.description?.trim()) ? (
         <p role="alert">每张其他图片都必须填写说明后才能保存。</p>
@@ -577,7 +613,7 @@ function SegmentOtherImages({
           </button>
         ) : null}
       </div>
-      {picker === "keyframe" ? (
+      {picker?.kind === "keyframe" ? (
         <SingleImageAssetPickerDialog
           title="从已选关键帧添加其他图片"
           ariaLabel="从关键帧选择其他图片"
@@ -588,7 +624,7 @@ function SegmentOtherImages({
           onSelect={choose}
         />
       ) : null}
-      {picker === "reference" ? (
+      {picker?.kind === "reference" ? (
         <SingleImageAssetPickerDialog
           title="从资产库添加参考图"
           ariaLabel="从资产库选择其他图片"
@@ -664,11 +700,8 @@ export function KeyframeSlot({
     visibleCharacterIds: keyframe.visible_character_ids,
     characterReferences: keyframe.character_references,
   });
-  const {
-    promptText,
-    visibleCharacterIds,
-    characterReferences,
-  } = protectedPlan.value;
+  const { promptText, visibleCharacterIds, characterReferences } =
+    protectedPlan.value;
   const setPromptText = (promptText: string) =>
     protectedPlan.setValue((v) => ({ ...v, promptText }));
   const setVisibleCharacterIds = (
@@ -1052,9 +1085,7 @@ export function KeyframeSlot({
                         ) ?? null
                       }
                       disabled={busy || !enabled}
-                      onChange={(lookId) =>
-                        setCharacterLook(character, lookId)
-                      }
+                      onChange={(lookId) => setCharacterLook(character, lookId)}
                     />
                   ))}
                 <ImagePromptEditorFields
@@ -1194,7 +1225,9 @@ export function KeyframeSlot({
         selectLabel="选择候选"
         selectedLabel="当前选择"
         onSelect={(generation) => {
-          const asset = generation.output_asset_id ? assetById(snapshot.assets, generation.output_asset_id) : null;
+          const asset = generation.output_asset_id
+            ? assetById(snapshot.assets, generation.output_asset_id)
+            : null;
           if (asset) onSelect(keyframe.id, asset.id);
         }}
         selectDisabled={(_, asset) =>
@@ -1207,11 +1240,18 @@ export function KeyframeSlot({
         onDismiss={(generationId) => onDismiss(generationId)}
         dismissLabel="隐藏候选卡片"
         dismissConfirmation="先隐藏候选；废弃产物可随后在资产中心永久清理。"
-        dismissAllowed={(generation) => generation.allowed_actions.includes("dismiss_history") && enabled}
+        dismissAllowed={(generation) =>
+          generation.allowed_actions.includes("dismiss_history") && enabled
+        }
         renderCandidate={(_, asset) =>
           asset ? (
-            <div className={`keyframe-candidate-preview${asset.id === keyframe.selected_asset_id ? " is-selected" : ""}`}>
-              <ZoomableImage src={asset.content_url} alt={`候选 @${asset.id.slice(0, 6)}`} />
+            <div
+              className={`keyframe-candidate-preview${asset.id === keyframe.selected_asset_id ? " is-selected" : ""}`}
+            >
+              <ZoomableImage
+                src={asset.content_url}
+                alt={`候选 @${asset.id.slice(0, 6)}`}
+              />
             </div>
           ) : null
         }
@@ -1285,7 +1325,11 @@ function CharacterReferencePicker({
   // 未显式选择时：只有一套造型默认使用它；多套造型必须选择，否则 Core 拒绝生成。
   const looks = character.looks;
   const chosen =
-    selection !== null ? selection.look_id : looks.length === 1 ? looks[0].id : undefined;
+    selection !== null
+      ? selection.look_id
+      : looks.length === 1
+        ? looks[0].id
+        : undefined;
   const chosenLook = looks.find((item) => item.id === chosen);
   const status =
     selection === null && looks.length > 1
@@ -1306,7 +1350,9 @@ function CharacterReferencePicker({
       <div className="keyframe-character-reference-grid">
         {looks.map((look) => {
           const asset =
-            look.selected_asset_id === null ? null : assetById(snapshot.assets, look.selected_asset_id);
+            look.selected_asset_id === null
+              ? null
+              : assetById(snapshot.assets, look.selected_asset_id);
           const label = `造型「${look.name}」：${look.usage}`;
           return (
             <label key={look.id}>
@@ -1323,7 +1369,9 @@ function CharacterReferencePicker({
                   <ImageZoomButton src={asset.content_url} alt={label} />
                 </>
               ) : (
-                <span className="reference-thumbnail-missing">未选定造型图</span>
+                <span className="reference-thumbnail-missing">
+                  未选定造型图
+                </span>
               )}
               <span>{label}</span>
             </label>

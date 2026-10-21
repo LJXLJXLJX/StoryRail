@@ -62,6 +62,13 @@ def validate_generation_target(
     }:
         if document.location_library.image_owner(generation.target_id) is None:
             raise ValueError("Generation 目标地点图片不存在。")
+    elif generation.kind is ReferenceGenerationKind.VIDEO_REFERENCE_IMAGE:
+        if document.video_plan is None or not any(
+            image.id == generation.target_id
+            for video in document.video_plan.segments
+            for image in video.reference_images
+        ):
+            raise ValueError("Generation 目标参考图片不存在。")
     elif generation.kind is ReferenceGenerationKind.KEYFRAME_IMAGE:
         keyframe_ids = (
             set()

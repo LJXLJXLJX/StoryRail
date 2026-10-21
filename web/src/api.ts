@@ -113,6 +113,14 @@ export const providerSettingsApi = {
     ),
 };
 export const structuredDirectorApi = {
+  referenceImageCommand: (projectId: string, revision: number, name: string, arguments_: Record<string, unknown>) =>
+    request(`${structuredDirectorResource(projectId)}/commands`, (value) => {
+      if (!isRecord(value)) throw new Error("图片操作回执不正确。");
+      return parseStructuredDirectorSnapshot(value.snapshot);
+    }, { method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({name, expected_revision: revision,
+        idempotency_key: `reference-image-${revision}-${crypto.randomUUID()}`, arguments: arguments_}) }),
+
   updateDirectorPlan: (
     projectId: string,
     revision: number,

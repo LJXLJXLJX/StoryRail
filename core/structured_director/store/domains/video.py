@@ -10,6 +10,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from core.application.caller import current_caller
 from core.director_commands import (
     CommandReceipt,
     VideoInputsUpdate,
@@ -17,6 +18,7 @@ from core.director_commands import (
     VideoRecipeUpdate,
     VideoSelectionClear,
 )
+from core.model_providers.manifest import Capability
 from core.structured_director.errors import RevisionConflictError as RevisionConflictError
 from core.structured_director.models import (
     DirectorCommandReceipt,
@@ -28,6 +30,11 @@ from core.structured_director.models import (
     ReferenceGenerationKind,
     ReferenceGenerationPhase,
     StructuredDirectorDocument,
+)
+from core.structured_director.reference_image_mutations import (
+    reference_image_slot,
+    save_reference_image_plan,
+    select_reference_image,
 )
 from core.structured_director.run_state import _active_run_is as _active_run_is
 from core.structured_director.run_state import _start_director_run as _start_director_run
@@ -64,6 +71,66 @@ class _DomainBase:
 
 
 class VideoDomain(_DomainBase):
+    def save_video_reference_image_plan(self, update, *, expected_revision, command_id):
+        def mutate(document):
+            _, _, _, video = _require_video_command_target(
+                document, update.scope_scene_ids, update.segment_id
+            )
+            updated = save_reference_image_plan(
+                document, update, reference_image_slot(self._provider_catalog, video)
+            )
+            updated = replace(updated, revision=document.revision + 1)
+            return MutationResult(
+                updated,
+                _video_command_receipt(
+                    command_id, document, updated, update.segment_id, "已保存其他图片规划。"
+                ),
+            )
+
+        return commit_mutation(
+            self, loader=lambda: self._editable_document(expected_revision), mutator=mutate
+        )
+
+    def select_video_reference_image(self, update, *, expected_revision, command_id):
+        def mutate(document):
+            _, _, _, video = _require_video_command_target(
+                document, update.scope_scene_ids, update.segment_id
+            )
+            updated = select_reference_image(
+                document, update, reference_image_slot(self._provider_catalog, video)
+            )
+            if updated is document:
+                return MutationResult(
+                    document,
+                    CommandReceipt(command_id, "noop", document.revision, document.revision),
+                    write=False,
+                )
+            self._provider_catalog.validate_recipe_inputs(
+                Capability.VIDEO_GENERATE,
+                video.active_recipe,
+                next(
+                    item
+                    for item in updated.video_plan.segments
+                    if item.segment_id == video.segment_id
+                ).recipe_inputs,
+                document.assets,
+            )
+            updated = replace(updated, revision=document.revision + 1)
+            return MutationResult(
+                updated,
+                _video_command_receipt(
+                    command_id,
+                    document,
+                    updated,
+                    update.segment_id,
+                    "已更新其他图片的实际视频输入。",
+                ),
+            )
+
+        return commit_mutation(
+            self, loader=lambda: self._editable_document(expected_revision), mutator=mutate
+        )
+
     def begin_production_instruction(
         self, message: str | None, *, expected_revision: int
     ) -> tuple[StructuredDirectorDocument, bool]:
@@ -136,6 +203,22 @@ class VideoDomain(_DomainBase):
         command_id: str,
     ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
         def mutate(document: StructuredDirectorDocument) -> MutationResult:
+            caller = current_caller.get()
+            if caller is not None and caller.role == "agent":
+                _, _, _, current = _require_video_command_target(
+                    document, update.scope_scene_ids, update.segment_id
+                )
+                newly_bound = set(update.inputs.asset_ids) - set(current.recipe_inputs.asset_ids)
+                if any(
+                    generation.kind is ReferenceGenerationKind.VIDEO_REFERENCE_IMAGE
+                    and generation.output_asset_id in newly_bound
+                    for generation in document.generations
+                ):
+                    raise ValueError(
+                        "新生成的其他图片候选必须先由人类在卡片选用，"
+                        "Agent 不能通过视频输入绑定绕过选择。"
+                    )
+
             updated, receipt = _prepare_segment_video_plan_update(document, update, command_id)
             return MutationResult(updated, receipt, write=updated is not document)
 

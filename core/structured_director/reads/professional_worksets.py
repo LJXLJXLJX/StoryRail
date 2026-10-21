@@ -23,6 +23,7 @@ from ..prompt_worksets import image_prompt_guide, video_prompt_workset
 from ..script_index import scene_segments
 from .common import _exact_arguments, _ids, _json_value
 from .semantic_projection import build_semantic_projection, build_semantic_tree
+from .video_recipes import keyframe_video_context
 from .workflow_state import workflow_state
 
 _CAPABILITY_ACTION_NAMESPACE = {
@@ -278,7 +279,13 @@ def workset_read(
                     document, {"level": "segment", "scope": scope, "ids": list(targets)}
                 )
             scenes, segments, boundaries = keyframe_inputs(document, tuple(targets or scene_ids))
+            video_inputs = [
+                keyframe_video_context(document, segment.id, provider_recipes, provider_catalog)
+                for scene in scenes
+                for segment in scene.segments
+            ]
             facts = {
+                "video_inputs": video_inputs,
                 "scenes": _json_value(scenes),
                 "context_segment_ids": [
                     segment.id for scene in scenes for segment in scene.segments
@@ -292,7 +299,7 @@ def workset_read(
                 "location_images": _keyframe_location_images(document),
                 "image_prompt": image_prompt_guide(provider_catalog),
             }
-            schema = keyframe_schema(scenes)
+            schema = keyframe_schema(scenes, video_inputs)
             provenance.extend(["keyframe_plan", "generations", "location_library"])
         else:
             cues = narration_inputs(document)
@@ -316,7 +323,7 @@ def workset_read(
         provenance.append("narration_languages")
     if capability in {"reference_library", "script"}:
         schema = narration_language_schema(schema, document.narration_languages)
-    workflow = workflow_state(document)
+    workflow = workflow_state(document, provider_catalog=provider_catalog)
     action_namespace = _CAPABILITY_ACTION_NAMESPACE[capability]
     blocked = workflow["blocked_actions"].get(action_namespace)
     not_current_stage = capability != workflow["current_stage"]

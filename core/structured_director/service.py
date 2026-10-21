@@ -216,6 +216,7 @@ def _generation_ports(generation: ReferenceGeneration) -> tuple[str, ...]:
     if kind in {
         ReferenceGenerationKind.CHARACTER_LOOK_SHEET,
         ReferenceGenerationKind.KEYFRAME_IMAGE,
+        ReferenceGenerationKind.VIDEO_REFERENCE_IMAGE,
         ReferenceGenerationKind.LOCATION_IMAGE,
     }:
         return (
@@ -282,6 +283,8 @@ class StructuredDirectorService:
             "location.generate_set",
         }:
             return await _execute_external_batch(self, command)
+        if command.name == "video.generate_reference_image":
+            return await self.execute_reference_image_generation(command)
         if command.name.startswith("generation."):
             return await self.execute_generation_command(command)
         if command.name in {
@@ -292,6 +295,28 @@ class StructuredDirectorService:
             return await self.execute_media_command(command)
         async with self._lock:
             return self._command_registry.execute(command)
+
+    async def execute_reference_image_generation(self, command):
+        args = command.arguments
+        if set(args) != {"image_id"} or not isinstance(args["image_id"], str):
+            raise InvalidArgumentsError("生成其他图片必须且只提供 image_id。")
+        before = self._store.read()
+        if before.revision != command.expected_revision:
+            raise RevisionConflictError("项目已变化，请刷新后生成。")
+        updated = await self._media.generate_video_reference_image(
+            image_id=args["image_id"], expected_revision=command.expected_revision
+        )
+        return CommandExecution(
+            updated,
+            CommandReceipt(
+                director_command_id(command),
+                "succeeded",
+                before.revision,
+                updated.revision,
+                changed_ids=(args["image_id"], updated.generations[-1].id),
+                decision_summary="已提交其他图片候选；需要人工选择。",
+            ),
+        )
 
     async def execute_media_command(self, command: DirectorCommand) -> CommandExecution:
         """执行明确授权且会创建 Generation 的装配命令。"""
@@ -2005,6 +2030,9 @@ class StructuredDirectorService:
             ),
             ReferenceGenerationKind.GENERATED_AUDIO: lambda: self._retry_generated_audio(
                 generation, common
+            ),
+            ReferenceGenerationKind.VIDEO_REFERENCE_IMAGE: lambda: (
+                self._media.generate_video_reference_image(image_id=generation.target_id, **common)
             ),
             ReferenceGenerationKind.KEYFRAME_IMAGE: lambda: self.generate_keyframe(
                 keyframe_id=generation.target_id, **common

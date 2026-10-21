@@ -4,6 +4,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
+from core.director_commands.video_commands import (
+    parse_video_reference_image_selection,
+    parse_video_reference_image_update,
+)
+
 if TYPE_CHECKING:
     from core.structured_director.models import DirectorRunCursor, StructuredDirectorDocument
 
@@ -382,6 +387,12 @@ _COMMAND_SPECS: dict[str, _CommandSpec] = {
     ),
     "dialogue.set_timing": _CommandSpec(
         _parse(parse_dialogue_timing_update), "set_dialogue_timing_command"
+    ),
+    "video.save_reference_image_plan": _CommandSpec(
+        _parse(parse_video_reference_image_update), "save_video_reference_image_plan"
+    ),
+    "video.select_reference_image": _CommandSpec(
+        _parse(parse_video_reference_image_selection), "select_video_reference_image"
     ),
     "video.set_prompt": _CommandSpec(_parse(parse_video_prompt_update), "set_segment_video_prompt"),
     "video.update_recipe_inputs": _CommandSpec(

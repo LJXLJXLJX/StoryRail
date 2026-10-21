@@ -34,7 +34,7 @@ export const AssetAction = ["audio_trim", "audio_effect", "audio_editor", "video
 export type AssetAction = (typeof AssetAction)[number];
 export const AudioEffectPreset = ["walkie_talkie", "military_radio", "weak_signal", "bad_signal", "dying_transmission"] as const;
 export type AudioEffectPreset = (typeof AudioEffectPreset)[number];
-export const ReferenceGenerationKind = ["character_look_sheet", "character_voice", "narrator_voice", "narration_audio", "dialogue_audio", "generated_audio", "audio_effect", "audio_trim", "video_audio_voice", "video_audio_background", "video_audio_remix", "location_image", "panorama_capture", "keyframe_image", "segment_video", "video_frame", "video_upscale", "final_video", "scene_final_video", "scene_animatic"] as const;
+export const ReferenceGenerationKind = ["character_look_sheet", "character_voice", "narrator_voice", "narration_audio", "dialogue_audio", "generated_audio", "audio_effect", "audio_trim", "video_audio_voice", "video_audio_background", "video_audio_remix", "location_image", "panorama_capture", "keyframe_image", "video_reference_image", "segment_video", "video_frame", "video_upscale", "final_video", "scene_final_video", "scene_animatic"] as const;
 export type ReferenceGenerationKind = (typeof ReferenceGenerationKind)[number];
 export const GenerationOperation = ["generate", "edit", "attach", "voice_design", "synthesize", "render", "upscale", "assemble", "process", "separate", "remix"] as const;
 export type GenerationOperation = (typeof GenerationOperation)[number];
@@ -447,11 +447,23 @@ export interface VideoRecipeState {
   slot_labels: Record<string, (string | null)[]>;
 }
 
+export interface VideoReferenceImagePlan {
+  id: string;
+  recipe_id: string;
+  slot_index: number;
+  prompt_text: string;
+  description: string;
+  visible_character_ids: string[];
+  character_references: KeyframeCharacterReference[];
+  reference_asset_ids: string[];
+}
+
 export interface SegmentVideo {
   segment_id: string;
   prompt_text: string;
   active_recipe: string | null;
   recipe_state?: VideoRecipeState;
+  reference_images?: VideoReferenceImagePlan[];
   recipes: Record<string, RecipeInputs>;
   selected_asset_id: string | null;
   upscaled_asset_id: string | null;
@@ -1017,18 +1029,28 @@ export interface KeyframePlanProposal {
 export interface KeyframeSegmentProposal {
   segment_id: string;
   continues_from_previous: boolean;
-  frame_strategy: "start" | "end" | "both";
+  frame_strategy: "none" | "start" | "end" | "both";
   start_prompt_text: string;
   start_visible_character_ids: string[];
   end_prompt_text: string;
   end_visible_character_ids: string[];
   start_character_references: KeyframeCharacterReferenceProposal[];
   end_character_references: KeyframeCharacterReferenceProposal[];
+  reference_images?: KeyframeReferenceImageProposal[];
 }
 
 export interface KeyframeCharacterReferenceProposal {
   character_id: string;
   look_id: string | null;
+}
+
+export interface KeyframeReferenceImageProposal {
+  slot_index: number;
+  prompt_text: string;
+  description: string;
+  visible_character_ids: string[];
+  character_references: KeyframeCharacterReferenceProposal[];
+  reference_asset_ids?: string[];
 }
 
 export interface LocationPlanProposal {

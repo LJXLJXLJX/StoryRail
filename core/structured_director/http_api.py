@@ -758,7 +758,9 @@ class StructuredDirectorHttpApi:
             )
         receipt = execution.receipt
         payload = {
-            "workflow": workflow_state(execution.document),
+            "workflow": workflow_state(
+                execution.document, provider_catalog=self._service.provider_catalog
+            ),
             "receipt": {
                 "command_id": receipt.command_id,
                 "status": receipt.status,

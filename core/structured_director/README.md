@@ -101,3 +101,5 @@ Keyframe Planner 工作集投影当前 Scene 的 `location_id` / `state_id`、�
 
 `location.generate_set` 固定一组地点图片 ID。单轮分类顺序为进行中/不确定、已选择、成功待选、失败或取消、可提交；只对可提交项
 复用单项生成入口。全景取景不进入批次。每轮结束自己的 run，选择与回调不自动推进；显式 continue 保持原范围。
+
+Segment 的其他图片由 `reference_image_mutations.py` 保存规划/人类绑定，`reference_image_requests.py` 编译实际生图输入，`media_submission/image.py` 只提交候选。生成与选择分离；视频只读取 recipe 输入簿。

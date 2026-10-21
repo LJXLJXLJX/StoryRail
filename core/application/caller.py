@@ -82,6 +82,8 @@ _AGENT_OPERATIONS = {
     "location.generate_set",
     "narration.update_cue",
     "narration.clear_selection",
+    "video.save_reference_image_plan",
+    "video.generate_reference_image",
     "video.set_prompt",
     "video.set_recipe",
     "video.update_recipe_inputs",

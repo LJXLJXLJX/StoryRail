@@ -35,7 +35,7 @@ def execute(store, command):
     prefix = op.split(".")[0]
     planning = prefix == "keyframe"
     handler = (
-        PlanningProposalHandler()
+        PlanningProposalHandler(provider_recipes=tuple(store.provider_recipe_views()))
         if planning
         else {
             "reference": reference_proposals,

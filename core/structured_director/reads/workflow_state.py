@@ -16,6 +16,7 @@ from ..script_index import shot_segments
 from .batch_observation import batch_observations
 from .dependencies import _dependency
 from .proposal_observation import proposal_observation
+from .video_recipes import keyframe_video_context
 
 _ACTIVE_GENERATION_PHASES = frozenset({"submitting", "submission_uncertain", "queued", "running"})
 
@@ -29,7 +30,7 @@ class StagePrerequisiteError(ValueError):
         )
 
 
-def workflow_state(document):
+def workflow_state(document, *, provider_catalog=None):
     status = document.status
     script = document.director_script
     run = document.active_director_run
@@ -120,7 +121,7 @@ def workflow_state(document):
             ],
         )
 
-    keyframe = _keyframe_workflow(document)
+    keyframe = _keyframe_workflow(document, provider_catalog=provider_catalog)
     if keyframe is not None:
         stage, phase, required = keyframe
         active_batches = [
@@ -151,7 +152,7 @@ def workflow_state(document):
     if dialogue is not None:
         stage, phase, required = dialogue
         return _workflow_result(document, stage, phase, required)
-    video = _video_workflow(document)
+    video = _video_workflow(document, provider_catalog=provider_catalog)
     if video is not None:
         stage, phase, required = video
         return _workflow_result(document, stage, phase, required)
@@ -604,7 +605,7 @@ def _timing_conflict_scene_ids(document):
     return blocked
 
 
-def _keyframe_workflow(document):
+def _keyframe_workflow(document, *, provider_catalog=None):
 
     plan = document.keyframe_plan
     script = document.director_script
@@ -626,7 +627,12 @@ def _keyframe_workflow(document):
     unplanned_segments = {
         binding.segment_id
         for binding in plan.segments
-        if not binding.start_enabled and not binding.end_enabled
+        if not binding.start_enabled
+        and not binding.end_enabled
+        and "none"
+        not in keyframe_video_context(document, binding.segment_id, catalog=provider_catalog)[
+            "frame_strategies"
+        ]
     }
     unplanned_segments.update(
         frames[target_id].owner_segment_id
@@ -719,7 +725,7 @@ def _keyframe_workflow(document):
     return "keyframe", phase, actions
 
 
-def _video_workflow(document):
+def _video_workflow(document, *, provider_catalog=None):
 
     plan = document.video_plan
     if plan is None:
@@ -740,7 +746,10 @@ def _video_workflow(document):
         actions.append(candidate)
     candidate_targets = set(() if candidate is None else candidate["target_ids"])
     unresolved = tuple(target_id for target_id in pending if target_id not in candidate_targets)
-    dependencies = [_dependency(document, "video.generate", target_id) for target_id in unresolved]
+    dependencies = [
+        _dependency(document, "video.generate", target_id, catalog=provider_catalog)
+        for target_id in unresolved
+    ]
     active_targets = {
         item.target_id
         for item in _active_generations(document, ReferenceGenerationKind.SEGMENT_VIDEO, unresolved)

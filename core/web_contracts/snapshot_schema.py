@@ -956,12 +956,39 @@ def snapshot_schemas() -> dict[str, dict]:
                 ],
                 **{"x-ts-name": "VideoRecipeState", "x-guard": "isVideoRecipeState"},
             ),
+            "VideoReferenceImagePlan": _obj(
+                {
+                    "id": ID,
+                    "recipe_id": TEXT,
+                    "slot_index": {"type": "integer", "minimum": 0, "maximum": 3},
+                    "prompt_text": {"type": "string", "maxLength": 18000},
+                    "description": TEXT,
+                    "visible_character_ids": _array(ID),
+                    "character_references": _array(_ref("KeyframeCharacterReference")),
+                    "reference_asset_ids": _array(ID, maxItems=5),
+                },
+                [
+                    "id",
+                    "recipe_id",
+                    "slot_index",
+                    "prompt_text",
+                    "description",
+                    "visible_character_ids",
+                    "character_references",
+                    "reference_asset_ids",
+                ],
+                **{"x-ts-name": "VideoReferenceImagePlan"},
+            ),
             "SegmentVideo": _obj(
                 {
                     "segment_id": ID,
                     "prompt_text": {"type": "string", "maxLength": 20000},
                     "active_recipe": _nullable({"type": "string"}),
                     "recipe_state": {**_ref("VideoRecipeState"), "x-ts-optional": True},
+                    "reference_images": {
+                        **_array(_ref("VideoReferenceImagePlan")),
+                        "x-ts-optional": True,
+                    },
                     "recipes": {
                         "type": "object",
                         "additionalProperties": _ref("RecipeInputs"),

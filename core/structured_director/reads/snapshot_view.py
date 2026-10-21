@@ -10,6 +10,7 @@ from ..assembly_timeline import (
 )
 from ..candidate_eligibility import dialogue_inputs_unchanged, generation_is_reviewable
 from ..codec.keyframe import serialize_character_references
+from ..codec.video import _serialize_reference_image
 from ..models import (
     Asset,
     DirectorRunKind,
@@ -64,6 +65,7 @@ _STRING_SEED_KINDS = frozenset(
         ReferenceGenerationKind.CHARACTER_LOOK_SHEET,
         ReferenceGenerationKind.LOCATION_IMAGE,
         ReferenceGenerationKind.KEYFRAME_IMAGE,
+        ReferenceGenerationKind.VIDEO_REFERENCE_IMAGE,
     }
 )
 
@@ -607,6 +609,8 @@ def _generation_allowed_actions(
         ReferenceGenerationKind.PANORAMA_CAPTURE,
     }:
         return ()
+    if generation.kind is ReferenceGenerationKind.VIDEO_REFERENCE_IMAGE:
+        return ("select_output", "dismiss_history")
     if generation.kind is ReferenceGenerationKind.KEYFRAME_IMAGE:
         return ("select_output", "dismiss_history")
     if generation.kind is ReferenceGenerationKind.CHARACTER_LOOK_SHEET:
@@ -761,7 +765,7 @@ def serialize_snapshot(
             "final_assembly_unlocked": (document.workspace_layers.final_assembly_unlocked),
         },
         "allowed_actions": list(allowed_actions),
-        "workflow": workflow_state(document),
+        "workflow": workflow_state(document, provider_catalog=service.provider_catalog),
         "capability_gap_alerts": [
             {
                 "gap_id": item.gap_id,
@@ -975,6 +979,16 @@ def serialize_snapshot(
                         "prompt_text": item.prompt_text,
                         "active_recipe": item.active_recipe,
                         "recipes": item.recipes.to_json(),
+                        **(
+                            {
+                                "reference_images": [
+                                    _serialize_reference_image(image)
+                                    for image in item.reference_images
+                                ]
+                            }
+                            if item.reference_images
+                            else {}
+                        ),
                         "recipe_state": video_recipe_state(
                             document, item, service.provider_catalog, provider_recipes
                         ),

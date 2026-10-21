@@ -5,7 +5,7 @@
 - `reference_library.py`：角色卡与独立旁白身份 proposal；
 - `script.py`：首次脚本、局部脚本回改和 Scene/Shot/Segment 输入；
 - `narration.py`：旁白审核上下文与参数更新 proposal；
-- `keyframe.py`：Keyframe 规划上下文、完整计划和 command operations proposal；Scene 地点与图片说明只作语义上下文，输出不含地点绑定字段；
+- `keyframe.py`：Keyframe 规划上下文、完整计划和 command operations proposal；Scene 地点与图片说明只作语义上下文，输出不含地点绑定字段；可增补最多四张无时间位置的 `reference_images` 规划，实际选图仍由人类写入视频 recipe 输入簿；
 - `location.py`：地点规划输入（每个 Scene 的全部 Shot 与可见角色名、已有地点归属）和增补式 proposal：
   `locations[]`（每项给已有 `id` 或新建 `key`，含陈设、状态和独立图片）、`scene_bindings[]`。
   未列出的项不删除；列出的已有项整体替换；新建项用局部 key 互引，key 规则与 `location.apply_operations` 相同；
@@ -13,7 +13,7 @@
 - `compiler_intent.py`：严格的跨 lane 意图交接，保留用户原话、显式约束、Director 假设和类型化 scope。
   `core_facts` 只允许来源标记，不接收模型声称的项目事实；真正事实仍由上述能力专用输入类型提供。
   共享边界硬约束仅允许 Keyframe plan，Core 仍验证真实邻接、目标 scope 和最终 proposal。
-  相邻 Segment 的边界默认是两个独立 Keyframe：Planner 的 frame_strategy 按原样生效，后一段独立首帧沿用上一段尾帧描述作为连续性起点；只有显式 `share_boundary` / `continues_from_previous` 才共享同一对象。
+  相邻 Segment 的边界默认是两个独立 Keyframe：Planner 的 `none/start/end/both` 按当前 recipe 约束生效，关闭端点可不写正文且保留已保存计划；只有显式 `share_boundary` / `continues_from_previous` 才共享同一对象。
 
 内部 intent 在需要嵌入 JSON 时作为对象发送，不把整份 JSON 二次转义为字符串；
 普通手工用户文本仍是文本，不被自动解释为事实或命令。HTTP 与 project schema 照常严格校验。
