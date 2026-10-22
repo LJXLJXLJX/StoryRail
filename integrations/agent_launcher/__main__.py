@@ -226,6 +226,11 @@ def main():
     parser.add_argument(
         "--update-agents", action="store_true", help="更新通用镜像中的全部 Agent 至 latest"
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="调试模式：要求 Agent 以第一优先级主动汇报 Core 的错误与不合理设计",
+    )
     args = parser.parse_args()
     lease = None
     label = {
@@ -473,6 +478,7 @@ def main():
                     "/app/client.py",
                     "start",
                     args.agent,
+                    *(["--debug"] if args.debug else []),
                 ]
             )
             if dsh_port is not None:

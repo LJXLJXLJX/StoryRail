@@ -366,7 +366,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `agent_launcher/PLAYGROUND_PROMPT.md`：Playground scope 的启动上下文提示。
 - `agent_launcher/Dockerfile`：一次安装全部六种 CLI 的通用 Agent 容器镜像。
 - `agent_launcher/dsh-storyrail.cordis.yml`：DeepSeek Harness 的 MCP 配置片段。
-- `agent_launcher/client.py`：外部工作区的固定 MCP 客户端。
+- `agent_launcher/client.py`：外部工作区的固定 MCP 客户端；`start --debug` 写入调试模式提示词与标记。
 - `agent_launcher/gateway.py`：隔离网络出口、固定 Google API 域名的宿主代理分流与 Core 路由。
 - `agent_launcher/clipboard.py`：宿主终端按键触发的图片传输桥。
 - `agent_launcher/clipboard_input.py`：容器内临时图片校验与剪贴板发布。
@@ -374,6 +374,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `storyrail_mcp/__main__.py`：stdio adapter 启动。
 - `storyrail_mcp/app.py`：公开 25 个受控工具（外加旧别名），另有 Playground scope 的 5 个工具；大型 proposal 可从
   request ID 唯一确定的工作区 JSON 读取，校验大小与 SHA-256 后再走原 Core 命令。
+- `storyrail_mcp/debug_prompt.md`：调试模式提示词（`--debug`），同时注入工作区 AGENTS.md 与 MCP instructions 最前面。
 - `storyrail_mcp/playground_tools.py`：Playground scope 的 5 个工具输入模型与命令翻译。
 - `storyrail_mcp/bridge.py`：固定地址的无状态 HTTP 翻译。
 - `storyrail_mcp/production_tools.py`：生产工具输入 schema 与固定命令翻译，含 Segment 任意内容图片的单卡规划与生成入口。

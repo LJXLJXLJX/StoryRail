@@ -51,3 +51,15 @@ it("generates a playground-scoped runnable command without --project", async () 
   expect((text as HTMLTextAreaElement).value).not.toContain("--project");
   expect((text as HTMLTextAreaElement).value).toContain("--agent pi");
 });
+
+it("appends --debug only when debug mode is checked", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ command_prefix: "python -m integrations.agent_launcher", cwd: "/StoryRail" }) }));
+  render(<ExternalAgentConnect target={{ kind: "project", projectId: "c".repeat(32) }} />);
+  fireEvent.change(screen.getByRole("combobox", { name: "你使用什么 Agent？" }), { target: { value: "codex" } });
+  const text = await screen.findByRole("textbox", { name: "启动命令" });
+  expect((text as HTMLTextAreaElement).value).not.toContain("--debug");
+  fireEvent.click(screen.getByRole("checkbox", { name: /调试模式/ }));
+  expect((text as HTMLTextAreaElement).value).toMatch(/--project 'c{32}' --debug$/);
+  fireEvent.click(screen.getByRole("checkbox", { name: /调试模式/ }));
+  expect((text as HTMLTextAreaElement).value).not.toContain("--debug");
+});

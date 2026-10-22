@@ -42,11 +42,13 @@ function quote(value: string): string {
 
 export function ExternalAgentConnect({ target }: { target: ExternalAgentTarget }) {
   const [agent, setAgent] = useState("");
-  const [command, setCommand] = useState("");
+  const [baseCommand, setCommand] = useState("");
+  const [debug, setDebug] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState<boolean | null>(null);
   const projectId = target.kind === "project" ? target.projectId : null;
   const forPlayground = projectId === null;
+  const command = baseCommand && debug ? `${baseCommand} --debug` : baseCommand;
   useEffect(() => {
     if (agent !== "pi" && agent !== "codex" && agent !== "agy" && agent !== "kimi" && agent !== "dsh" && agent !== "grok") return;
     let cancelled = false;
@@ -97,6 +99,13 @@ export function ExternalAgentConnect({ target }: { target: ExternalAgentTarget }
         {agent === "kimi" ? <p>使用独立的 Kimi Code 配置与会话，不导入宿主凭据或历史。启动默认使用完全自动权限模式；首次连接请在 CLI 中完成登录，后续登录态保留在隔离配置卷。</p> : null}
         {agent === "dsh" ? <p>使用官方 DeepSeek Harness Web UI 与独立配置，不导入宿主凭据或历史。浏览器只通过本机地址访问；新会话默认使用完全权限且不询问，首次连接请在 Web UI 中配置模型凭据。</p> : null}
         {agent === "grok" ? <p>使用独立的 Grok Build 配置与会话，不导入宿主凭据或历史。首次连接请在隔离 CLI 中完成浏览器或设备码登录，后续登录态保留在独立配置卷。</p> : null}
+        <label className="external-agent-debug">
+          <input type="checkbox" checked={debug} onChange={(event) => {
+            setDebug(event.target.checked);
+            setCopied(null);
+          }} />
+          <span>调试模式：让 Agent 以第一优先级主动汇报 Core 的错误与不合理设计</span>
+        </label>
         {error ? <p role="alert">{error}</p> : command ? <>
           <button type="button" onClick={async () => {
             try {

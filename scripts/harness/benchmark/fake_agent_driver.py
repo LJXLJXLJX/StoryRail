@@ -882,16 +882,10 @@ async def _drive(
 
 
 def _mcp_instructions_bytes() -> int:
-    import inspect
+    """项目 scope 普通连接实际下发的 instructions 字节数。"""
+    from integrations.storyrail_mcp.app import create_server
 
-    import integrations.storyrail_mcp.app as app
-
-    source = inspect.getsource(app)
-    marker = "instructions=("
-    start = source.index(marker) + len(marker)
-    end = source.index("\n        ),\n", start)
-    fragments = __import__("re").findall(r'"((?:[^"\\]|\\.)*)"', source[start:end])
-    return len("".join(fragments).encode("utf-8"))
+    return len(create_server(None).instructions.encode("utf-8"))
 
 
 def run_scenario(name: str, workdir: Path | None = None) -> RunResult:

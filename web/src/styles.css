@@ -1145,6 +1145,7 @@ video.director-animatic-result { display: block; aspect-ratio: 16 / 9; backgroun
 .external-agent-connect { margin-top: 2rem; max-width: 48rem; }
 .external-agent-connect label { display: grid; gap: .7rem; font-size: 1rem; }
 .external-agent-connect select { padding: .75rem; background: var(--paper, #fffdf8); font: inherit; }
+.external-agent-connect .external-agent-debug { display: flex; gap: .5rem; align-items: flex-start; font-size: .95rem; }
 .external-agent-connect textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 1rem; padding: .8rem; font: .8rem/1.6 monospace; resize: vertical; }
 .reference-preparing-card .external-agent-connect p { font-size: .95rem; line-height: 1.7; }
 

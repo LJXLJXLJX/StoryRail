@@ -21,15 +21,18 @@ def main():
         default=Path("/workspace/proposals"),
         help="项目 Agent 大型 proposal 的固定工作区目录。",
     )
+    parser.add_argument(
+        "--debug", action="store_true", help="在 instructions 最前面注入调试模式提示词。"
+    )
     args = parser.parse_args()
     try:
         bridge = CoreBridge(args.core_origin, args.token_file)
     except ValueError as exc:
         parser.error(str(exc))
     server = (
-        create_playground_server(bridge)
+        create_playground_server(bridge, debug=args.debug)
         if args.scope == "playground"
-        else create_server(bridge, proposal_directory=args.proposal_directory)
+        else create_server(bridge, proposal_directory=args.proposal_directory, debug=args.debug)
     )
 
     async def serve():

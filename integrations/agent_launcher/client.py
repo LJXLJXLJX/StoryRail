@@ -30,8 +30,22 @@ def connection_scope(config):
     return scope
 
 
-def mcp_arguments(config, token, scope):
-    """原生 MCP 启动参数；playground 在末尾追加 --scope playground。"""
+DEBUG_PROMPT = "/app/integrations/storyrail_mcp/debug_prompt.md"
+
+
+def debug_mode():
+    """调试模式由本次 start 写入 startup.json；原生 Agent 随后启动的 MCP 据此注入同一提示词。"""
+    startup = Path("/workspace/startup.json")
+    return startup.exists() and json.loads(startup.read_text()).get("debug") is True
+
+
+def agents_prompt(source, debug):
+    prompt = Path(source).read_text()
+    return Path(DEBUG_PROMPT).read_text() + "\n\n" + prompt if debug else prompt
+
+
+def mcp_arguments(config, token, scope, debug=False):
+    """原生 MCP 启动参数；playground 追加 --scope playground，调试模式追加 --debug。"""
     arguments = [
         "-m",
         "integrations.storyrail_mcp",
@@ -42,6 +56,8 @@ def mcp_arguments(config, token, scope):
     ]
     if scope == "playground":
         arguments += ["--scope", "playground"]
+    if debug:
+        arguments.append("--debug")
     return arguments
 
 
@@ -189,22 +205,17 @@ async def main():
             time.sleep(0.02)
         else:
             raise ValueError("图片粘贴服务启动超时。")
+        debug = "--debug" in sys.argv[3:]
         if scope == "playground":
-            Path("/workspace/startup.json").write_text(
-                json.dumps({"scope": "playground"}, ensure_ascii=False)
-            )
-            Path("/workspace/AGENTS.md").write_text(Path("/app/PLAYGROUND_PROMPT.md").read_text())
+            startup = {"scope": "playground"}
+            prompt = "/app/PLAYGROUND_PROMPT.md"
         else:
-            Path("/workspace/startup.json").write_text(
-                json.dumps(
-                    {
-                        "project_id": config["project_id"],
-                        "revision": config["revision"],
-                    },
-                    ensure_ascii=False,
-                )
-            )
-            Path("/workspace/AGENTS.md").write_text(Path("/app/PROMPT.md").read_text())
+            startup = {"project_id": config["project_id"], "revision": config["revision"]}
+            prompt = "/app/PROMPT.md"
+        if debug:
+            startup["debug"] = True
+        Path("/workspace/startup.json").write_text(json.dumps(startup, ensure_ascii=False))
+        Path("/workspace/AGENTS.md").write_text(agents_prompt(prompt, debug))
         agent = sys.argv[2] if len(sys.argv) > 2 else "pi"
         if agent == "codex":
             os.execvp("codex", codex_command())
@@ -222,7 +233,7 @@ async def main():
     token = Path("/workspace/core-token")
     token.write_text(config["token"])
     token.chmod(0o600)
-    arguments = mcp_arguments(config, token, scope)
+    arguments = mcp_arguments(config, token, scope, debug_mode())
     if sys.argv[1] == "mcp":
         os.execv(sys.executable, [sys.executable, *arguments])
     params = StdioServerParameters(

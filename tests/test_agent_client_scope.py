@@ -182,3 +182,48 @@ def test_unknown_scope_is_rejected(container, monkeypatch):
 
     with pytest.raises(ValueError):
         asyncio.run(client.main())
+
+
+def test_debug_start_prefixes_agents_prompt_and_marks_startup(container, monkeypatch):
+    files, _ = container
+    files["/workspace/connection.json"] = json.dumps(PROJECT_CONFIG)
+    files["/app/PROMPT.md"] = "# 项目连接"
+    files[client.DEBUG_PROMPT] = "# 调试模式（第一优先级）"
+    recorded: list[tuple] = []
+    _stop_after_exec(monkeypatch, recorded)
+    monkeypatch.setattr(sys, "argv", ["client.py", "start", "codex", "--debug"])
+
+    with pytest.raises(SystemExit):
+        asyncio.run(client.main())
+
+    assert files["/workspace/AGENTS.md"] == "# 调试模式（第一优先级）\n\n# 项目连接"
+    assert json.loads(files["/workspace/startup.json"])["debug"] is True
+    assert recorded[0][0] == "codex"
+
+    # 原生 Agent 随后启动的 MCP 读取同一标记，追加 --debug。
+    recorded.clear()
+    monkeypatch.setattr(sys, "argv", ["client.py", "mcp"])
+    with pytest.raises(SystemExit):
+        asyncio.run(client.main())
+    assert recorded[0][1][-1] == "--debug"
+
+
+def test_non_debug_start_clears_previous_debug_mode(container, monkeypatch):
+    files, _ = container
+    files["/workspace/connection.json"] = json.dumps(PROJECT_CONFIG)
+    files["/app/PROMPT.md"] = "# 项目连接"
+    files["/workspace/startup.json"] = json.dumps({"debug": True})
+    recorded: list[tuple] = []
+    _stop_after_exec(monkeypatch, recorded)
+    monkeypatch.setattr(sys, "argv", ["client.py", "start", "pi"])
+
+    with pytest.raises(SystemExit):
+        asyncio.run(client.main())
+
+    assert "debug" not in json.loads(files["/workspace/startup.json"])
+    assert files["/workspace/AGENTS.md"] == "# 项目连接"
+    recorded.clear()
+    monkeypatch.setattr(sys, "argv", ["client.py", "mcp"])
+    with pytest.raises(SystemExit):
+        asyncio.run(client.main())
+    assert "--debug" not in recorded[0][1]

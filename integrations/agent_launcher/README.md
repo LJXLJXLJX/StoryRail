@@ -37,6 +37,8 @@ DeepSeek Harness 与 Grok 通过官方 npm 包的 `@latest` 安装；AGY 与 Kim
 禁用层缓存以重新获取官方 latest。后续连接再次复用更新后的公共镜像，不在只读容器内升级。
 
 `client.py` 仅准备项目 AGENTS.md 和无凭据的 startup.json，然后启动所选原生 Agent。它也提供固定 MCP 工具调用入口。
+`--debug`（项目与 Playground 均可）让 `client.py start` 把 `/app/integrations/storyrail_mcp/debug_prompt.md` 放在 AGENTS.md
+最前面并在 startup.json 写入 `"debug": true`；`client.py mcp` 读到该标记后给 adapter 追加 `--debug`。
 `gateway.py` 只转发当前项目 Core 路径，并提供认证的公共 HTTPS CONNECT 隧道；拒绝非 443、私有/回环地址。
 系统 DNS 返回非公网地址时，网关通过固定的 `https://1.1.1.1/dns-query` 重新解析 A 记录（标准 TLS 证书校验），
 处理本机代理的 Fake-IP；只有全部结果均为公网 IP 才连接已校验的具体地址。解析失败仍拒绝，不能直接放行虚拟私网地址。

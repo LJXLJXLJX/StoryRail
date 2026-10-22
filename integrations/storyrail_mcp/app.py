@@ -725,7 +725,18 @@ def _resolve_submit_payload(
     }
 
 
-def create_server(bridge: CoreBridge, *, proposal_directory: Path | None = None):
+def debug_prompt() -> str:
+    """调试模式提示词；工作区 AGENTS.md 与 MCP instructions 共用这一份文本。"""
+    return Path(__file__).with_name("debug_prompt.md").read_text(encoding="utf-8").strip()
+
+
+def _debug_prefix(debug: bool) -> str:
+    return debug_prompt() + "\n\n" if debug else ""
+
+
+def create_server(
+    bridge: CoreBridge, *, proposal_directory: Path | None = None, debug: bool = False
+):
     models = project_models()
     listed_models = published_models()
     descriptions = {
@@ -981,7 +992,8 @@ def create_server(bridge: CoreBridge, *, proposal_directory: Path | None = None)
         version="0.1.0",
         on_list_tools=list_tools,
         on_call_tool=call_tool,
-        instructions=(
+        instructions=_debug_prefix(debug)
+        + (
             "有限语义工具连接同一 Core；断连后保留原参数/revision/key 重试。"
             "图片任务必须读取并遵守图片工作集 global_skills 中的 storyrail-image-prompt-writing；"
             "有参考图时逐张写标签与用途，正文明确引用真实标签，不写文件名；无图只写正文。"
@@ -1053,7 +1065,7 @@ def playground_tool_schema(name: str, model: object) -> dict[str, object]:
     return _prune_schema(schema)
 
 
-def create_playground_server(bridge: CoreBridge):
+def create_playground_server(bridge: CoreBridge, *, debug: bool = False):
     """Playground scope 只发布 5 个工具，全部翻译成 playground.* 命令。"""
     models = dict(PLAYGROUND_MODELS)
 
@@ -1092,7 +1104,8 @@ def create_playground_server(bridge: CoreBridge):
         version="0.1.0",
         on_list_tools=list_tools,
         on_call_tool=call_tool,
-        instructions=(
+        instructions=_debug_prefix(debug)
+        + (
             "当前是 StoryRail Playground scope：不涉及任何项目，也不能跨域复制 Asset。"
             "先用 playground_capabilities 读取能力与参数 schema，再调用 playground_submit；"
             "图片任务必须读取 image_prompt.global_skills：有图逐图写用途并在正文引用真实标签，"

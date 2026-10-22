@@ -54,6 +54,16 @@ sequenceDiagram
 - 同一项目的启动租约在不同 Agent 之间共用，防止并发覆盖连接；重复运行同一命令会保留 caller 并续期。
 - 入口在项目任意阶段都可用；切换项目后面板按新项目重建。
 
+### 调试模式
+
+「连接 Agent」面板勾选“调试模式”时，启动命令末尾追加 `--debug`。启动器把它传给容器内的 `client.py start`，
+后者把 `integrations/storyrail_mcp/debug_prompt.md` 放在工作区 `AGENTS.md` 最前面，并在 `startup.json` 写入
+`"debug": true`；原生 Agent 随后启动的 MCP adapter 据此追加 `--debug`，把同一段文字放在 MCP `instructions` 最前面。
+
+调试提示词要求 Agent 以第一优先级、按“类型 / 现象 / 预期 / 影响 / 建议”的固定格式，立即汇报遇到的 Core 错误、
+不合理设计与文档不一致，区分已复现与推测。它不授予任何额外权限，也不允许为验证问题擅自写入或生成。
+不带 `--debug` 重新连接即恢复普通模式（`startup.json` 不含 `debug`，`AGENTS.md` 与 instructions 不含调试段落）。
+
 ## 授权模型
 
 ```mermaid
