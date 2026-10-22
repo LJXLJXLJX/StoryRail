@@ -21,7 +21,7 @@ from .script_index import (
     segment_shots,
     segment_visible_character_ids,
 )
-from .video_inputs import dialogue_audio_inputs, resolve_video_inputs
+from .video_inputs import dialogue_audio_addition, dialogue_audio_inputs, resolve_video_inputs
 
 
 def video_prompt_workset(
@@ -68,23 +68,6 @@ def video_prompt_workset(
     audio_slot = next((slot for slot in recipe.slots if slot.role is Role.REFERENCE_AUDIO), None)
     if segment.dialogue_lines and audio_slot is None:
         raise ValueError("含对白的 Segment 必须使用支持参考音频的 Ref2VA recipe。")
-    if audio_slot is not None and dialogue_inputs:
-        if len(segment.dialogue_lines) > audio_slot.maximum:
-            raise ValueError(
-                f"该 Segment 有 {len(segment.dialogue_lines)} 句对白，超过 Ref2VA 的 "
-                f"{audio_slot.maximum} 条音频上限；请先拆分 Segment。"
-            )
-        system = tuple(
-            SlotBinding(
-                asset.id,
-                _dialogue_audio_description(document, line, item.start_seconds),
-            )
-            for line, item, asset in dialogue_inputs
-        )
-        manual = bindings.get(audio_slot.key, ())
-        if len(system) + len(manual) > audio_slot.maximum:
-            raise ValueError("对白系统音频与手工参考音频合计超过当前 recipe 上限。")
-        bindings[audio_slot.key] = (*system, *manual)
     labels = binding_labels(recipe, bindings)
     assets = {asset.id: asset for asset in document.assets}
     if any(item["asset_id"] not in assets for item in labels):
@@ -176,7 +159,8 @@ def video_prompt_workset(
         "exceeds_soft_duration_limit": isinstance(soft, int | float)
         and segment.duration_estimate_seconds > soft,
         "dialogue_timing": actual_dialogue_timing(document, segment),
-        "required_dialogue_prompt": required_dialogue_prompt(labels, segment.dialogue_lines),
+        "dialogue_audio": dialogue_audio_addition(document, segment_id, recipe),
+        "required_dialogue_prompt": required_dialogue_prompt(labels, dialogue_inputs),
         "video_inputs": [
             keyframe_video_context(document, segment_id, provider_recipes, provider_catalog)
         ],
@@ -189,21 +173,17 @@ def video_prompt_workset(
     )
 
 
-def _dialogue_audio_description(document, line, start_seconds):
-    characters = {item.id: item.name for item in document.reference_library.characters}
-    speaker = line.speaker_label or characters.get(line.character_id, line.character_id)
-    timing = "尚未校准" if start_seconds is None else f"{start_seconds:.3f}s 开始"
-    return f"{speaker} 的对白，{timing}。原始内容：{line.text}"
-
-
-def required_dialogue_prompt(labels, dialogue_lines):
-    audio_labels = [item["label"] for item in labels if item["role"] == "reference_audio"]
-    if not dialogue_lines or len(audio_labels) < len(dialogue_lines):
+def required_dialogue_prompt(labels, dialogue_inputs):
+    """按实际显式绑定的 Asset 找标签，不假定对白一定排在手工参考前面。"""
+    audio_labels = {
+        item["asset_id"]: item["label"] for item in labels if item["role"] == "reference_audio"
+    }
+    bound = [(line, asset) for line, _, asset in dialogue_inputs if asset.id in audio_labels]
+    if not bound:
         return None
     instructions = ["严格让角色说出参考音频的原始内容，音频完全相等。"]
     instructions.extend(
-        f"{label} 对应原始对白：{line.text}"
-        for label, line in zip(audio_labels[: len(dialogue_lines)], dialogue_lines, strict=True)
+        f"{audio_labels[asset.id]} 对应原始对白：{line.text}" for line, asset in bound
     )
     return "\n".join(instructions)
 
@@ -228,6 +208,15 @@ def _bindable_assets(document: StructuredDirectorDocument, scene, recipe) -> lis
     for location in document.location_library.locations:
         used.update(image.selected_asset_id for image in location.images)
     segment_ids = {segment.id for segment in scene_segments(scene)}
+    dialogue_line_ids = {
+        line.id for segment in scene_segments(scene) for line in segment.dialogue_lines
+    }
+    if document.dialogue_plan is not None:
+        used.update(
+            item.selected_audio_asset_id
+            for item in document.dialogue_plan.items
+            if item.dialogue_line_id in dialogue_line_ids
+        )
     for cue in scene.narration_cues:
         used.update(cue.selected_audio_asset_ids)
     if document.keyframe_plan is not None:

@@ -10,6 +10,6 @@ StoryRail 的修改：
 - references/ref-en.txt：六节正文语言跟随用户指定；英文词数区间只在英文正文时适用；
   overall_soundscape 不得为 N/A；非画内配乐与参考音频作配乐只在用户明确要求时使用。
 - SKILL.md：删除 compatibility 字段；正文语言规则同上；新增 StoryRail 的导演边界、Ref2VA 参考素材绑定、
-  独立旁白隔离、画面与调度规范和提交前核对。
+  独立旁白隔离、对白音频显式引用及实际标签映射、画面与调度规范和提交前核对。
 - agents/openai.yaml：未修改。
 - references/cinematic-video-prompting.md：StoryRail 独立编写，不是上游文件。

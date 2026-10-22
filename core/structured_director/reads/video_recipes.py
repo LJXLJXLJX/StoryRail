@@ -7,7 +7,13 @@ from ..codec.video import _serialize_reference_image
 from ..image_prompt_style import image_prompt_style
 from ..models import GenerationOperation
 from ..reference_image_requests import reference_image_inputs
-from ..video_inputs import binding_for, dialogue_audio_inputs, resolve_video_inputs, segment_context
+from ..video_inputs import (
+    binding_for,
+    dialogue_audio_addition,
+    resolve_video_inputs,
+    segment_context,
+    validate_dialogue_video_bindings,
+)
 
 
 def video_recipe_state(document, video, catalog, views):
@@ -43,10 +49,12 @@ def video_recipe_state(document, video, catalog, views):
         else view["hints"].get("soft_duration_limit_seconds"),
         "bindings": [],
         "slot_labels": {},
+        "dialogue_audio": None,
     }
     if view is None:
         return state
     _plugin, recipe = catalog.recipe_definition(Capability.VIDEO_GENERATE, video.active_recipe)
+    state["dialogue_audio"] = dialogue_audio_addition(document, video.segment_id, recipe)
     bindings = dict(video.recipe_inputs.bindings)
     boundary = binding_for(document, video.segment_id)
     frames = {item.id: item for item in document.keyframe_plan.keyframes}
@@ -63,6 +71,7 @@ def video_recipe_state(document, video, catalog, views):
         bindings[slot.key] = () if asset_id is None else (SlotBinding(asset_id),)
     try:
         resolve_video_inputs(document, video.segment_id)
+        validate_dialogue_video_bindings(document, video.segment_id, recipe, bindings)
         validate_required_slots(recipe, bindings)
         catalog.validate_recipe_inputs(
             Capability.VIDEO_GENERATE, video.active_recipe, video.recipe_inputs, document.assets
@@ -182,14 +191,24 @@ def keyframe_video_context(document, segment_id, views=(), catalog=None):
         if slot["key"] in boundaries:
             continue
         bindings = dict(video.recipe_inputs.bindings).get(slot["key"], ())
-        inputs = [(item.asset_id, item.description, "recipe") for item in bindings]
-        if slot["role"] == "reference_audio":
-            inputs.extend(
-                (asset.id, line.text, "dialogue")
-                for line, _, asset in dialogue_audio_inputs(
-                    document, segment_id, require_ready=False
-                )
+        selected_dialogue = (
+            {
+                item.selected_audio_asset_id
+                for item in document.dialogue_plan.items
+                if item.dialogue_line_id
+                in {line.id for line in segment_context(document, segment_id)[2].dialogue_lines}
+            }
+            if document.dialogue_plan is not None
+            else set()
+        )
+        inputs = [
+            (
+                item.asset_id,
+                item.description,
+                "dialogue" if item.asset_id in selected_dialogue else "recipe",
             )
+            for item in bindings
+        ]
         for index, (asset_id, description, source) in enumerate(inputs):
             asset = assets.get(asset_id)
             result["reference_inputs"].append(

@@ -1130,7 +1130,11 @@ class Journey:
                             "expected_revision": self._revision(),
                             "prompt_text": prompt_text or "固定机位观察站台，人物停在画面右侧。",
                             "additional_image_references": [],
-                            "audio_references": [],
+                            "audio_references": (
+                                segment["recipe_state"]["dialogue_audio"]["bindings"]
+                                if segment["recipe_state"]["dialogue_audio"] is not None
+                                else []
+                            ),
                             "video_references": [],
                         }
                     ),

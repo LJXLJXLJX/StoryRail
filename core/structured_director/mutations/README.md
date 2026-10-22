@@ -3,6 +3,7 @@
 L2 领域变换纯函数：接收权威 `StructuredDirectorDocument`，执行校验与对象变换，返回变更后的 document（或携带完整回执的域结果）。
 不做文件 I/O；revision CAS、编辑锁与原子写入由 `store/pipeline.py` 的 `commit_mutation` 统一负责。
 
+- `dialogue.py`：对白 TTS 选择、真实时序校准；换选 TTS 只刷新已存在的对应视频音频引用，不新增输入。
 - `narration.py`：旁白（保存/更新 Cue、清除选择、选择音频、proposal 应用）；时序校准由 `narration_timing.py` 在每次脚本写入里自动执行。
 - `final.py`：进入成片阶段、最终成片候选选择与清除、Approval、重新开放生产。
 - `generation.py`：Generation 目标校验、创建、状态更新、完成回收（全景取景成功时把确定性产物选给新建普通地点图片）、启动时中断提交恢复。

@@ -2,7 +2,7 @@
   "scenario": "ref2va",
   "capability": "video_prompt",
   "bootstrap": "keyframes",
-  "summary": "关键帧已选且 Segment 为 Ref2VA：读契约 → 读 h3 工作集 → 保存提示词 → 生成 → wait。",
+  "summary": "关键帧已选且 Segment 为 Ref2VA：读契约 → 读工作集 → 显式加入本段已选对白并保存提示词 → 生成 → wait。",
   "steps": [
     {
       "id": "tools",
@@ -45,7 +45,8 @@
       },
       "assert": {
         "no_error": true
-      }
+      },
+      "capture": "video_workset"
     },
     {
       "id": "mode",
@@ -73,7 +74,13 @@
         "idempotency_key": "bench-ref2va-prompt",
         "scene_ids": "$base.scene_ids",
         "segment_id": "$base.segment_id",
-        "prompt_text": "保持角色身份与对白口型，固定机位观察站台，冷蓝色天光。"
+        "prompt_text": "保持角色身份与对白口型，固定机位观察站台，冷蓝色天光。",
+        "recipe_inputs": {
+          "bindings": {
+            "reference_audios": "$video_workset.core_facts.dialogue_audio.bindings"
+          },
+          "params": {}
+        }
       },
       "assert": {
         "no_error": true

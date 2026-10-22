@@ -385,7 +385,8 @@
         "last_frame": [
           "<Picture 2>"
         ]
-      }
+      },
+      "dialogue_audio": null
     },
     "minimax_h3.ref2va": {
       "available": true,
@@ -453,6 +454,12 @@
           "<Video 2>",
           "<Video 3>"
         ]
+      },
+      "dialogue_audio": {
+        "slot": "reference_audios",
+        "bindings": [],
+        "error": "本 Segment 没有对白。",
+        "replace_asset_ids": []
       }
     },
     "blocked": {
@@ -528,6 +535,261 @@
           "<Video 1>",
           "<Video 2>",
           "<Video 3>"
+        ]
+      },
+      "dialogue_audio": {
+        "slot": "reference_audios",
+        "bindings": [],
+        "error": "本 Segment 没有对白。",
+        "replace_asset_ids": []
+      }
+    },
+    "dialogue": {
+      "available": true,
+      "ready": true,
+      "reason": null,
+      "options": [
+        {
+          "id": "minimax_h3.fl2va",
+          "label": "FL2VA",
+          "allowed": false,
+          "reason": "请先移除参考音频，再切换为 FL2VA。"
+        },
+        {
+          "id": "minimax_h3.ref2va",
+          "label": "Ref2VA",
+          "allowed": true,
+          "reason": null
+        }
+      ],
+      "duration_seconds": 4.25,
+      "soft_duration_limit_seconds": 15,
+      "bindings": [
+        {
+          "slot": "first_frame",
+          "role": "first_frame",
+          "index": 0,
+          "asset_id": "5edde07cef711e2867e7f7c528e9d84c",
+          "description": null,
+          "label": "<Picture 1>"
+        },
+        {
+          "slot": "last_frame",
+          "role": "last_frame",
+          "index": 0,
+          "asset_id": "e3813c1c7bed52609f4b47bf5123702a",
+          "description": null,
+          "label": "<Picture 2>"
+        },
+        {
+          "slot": "reference_audios",
+          "role": "reference_audio",
+          "index": 0,
+          "asset_id": "5047c3400c95d28535674b5aa83eecd4",
+          "description": "甲 的音色参考。",
+          "label": "<Audio 1>"
+        },
+        {
+          "slot": "reference_audios",
+          "role": "reference_audio",
+          "index": 1,
+          "asset_id": "86a1437e2b56c2fe54a5e3f6c89c4f3d",
+          "description": "原样使用这段对白。",
+          "label": "<Audio 2>"
+        },
+        {
+          "slot": "reference_audios",
+          "role": "reference_audio",
+          "index": 2,
+          "asset_id": "b05d48179a5ae8adf3695bd06cb6f05b",
+          "description": "说话人：乙。\n说话内容：先听我说。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
+          "label": "<Audio 3>"
+        },
+        {
+          "slot": "reference_audios",
+          "role": "reference_audio",
+          "index": 3,
+          "asset_id": "9330f424a42a42b5caf52134ce730cae",
+          "description": "说话人：甲。\n说话内容：好的。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
+          "label": "<Audio 4>"
+        },
+        {
+          "slot": "reference_audios",
+          "role": "reference_audio",
+          "index": 4,
+          "asset_id": "ccaddebb5a671220e481852404815a00",
+          "description": "说话人：乙。\n说话内容：我们开始。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
+          "label": "<Audio 5>"
+        }
+      ],
+      "slot_labels": {
+        "first_frame": [
+          "<Picture 1>"
+        ],
+        "last_frame": [
+          "<Picture 2>"
+        ],
+        "additional_images": [
+          "<Picture 3>",
+          "<Picture 4>",
+          "<Picture 5>",
+          "<Picture 6>"
+        ],
+        "reference_audios": [
+          "<Audio 1>",
+          "<Audio 2>",
+          "<Audio 3>",
+          "<Audio 4>",
+          "<Audio 5>",
+          "<Audio 6>",
+          "<Audio 7>",
+          "<Audio 8>"
+        ],
+        "reference_videos": [
+          "<Video 1>",
+          "<Video 2>",
+          "<Video 3>"
+        ]
+      },
+      "dialogue_audio": {
+        "slot": "reference_audios",
+        "bindings": [
+          {
+            "asset_id": "b05d48179a5ae8adf3695bd06cb6f05b",
+            "description": "说话人：乙。\n说话内容：先听我说。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。"
+          },
+          {
+            "asset_id": "9330f424a42a42b5caf52134ce730cae",
+            "description": "说话人：甲。\n说话内容：好的。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。"
+          },
+          {
+            "asset_id": "ccaddebb5a671220e481852404815a00",
+            "description": "说话人：乙。\n说话内容：我们开始。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。"
+          }
+        ],
+        "error": null,
+        "replace_asset_ids": [
+          "b05d48179a5ae8adf3695bd06cb6f05b",
+          "9330f424a42a42b5caf52134ce730cae",
+          "ccaddebb5a671220e481852404815a00"
+        ]
+      }
+    },
+    "dialogue_missing": {
+      "available": true,
+      "ready": false,
+      "reason": "请先按真实 TTS 时长校准该 Segment 的对白时序。",
+      "options": [
+        {
+          "id": "minimax_h3.fl2va",
+          "label": "FL2VA",
+          "allowed": false,
+          "reason": "请先移除参考音频，再切换为 FL2VA。"
+        },
+        {
+          "id": "minimax_h3.ref2va",
+          "label": "Ref2VA",
+          "allowed": true,
+          "reason": null
+        }
+      ],
+      "duration_seconds": 4.25,
+      "soft_duration_limit_seconds": 15,
+      "bindings": [
+        {
+          "slot": "first_frame",
+          "role": "first_frame",
+          "index": 0,
+          "asset_id": "5edde07cef711e2867e7f7c528e9d84c",
+          "description": null,
+          "label": "<Picture 1>"
+        },
+        {
+          "slot": "last_frame",
+          "role": "last_frame",
+          "index": 0,
+          "asset_id": "e3813c1c7bed52609f4b47bf5123702a",
+          "description": null,
+          "label": "<Picture 2>"
+        },
+        {
+          "slot": "reference_audios",
+          "role": "reference_audio",
+          "index": 0,
+          "asset_id": "5047c3400c95d28535674b5aa83eecd4",
+          "description": "甲 的音色参考。",
+          "label": "<Audio 1>"
+        },
+        {
+          "slot": "reference_audios",
+          "role": "reference_audio",
+          "index": 1,
+          "asset_id": "86a1437e2b56c2fe54a5e3f6c89c4f3d",
+          "description": "原样使用这段对白。",
+          "label": "<Audio 2>"
+        },
+        {
+          "slot": "reference_audios",
+          "role": "reference_audio",
+          "index": 2,
+          "asset_id": "b05d48179a5ae8adf3695bd06cb6f05b",
+          "description": "说话人：乙。\n说话内容：先听我说。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
+          "label": "<Audio 3>"
+        },
+        {
+          "slot": "reference_audios",
+          "role": "reference_audio",
+          "index": 3,
+          "asset_id": "9330f424a42a42b5caf52134ce730cae",
+          "description": "说话人：甲。\n说话内容：好的。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
+          "label": "<Audio 4>"
+        },
+        {
+          "slot": "reference_audios",
+          "role": "reference_audio",
+          "index": 4,
+          "asset_id": "ccaddebb5a671220e481852404815a00",
+          "description": "说话人：乙。\n说话内容：我们开始。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
+          "label": "<Audio 5>"
+        }
+      ],
+      "slot_labels": {
+        "first_frame": [
+          "<Picture 1>"
+        ],
+        "last_frame": [
+          "<Picture 2>"
+        ],
+        "additional_images": [
+          "<Picture 3>",
+          "<Picture 4>",
+          "<Picture 5>",
+          "<Picture 6>"
+        ],
+        "reference_audios": [
+          "<Audio 1>",
+          "<Audio 2>",
+          "<Audio 3>",
+          "<Audio 4>",
+          "<Audio 5>",
+          "<Audio 6>",
+          "<Audio 7>",
+          "<Audio 8>"
+        ],
+        "reference_videos": [
+          "<Video 1>",
+          "<Video 2>",
+          "<Video 3>"
+        ]
+      },
+      "dialogue_audio": {
+        "slot": "reference_audios",
+        "bindings": [],
+        "error": "以下对白尚未选择 TTS 音频：第 2 句「好的。」",
+        "replace_asset_ids": [
+          "b05d48179a5ae8adf3695bd06cb6f05b",
+          "9330f424a42a42b5caf52134ce730cae",
+          "ccaddebb5a671220e481852404815a00"
         ]
       }
     }

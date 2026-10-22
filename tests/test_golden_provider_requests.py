@@ -383,6 +383,11 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
                     {"asset_id": reference_image, "description": "站牌上的站名字样"}
                 ],
                 "reference_audios": [
+                    *next(
+                        item
+                        for item in journey.snapshot()["video_plan"]["segments"]
+                        if item["segment_id"] == first_segment
+                    )["recipe_state"]["dialogue_audio"]["bindings"],
                     {"asset_id": reference_ambience, "description": "站台环境底噪"},
                 ],
                 "reference_videos": [

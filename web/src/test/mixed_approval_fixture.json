@@ -1240,7 +1240,8 @@
           "duration_seconds": 8.0,
           "soft_duration_limit_seconds": null,
           "bindings": [],
-          "slot_labels": {}
+          "slot_labels": {},
+          "dialogue_audio": null
         },
         "selected_asset_id": "6338b846412608d0de9f683e92ce2fb8",
         "upscaled_asset_id": null
@@ -1263,7 +1264,8 @@
           "duration_seconds": 8.0,
           "soft_duration_limit_seconds": null,
           "bindings": [],
-          "slot_labels": {}
+          "slot_labels": {},
+          "dialogue_audio": null
         },
         "selected_asset_id": "81a93e72ee355b3d9c7480abbbaf66a6",
         "upscaled_asset_id": null
@@ -1286,7 +1288,8 @@
           "duration_seconds": 6.0,
           "soft_duration_limit_seconds": null,
           "bindings": [],
-          "slot_labels": {}
+          "slot_labels": {},
+          "dialogue_audio": null
         },
         "selected_asset_id": "e8466cb5af1556363a360f6c255f87c1",
         "upscaled_asset_id": null

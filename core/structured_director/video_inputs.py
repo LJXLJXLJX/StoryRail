@@ -6,6 +6,9 @@ import hashlib
 import json
 from dataclasses import dataclass
 
+from core.model_providers.manifest import Role
+from core.model_providers.recipe import SlotBinding
+
 from .models import ReferenceGenerationKind as Kind
 from .models import ReferenceGenerationPhase as Phase
 from .script_index import scene_segments, shot_segments
@@ -173,6 +176,97 @@ def dialogue_audio_inputs(document, segment_id, *, require_ready=True):
         if previous_end > segment.duration_estimate_seconds + 1e-6:
             raise ValueError("Segment 视频时长不能短于对白真实音频的结束时间。")
     return tuple(result)
+
+
+def dialogue_audio_bindings(document, segment_id):
+    """一键添加用的显式引用草稿；不要求已校准时序，不写 authority。"""
+    _, _, segment, _ = segment_context(document, segment_id)
+    selected = dialogue_audio_inputs(document, segment_id, require_ready=False)
+    selected_ids = {line.id for line, _, _ in selected}
+    missing = [
+        f"第 {index + 1} 句「{line.text}」"
+        for index, line in enumerate(segment.dialogue_lines)
+        if line.id not in selected_ids
+    ]
+    if missing:
+        raise ValueError("以下对白尚未选择 TTS 音频：" + "、".join(missing))
+    if not selected:
+        raise ValueError("本 Segment 没有对白。")
+    bindings = {}
+    for line, _, asset in selected:
+        description = dialogue_audio_description(document, line, asset)
+        if len(description) > 2000:
+            raise ValueError("对白完整说明超过参考音频的 2000 字限制，请先拆分这句对白。")
+        bindings.setdefault(asset.id, SlotBinding(asset.id, description))
+    return tuple(bindings.values())
+
+
+def dialogue_audio_addition(document, segment_id, recipe):
+    """完整引用草稿和可覆盖的历史资产集合，供 Web 与专业工作集共用。"""
+    _, _, segment, _ = segment_context(document, segment_id)
+    audio_slot = next((slot for slot in recipe.slots if slot.role is Role.REFERENCE_AUDIO), None)
+    if audio_slot is not None:
+        line_ids = {line.id for line in segment.dialogue_lines}
+        addition = {
+            "slot": audio_slot.key,
+            "bindings": [],
+            "error": None,
+            "replace_asset_ids": list(
+                dict.fromkeys(
+                    generation.output_asset_id
+                    for generation in document.generations
+                    if generation.kind is Kind.DIALOGUE_AUDIO
+                    and generation.target_id in line_ids
+                    and generation.output_asset_id is not None
+                )
+            ),
+        }
+        try:
+            addition["bindings"] = [
+                {"asset_id": item.asset_id, "description": item.description}
+                for item in dialogue_audio_bindings(document, segment_id)
+            ]
+        except ValueError as exc:
+            addition["error"] = str(exc)
+        addition["replace_asset_ids"] = list(
+            dict.fromkeys(
+                [
+                    *addition["replace_asset_ids"],
+                    *(item["asset_id"] for item in addition["bindings"]),
+                ]
+            )
+        )
+        return addition
+    return None
+
+
+def dialogue_audio_description(document, line, asset):
+    characters = {item.id: item.name for item in document.reference_library.characters}
+    speaker = line.speaker_label or characters.get(line.character_id, line.character_id)
+    return (
+        f"说话人：{speaker}。\n说话内容：{line.text}\n"
+        f"真实时长：{asset.duration_seconds:.3f} 秒。\n"
+        "后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。"
+    )
+
+
+def validate_dialogue_video_bindings(document, segment_id, recipe, bindings):
+    """生成门禁：仅校验完整显式引用，绝不补入缺失的对白音频。"""
+    dialogue = dialogue_audio_inputs(document, segment_id)
+    if not dialogue:
+        return dialogue
+    audio_slots = [slot for slot in recipe.slots if slot.role is Role.REFERENCE_AUDIO]
+    if not audio_slots:
+        raise ValueError("含对白的 Segment 必须使用支持参考音频的 Ref2VA recipe。")
+    bound = {item.asset_id for slot in audio_slots for item in bindings.get(slot.key, ())}
+    missing = [line.text for line, _, asset in dialogue if asset.id not in bound]
+    if missing:
+        raise ValueError(
+            "视频参考音频缺少本段已选对白："
+            + "、".join(f"「{text}」" for text in missing)
+            + "。请点击“一键添加本段对白 TTS”并保存视频计划。"
+        )
+    return dialogue
 
 
 def video_candidate_selectable(document, generation):

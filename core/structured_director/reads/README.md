@@ -18,7 +18,7 @@
   供 read_tools 与同包模块模块级复用，避免互相 import 成环。
 - `workflow_state.py`：同源主流程投影、可选推荐动作（`recommended_next_actions`）、引用审核摘要与阶段门禁
   （`workflow_state`/`location_binding_gaps`/`require_workflow_action`/`references_reviewed`/`reference_fingerprint`）。
-- `video_recipes.py`：当前视频 recipe、兼容切换选项、槽位标签及生成时长的只读投影；目录由 Service 提供。
+- `video_recipes.py`：当前视频 recipe、兼容切换选项、槽位标签、完整对白引用草稿（说明、可覆盖旧 WAV 与缺失原因）及生成时长的只读投影；目录由 Service 提供。
 - `snapshot_view.py`：Web 权威快照、human `allowed_actions` 与资产使用原因投影。
 - `location_image.py`：地点库的 Web 只读投影；复用地点批次分类与单项生成计划，
   返回每张独立图片的类型、说明、生成状态、候选、选图、全景取景能力和允许动作。

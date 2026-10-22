@@ -47,7 +47,7 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 - `location_proposals.py`：地点规划的项目级工作集与提交：proposal 编译成 `location.apply_operations` 的同一组操作，
   在 `LOCATION_PLAN` run 内经 `location_mutations.py` 原子落库（局部 key 映射、失效级联与手工编辑同源）并结束 run。
 - `planning_inputs.py`：专业规划的纯输入构造（含局部 Keyframe 的完整 Scene 上下文、锁定节点与共享边界；地点规划的全部 Scene/Shot 与已有地点归属）。
-- `prompt_worksets.py`：视频 recipe 与 Keyframe 专业工作集（实际 Provider 输入清单与 `<Picture N>` / `<Audio N>` / `<Video N>` 映射；对白系统 WAV 在手工 Audio 之前注入，视频另给已保存的 `recipe_inputs` 与当前 recipe 显式槽位的 `bindable_assets`），以及当前图片插件的提示词约定与随插件 Skill（`image_prompt_guide`）。
+- `prompt_worksets.py`：视频 recipe 与 Keyframe 专业工作集（实际 Provider 输入清单与 `<Picture N>` / `<Audio N>` / `<Video N>` 映射；对白 WAV 与手动 Audio 共用显式 recipe 列表，缺失引用阻止生成，视频另给已保存的 `recipe_inputs` 与当前 recipe 显式槽位的 `bindable_assets`），以及当前图片插件的提示词约定与随插件 Skill（`image_prompt_guide`）。
 
 **生产**
 

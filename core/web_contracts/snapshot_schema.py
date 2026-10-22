@@ -938,6 +938,17 @@ def snapshot_schemas() -> dict[str, dict]:
                     "duration_seconds": {"type": "number"},
                     "soft_duration_limit_seconds": _nullable({"type": "number"}),
                     "bindings": _array(_ref("RecipeInputLabel")),
+                    "dialogue_audio": _nullable(
+                        _obj(
+                            {
+                                "slot": TEXT,
+                                "bindings": _array(_ref("RecipeBinding")),
+                                "replace_asset_ids": _array(ID),
+                                "error": _nullable({"type": "string"}),
+                            },
+                            ["slot", "bindings", "replace_asset_ids", "error"],
+                        )
+                    ),
                     "slot_labels": {
                         "type": "object",
                         "additionalProperties": _array(_nullable({"type": "string"})),
@@ -953,6 +964,7 @@ def snapshot_schemas() -> dict[str, dict]:
                     "soft_duration_limit_seconds",
                     "bindings",
                     "slot_labels",
+                    "dialogue_audio",
                 ],
                 **{"x-ts-name": "VideoRecipeState", "x-guard": "isVideoRecipeState"},
             ),

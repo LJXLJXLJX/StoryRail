@@ -31,7 +31,7 @@ StoryRail 机位字段适配层。上游许可证全文与集成说明见 `web/t
 - StoryRail 路径：`core/model_providers/minimax_h3/skills/h3-prompt-writing/`
 
 `references/base-en.txt`、`references/ref-en.txt` 与 `SKILL.md` 在上游基础上做了修改（正文语言跟随用户、
-音效必写、默认不生成非画内配乐，以及 StoryRail 的导演边界与旁白隔离规则），`agents/openai.yaml` 未修改，
+音效必写、默认不生成非画内配乐，以及 StoryRail 的导演边界、旁白隔离与对白音频显式引用规则），`agents/openai.yaml` 未修改，
 `references/cinematic-video-prompting.md` 为 StoryRail 独立编写。逐文件修改说明与上游要求的版权声明见同目录
 `NOTICE`。该协议对适用地区、使用限制和高收入商用另有约定，使用者须自行遵守。
 

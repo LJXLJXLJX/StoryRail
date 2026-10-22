@@ -40,7 +40,7 @@ Read `references/ref-en.txt` for label rules, retention analysis, and complete e
 
 ## StoryRail Ref2VA 参考素材绑定
 
-手工绑定只在用户本轮明确要求时进行（例如“再参考这段环境声”“参考那条视频的运镜”），通过 `save_video_prompt` 的 `recipe_inputs` 保存；以工作集 `recipe_inputs` 为起点，未被要求的绑定原样保留。对白 TTS WAV 是 Core 根据当前 DialoguePlan 自动注入的系统输入，不写入 `recipe_inputs`，也不需要用户再次授权绑定。
+手工绑定只在用户本轮明确要求时进行（例如“再参考这段环境声”“参考那条视频的运镜”），通过 `save_video_prompt` 的 `recipe_inputs` 保存；以工作集 `recipe_inputs` 为起点，未被要求的绑定原样保留。对白 TTS WAV 与其他参考共用 `recipe_inputs` 的显式音频列表。用户明确要求添加本段对白时，将 `dialogue_audio` 草稿或 `bindable_assets` 中已选对白保存到列表；未明确要求时不补齐。生成入口会拒绝缺失的对白引用，不会隐式注入音频。
 
 - FL2VA 没有可显式绑定的槽位；需要参考素材时先经用户同意切到 `minimax_h3.ref2va`。切回 FL2VA 前必须先清空下列槽位。
 - `additional_images`：最多 4 张图片，例如角色参考图、用户显式选择的地点图片；说明写它定义的主体或环境。
@@ -49,7 +49,7 @@ Read `references/ref-en.txt` for label rules, retention analysis, and complete e
 - 每项说明必填且 Asset 不重复；Ref2VA 可无图片，但五类媒体槽至少一项；`params` 传 `{}`。
 - 保存后重读工作集，用新的 `actual_provider_inputs` 标签写正文。
 
-含对白时，必须逐字保留工作集 `required_dialogue_prompt`，并把它放在正文最前面。第一句固定为“严格让角色说出参考音频的原始内容，音频完全相等。”，后续每行把系统 Audio 标签映射到对应原始台词；不得改写、摘要、遗漏或把手工音频误配成对白。`dialogue_timing` 给出已选 WAV 的真实时长、起点和最晚结束时间，提示词时间设计必须服从这些事实，视频时长不得短于最后一句对白结束时间。
+含对白时，必须逐字保留工作集 `required_dialogue_prompt`，并把它放在正文最前面。第一句固定为“严格让角色说出参考音频的原始内容，音频完全相等。”，后续每行把显式列表中的实际 Audio 标签映射到对应原始台词；不得改写、摘要、遗漏或把手工音频误配成对白。`dialogue_timing` 给出已选 WAV 的真实时长、起点和最晚结束时间，提示词时间设计必须服从这些事实，视频时长不得短于最后一句对白结束时间。
 
 ## StoryRail 独立旁白隔离
 
@@ -86,7 +86,7 @@ StoryRail 的 Scene 旁白由独立 TTS 音频资产承载，并在 Scene/Final 
 - 用户本轮明确指定的正文语言优先于历史提示词和示例语言；只保留固定字段、标签、关系标记、时间语法及原文对白。不要因示例是英文而把中文要求输出为英文。
 - `actual_provider_inputs.allowed_asset_reference_labels` 只限制实际 Picture/Video/Audio 素材。Ref2VA 的 `<Subject N>` 是从实际素材派生的可见主体，不是新的图片输入；必须在 `subject_definitions` 定义其来源和特征，不能只定义 Picture/Audio 便省略主体。声音映射须指向相应主体/说话者，不能虚构未提供的参考资产。
 - `pictures` 中 `role=described_reference` 的 Picture 是用户显式参考图；按其 `description` 和原标签落实用途，不臆造时间锚点。
-- 无对白时 `audios` 可为空；含对白时前若干项是 Core 注入的系统 TTS WAV，必须与 `required_dialogue_prompt` 一一对应。其余项按 `description` 区分音色与原声复用，不能默认都是角色音色。
+- 无对白时 `audios` 可为空；含对白时，以 `required_dialogue_prompt` 指明的实际标签识别已选 TTS WAV，不假设它们位于列表开头。其他项按 `description` 区分音色与原声复用，不能默认都是角色音色。
 - `videos` 可为空，不得虚构；按 `description` 引用画面用途，不提交音轨。
 - 首尾 Picture 的精确时间取 `pictures[].time_seconds`；无 Picture 时不写图片标签或对齐句。`context.shots` 只有一项时不要写切镜；多项时 `[Shot 1]` 不带切镜时间，后续切镜才用 `[Shot N] At MM:SS.mmm, ...`，切点是按 Shot 设计与总时长估算的软约束，不要求与生成结果逐帧一致。Base 模式沿用对应 guide 的对齐句。
 - 逐项保留用户明确的排除要求（例如无字幕、无水印、无新增角色、无对白或无背景旁白），在最终正文的相关画面/声音字段写清；不能只写在内部分析、工作集或摘要中，也不能用“不改剧情”等泛化表述代替。未要求的排除项不自动新增。

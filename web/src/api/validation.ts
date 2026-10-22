@@ -2603,6 +2603,53 @@ const schemas: Record<string, JsonSchema> = {
           "$ref": "RecipeInputLabel"
         }
       },
+      "dialogue_audio": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "slot": {
+                "type": "string",
+                "minLength": 1,
+                "x-trimmed-nonempty": true
+              },
+              "bindings": {
+                "type": "array",
+                "items": {
+                  "$ref": "RecipeBinding"
+                }
+              },
+              "replace_asset_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{32}$"
+                }
+              },
+              "error": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "slot",
+              "bindings",
+              "replace_asset_ids",
+              "error"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "slot_labels": {
         "type": "object",
         "additionalProperties": {
@@ -2628,7 +2675,8 @@ const schemas: Record<string, JsonSchema> = {
       "duration_seconds",
       "soft_duration_limit_seconds",
       "bindings",
-      "slot_labels"
+      "slot_labels",
+      "dialogue_audio"
     ],
     "additionalProperties": false
   },

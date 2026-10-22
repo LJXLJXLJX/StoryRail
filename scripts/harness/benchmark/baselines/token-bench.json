@@ -11,7 +11,7 @@
   },
   "environment": {
     "date": "2026-10-22",
-    "git_sha": "e0f637f17bfbc2083ca4207dfe9eb3ae5042e1dd",
+    "git_sha": "827cb1f11d6316a209a36188854b1800b32603fd",
     "python_version": "3.12.12",
     "platform": "macOS-26.6.2-arm64-arm-64bit",
     "driver": "scripts/harness/benchmark/fake_agent_driver.py"
@@ -23,16 +23,16 @@
     "tools_list_bytes": 45153,
     "scenarios": {
       "h3": {
-        "total_wire_bytes": 96191
+        "total_wire_bytes": 96592
       },
       "keyframe": {
-        "total_wire_bytes": 113088
+        "total_wire_bytes": 112389
       },
       "location": {
         "total_wire_bytes": 68722
       },
       "ref2va": {
-        "total_wire_bytes": 97873
+        "total_wire_bytes": 98274
       },
       "reference": {
         "total_wire_bytes": 30056
@@ -50,11 +50,11 @@
         "tools_list_bytes": 45153,
         "tool_count": 26,
         "requests": 8,
-        "input_bytes": 1856,
-        "output_bytes": 94335,
-        "total_wire_bytes": 96191,
+        "input_bytes": 2201,
+        "output_bytes": 94391,
+        "total_wire_bytes": 96592,
         "contract_read_bytes": 6882,
-        "workset_read_bytes": 75255,
+        "workset_read_bytes": 75294,
         "pagination_rounds": 8,
         "wait_rounds": 1,
         "error_responses": 0
@@ -88,7 +88,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 255,
-          "output_bytes": 27751,
+          "output_bytes": 27725,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -99,7 +99,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 337,
-          "output_bytes": 26872,
+          "output_bytes": 26871,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -110,7 +110,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 337,
-          "output_bytes": 19703,
+          "output_bytes": 19769,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -120,8 +120,8 @@
           "step": "prompt",
           "tool": "save_video_prompt",
           "action": "call",
-          "input_bytes": 312,
-          "output_bytes": 1558,
+          "input_bytes": 657,
+          "output_bytes": 1575,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -158,10 +158,10 @@
         "tool_count": 26,
         "requests": 8,
         "input_bytes": 2019,
-        "output_bytes": 111069,
-        "total_wire_bytes": 113088,
+        "output_bytes": 110370,
+        "total_wire_bytes": 112389,
         "contract_read_bytes": 40857,
-        "workset_read_bytes": 34235,
+        "workset_read_bytes": 33769,
         "pagination_rounds": 8,
         "wait_rounds": 1,
         "error_responses": 0
@@ -195,7 +195,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 207,
-          "output_bytes": 16525,
+          "output_bytes": 16292,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -206,7 +206,7 @@
           "tool": "keyframe_proposal",
           "action": "request",
           "input_bytes": 313,
-          "output_bytes": 19372,
+          "output_bytes": 19139,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -228,7 +228,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 205,
-          "output_bytes": 17298,
+          "output_bytes": 17065,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -349,11 +349,11 @@
         "tools_list_bytes": 45153,
         "tool_count": 26,
         "requests": 9,
-        "input_bytes": 2118,
-        "output_bytes": 95755,
-        "total_wire_bytes": 97873,
+        "input_bytes": 2463,
+        "output_bytes": 95811,
+        "total_wire_bytes": 98274,
         "contract_read_bytes": 6886,
-        "workset_read_bytes": 75267,
+        "workset_read_bytes": 75306,
         "pagination_rounds": 9,
         "wait_rounds": 1,
         "error_responses": 0
@@ -387,7 +387,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 259,
-          "output_bytes": 27751,
+          "output_bytes": 27725,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -398,7 +398,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 341,
-          "output_bytes": 26872,
+          "output_bytes": 26871,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -409,7 +409,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 341,
-          "output_bytes": 19703,
+          "output_bytes": 19769,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -430,8 +430,8 @@
           "step": "prompt",
           "tool": "save_video_prompt",
           "action": "call",
-          "input_bytes": 307,
-          "output_bytes": 1558,
+          "input_bytes": 652,
+          "output_bytes": 1575,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null

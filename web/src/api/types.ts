@@ -444,6 +444,7 @@ export interface VideoRecipeState {
   duration_seconds: number;
   soft_duration_limit_seconds: number | null;
   bindings: RecipeInputLabel[];
+  dialogue_audio: { slot: string; bindings: RecipeBinding[]; replace_asset_ids: string[]; error: string | null } | null;
   slot_labels: Record<string, (string | null)[]>;
 }
 

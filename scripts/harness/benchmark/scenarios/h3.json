@@ -2,7 +2,7 @@
   "scenario": "h3",
   "capability": "video_prompt",
   "bootstrap": "keyframes",
-  "summary": "关键帧已选：读契约 → 读 h3 工作集（分页）→ 保存提示词 → 提交视频生成 → wait。",
+  "summary": "关键帧已选：读契约 → 读工作集 → 显式加入本段已选对白并保存提示词 → 提交视频生成 → wait。",
   "steps": [
     {
       "id": "tools",
@@ -45,7 +45,8 @@
       },
       "assert": {
         "no_error": true
-      }
+      },
+      "capture": "video_workset"
     },
     {
       "id": "prompt",
@@ -57,7 +58,13 @@
         "idempotency_key": "bench-h3-prompt",
         "scene_ids": "$base.scene_ids",
         "segment_id": "$base.segment_id",
-        "prompt_text": "固定机位观察傍晚空旷站台，小满停在画面右侧，缓慢推近后停住。"
+        "prompt_text": "固定机位观察傍晚空旷站台，小满停在画面右侧，缓慢推近后停住。",
+        "recipe_inputs": {
+          "bindings": {
+            "reference_audios": "$video_workset.core_facts.dialogue_audio.bindings"
+          },
+          "params": {}
+        }
       },
       "assert": {
         "no_error": true

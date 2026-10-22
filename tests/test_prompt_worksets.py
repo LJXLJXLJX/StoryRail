@@ -33,6 +33,7 @@ from core.structured_director.production_context import _production_state_json
 from core.structured_director.reads.semantic_projection import build_semantic_projection
 from core.structured_director.reads.snapshot_view import serialize_snapshot
 from core.structured_director.script_index import shot_segments
+from core.structured_director.video_inputs import dialogue_audio_bindings
 from scripts.harness.fixtures.candidates import register_dialogue_audio_candidate
 
 
@@ -191,6 +192,17 @@ async def fixture(tmp_path):
         ),
         expected_revision=doc.revision,
     )
+    current_video = doc.video_plan.segments[0]
+    doc = await save_video_inputs(
+        service,
+        segment_id=segment.id,
+        prompt_text=current_video.prompt_text,
+        audio_references=(
+            *video_slot(current_video, "reference_audios"),
+            *dialogue_audio_bindings(doc, segment.id),
+        ),
+        expected_revision=doc.revision,
+    )
     selected = {f.id: f.selected_asset_id for f in doc.keyframe_plan.keyframes}
     # 手工辅助图只供Keyframe；H3不得把它列作实际Picture。
     doc = await service.import_image_asset(
@@ -293,7 +305,7 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
         }
         audios = workset["context"]["actual_provider_inputs"]["audios"]
         assert [item["label"] for item in audios] == [f"<Audio {index}>" for index in range(1, 6)]
-        assert [item["description"] for item in audios[-2:]] == [
+        assert [item["description"] for item in audios] == [
             item.description
             for item in video_slot(document.video_plan.segments[0], "reference_audios")
         ]
@@ -304,7 +316,7 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
         with pytest.raises(ValueError, match="17"):
             replace(generation, input_asset_ids=tuple(f"{i:032x}" for i in range(18)))
         assert request.prompt.startswith("严格让角色说出参考音频的原始内容，音频完全相等")
-        assert "<Audio 1> 对应原始对白" in request.prompt
+        assert "<Audio 3> 对应原始对白" in request.prompt
         assert request.prompt.endswith("中文正文；无字幕、无水印。")
 
     asyncio.run(run())
@@ -440,7 +452,7 @@ def test_video_labels_number_independently_and_map_to_provider_order(tmp_path):
         labeled = {item["label"]: item["asset_id"] for item in workset["asset_inputs"]}
         assert labeled["<Video 1>"] == video_ids[1]
         assert labeled["<Video 2>"] == video_ids[0]
-        assert labeled["<Audio 4>"] == audio_references[0].asset_id
+        assert labeled["<Audio 1>"] == audio_references[0].asset_id
 
         # 引用的参考视频 Asset 缺失时，项目文档本身即不成立，工作集无从构建。
         with pytest.raises(ValueError, match="视频参考输入必须引用本项目 Asset"):
@@ -523,7 +535,7 @@ def test_ref2va_submits_additional_images_without_manual_reference_audio(tmp_pat
                     additional_asset_id, "保持仓库墙面、货架和红色行李箱一致。"
                 ),
             ),
-            audio_references=(),
+            audio_references=dialogue_audio_bindings(document, segment.id),
         )
         workset = video_prompt_workset(document, segment.id)
         assert len(workset["context"]["actual_provider_inputs"]["audios"]) == 3
@@ -887,7 +899,7 @@ def test_ref2va_reference_audio_has_no_duration_limit(tmp_path):
             expected_revision=document.revision,
             prompt_text="中文正文；无字幕、无水印。",
             additional_image_references=(),
-            audio_references=tuple(references),
+            audio_references=(*dialogue_audio_bindings(document, segment.id), *references),
             video_references=(),
         )
         await service._media.generate_segment_video(

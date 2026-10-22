@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from core.model_providers.manifest import Capability, Role
-from core.model_providers.recipe import MediaInput, RecipeParams, SlotBinding, binding_labels
+from core.model_providers.recipe import MediaInput, RecipeParams, binding_labels
 
 from ..generation_lifecycle import (
     _next_generation_seed,
@@ -20,7 +20,7 @@ from ..production_context import (
 )
 from ..prompt_worksets import required_dialogue_prompt
 from ..script_index import find_segment
-from ..video_inputs import dialogue_audio_inputs, resolve_video_inputs
+from ..video_inputs import resolve_video_inputs, validate_dialogue_video_bindings
 from .support import _commit_submission
 
 
@@ -81,32 +81,10 @@ def _segment_video_submission(owner, document, context):
     prepared = owner._registry.prepare_recipe(
         Capability.VIDEO_GENERATE, recipe_id=plan_item.active_recipe
     )
-    dialogue = dialogue_audio_inputs(document, segment.id)
-    audio_slot = next(
-        (slot for slot in prepared.recipe.slots if slot.role is Role.REFERENCE_AUDIO), None
-    )
-    if dialogue and audio_slot is None:
-        raise ValueError("含对白的 Segment 必须使用支持参考音频的 Ref2VA recipe。")
     bindings = dict(plan_item.recipe_inputs.bindings)
-    if audio_slot is not None and dialogue:
-        if len(dialogue) > audio_slot.maximum:
-            raise ValueError(
-                f"该 Segment 有 {len(dialogue)} 句对白，超过 Ref2VA 的 "
-                f"{audio_slot.maximum} 条音频上限；请先拆分 Segment。"
-            )
-        system = tuple(
-            SlotBinding(
-                asset.id,
-                _dialogue_description(document, line, item.start_seconds),
-            )
-            for line, item, asset in dialogue
-        )
-        manual = bindings.get(audio_slot.key, ())
-        if len(system) + len(manual) > audio_slot.maximum:
-            raise ValueError("对白系统音频与手工参考音频合计超过当前 recipe 上限。")
-        bindings[audio_slot.key] = (*system, *manual)
+    dialogue = validate_dialogue_video_bindings(document, segment.id, prepared.recipe, bindings)
     labels = binding_labels(prepared.recipe, bindings)
-    instruction = required_dialogue_prompt(labels, segment.dialogue_lines)
+    instruction = required_dialogue_prompt(labels, dialogue)
     effective_prompt = (
         plan_item.prompt_text
         if instruction is None
@@ -179,13 +157,6 @@ def _segment_video_submission(owner, document, context):
         duration_seconds=duration,
     )
     return request, prepared, generation
-
-
-def _dialogue_description(document, line, start_seconds):
-    characters = {item.id: item.name for item in document.reference_library.characters}
-    speaker = line.speaker_label or characters.get(line.character_id, line.character_id)
-    assert start_seconds is not None
-    return f"{speaker} 的对白，{start_seconds:.3f}s 开始。原始内容：{line.text}"
 
 
 class VideoSubmission:

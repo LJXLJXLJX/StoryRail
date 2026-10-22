@@ -123,6 +123,7 @@ export function RecipeInputsControl({
   recipe,
   value,
   state,
+  dialogueAudio = state?.dialogue_audio,
   snapshot,
   boundaryAssets,
   disabled,
@@ -132,12 +133,14 @@ export function RecipeInputsControl({
   recipe: ManifestRecipe;
   value: RecipeInputs;
   state?: VideoRecipeState;
+  dialogueAudio?: VideoRecipeState["dialogue_audio"];
   snapshot: StructuredDirectorSnapshot;
   boundaryAssets: { first_frame: string | null; last_frame: string | null };
   disabled: boolean;
   hiddenRoles?: ManifestRole[];
   onChange: (value: RecipeInputs) => void;
 }) {
+  const [dialogueError, setDialogueError] = useState<string | null>(null);
   const [picker, setPicker] = useState<string | null>(null);
   const slot = recipe.slots.find((item) => item.key === picker);
   const media = (assetId: string, label: string) => {
@@ -218,6 +221,39 @@ export function RecipeInputsControl({
             items.some((binding) => !binding.description?.trim()) ? (
               <p>每条{item.label}都必须填写说明后才能保存。</p>
             ) : null}
+            {item.role === "reference_audio" ? (
+              <>
+                <button
+                  type="button"
+                  disabled={disabled || !dialogueAudio}
+                  onClick={() => {
+                    const addition = dialogueAudio;
+                    if (!addition || addition.slot !== item.key) return;
+                    if (addition.error) {
+                      setDialogueError(addition.error);
+                      return;
+                    }
+                    const selectedIds = new Set(addition.replace_asset_ids);
+                    const merged = [
+                      ...addition.bindings,
+                      ...items.filter((binding) => !selectedIds.has(binding.asset_id)),
+                    ];
+                    if (merged.length > item.maximum) {
+                      setDialogueError(`本段对白与已有参考音频合计 ${merged.length} 条，超过 ${item.maximum} 条上限。请先移除其他参考音频或拆分 Segment。`);
+                      return;
+                    }
+                    setDialogueError(null);
+                    update(item.key, merged);
+                  }}
+                >
+                  一键添加本段对白 TTS
+                </button>
+                <small>
+                  添加后请保存视频计划；对白与手动参考音频共同占用输入名额。
+                </small>
+                {dialogueError ? <p role="alert">{dialogueError}</p> : null}
+              </>
+            ) : null}
             {items.map((binding, index) => {
               const label = state?.slot_labels[item.key]?.[index] ?? item.label;
               return (
@@ -230,6 +266,13 @@ export function RecipeInputsControl({
                   <strong>
                     {automatic ? `${label} · ${item.label}` : label}
                   </strong>
+                  {item.role === "reference_audio" ? (
+                    <small>
+                      {dialogueAudio?.replace_asset_ids.includes(binding.asset_id)
+                        ? "本段对白"
+                        : "手动参考"}
+                    </small>
+                  ) : null}
                   {media(
                     binding.asset_id,
                     `${recipe.label} ${item.label} ${index + 1}`,

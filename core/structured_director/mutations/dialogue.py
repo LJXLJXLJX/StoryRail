@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from math import isfinite
 
-from core.model_providers.recipe import RecipeParams
+from core.model_providers.recipe import RecipeInputs, RecipeParams, SlotBinding
 
 from ..candidate_eligibility import generation_is_reviewable
 from ..models import (
@@ -13,6 +13,7 @@ from ..models import (
     StructuredDirectorDocument,
 )
 from ..script_mutations import _invalidate_production_after_script_revision
+from ..video_inputs import dialogue_audio_description
 
 
 def select_dialogue_audio(
@@ -47,13 +48,54 @@ def select_dialogue_audio(
         for item in plan.items
     )
     return _invalidate_segment_video(
-        replace(
-            document,
-            revision=document.revision + 1,
-            dialogue_plan=replace(plan, items=items),
+        _refresh_explicit_dialogue_references(
+            replace(
+                document,
+                revision=document.revision + 1,
+                dialogue_plan=replace(plan, items=items),
+            ),
+            segment,
         ),
         segment.id,
     )
+
+
+def _refresh_explicit_dialogue_references(document, segment):
+    """换选 TTS 只刷新已存在的本句引用，不建立任何新的视频输入。"""
+    if document.video_plan is None:
+        return document
+    lines = {line.id: line for line in segment.dialogue_lines}
+    selected = {
+        item.dialogue_line_id: item.selected_audio_asset_id for item in document.dialogue_plan.items
+    }
+    assets = {asset.id: asset for asset in document.assets}
+    replacements = {}
+    for generation in document.generations:
+        if (
+            generation.kind is ReferenceGenerationKind.DIALOGUE_AUDIO
+            and generation.target_id in lines
+            and generation.output_asset_id is not None
+        ):
+            asset = assets.get(selected.get(generation.target_id))
+            if asset is not None and generation.output_asset_id != asset.id:
+                replacements[generation.output_asset_id] = SlotBinding(
+                    asset.id,
+                    dialogue_audio_description(document, lines[generation.target_id], asset),
+                )
+    videos = []
+    for video in document.video_plan.segments:
+        if video.segment_id == segment.id:
+            book = video.recipes
+            for recipe_id, inputs in video.recipes.entries:
+                bindings = []
+                for key, entries in inputs.bindings:
+                    refreshed = [replacements.get(entry.asset_id, entry) for entry in entries]
+                    unique = {entry.asset_id: entry for entry in reversed(refreshed)}
+                    bindings.append((key, tuple(reversed(list(unique.values())))))
+                book = book.with_entry(recipe_id, RecipeInputs(tuple(bindings), inputs.params))
+            video = replace(video, recipes=book)
+        videos.append(video)
+    return replace(document, video_plan=replace(document.video_plan, segments=tuple(videos)))
 
 
 def update_dialogue_recipe_params(

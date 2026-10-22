@@ -340,6 +340,7 @@ export function SegmentVideoPanel({
             recipe={recipe}
             value={draftInputs}
             state={preview}
+            dialogueAudio={plan?.recipe_state?.dialogue_audio ?? null}
             snapshot={snapshot}
             boundaryAssets={{
               first_frame: startAsset?.id ?? null,

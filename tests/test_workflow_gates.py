@@ -18,6 +18,7 @@ from core.director_commands import DirectorCommand
 from core.director_proposals.reference_library_codec import parse_reference_library_proposal
 from core.structured_director.reads.read_tools import execute_project_read
 from core.structured_director.reads.workflow_state import references_reviewed
+from core.structured_director.video_inputs import dialogue_audio_bindings
 
 
 def test_initial_stage_cannot_be_skipped_and_review_is_human_only(tmp_path):
@@ -396,6 +397,7 @@ def test_visual_workflow_uses_current_inputs_generations_and_reviewable_candidat
             core,
             segment_id=segment_id,
             prompt_text="固定机位，人物轻声询问。",
+            audio_references=dialogue_audio_bindings(document, segment_id),
             expected_revision=document.revision,
         )
         ref2va_ready = workflow_state(document)
@@ -570,6 +572,7 @@ def test_input_changed_segment_video_candidate_stays_selectable_with_soft_hint(t
             core,
             segment_id=segment_id,
             prompt_text="固定机位，人物轻声询问。",
+            audio_references=dialogue_audio_bindings(document, segment_id),
             expected_revision=document.revision,
         )
         document = await core._media.generate_segment_video(
@@ -592,6 +595,7 @@ def test_input_changed_segment_video_candidate_stays_selectable_with_soft_hint(t
             core,
             segment_id=segment_id,
             prompt_text="改换运镜后重新生成。",
+            audio_references=dialogue_audio_bindings(document, segment_id),
             expected_revision=document.revision,
         )
         stale = await api.handle("GET", "/structured-director")
@@ -678,7 +682,7 @@ def test_video_reference_gate_checks_mp4_duration_window(tmp_path):
                 segment_id=segment_id,
                 prompt_text="固定机位，人物轻声询问。",
                 additional_image_references=(),
-                audio_references=(),
+                audio_references=dialogue_audio_bindings(document, segment_id),
                 video_references=(SegmentVideoVideoReference(too_long, "超出时长上限。"),),
                 expected_revision=document.revision,
             )
@@ -691,6 +695,7 @@ def test_video_reference_gate_checks_mp4_duration_window(tmp_path):
                     replace_video(
                         video,
                         prompt_text="固定机位，人物轻声询问。",
+                        audio_references=dialogue_audio_bindings(document, segment_id),
                         video_references=(SegmentVideoVideoReference(too_long, "超出时长上限。"),),
                     ),
                     *document.video_plan.segments[1:],
@@ -719,7 +724,7 @@ def test_video_reference_gate_checks_mp4_duration_window(tmp_path):
             segment_id=segment_id,
             prompt_text="固定机位，人物轻声询问。",
             additional_image_references=(),
-            audio_references=(),
+            audio_references=dialogue_audio_bindings(document, segment_id),
             video_references=(SegmentVideoVideoReference(valid, "参考运镜与节奏。"),),
             expected_revision=document.revision,
         )

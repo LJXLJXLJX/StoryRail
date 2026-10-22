@@ -245,7 +245,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `image_inputs.py`：单次图片调用的输入名额（`MAX_IMAGE_INPUTS`）、优先级去重与超额拒绝；Keyframe 与地点生成共用。
 - `image_prompt_style.py`：当前图片插件的输入图指代与画幅句约定。
 - `video_contracts.py`：抽帧请求（帧号）与视频输入快照值对象。
-- `video_inputs.py`：Segment 视频实际输入、候选适用性与首帧“从上一 seg 抽取”来源。
+- `video_inputs.py`：Segment 视频实际输入、显式对白音频引用草稿与生成门禁、候选适用性与首帧“从上一 seg 抽取”来源。
 - `media_submission/dialogue.py`：逐句对白 TTS 提交；有参考音色强制克隆，无参考音色强制 Voice Design。
 - `assembly_timeline.py`：Animatic、Scene 成片与全片装配时间线纯计算。
 - `dialogue_timing.py`：TTS 前对白时长软提示，以及已选对白 WAV 的真实起点、时长和最晚结束时间投影。
