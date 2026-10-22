@@ -186,7 +186,9 @@ sequenceDiagram
 
 - **先持久化、后调用**：Generation 以 `submitting` 落盘后才触网。进程若在提交窗口崩溃，重启时 Store 把所有
   `submitting` 迁移为 `submission_uncertain`，同时把 `pending` 回执标为 `uncertain`。
-- **未知提交绝不自动重试**：`submission_uncertain` 只能由人或 Agent 先核查，再显式 `generation.retry`。
+- **未知提交绝不自动重试**：`submission_uncertain` 只能由人或 Agent 先核查，再显式 `generation.retry`（由新 Generation 接替）
+  或 `generation.dismiss`（放弃）。处理之前它占用目标、计入 `active_generation_count` 与 `task_discovery.active`，并阻止删除其输入；
+  隐藏或已有 retry child 后即视为已处理，不再阻塞。判定集中在 `models/generation.py::unresolved_uncertain_ids`。
 - 同一应用请求产生的多个 Generation（如批次一轮）全部记入同一回执；用原 key 重试只回放。
 - Provider 网络调用不持有项目业务写锁。
 - **Core 确定性工具**（抽帧 `VIDEO_FRAME`、全景取景 `PANO_VIEW`）走同一套 submit/observe/cancel/read_artifact 生命周期，

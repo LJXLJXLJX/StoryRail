@@ -279,7 +279,7 @@ flowchart TB
 - `workspace_layers` 只累加，上游回改不重锁任何内容层。
 - 地点库没有 Keyframe/Shot 生产绑定，地点、状态、图片与 Scene 绑定变化不级联失效 Keyframe、视频或装配。
 - 未启用的槽位与无关 Segment 不受影响。
-- 相关任务进行中或提交结果未知时，冲突修改被拒绝。
+- 相关任务进行中、或提交结果未知且尚未隐藏或重试时，冲突修改被拒绝。
 - `project.preview_impact` 调用同一 parser 与影响计算，预览的 `invalidated` / `preserved` 与同 revision 上真实执行一致。
 
 ## 资产使用与删除
@@ -297,7 +297,7 @@ flowchart TB
 | `segment_video_input_image` / `_audio` / `_video` | Ref2VA 其他图片（`additional_images`）/ 参考音频 / 参考视频 |
 | `final_assembly` | 最终装配成片 |
 | `visible_candidate` | 仍是某目标的可见候选 |
-| `unfinished_generation_input` | 未结束或结果未知任务的输入 |
+| `unfinished_generation_input` | 未结束任务、或结果未知且尚未隐藏或重试的任务的输入 |
 | `director_wait` | Director 任务正在等待 |
 
 - Generation 的 `input_asset_ids` / `output_asset_id` **只表示血缘，不是使用关系**。例如资产中心对任意 MP4 抽帧得到的 PNG，

@@ -14,7 +14,7 @@ from ..location_requests import (
     location_set_items,
     panorama_capture_request,
 )
-from ..models import LocationImageKind, StructuredDirectorStatus
+from ..models import LocationImageKind, StructuredDirectorStatus, unresolved_uncertain_ids
 from ..models import ReferenceGenerationKind as Kind
 from ..models import ReferenceGenerationPhase as Phase
 
@@ -60,11 +60,21 @@ def location_library_projection(document, service):
             return False
         return True
 
+    unresolved = unresolved_uncertain_ids(document.generations)
+
     def generation_state(location, image):
         capture = image.source is not None
         kinds = {Kind.PANORAMA_CAPTURE if capture else Kind.LOCATION_IMAGE}
         generations = [g for g in index.generations.get(image.id, ()) if g.kind in kinds]
-        active = next((g for g in reversed(generations) if g.phase not in _TERMINAL), None)
+        active = next(
+            (
+                g
+                for g in reversed(generations)
+                if g.phase not in _TERMINAL
+                and (g.phase is not Phase.SUBMISSION_UNCERTAIN or g.id in unresolved)
+            ),
+            None,
+        )
         candidates = [
             g
             for g in generations

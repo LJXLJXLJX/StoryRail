@@ -247,7 +247,8 @@ WAV、MP3，单项 ≤ 8 MiB，逐项核对 MIME、长度与 SHA-256；拒绝任
    不要求用户再输入功能标签。功能提示本身不授予权限、不自动执行。
 2. 写入始终携带当前 revision 与新的幂等键；冲突时重读，只有用户意图仍适用才发起新的写请求。
 3. 断连后先 `read_workflow` / `task_discovery` 发现任务，再 `read_request` / `read_run` 细查；丢响应只用原参数、原 revision、原 key 重放。
-4. 不对 `submission_uncertain` 自动重试；不靠新生成绕过未确认的取消。
+4. 不对 `submission_uncertain` 自动重试；不靠新生成绕过未确认的取消。核查后按用户意图显式 retry，或用 `manage_generation(action="dismiss")` 放弃，
+   二者都会让它退出活动任务。
 5. 生成、选择、批准是三件事：Agent 只做生成与观察，提醒用户在 Web 中采用与批准；地点图片同样只能由人类选择。
 6. Segment 视频的参考素材与机制参数只在用户明确要求时增删或替换；未改动的已有绑定原样回传。
 7. 查看项目图片只用 `read_media_input`，直接以 Agent 原生多模态视觉能力判读；不调用 ffmpeg、ImageMagick、Python/PIL 等命令行工具

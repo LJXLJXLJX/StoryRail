@@ -7,6 +7,7 @@ from ..keyframe_requests import _active_keyframe_ids
 from ..models import (
     ReferenceGenerationKind,
     ReferenceGenerationPhase,
+    unresolved_uncertain_ids,
 )
 from ..models import (
     StructuredDirectorStatus as Status,
@@ -18,7 +19,7 @@ from .dependencies import _dependency
 from .proposal_observation import proposal_observation
 from .video_recipes import keyframe_video_context
 
-_ACTIVE_GENERATION_PHASES = frozenset({"submitting", "submission_uncertain", "queued", "running"})
+_ACTIVE_GENERATION_PHASES = frozenset({"submitting", "queued", "running"})
 
 
 class StagePrerequisiteError(ValueError):
@@ -305,10 +306,12 @@ def _workspace_capabilities(document):
 
 
 def _activity_summary(document):
+    unresolved_uncertain = unresolved_uncertain_ids(document.generations)
     active_generations = [
         generation
         for generation in document.generations
         if generation.phase.value in _ACTIVE_GENERATION_PHASES
+        or generation.id in unresolved_uncertain
     ]
     return {
         "active_generation_count": len(active_generations),
@@ -361,12 +364,11 @@ def _active_generations(document, kind, target_ids):
 
 def _uncertain_generations(document, kind, target_ids):
     targets = set(target_ids)
+    unresolved = unresolved_uncertain_ids(document.generations)
     return tuple(
         item
         for item in document.generations
-        if item.kind is kind
-        and item.target_id in targets
-        and item.phase is ReferenceGenerationPhase.SUBMISSION_UNCERTAIN
+        if item.kind is kind and item.target_id in targets and item.id in unresolved
     )
 
 

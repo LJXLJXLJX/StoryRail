@@ -14,6 +14,7 @@ from .models import (
     DirectorRunKind,
     ReferenceGenerationKind,
     ReferenceGenerationPhase,
+    unresolved_uncertain_ids,
 )
 from .production_context import (
     _TERMINAL_PHASES,
@@ -54,10 +55,11 @@ async def execute_keyframe_wave(
                     f"{_keyframe_label(document, target_id)} 已有进行中的任务，本轮未重复提交。"
                 )
                 continue
+            unresolved = unresolved_uncertain_ids(document.generations)
             if any(
                 item.kind is ReferenceGenerationKind.KEYFRAME_IMAGE
                 and item.target_id == target_id
-                and item.phase is ReferenceGenerationPhase.SUBMISSION_UNCERTAIN
+                and item.id in unresolved
                 for item in document.generations
             ):
                 outcomes.append(

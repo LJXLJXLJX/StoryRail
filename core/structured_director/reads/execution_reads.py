@@ -7,6 +7,7 @@ from core.application.caller import current_caller
 from core.director_proposals.professional_contracts import contract_hashes
 
 from ..generation_lifecycle import _generation_recovery
+from ..models import unresolved_uncertain_ids
 from .batch_observation import batch_observation
 from .common import _asset_summary, _exact_arguments, _id
 from .proposal_observation import proposal_observation
@@ -167,7 +168,11 @@ def _task_discovery(document, arguments):
         "queued",
     }
 
+    unresolved_uncertain = unresolved_uncertain_ids(document.generations)
+
     def is_active(item):
+        if item["task_type"] == "generation" and item["status"] == "submission_uncertain":
+            return item["id"] in unresolved_uncertain
         observation = batch_observations.get(item.get("batch_id"))
         batch_active = (
             item["task_type"] == "director_run"

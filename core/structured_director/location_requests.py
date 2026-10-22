@@ -15,6 +15,7 @@ from .models import (
     ReferenceGenerationKind,
     ReferenceGenerationPhase,
     StructuredDirectorDocument,
+    unresolved_uncertain_ids,
 )
 
 PANORAMA_ASPECT_RATIO = "2:1"
@@ -228,7 +229,15 @@ def _image_set_item(
         if image.source is not None
         else ReferenceGenerationKind.LOCATION_IMAGE
     }
-    generations = [item for item in generations_by_target.get(image.id, ()) if item.kind in kinds]
+    unresolved = unresolved_uncertain_ids(document.generations)
+    generations = [
+        item
+        for item in generations_by_target.get(image.id, ())
+        if item.kind in kinds
+        and (
+            item.phase is not ReferenceGenerationPhase.SUBMISSION_UNCERTAIN or item.id in unresolved
+        )
+    ]
     if any(item.phase not in _SET_TERMINAL_PHASES for item in generations):
         status = (
             "submission_uncertain"

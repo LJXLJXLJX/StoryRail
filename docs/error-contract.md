@@ -67,7 +67,7 @@ Provider 侧的失败属于持久业务观察，记录在 Generation 上，不�
 
 | Generation 事实 | 含义 | 下一步 |
 | --- | --- | --- |
-| `phase = submission_uncertain` | Provider 是否接受提交未知 | 不自动重提；先核查，再显式 `generation.retry` |
+| `phase = submission_uncertain` | Provider 是否接受提交未知 | 不自动重提；先核查，再显式 `generation.retry` 或 `generation.dismiss` 放弃；处理前计为活动任务 |
 | `phase = failed` | 运行明确失败 | 输入未变化时可显式 retry，新建带 `retry_of` 的 Generation |
 | `cancellation_requested = true` | 取消意图已持久化，Provider 尚未确认 | 继续等待原 Generation |
 | `error_code = artifact_import_failed` | Provider 已完成但 Core 未能校验/导入产物 | 保留句柄并等待同一 Generation，不新建 Provider 任务 |

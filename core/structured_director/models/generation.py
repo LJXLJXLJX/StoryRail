@@ -117,6 +117,22 @@ def transition_generation(
     )
 
 
+def unresolved_uncertain_ids(generations) -> frozenset[str]:
+    """提交结果未知、且尚未被隐藏或显式重试的 Generation。
+
+    这类任务没有可观察的 Provider 句柄，只能由人或 Agent 核查后处理：隐藏表示放弃，
+    重试由新 Generation 接替。处理之前它仍占用目标并计入活动任务；处理之后不再阻塞。
+    """
+    retried = {item.retry_of for item in generations if item.retry_of is not None}
+    return frozenset(
+        item.id
+        for item in generations
+        if item.phase is ReferenceGenerationPhase.SUBMISSION_UNCERTAIN
+        and not item.dismissed
+        and item.id not in retried
+    )
+
+
 def _set_validator(validate) -> None:
     """由 models/__init__ 在包加载末尾注入校验函数（避免静态 import 环）。
 

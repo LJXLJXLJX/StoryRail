@@ -15,6 +15,7 @@ from ._shared import (
     ReferenceGenerationPhase,
     _require_id,
 )
+from .generation import unresolved_uncertain_ids
 
 if TYPE_CHECKING:
     from .document import StructuredDirectorDocument
@@ -253,7 +254,6 @@ def asset_has_project_reference(document: StructuredDirectorDocument, asset_id: 
 _ACTIVE_GENERATION_PHASES = frozenset(
     {
         ReferenceGenerationPhase.SUBMITTING,
-        ReferenceGenerationPhase.SUBMISSION_UNCERTAIN,
         ReferenceGenerationPhase.QUEUED,
         ReferenceGenerationPhase.RUNNING,
     }
@@ -298,7 +298,7 @@ def asset_usage_reasons(
 ) -> tuple[AssetUsageReason, ...]:
     """Core 唯一的 Asset 使用判定；返回阻止显式删除的全部事实原因。
 
-    正式项目引用、仍是可见候选的产物、未结束或结果未知任务的输入，以及 Director
+    正式项目引用、仍是可见候选的产物、未结束或结果未知且未处理任务的输入，以及 Director
     正在等待的任务共同构成使用关系。隐藏血缘与纯输出关系不在此列。
     """
 
@@ -317,6 +317,8 @@ def _asset_deletion_walk(
         for run in document.director_runs
         for generation_id in run.cursor.waiting_generation_ids
     }
+
+    unresolved_uncertain = unresolved_uncertain_ids(document.generations)
 
     def remember(reason: AssetUsageReason) -> None:
         if reason not in reasons:
@@ -342,7 +344,10 @@ def _asset_deletion_walk(
                 and _generation_output_is_selectable_candidate(document, generation)
             ):
                 remember(AssetUsageReason.VISIBLE_CANDIDATE)
-            if input_related and generation.phase in _ACTIVE_GENERATION_PHASES:
+            if input_related and (
+                generation.phase in _ACTIVE_GENERATION_PHASES
+                or generation.id in unresolved_uncertain
+            ):
                 remember(AssetUsageReason.UNFINISHED_GENERATION_INPUT)
             generation_ids.add(generation.id)
             if generation.dismissed and generation.output_asset_id is not None:

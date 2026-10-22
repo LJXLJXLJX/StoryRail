@@ -31,6 +31,7 @@ from .final import SceneAssemblyClip as SceneAssemblyClip
 from .final import SceneAssemblyPlan as SceneAssemblyPlan
 from .generation import ReferenceGeneration as ReferenceGeneration
 from .generation import transition_generation as transition_generation
+from .generation import unresolved_uncertain_ids as unresolved_uncertain_ids
 from .keyframe import Keyframe as Keyframe
 from .keyframe import KeyframeCharacterReference as KeyframeCharacterReference
 from .keyframe import KeyframePlan as KeyframePlan
@@ -155,6 +156,7 @@ __all__ = [
     "asset_usage_reasons",
     "discarded_asset_deletion_closure",
     "transition_generation",
+    "unresolved_uncertain_ids",
     "prune_character_references",
 ]
 

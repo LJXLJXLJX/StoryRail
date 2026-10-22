@@ -6,7 +6,11 @@ from uuid import uuid4
 from core.model_providers.manifest import Capability, Role
 from core.model_providers.recipe import SlotBinding
 
-from .models import KeyframeCharacterReference, ReferenceGenerationPhase
+from .models import (
+    KeyframeCharacterReference,
+    ReferenceGenerationPhase,
+    unresolved_uncertain_ids,
+)
 from .models.video import VideoReferenceImagePlan
 from .video_mutations import _reject_active_segment_video_generation, _require_video_command_target
 
@@ -37,14 +41,18 @@ def save_reference_image_plan(document, update, slot, *, planning=False):
         None,
     )
     if current is not None:
+        unresolved = unresolved_uncertain_ids(document.generations)
         if any(
             item.target_id == current.id
-            and item.phase
-            not in {
-                ReferenceGenerationPhase.SUCCEEDED,
-                ReferenceGenerationPhase.FAILED,
-                ReferenceGenerationPhase.CANCELLED,
-            }
+            and (
+                item.phase
+                in {
+                    ReferenceGenerationPhase.SUBMITTING,
+                    ReferenceGenerationPhase.QUEUED,
+                    ReferenceGenerationPhase.RUNNING,
+                }
+                or item.id in unresolved
+            )
             for item in document.generations
         ):
             raise ValueError("该参考图片有进行中或提交不确定的 Generation。")
