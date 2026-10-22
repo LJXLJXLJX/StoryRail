@@ -10,10 +10,13 @@ _ID = re.compile(r"[0-9a-f]{32}")
 
 @dataclass(frozen=True, slots=True)
 class VideoInputsUpdate:
+    """``inputs`` 按槽位与参数键合并进当前 recipe 输入簿：给出的槽位整体替换，未给出的保留。"""
+
     scope_scene_ids: tuple[str, ...]
     segment_id: str
     prompt_text: str
     inputs: RecipeInputs
+    attach_dialogue_audio: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,16 +47,21 @@ def parse_video_prompt_update(value: object) -> VideoPromptUpdate:
 
 
 def parse_video_inputs_update(value: object) -> VideoInputsUpdate:
-    item = _exact(
-        value,
-        {"scope", "segment_id", "prompt_text", "bindings", "params"},
-        "video.update_recipe_inputs",
-    )
+    required = {"scope", "segment_id", "prompt_text", "bindings", "params"}
+    if not isinstance(value, dict) or not required <= set(value) <= {
+        *required,
+        "attach_dialogue_audio",
+    }:
+        raise ValueError("video.update_recipe_inputs.arguments 包含缺失或未声明字段。")
+    attach = value.get("attach_dialogue_audio", False)
+    if not isinstance(attach, bool):
+        raise ValueError("attach_dialogue_audio 必须是布尔值。")
     return VideoInputsUpdate(
-        _scope(item["scope"]),
-        _id(item["segment_id"], "segment_id"),
-        _prompt(item["prompt_text"]),
-        RecipeInputs.from_json({"bindings": item["bindings"], "params": item["params"]}),
+        _scope(value["scope"]),
+        _id(value["segment_id"], "segment_id"),
+        _prompt(value["prompt_text"]),
+        RecipeInputs.from_json({"bindings": value["bindings"], "params": value["params"]}),
+        attach,
     )
 
 

@@ -127,7 +127,7 @@ flowchart LR
 | | `list_candidates` / `read_run` / `read_request` | 对应读取命令 |
 | 规划 | `submit_proposal` | 统一入口：`capability` + `payload`；schema 按 capability 与 `payload.action` 公开完整字段：request（`raw_user_instruction`；keyframe 另需 `scene_ids` 与 Segment `target_ids`）/ get、cancel（`request_id`）/ submit（`request_id` 加内联 `proposal` 或受限 `proposal_source`）/ reject（`request_id`、`reason`） |
 | 编辑 | `edit_script` / `edit_narration` / `edit_locations` / `edit_keyframes` / `edit_looks` | 各自的 `*.apply_operations` / `narration.update_cue` / `reference.apply_look_operations`（`add_look` / `update_look`，字段形状随 `reference_library` 契约下发）；`edit_narration.fields.clear_selected_audio = "zh"\|"en"` 独占一次调用并翻译为 `narration.clear_selection`；`edit_locations` 的 scope 是 `location_ids` / `scene_ids`，可编辑地点、状态、陈设、独立图片和 Scene 绑定，字段形状随 `location` 契约下发；`edit_script` 的 `insert_shot` 必须给出 `attach_to_segment_id` 或 `new_segment`，Segment 操作以 `scene_id` 为容器 |
-| | `save_video_prompt` / `save_keyframe_prompt` | 不带 `recipe_inputs` 时 `video.set_prompt`；带 `recipe_inputs: {bindings, params}` 时 `video.update_recipe_inputs`（正文、当前 recipe 绑定与参数整体替换）/ 单项 `update_frame_fields` |
+| | `save_video_prompt` / `save_keyframe_prompt` | 不带 `recipe_inputs` 时 `video.set_prompt`；带 `recipe_inputs: {bindings, params}` 或 `attach_dialogue_audio` 时 `video.update_recipe_inputs`（正文整体保存，绑定按槽位、参数按键合并）/ 单项 `update_frame_fields` |
 | | `save_reference_image_plan` | `video.save_reference_image_plan`（Scene scope、Segment ID、0–3 槽位与完整画面计划；可规划任意图片内容，不生成、不选择） |
 | | `set_video_recipe` | `video.set_recipe` |
 | | `unlock_production` | `visual_production.unlock` |
@@ -199,8 +199,8 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
   - 视频工作集给出当前 `video_recipe`（槽位与参数声明、`editable_params`）、`context`（含 `scene.driver`，决定无对白时是否声明预留旁白通道；
     `context.shots` 按覆盖顺序列出 Segment 的每个 Shot（构图、运镜、动作、声音、可见角色名与视图建议名）；
     `segment.continues_from_previous_segment` / `continues_into_next_segment` 表示相邻 Segment 共享边界 Shot 的延续关系；
-    `segment.dialogue[]` 的 `on_screen` 为 null 表示引用库外的临时说话者）、`dialogue_timing`（已选 WAV 的真实起点、时长与最晚结束时间；未完成 TTS 时明确标记未就绪）、`required_dialogue_prompt`（H3 必须原样置于正文开头的 Audio 标签与原台词映射）、`asset_inputs`、`plugin_skills`（随插件发布的
-    Skill 与参考正文），以及 `recipe_inputs`（已保存的 `{bindings, params}`，即 `save_video_prompt.recipe_inputs` 的整体替换形状）与
+    `segment.dialogue[]` 的 `on_screen` 为 null 表示引用库外的临时说话者）、`dialogue_timing`（已选 WAV 的真实起点、时长与最晚结束时间；未完成 TTS 时明确标记未就绪）、`core_prepended_dialogue_prompt`（Core 提交时自动前置的 Audio 标签与原台词映射，正文不要重复）、`asset_inputs`、`plugin_skills`（随插件发布的
+    Skill 与参考正文），以及 `recipe_inputs`（已保存的 `{bindings, params}`；`save_video_prompt.recipe_inputs` 只需给出要改的槽位与参数）与
     `bindable_assets`（当前 recipe 显式槽位可接受的项目 Asset：`asset_id`、`name`、`media_type`、`duration_seconds`、`slots`；
     只列导入素材、引用库与地点库已选资源、本 Scene 已选的关键帧/旁白/视频与显式媒体参考）。标签按 manifest namespace 由 Core 计算，绑定变化后重读
     工作集取新标签；插件只转换自己的专业格式。软时长提示来自插件 hints；H3 声明 15 秒，超过可能 OOM但不拒绝；缺帧直接拒绝。
@@ -250,7 +250,7 @@ WAV、MP3，单项 ≤ 8 MiB，逐项核对 MIME、长度与 SHA-256；拒绝任
 4. 不对 `submission_uncertain` 自动重试；不靠新生成绕过未确认的取消。核查后按用户意图显式 retry，或用 `manage_generation(action="dismiss")` 放弃，
    二者都会让它退出活动任务。
 5. 生成、选择、批准是三件事：Agent 只做生成与观察，提醒用户在 Web 中采用与批准；地点图片同样只能由人类选择。
-6. Segment 视频的参考素材与机制参数只在用户明确要求时增删或替换；未改动的已有绑定原样回传。
+6. Segment 视频的参考素材与机制参数只在用户明确要求时增删或替换，只提交要改的槽位；含对白 Segment 用 `attach_dialogue_audio` 添加对白 TTS。
 7. 查看项目图片只用 `read_media_input`，直接以 Agent 原生多模态视觉能力判读；不调用 ffmpeg、ImageMagick、Python/PIL 等命令行工具
    抽取、转码或分析图片。读取被拒绝时如实报告原因，不自行绕道。当前模型没有多模态视觉能力或看不到图片时，
    告知用户并请其提供各图的内容、参考用途和保留/修改要求；已有充分说明时可据此编写并说明信息来源，缺必要说明则暂停相关提示词编写与生成。

@@ -18,7 +18,7 @@ from core.director_commands import (
     VideoRecipeUpdate,
     VideoSelectionClear,
 )
-from core.model_providers.manifest import Capability
+from core.model_providers.manifest import Capability, Role
 from core.structured_director.errors import RevisionConflictError as RevisionConflictError
 from core.structured_director.models import (
     DirectorCommandReceipt,
@@ -219,7 +219,22 @@ class VideoDomain(_DomainBase):
                         "Agent 不能通过视频输入绑定绕过选择。"
                     )
 
-            updated, receipt = _prepare_segment_video_plan_update(document, update, command_id)
+            dialogue_slot = None
+            if update.attach_dialogue_audio:
+                _, _, _, current = _require_video_command_target(
+                    document, update.scope_scene_ids, update.segment_id
+                )
+                if self._provider_catalog is None or current.active_recipe is None:
+                    raise ValueError("请先配置视频 Provider 并选择 recipe。")
+                _, recipe = self._provider_catalog.recipe_definition(
+                    Capability.VIDEO_GENERATE, current.active_recipe
+                )
+                dialogue_slot = next(
+                    (slot for slot in recipe.slots if slot.role is Role.REFERENCE_AUDIO), None
+                )
+            updated, receipt = _prepare_segment_video_plan_update(
+                document, update, command_id, dialogue_slot=dialogue_slot
+            )
             return MutationResult(updated, receipt, write=updated is not document)
 
         return commit_mutation(

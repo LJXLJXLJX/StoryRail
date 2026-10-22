@@ -47,9 +47,9 @@ Read `references/ref-en.txt` for label rules, retention analysis, and complete e
 - `reference_audios`：最多 8 条 WAV。已选对白 TTS 按剧本顺序占用前面的 Audio 标签；其余名额才用于用户显式添加的音色、环境声或原声参考。系统对白音频来自 DialoguePlan，不从角色卡参考音色直接推导。
 - `reference_videos`：最多 3 条 2–15 秒 MP4，只参考画面；说明运镜、节奏或动作用途。
 - 每项说明必填且 Asset 不重复；Ref2VA 可无图片，但五类媒体槽至少一项；`params` 传 `{}`。
-- 保存后重读工作集，用新的 `actual_provider_inputs` 标签写正文。
+- 绑定变化后正文要引用新标签时，重读工作集，用新的 `actual_provider_inputs` 标签写正文。
 
-含对白时，必须逐字保留工作集 `required_dialogue_prompt`，并把它放在正文最前面。第一句固定为“严格让角色说出参考音频的原始内容，音频完全相等。”，后续每行把显式列表中的实际 Audio 标签映射到对应原始台词；不得改写、摘要、遗漏或把手工音频误配成对白。`dialogue_timing` 给出已选 WAV 的真实时长、起点和最晚结束时间，提示词时间设计必须服从这些事实，视频时长不得短于最后一句对白结束时间。
+含对白时，Core 提交时会在正文最前面自动加上对白约束：第一句固定为“严格让角色说出参考音频的原始内容，音频完全相等。”，后续每行把显式列表中的实际 Audio 标签映射到对应原始台词（工作集 `core_prepended_dialogue_prompt` 展示当前绑定下的这段文字）。正文不要重复这段文字，也不要改写台词或把手工音频误配成对白。`dialogue_timing` 给出已选 WAV 的真实时长、起点和最晚结束时间，提示词时间设计必须服从这些事实，视频时长不得短于最后一句对白结束时间。
 
 ## StoryRail 独立旁白隔离
 
@@ -86,7 +86,7 @@ StoryRail 的 Scene 旁白由独立 TTS 音频资产承载，并在 Scene/Final 
 - 用户本轮明确指定的正文语言优先于历史提示词和示例语言；只保留固定字段、标签、关系标记、时间语法及原文对白。不要因示例是英文而把中文要求输出为英文。
 - `actual_provider_inputs.allowed_asset_reference_labels` 只限制实际 Picture/Video/Audio 素材。Ref2VA 的 `<Subject N>` 是从实际素材派生的可见主体，不是新的图片输入；必须在 `subject_definitions` 定义其来源和特征，不能只定义 Picture/Audio 便省略主体。声音映射须指向相应主体/说话者，不能虚构未提供的参考资产。
 - `pictures` 中 `role=described_reference` 的 Picture 是用户显式参考图；按其 `description` 和原标签落实用途，不臆造时间锚点。
-- 无对白时 `audios` 可为空；含对白时，以 `required_dialogue_prompt` 指明的实际标签识别已选 TTS WAV，不假设它们位于列表开头。其他项按 `description` 区分音色与原声复用，不能默认都是角色音色。
+- 无对白时 `audios` 可为空；含对白时，以 `core_prepended_dialogue_prompt` 指明的实际标签识别已选 TTS WAV，不假设它们位于列表开头。其他项按 `description` 区分音色与原声复用，不能默认都是角色音色。
 - `videos` 可为空，不得虚构；按 `description` 引用画面用途，不提交音轨。
 - 首尾 Picture 的精确时间取 `pictures[].time_seconds`；无 Picture 时不写图片标签或对齐句。`context.shots` 只有一项时不要写切镜；多项时 `[Shot 1]` 不带切镜时间，后续切镜才用 `[Shot N] At MM:SS.mmm, ...`，切点是按 Shot 设计与总时长估算的软约束，不要求与生成结果逐帧一致。Base 模式沿用对应 guide 的对齐句。
 - 逐项保留用户明确的排除要求（例如无字幕、无水印、无新增角色、无对白或无背景旁白），在最终正文的相关画面/声音字段写清；不能只写在内部分析、工作集或摘要中，也不能用“不改剧情”等泛化表述代替。未要求的排除项不自动新增。

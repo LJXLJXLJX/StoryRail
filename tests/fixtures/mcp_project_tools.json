@@ -3783,10 +3783,13 @@
     "name": "submit_proposal"
   },
   {
-    "description": "保存单Segment正文与可选recipe_inputs；不生成或选择。",
+    "description": "保存单Segment正文与可选recipe_inputs（按槽位合并）；含对白时带attach_dialogue_audio；不生成或选择。",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
+        "attach_dialogue_audio": {
+          "type": "boolean"
+        },
         "expected_revision": {
           "minimum": 1,
           "type": "integer"

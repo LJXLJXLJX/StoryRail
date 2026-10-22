@@ -7,6 +7,7 @@ from core.director_commands import (
     VideoInputsUpdate,
     VideoPromptUpdate,
 )
+from core.model_providers.recipe import RecipeInputs
 
 from .models import (
     ReferenceGenerationKind,
@@ -18,11 +19,13 @@ from .models import (
     StructuredDirectorDocument,
     VideoPlan,
     prune_character_references,
+    unresolved_uncertain_ids,
 )
 from .repair_mutations import (
     _repair_invalidated_items,
 )
 from .script_index import shot_segments
+from .video_inputs import attach_dialogue_audio
 
 
 def _apply_reference_library_change(
@@ -176,10 +179,23 @@ def _prepare_segment_video_prompt_update(
     )
 
 
+def _merged_recipe_inputs(document, update, current, dialogue_slot):
+    """按槽位与参数键合并：请求给出的槽位整体替换，未给出的槽位与参数原样保留。"""
+    bindings = {**dict(current.recipe_inputs.bindings), **dict(update.inputs.bindings)}
+    if update.attach_dialogue_audio:
+        if dialogue_slot is None:
+            raise ValueError("当前视频 recipe 不支持参考音频，不能添加对白 TTS。")
+        bindings = attach_dialogue_audio(document, update.segment_id, dialogue_slot, bindings)
+    params = {**dict(current.recipe_inputs.params), **dict(update.inputs.params)}
+    return RecipeInputs(tuple(sorted(bindings.items())), tuple(sorted(params.items())))
+
+
 def _prepare_segment_video_plan_update(
     document: StructuredDirectorDocument,
     update: VideoInputsUpdate,
     command_id: str,
+    *,
+    dialogue_slot=None,
 ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
     plan, _scene, _segment, current = _require_video_command_target(
         document, update.scope_scene_ids, update.segment_id
@@ -187,7 +203,8 @@ def _prepare_segment_video_plan_update(
     _reject_active_segment_video_generation(document, update.segment_id)
     if current.active_recipe is None:
         raise ValueError("请先选择视频 recipe。")
-    if current.prompt_text == update.prompt_text and current.recipe_inputs == update.inputs:
+    inputs = _merged_recipe_inputs(document, update, current, dialogue_slot)
+    if current.prompt_text == update.prompt_text and current.recipe_inputs == inputs:
         return document, CommandReceipt(
             command_id,
             "noop",
@@ -199,7 +216,7 @@ def _prepare_segment_video_plan_update(
     replacement = replace(
         current,
         prompt_text=update.prompt_text,
-        recipes=current.recipes.with_entry(current.active_recipe, update.inputs),
+        recipes=current.recipes.with_entry(current.active_recipe, inputs),
         selected_asset_id=None,
         upscaled_asset_id=None,
     )
@@ -259,15 +276,16 @@ def _reject_active_segment_video_generation(
     document: StructuredDirectorDocument,
     segment_id: str,
 ) -> None:
-    terminal = {
-        ReferenceGenerationPhase.SUCCEEDED,
-        ReferenceGenerationPhase.FAILED,
-        ReferenceGenerationPhase.CANCELLED,
+    running = {
+        ReferenceGenerationPhase.SUBMITTING,
+        ReferenceGenerationPhase.QUEUED,
+        ReferenceGenerationPhase.RUNNING,
     }
+    unresolved = unresolved_uncertain_ids(document.generations)
     if any(
         item.kind in {ReferenceGenerationKind.SEGMENT_VIDEO, ReferenceGenerationKind.VIDEO_FRAME}
         and item.target_id == segment_id
-        and item.phase not in terminal
+        and (item.phase in running or item.id in unresolved)
         for item in document.generations
     ):
         raise ValueError("该 Segment 正在生成视频，暂时不能修改计划。")

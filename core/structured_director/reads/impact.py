@@ -138,10 +138,11 @@ def preview_command_impact(
             preserved.update(("asset_history", "generation_history"))
     elif name == "video.update_recipe_inputs":
         update = parse_video_inputs_update(command.arguments)
+        # 对白合并需要 Provider 槽位声明；预览不读 Provider，按“会改变”给出保守上界。
         projected, _receipt = _prepare_segment_video_plan_update(
-            document, update, director_command_id(command)
+            document, replace(update, attach_dialogue_audio=False), director_command_id(command)
         )
-        if projected is document:
+        if projected is document and not update.attach_dialogue_audio:
             preserved.update(("video_selection", "video_upscale_selection"))
         else:
             changed_ids.add(update.segment_id)

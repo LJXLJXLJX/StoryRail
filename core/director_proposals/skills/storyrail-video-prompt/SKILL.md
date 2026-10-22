@@ -20,19 +20,24 @@ description: 根据当前视频 recipe 与实际输入优化单个 Segment 的�
 ## 保存
 
 - 只改正文：`video.set_prompt`（MCP `save_video_prompt` 不带 `recipe_inputs`）。
-- 绑定参考素材或填写机制参数：`video.update_recipe_inputs`（MCP `save_video_prompt` 带 `recipe_inputs`），正文与当前 recipe 的 `bindings`、`params` 一起整体替换。
+- 绑定参考素材或填写机制参数：`video.update_recipe_inputs`（MCP `save_video_prompt` 带 `recipe_inputs`），与正文原子保存。
+  `bindings` 与 `params` 按槽位、按键合并：给出的槽位整体替换（空列表表示清空），未给出的槽位与参数保持原样。
+- 含对白的 Segment：对白 TTS 是视频生成的必需输入。保存时带 `attach_dialogue_audio: true`，Core 按与 Web“一键添加本段对白 TTS”
+  相同的规则把已选 WAV 按剧本顺序放在参考音频最前，覆盖本句旧 WAV 并保留其他手动参考；缺任一句 TTS 或超出名额时整次拒绝。
 
 都不生成媒体、不选择候选。用户明确要求生成时，再单独调用 `video.generate`。
 
 ## 参考素材与参数
 
 - 工作集 `video_inputs[]` 给出当前 Segment 的其他图片计划与实际媒体绑定；图片可以是任意画面内容，不限角色、地点或关键帧。按 `reference_inputs[].asset_id` 用 `read_media_input` 审看已绑定图片；未选中的规划与候选不能冒充实际视频输入。需要单独规划或生成其他图片时，使用 `save_reference_image_plan` 与 `generate_media(kind="reference_image")`，候选仍由人类选用。
-- 只在用户本轮明确要求时绑定、替换或移除素材，或修改参数。以工作集 `recipe_inputs` 为起点，只改被要求的槽位或参数，其余原样回传；不擅自增删、重排已有绑定或改写其说明。
+- 除对白 TTS 外，只在用户本轮明确要求时绑定、替换或移除素材，或修改参数。只提交被要求的槽位或参数；改某个槽位时以工作集 `recipe_inputs` 中该槽位为起点，不擅自增删、重排已有绑定或改写其说明。
 - 槽位以 `video_recipe.recipe.slots` 为准，只填首帧/尾帧以外的槽位；首尾帧由 Core 按已选关键帧填写，不写进 `bindings`。数量、媒体类型、时长与 `describe=required` 的必填说明都按槽位声明，说明写清这项素材的用途。
 - `asset_id` 从 `bindable_assets` 选取，其 `slots` 列出它能进入的槽位；用户点名的其它本项目 Asset 也可以，由 Core 校验。不能引用 Playground Asset。
-- `params` 只填 `video_recipe.editable_params` 声明的机制参数且键必须完整，没有声明时传 `{}`；时长、seed、画幅等带语义角色的参数由 Core 填写。
+- `params` 只填 `video_recipe.editable_params` 声明的机制参数，只给要改的键，不改时传 `{}`；时长、seed、画幅等带语义角色的参数由 Core 填写。
 - 当前 recipe 没有所需槽位时先说明，经用户同意再用 `video.set_recipe` 切换；切到不支持某些槽位的 recipe 前必须先清空这些槽位。
-- 绑定变化会让 Core 按槽位顺序重新编号 Picture/Audio/Video 标签：先带当前正文（`historical_prompt`）保存输入，重读工作集取得新的 `actual_provider_inputs` 标签，再写正文并保存。
+- 绑定变化会让 Core 按槽位顺序重新编号 Picture/Audio/Video 标签。正文需要引用新标签时，先带当前正文（`historical_prompt`）保存输入，重读工作集取得新的 `actual_provider_inputs` 标签，再写正文并保存。
+- 对白约束（“严格让角色说出参考音频的原始内容……”及逐条 `<Audio N>` → 原台词映射）由 Core 在提交时按实际标签自动前置，工作集
+  `core_prepended_dialogue_prompt` 只供参考；正文不要重复这段文字，因此只为添加对白 TTS 不需要重读工作集。
 
 ## 时长提醒
 

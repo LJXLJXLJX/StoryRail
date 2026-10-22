@@ -252,10 +252,10 @@ class VideoBinding(Strict):
 
 
 class VideoRecipeInputs(Strict):
-    """当前 recipe 的完整输入簿：与工作集 recipe_inputs 同形，整体替换。"""
+    """与工作集 recipe_inputs 同形；Core 按槽位、按键合并，只需给出要改的部分。"""
 
-    bindings: dict[str, list[VideoBinding]]
-    params: dict[str, object]
+    bindings: dict[str, list[VideoBinding]] = Field(default_factory=dict)
+    params: dict[str, object] = Field(default_factory=dict)
 
 
 class VideoPrompt(Request):
@@ -263,6 +263,7 @@ class VideoPrompt(Request):
     segment_id: ID
     prompt_text: Annotated[str, Field(max_length=20000)]
     recipe_inputs: VideoRecipeInputs | None = None
+    attach_dialogue_audio: bool = False
 
 
 class KeyframePrompt(Request):
@@ -769,7 +770,8 @@ def create_server(bridge: CoreBridge, *, proposal_directory: Path | None = None)
         "reference_proposal": (
             "请求后由当前 Agent 编写并提交首次引用库；Core分配ID，人类审核后才能显式开始脚本。"
         ),
-        "save_video_prompt": "保存单Segment正文与可选recipe_inputs；不生成或选择。",
+        "save_video_prompt": "保存单Segment正文与可选recipe_inputs（按槽位合并）；"
+        "含对白时带attach_dialogue_audio；不生成或选择。",
         "save_keyframe_prompt": "只更新单个Keyframe正文，Core失效相关选择；不生成。",
     }
 
@@ -931,9 +933,12 @@ def create_server(bridge: CoreBridge, *, proposal_directory: Path | None = None)
                     "segment_id": request.segment_id,
                     "prompt_text": request.prompt_text,
                 }
-                if request.recipe_inputs is not None:
+                if request.recipe_inputs is not None or request.attach_dialogue_audio:
                     name = "video.update_recipe_inputs"
-                    arguments.update(request.recipe_inputs.model_dump())
+                    inputs = request.recipe_inputs or VideoRecipeInputs()
+                    arguments.update(inputs.model_dump())
+                    if request.attach_dialogue_audio:
+                        arguments["attach_dialogue_audio"] = True
             status, value = await bridge.call(
                 request.project_id,
                 name,

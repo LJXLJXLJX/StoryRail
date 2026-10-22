@@ -87,7 +87,7 @@ def video_prompt_workset(
 
     soft = view["hints"].get("soft_duration_limit_seconds")
     result = {
-        "workset_version": 6,
+        "workset_version": 7,
         "video_recipe": view,
         "context": {
             "recipe_id": recipe.id,
@@ -152,7 +152,7 @@ def video_prompt_workset(
             },
         },
         "asset_inputs": [{"label": item["label"], "asset_id": item["asset_id"]} for item in labels],
-        # video.update_recipe_inputs 的整体替换形状；Agent 只改要改的部分，其余原样回传。
+        # video.update_recipe_inputs 的形状；按槽位合并，只需给出要改的槽位与参数。
         "recipe_inputs": video.recipe_inputs.to_json(),
         "bindable_assets": _bindable_assets(document, scene, recipe),
         "soft_duration_limit_seconds": soft,
@@ -160,7 +160,8 @@ def video_prompt_workset(
         and segment.duration_estimate_seconds > soft,
         "dialogue_timing": actual_dialogue_timing(document, segment),
         "dialogue_audio": dialogue_audio_addition(document, segment_id, recipe),
-        "required_dialogue_prompt": required_dialogue_prompt(labels, dialogue_inputs),
+        # Core 提交时自动前置的对白约束，正文不要重复。
+        "core_prepended_dialogue_prompt": dialogue_prompt_prefix(labels, dialogue_inputs),
         "video_inputs": [
             keyframe_video_context(document, segment_id, provider_recipes, provider_catalog)
         ],
@@ -173,7 +174,7 @@ def video_prompt_workset(
     )
 
 
-def required_dialogue_prompt(labels, dialogue_inputs):
+def dialogue_prompt_prefix(labels, dialogue_inputs):
     """按实际显式绑定的 Asset 找标签，不假定对白一定排在手工参考前面。"""
     audio_labels = {
         item["asset_id"]: item["label"] for item in labels if item["role"] == "reference_audio"

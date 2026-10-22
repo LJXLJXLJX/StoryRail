@@ -201,25 +201,51 @@ def dialogue_audio_bindings(document, segment_id):
     return tuple(bindings.values())
 
 
+def _dialogue_history_asset_ids(document, segment):
+    line_ids = {line.id for line in segment.dialogue_lines}
+    return list(
+        dict.fromkeys(
+            generation.output_asset_id
+            for generation in document.generations
+            if generation.kind is Kind.DIALOGUE_AUDIO
+            and generation.target_id in line_ids
+            and generation.output_asset_id is not None
+        )
+    )
+
+
+def attach_dialogue_audio(document, segment_id, slot, bindings):
+    """与 Web“一键添加本段对白 TTS”同一规则：对白按剧本顺序在前，覆盖本句历史 WAV，
+    保留其他手动参考。缺任一句已选 TTS 或合计超出槽位上限时整次拒绝，不部分添加。
+    """
+    _, _, segment, _ = segment_context(document, segment_id)
+    dialogue = dialogue_audio_bindings(document, segment_id)
+    replaced = {
+        *_dialogue_history_asset_ids(document, segment),
+        *(item.asset_id for item in dialogue),
+    }
+    merged = (
+        *dialogue,
+        *(item for item in bindings.get(slot.key, ()) if item.asset_id not in replaced),
+    )
+    if len(merged) > slot.maximum:
+        raise ValueError(
+            f"本段对白与已有参考音频合计 {len(merged)} 条，超过 {slot.maximum} 条上限。"
+            "请先移除其他参考音频或拆分 Segment。"
+        )
+    return {**bindings, slot.key: merged}
+
+
 def dialogue_audio_addition(document, segment_id, recipe):
     """完整引用草稿和可覆盖的历史资产集合，供 Web 与专业工作集共用。"""
     _, _, segment, _ = segment_context(document, segment_id)
     audio_slot = next((slot for slot in recipe.slots if slot.role is Role.REFERENCE_AUDIO), None)
     if audio_slot is not None:
-        line_ids = {line.id for line in segment.dialogue_lines}
         addition = {
             "slot": audio_slot.key,
             "bindings": [],
             "error": None,
-            "replace_asset_ids": list(
-                dict.fromkeys(
-                    generation.output_asset_id
-                    for generation in document.generations
-                    if generation.kind is Kind.DIALOGUE_AUDIO
-                    and generation.target_id in line_ids
-                    and generation.output_asset_id is not None
-                )
-            ),
+            "replace_asset_ids": _dialogue_history_asset_ids(document, segment),
         }
         try:
             addition["bindings"] = [

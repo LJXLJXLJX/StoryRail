@@ -289,7 +289,7 @@ def test_generation_never_injects_missing_dialogue_references(tmp_path):
             len([item for item in workset["asset_inputs"] if item["label"].startswith("<Audio")])
             == 2
         )
-        assert workset["required_dialogue_prompt"] is None
+        assert workset["core_prepended_dialogue_prompt"] is None
         state = service.preview_segment_video_inputs(
             video.segment_id, document.video_plan.segments[0].recipe_inputs, document.revision
         )
@@ -326,8 +326,8 @@ def test_dialogue_labels_follow_explicit_order_without_duplicate_submission(tmp_
         workset = video_prompt_workset(
             document, video.segment_id, provider_recipes=service.provider_recipe_views()
         )
-        assert "<Audio 3> 对应原始对白：先听我说。" in workset["required_dialogue_prompt"]
-        assert "<Audio 1> 对应原始对白：我们开始。" in workset["required_dialogue_prompt"]
+        assert "<Audio 3> 对应原始对白：先听我说。" in workset["core_prepended_dialogue_prompt"]
+        assert "<Audio 1> 对应原始对白：我们开始。" in workset["core_prepended_dialogue_prompt"]
         provider = RecordingProvider(media_type="video/mp4", content=b"fake")
         replace_video_provider(service, "ref2va", provider)
         await service._media.generate_segment_video(
@@ -413,5 +413,126 @@ def test_reselecting_tts_only_replaces_existing_corresponding_audio(tmp_path, al
         )
         assert old in state["dialogue_audio"]["replace_asset_ids"]
         assert asset.id in state["dialogue_audio"]["replace_asset_ids"]
+
+    asyncio.run(run())
+
+
+def _update_inputs(service, document, bindings, *, attach=False, prompt_text="合并测试。"):
+    video = document.video_plan.segments[0]
+    arguments = {
+        "scope": {"scene_ids": [document.director_script.scenes[0].id]},
+        "segment_id": video.segment_id,
+        "prompt_text": prompt_text,
+        "bindings": bindings,
+        "params": {},
+    }
+    if attach:
+        arguments["attach_dialogue_audio"] = True
+    return service._command_registry.execute(
+        DirectorCommand(
+            "video.update_recipe_inputs",
+            document.revision,
+            f"merge-{document.revision}-{attach}",
+            arguments,
+        )
+    )
+
+
+def test_recipe_inputs_merge_by_slot_and_attach_dialogue_like_web_button(tmp_path):
+    from core.structured_director.video_inputs import dialogue_audio_bindings
+
+    async def run():
+        store, service, document, _ = await fixture(tmp_path)
+        video = document.video_plan.segments[0]
+        original = video.recipe_inputs.to_json()
+        dialogue = [
+            {"asset_id": item.asset_id, "description": item.description}
+            for item in dialogue_audio_bindings(document, video.segment_id)
+        ]
+        dialogue_ids = {item["asset_id"] for item in dialogue}
+        manual = [
+            item
+            for item in original["bindings"]["reference_audios"]
+            if item["asset_id"] not in dialogue_ids
+        ]
+
+        # 只给出 reference_audios：其他槽位与参数保持原样。
+        document = _update_inputs(service, document, {"reference_audios": manual}).document
+        saved = document.video_plan.segments[0].recipe_inputs.to_json()
+        assert saved["bindings"]["reference_audios"] == manual
+        assert {k: v for k, v in saved["bindings"].items() if k != "reference_audios"} == {
+            k: v for k, v in original["bindings"].items() if k != "reference_audios"
+        }
+        assert saved["params"] == original["params"]
+
+        # 只带 attach：对白按剧本顺序在前，手动参考保留在后。
+        document = _update_inputs(service, document, {}, attach=True).document
+        attached = document.video_plan.segments[0].recipe_inputs.to_json()
+        assert attached["bindings"]["reference_audios"] == [*dialogue, *manual]
+
+        # 重复添加不产生重复音频，也不写新 revision。
+        result = _update_inputs(service, document, {}, attach=True)
+        assert result.document.revision == document.revision
+        assert store.read().video_plan.segments[0].recipe_inputs.to_json() == attached
+
+    asyncio.run(run())
+
+
+def test_attach_dialogue_rejects_whole_request_when_tts_missing(tmp_path):
+    from core.director_commands import VideoInputsUpdate
+    from core.model_providers.manifest import Capability, Role
+    from core.model_providers.recipe import RecipeInputs
+    from core.structured_director.video_mutations import _prepare_segment_video_plan_update
+
+    store, service, document, _ = asyncio.run(fixture(tmp_path))
+    segment = document.director_script.scenes[0].segments[0]
+    video = document.video_plan.segments[0]
+    missing = replace(
+        document,
+        dialogue_plan=replace(
+            document.dialogue_plan,
+            items=tuple(
+                replace(item, selected_audio_asset_id=None, start_seconds=None)
+                if item.dialogue_line_id == segment.dialogue_lines[1].id
+                else replace(item, start_seconds=None)
+                for item in document.dialogue_plan.items
+            ),
+        ),
+    )
+    _, recipe = service._registry.recipe_definition(Capability.VIDEO_GENERATE, video.active_recipe)
+    slot = next(item for item in recipe.slots if item.role is Role.REFERENCE_AUDIO)
+    update = VideoInputsUpdate(
+        (document.director_script.scenes[0].id,), video.segment_id, "正文。", RecipeInputs(), True
+    )
+    with pytest.raises(ValueError, match="第 2 句「好的。」"):
+        _prepare_segment_video_plan_update(missing, update, "c" * 32, dialogue_slot=slot)
+    with pytest.raises(ValueError, match="不支持参考音频"):
+        _prepare_segment_video_plan_update(document, update, "c" * 32)
+
+
+def test_core_prepends_dialogue_prompt_once_even_if_prompt_already_has_it(tmp_path):
+    from core.structured_director.prompt_worksets import video_prompt_workset
+
+    async def run():
+        store, service, document, _ = await fixture(tmp_path)
+        video = document.video_plan.segments[0]
+        prefix = video_prompt_workset(
+            document, video.segment_id, provider_recipes=service.provider_recipe_views()
+        )["core_prepended_dialogue_prompt"]
+        provider = RecordingProvider(media_type="video/mp4", content=b"fake")
+        replace_video_provider(service, "ref2va", provider)
+        # 已按旧约定把约束写在开头的正文，提交时不再重复前置。
+        for prompt_text in (f"{prefix}\n\n正文。",):
+            document = await service.save_segment_video_inputs(
+                segment_id=video.segment_id,
+                prompt_text=prompt_text,
+                bindings={},
+                params={},
+                expected_revision=store.read().revision,
+            )
+            document = await service._media.generate_segment_video(
+                segment_id=video.segment_id, expected_revision=document.revision
+            )
+            assert provider.requests[-1].prompt == f"{prefix}\n\n正文。"
 
     asyncio.run(run())

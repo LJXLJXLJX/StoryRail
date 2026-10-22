@@ -251,8 +251,10 @@ def test_save_video_prompt_schema_publishes_compact_recipe_inputs():
         "prompt_text": "正文",
     }
     VideoPrompt.model_validate({**base, "recipe_inputs": {"bindings": {}, "params": {}}})
+    # Core 按槽位、按键合并，bindings 与 params 都可以省略。
+    assert VideoPrompt.model_validate({**base, "recipe_inputs": {"bindings": {}}})
+    assert VideoPrompt.model_validate({**base, "attach_dialogue_audio": True})
     for value in (
-        {"bindings": {}},
         {"bindings": {}, "params": {}, "extra": 1},
         {"bindings": {"reference_audios": [{"asset_id": "d" * 32}]}, "params": {}},
     ):
@@ -320,6 +322,19 @@ def test_mcp_save_video_prompt_translates_recipe_inputs(tmp_path):
             )
             assert not prompt.is_error
             assert store.read().application_requests[-1].operation == "video.set_prompt"
+            # 只带 attach_dialogue_audio 也翻译为 video.update_recipe_inputs。
+            current = store.read()
+            attach = await client.call_tool(
+                "save_video_prompt",
+                {
+                    **base,
+                    "expected_revision": current.revision,
+                    "idempotency_key": "attach",
+                    "attach_dialogue_audio": True,
+                },
+            )
+            assert attach.is_error and store.read() == current
+            assert "尚未选择 TTS 音频" in attach.structured_content["error"]["message"]
 
     with endpoint(tmp_path, store, service, caller) as (_, bridge):
         asyncio.run(run(bridge))

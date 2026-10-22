@@ -18,7 +18,7 @@ from ..models import (
 from ..production_context import (
     _TERMINAL_PHASES,
 )
-from ..prompt_worksets import required_dialogue_prompt
+from ..prompt_worksets import dialogue_prompt_prefix
 from ..script_index import find_segment
 from ..video_inputs import resolve_video_inputs, validate_dialogue_video_bindings
 from .support import _commit_submission
@@ -84,10 +84,11 @@ def _segment_video_submission(owner, document, context):
     bindings = dict(plan_item.recipe_inputs.bindings)
     dialogue = validate_dialogue_video_bindings(document, segment.id, prepared.recipe, bindings)
     labels = binding_labels(prepared.recipe, bindings)
-    instruction = required_dialogue_prompt(labels, dialogue)
+    instruction = dialogue_prompt_prefix(labels, dialogue)
+    # 对白约束由 Core 唯一负责前置；已手工写在开头的正文不再重复。
     effective_prompt = (
         plan_item.prompt_text
-        if instruction is None
+        if instruction is None or plan_item.prompt_text.startswith(instruction)
         else f"{instruction}\n\n{plan_item.prompt_text}"
     )
     inputs_by_slot = {}

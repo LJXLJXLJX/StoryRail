@@ -193,6 +193,7 @@ def location_set_items(
             generations_by_target.setdefault(generation.target_id, []).append(generation)
     if asset_ids is None:
         asset_ids = {asset.id for asset in document.assets}
+    unresolved = unresolved_uncertain_ids(document.generations)
     items: list[LocationSetItem] = []
     for location_id in location_ids:
         location = document.location_library.location(location_id)
@@ -209,6 +210,7 @@ def location_set_items(
                     image,
                     generations_by_target,
                     asset_ids,
+                    unresolved,
                 )
             )
     return tuple(items)
@@ -220,6 +222,7 @@ def _image_set_item(
     image: LocationImage,
     generations_by_target,
     asset_ids,
+    unresolved,
 ) -> LocationSetItem:
     label = f"地点「{location.name}」图片「{image.name}」"
     if image.selected_asset_id is not None:
@@ -229,7 +232,6 @@ def _image_set_item(
         if image.source is not None
         else ReferenceGenerationKind.LOCATION_IMAGE
     }
-    unresolved = unresolved_uncertain_ids(document.generations)
     generations = [
         item
         for item in generations_by_target.get(image.id, ())

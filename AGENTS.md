@@ -142,7 +142,8 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
 - 语义角色参数由 Core 根据领域事实填写；没有角色的机制参数按 recipe 保存。旁白使用 `recipe_params[recipe_id]`，
   视频使用 `recipes[recipe_id].params`；Web 按声明渲染控件，Agent 按 `speech_recipe` 或 `video_prompt` 工作集填写。
   Agent 与人类经同一 `video.update_recipe_inputs` 原子保存视频正文、当前 recipe 的参考素材绑定与机制参数，校验相同；
-  Agent 只在用户明确要求时增删或替换绑定，未改动部分按工作集 `recipe_inputs` 原样回传。
+  Agent 只在用户明确要求时增删或替换绑定；绑定按槽位、参数按键合并，未给出的部分保持原样。含对白 Segment 以
+  `attach_dialogue_audio` 由 Core 按“一键添加本段对白 TTS”同一规则合并对白 WAV；对白约束文字由 Core 提交时唯一前置。
   音色描述仍是领域字段，映射到 prompt 角色。Breeze 的表演指示和 IndexTTS2.5 的语速/情感向量属于各自插件机制参数。
 - 每个媒体能力的插件绑定与实例设置是 Core 全局 Provider 设置，项目与 Playground 共用、只有人类可改；每次提交读取
   当前值并在 Generation 的 `provider_snapshot` 中记录，改设置不失效已有候选。连接由启动配置装配，实例 ID 等于包名、

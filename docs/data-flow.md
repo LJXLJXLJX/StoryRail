@@ -191,7 +191,7 @@ flowchart LR
 - 含对白的 Segment 只有在每句对白都选定 WAV、发声起点已保存、Segment 时长覆盖全部音频，且当前 recipe 支持参考音频时才能提交视频。对白 WAV 必须显式保存到 recipe 的参考音频列表，与手动参考共用容量和编号。按钮从 Core 只读投影取得完整对白绑定草稿与可覆盖的本句历史 WAV 集合，覆盖旧条目、去重并保留其他手动输入；缺少任一句已选 TTS 或合计超限时不部分添加。生成与工作集均不隐式追加音频。换选 TTS 只刷新该 Segment 已存在的对应对白引用，不新增输入。
 - H3 Ref2VA 的最终 instruction 由 Core 在人类/Agent 保存正文之前加上强制文本“严格让角色说出参考音频的原始内容，音频完全相等”，并按显式列表中 Asset 的实际编号逐条写明 `<Audio N>` 对应的对白原文；预览、专业工作集与实际 Provider 请求使用同一映射。
 - `video_prompt` 专业工作集暴露相同的实际 Asset ID 与标签，H3 插件提供自己的 HTTP 输入映射和提示词 Skill；关键帧辅助图不会自动进入视频输入。
-  工作集另给出已保存的 `recipe_inputs`（`video.update_recipe_inputs` 的整体替换形状）与 `bindable_assets`：当前 recipe 显式槽位
+  工作集另给出已保存的 `recipe_inputs`（`video.update_recipe_inputs` 的形状，按槽位、按键合并）与 `bindable_assets`：当前 recipe 显式槽位
   按媒体类型与时长可接受的项目 Asset（ID、名称、媒体类型、时长、可进入的槽位）。列表只含导入素材、引用库与地点库的已选资源，
   以及本 Scene 已选的关键帧、旁白与视频；未被选择的生成候选不列出，Core 校验仍接受任意本项目 Asset。FL2VA 没有显式槽位时为空。
 - H3 工作集的 `context.shots` 按覆盖顺序给出 Segment 的每个 Shot（构图、运镜、动作、声音、可见角色名与视图建议名）；

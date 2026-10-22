@@ -52,8 +52,9 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 - 读工具的幂等键由 MCP 生成（`mcp-read:<uuid>`）；写工具的 `idempotency_key` 必须由模型提供。
 - 旁白固定中英双语：`edit_narration.fields` 的正文与合成参数放在 `zh` / `en` 子对象；`generate_media` 生成旁白必须指定 `language`；
   `edit_narration.fields.clear_selected_audio = "zh" | "en"` 独占一次调用并翻译为 `narration.clear_selection`。
-- `save_video_prompt` 不带 `recipe_inputs` 时翻译为 `video.set_prompt`；带 `recipe_inputs: {bindings, params}` 时翻译为
-  `video.update_recipe_inputs`，正文与当前 recipe 的绑定、参数整体替换。发布 schema 只把 `recipe_inputs` 声明为 object，形状随
+- `save_video_prompt` 不带 `recipe_inputs` 与 `attach_dialogue_audio` 时翻译为 `video.set_prompt`；带任一项时翻译为
+  `video.update_recipe_inputs`：正文整体保存，`bindings` 按槽位、`params` 按键合并（缺省为 `{}`），`attach_dialogue_audio: true`
+  由 Core 合并本段已选对白 TTS。发布 schema 只把 `recipe_inputs` 声明为 object，形状随
   `video_prompt` 工作集的 `recipe_inputs` 下发；runtime 模型仍严格校验 `{asset_id, description}` 绑定项并拒绝未知字段。
 
 响应：
