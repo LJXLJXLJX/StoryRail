@@ -55,7 +55,9 @@ def execute_project_read(
             current, args, provider_catalog=provider_catalog
         ),
         "project.get_request": request_read,
-        "project.get_contract": contract_page_read,
+        "project.get_contract": lambda current, args: contract_page_read(
+            current, args, provider_catalog=provider_catalog
+        ),
         "project.get_workset": lambda current, args: workset_page_read(
             current,
             args,

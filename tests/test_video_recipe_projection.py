@@ -68,7 +68,10 @@ def test_recipe_switch_preserves_each_recipe_mechanism_parameters(tmp_path):
             ),
         )
         service._registry._plugins[plugin.plugin_id] = PluginInstance(
-            manifest, recipes=plugin.recipes, prompt_formatter=plugin.prompt_formatter
+            manifest,
+            recipes=plugin.recipes,
+            prompt_formatter=plugin.prompt_formatter,
+            prompt_skills=plugin.prompt_skills,
         )
         segment_id = document.video_plan.segments[1].segment_id
         document = await service.save_segment_video_recipe(

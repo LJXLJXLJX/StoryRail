@@ -87,7 +87,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `__init__.py`：各域 proposal 与专业输入类型汇总导出。
 - `compiler_intent.py`：类型化意图交接值对象，不是项目事实来源。
 - `schema_gen.py`：从 dataclass 生成 proposal JSON Schema、按项目所选旁白语言约束轨道与音色字段并严格解析。
-- `professional_contracts.py`：固定专业能力清单与随产品发布的契约读取。
+- `professional_contracts.py`：固定专业能力清单与随产品发布的契约读取；给出 Provider 目录时追加当前绑定插件的提示词 Skill（`plugin/` 资源）。
 - `wire_fields.py`：脚本、镜头、旁白编辑字段的唯一名字集合。
 - `reference_library.py` / `reference_library_codec.py`：引用库（角色卡、旁白身份）proposal 与 parser。
 - `script.py` / `script_codec.py`：结构化脚本 proposal、parser 与回改上下文。
@@ -135,7 +135,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `manifest.py`：语义能力、语义角色、Widget 词汇、manifest DSL 与 `ProviderSnapshot`。
 - `recipe.py`：通用 recipe 请求、媒体槽位线上形状、参数 schema 与按 recipe 保存的机制参数。
 - `registry.py`：`ProviderRegistry`：已安装插件实例、全局能力绑定、插件设置与按绑定解析的提交准备。
-- `image_prompt_skill.py`、`skills/storyrail-image-prompt-writing/SKILL.md`：项目与 Playground 共用的全局图片提示词规范及当前插件指代约定，随图片工作集交付。
+- `image_prompt_skill.py`、`skills/storyrail-image-prompt-writing/SKILL.md`：项目与 Playground 共用的全局图片提示词规范、当前插件指代约定与插件 Skill 目录（`prompt_skill_index`），随图片工作集交付。
 - `settings.py`：`.runtime/providers.json` 的严格读写与原子替换。
 - `http.py`：插件共享的低级 HTTP 传输与响应校验。
 - 每个插件子目录都有 `README.md`（用法与契约）、`provider.py`（请求翻译与 submit/observe/cancel/read_artifact）
@@ -147,7 +147,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
   - `whisper_asr/`：whisper.cpp 参考音频转写。
   - `qwen_image/`：Qwen Image 2.1（NoctQ V4）备选生图/改图，`skills/qwen-image-prompt-writing/` 随插件发布（含官方提示词模板）。
   - `minimax_h3/`：MiniMax H3 插件；`manifest.py`、`plugin.py`、`requests.py`、`contracts.py`、`render.py`，以及 `fl2va/`、`ref2va/` HTTP 实现。
-    `prompt_contract.py`、`prompt_codec.py`、`prompt_payload.py`、`prompt_context.py` 负责插件专业格式（`context.shots` 按 Segment 覆盖顺序写入段内切镜软约束），`skills/h3-prompt-writing/` 随插件发布。
+    `prompt_contract.py`、`prompt_codec.py`、`prompt_payload.py`、`prompt_context.py` 负责插件专业格式（`context.shots` 按 Segment 覆盖顺序写入段内切镜软约束），`skills/h3-prompt-writing/` 随插件发布，经 `prompt_skills` 由 `video_prompt` 契约交付。
   - `seedvr2_7b_sharp_fp8/`：SeedVR2 视频超分。
   - `demucs_audio/`：Demucs 人声/背景分离。
   - `stable_audio_3/`：Stable Audio 3 Medium 文生音频，目前只供 Playground。

@@ -20,9 +20,9 @@ def skill_resources() -> list[dict[str, str]]:
     ]
 
 
-def format_prompt_workset(value: dict) -> dict:
-    """图片提示词工作集附带随插件发布的 Skill 正文与官方参考。"""
-    return {**value, "plugin_skills": [{"name": SKILL, "resources": skill_resources()}]}
+def prompt_skills() -> list[dict]:
+    """随插件发布的提示词 Skill 正文与官方参考，由 Core 经专业契约交付。"""
+    return [{"name": SKILL, "resources": skill_resources()}]
 
 
 def plugin_instance(endpoint: str, transport: HttpTransport | None = None) -> PluginInstance:
@@ -31,5 +31,5 @@ def plugin_instance(endpoint: str, transport: HttpTransport | None = None) -> Pl
         MANIFEST,
         endpoint=endpoint,
         recipes={recipe.id: provider for recipe in MANIFEST.recipes},
-        prompt_formatter=format_prompt_workset,
+        prompt_skills=prompt_skills,
     )

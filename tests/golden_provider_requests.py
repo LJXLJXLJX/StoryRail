@@ -486,6 +486,7 @@ def golden_providers(spool_directory: Path) -> GoldenProviders:
                 endpoint=instance.endpoint,
                 recipes=recipes,
                 prompt_formatter=instance.prompt_formatter,
+                prompt_skills=instance.prompt_skills,
             )
         )
 

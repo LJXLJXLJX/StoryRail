@@ -102,8 +102,9 @@ skills=..., distinct_slots=...)`
 - `distinct_slots`：这些槽位之间不能出现相同字节（例如底图与参考图）。
 - `params`：`Field`。带 `role` 的由 Core 填；不带的是机制参数，按 recipe 保存在业务对象里，Web 按声明渲染控件。
   常用字段用 `prompt_field()`、`seed_field()`、`aspect_ratio_field()`，保持跨插件同 key 同 widget。
-- `skills` + `PluginInstance(prompt_formatter=...)`：为写提示词的 Agent 随插件附带专业 Skill（参考
-  `minimax_h3/` 的 `skills/h3-prompt-writing/` 与 `prompt_context.format_prompt_workset`）。
+- `skills` + `PluginInstance(prompt_skills=...)`：为写提示词的 Agent 随插件附带专业 Skill，返回
+  `[{name, resources: [{name, text}]}]`；Core 经对应专业契约交付全文，工作集只给目录。`prompt_formatter` 只把工作集
+  转换成插件专业格式，不再附带 Skill（参考 `minimax_h3/` 的 `skills/h3-prompt-writing/` 与 `prompt_context.py`）。
 
 **Field**：`Field(key, widget, label, default, options, minimum, maximum, max_length, min_length, dimension,
 component_labels, nullable, role, help, advanced, summary, summary_label)`。

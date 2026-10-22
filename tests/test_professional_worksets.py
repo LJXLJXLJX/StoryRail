@@ -200,8 +200,8 @@ def test_large_contract_resource_bundle_uses_same_complete_paging(tmp_path, monk
     _, _, document, _ = asyncio.run(_visual_project(str(tmp_path)))
     oversized = "contract-section\n" + "契约" * 40000
 
-    def fake_contract(capability, *, include=()):
-        del include
+    def fake_contract(capability, *, include=(), provider_catalog=None):
+        del include, provider_catalog
         return {
             "contract_version": 1,
             "capability": capability,

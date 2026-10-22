@@ -64,6 +64,8 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 - `/application/commands` 接受至多 2 MiB 的 JSON，以容纳 adapter 已验证、重组后的 ≤1 MiB proposal 与命令信封；其它普通 JSON 路由仍保持 64 KiB 上限。
 - text content 始终是完整 JSON，`structured_content` 携带同一份数据；只读 text 的客户端（如 AGY）也能直接拿到结果。
 - `read_media_input` 校验受控 Asset 后同时返回原生 image/audio 内容块，供模型实际看图或听音；JSON 保存媒体清单与校验信息，图片字节不混入正文。读取失败时只返回错误。
+- 随当前绑定插件发布的提示词 Skill 全文只在 `read_professional_contract` 中（`plugin/` 资源，可用 `if_hash` 缓存）；工作集的
+  `plugin_skills` 只是目录，单个 Segment 的视频工作集因此通常不分页。
 - `read_professional_contract` / `read_professional_workset` 在完整 JSON 超过 64 KiB 时进入 `json_utf8_chunks` 模式，单页 ≤ 24 KiB；续读必须
   沿用同一 project/revision/capability/scope/target_ids/page_bytes 并携带 `next_cursor`，拼接后校验 `content_sha256` 再解析。
 - `read_request` 查询 proposal request 时只返回紧凑状态与 `workset_recovery`；原始工作集用对应 proposal 的 get 恢复，最新事实用

@@ -68,11 +68,11 @@ def format_prompt_workset(value):
     ctx = value["context"]
     context = context_from_workset(value)
     payload = h3_prompt_payload(context, ctx["bindings"])
-    return {
-        **value,
-        "context": payload,
-        "plugin_skills": [{"name": "h3-prompt-writing", "resources": skill_resources()}],
-    }
+    return {**value, "context": payload}
+
+
+def prompt_skills():
+    return [{"name": "h3-prompt-writing", "resources": skill_resources()}]
 
 
 def skill_resources():

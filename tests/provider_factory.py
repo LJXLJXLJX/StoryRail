@@ -12,7 +12,7 @@ from core.model_providers.codex_image.provider import to_edit_request, to_genera
 from core.model_providers.demucs_audio.manifest import MANIFEST as SEPARATION_MANIFEST
 from core.model_providers.demucs_audio.provider import to_request as to_separation
 from core.model_providers.minimax_h3.manifest import MANIFEST as H3_MANIFEST
-from core.model_providers.minimax_h3.prompt_context import format_prompt_workset
+from core.model_providers.minimax_h3.prompt_context import format_prompt_workset, prompt_skills
 from core.model_providers.minimax_h3.requests import to_request
 from core.model_providers.registry import PluginInstance, ProviderRegistry
 from core.model_providers.seedvr2_7b_sharp_fp8.manifest import MANIFEST as UPSCALE_MANIFEST
@@ -129,6 +129,7 @@ def provider_registry(**providers: object) -> ProviderRegistry:
                     manifest,
                     recipes=recipes,
                     prompt_formatter=format_prompt_workset if manifest is H3_MANIFEST else None,
+                    prompt_skills=prompt_skills if manifest is H3_MANIFEST else None,
                 )
             )
     return registry

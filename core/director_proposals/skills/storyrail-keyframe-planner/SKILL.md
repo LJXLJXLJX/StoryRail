@@ -19,8 +19,8 @@ Scene、Shot、Segment、对白、旁白、动作结果或时长；若上游镜�
 [`references/cinematic-frame-prompting.md`](references/cinematic-frame-prompting.md)。
 必须遵守全局 `storyrail-image-prompt-writing`（契约 `global/` 资源或工作集 `image_prompt.global_skills`）：
 有输入图时把“逐图标签与用途 + 正文显式引用”完整写进提示词，不写文件名；没有输入图时只写画面正文。
-工作集 `image_prompt` 给出当前生图/改图插件的输入图指代约定；其 `plugin_skills` 非空时，正文写法还必须遵守
-随插件发布的专业 Skill（例如 `qwen-image-prompt-writing`），它只改变正文的组织方式，不改变本 Skill 的画面决定。
+工作集 `image_prompt` 给出当前生图/改图插件的输入图指代约定；其 `plugin_skills` 目录非空时，正文写法还必须遵守
+随插件发布的专业 Skill（例如 `qwen-image-prompt-writing`，全文在本契约的 `plugin/` 资源中），它只改变正文的组织方式，不改变本 Skill 的画面决定。
 
 ## 静默设计顺序
 

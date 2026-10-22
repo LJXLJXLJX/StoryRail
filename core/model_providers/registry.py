@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import threading
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
@@ -56,13 +57,15 @@ class PluginInstance:
     """一个已安装、已配置连接的插件：manifest + 实现。
 
     ``recipes`` 映射 recipe ID 到实现；模型任务提交使用 ``submit_recipe``，
-    同步语音转写使用 ``execute_recipe``。
+    同步语音转写使用 ``execute_recipe``。``prompt_skills`` 返回随插件发布、供 Agent 写提示词的
+    Skill 正文（``[{name, resources: [{name, text}]}]``），由 Core 经专业契约交付。
     """
 
     manifest: PluginManifest
     endpoint: str | None = None
     recipes: Mapping[str, object] = field(default_factory=dict)
     prompt_formatter: Callable[[dict], dict] | None = None
+    prompt_skills: Callable[[], list[dict]] | None = None
 
     def __post_init__(self) -> None:
         if not self.recipes:
@@ -324,6 +327,26 @@ class ProviderRegistry:
                         }
                     )
         return views
+
+    def prompt_skills(self, capability: Capability) -> list[dict]:
+        """当前绑定插件随附的提示词 Skill 全文，每个资源带 sha256 与字节数。"""
+        found = self.recipe_for(capability)
+        if found is None or found[0].prompt_skills is None:
+            return []
+        return [
+            {
+                "name": skill["name"],
+                "resources": [
+                    {
+                        **resource,
+                        "sha256": hashlib.sha256(resource["text"].encode()).hexdigest(),
+                        "bytes": len(resource["text"].encode()),
+                    }
+                    for resource in skill["resources"]
+                ],
+            }
+            for skill in found[0].prompt_skills()
+        ]
 
     def format_prompt_workset(self, capability, recipe_id, value):
         plugin, _recipe = self.recipe_definition(capability, recipe_id)

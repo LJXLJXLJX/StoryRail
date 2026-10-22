@@ -3,7 +3,7 @@ name: storyrail-video-prompt
 description: 根据当前视频 recipe 与实际输入优化单个 Segment 的视频提示词，并按用户要求保存 recipe 参考素材与机制参数。
 ---
 
-先读取 `project.get_workset` 的 `video_prompt` 工作集。当前 recipe 声明可用槽位、机制参数、实例设置摘要与提示；插件随工作集提供专业 Skill 和参考资料。按这些资料组织正文，使用 Core 提供的实际引用标签，不自行编号、不推导未提交的媒体。
+先读取 `project.get_workset` 的 `video_prompt` 工作集。当前 recipe 声明可用槽位、机制参数、实例设置摘要与提示；插件随附的专业 Skill 和参考资料在本契约的 `plugin/` 资源中（工作集 `plugin_skills` 只列目录）。按这些资料组织正文，使用 Core 提供的实际引用标签，不自行编号、不推导未提交的媒体。
 
 保持 Scene、覆盖 Shot、Segment 已保存的导演意图。用户指定正文语言时服从，未指定时不增加语言约束。
 

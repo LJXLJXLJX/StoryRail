@@ -24,7 +24,7 @@ from core.model_providers.boundary import (
 from core.model_providers.breeze_tts2.manifest import MANIFEST
 from core.model_providers.codex_image.manifest import MANIFEST as IMAGE_MANIFEST
 from core.model_providers.minimax_h3.manifest import MANIFEST as H3_MANIFEST
-from core.model_providers.minimax_h3.prompt_context import format_prompt_workset
+from core.model_providers.minimax_h3.prompt_context import format_prompt_workset, prompt_skills
 from core.model_providers.registry import PluginInstance, ProviderRegistry
 from core.model_providers.seedvr2_7b_sharp_fp8.manifest import MANIFEST as UPSCALE_MANIFEST
 
@@ -208,6 +208,7 @@ def service_registry(providers: dict[str, SyntheticMediaProvider]) -> ProviderRe
             H3_MANIFEST,
             recipes={recipe.id: providers["video"] for recipe in H3_MANIFEST.recipes},
             prompt_formatter=format_prompt_workset,
+            prompt_skills=prompt_skills,
         )
     )
     registry.register("final_assembly", providers["final"])

@@ -158,7 +158,7 @@ def _keyframe_location_library(document, scenes):
     return [item for item in _location_library_facts(document) if item["id"] in location_ids]
 
 
-def contract_read(document, arguments):
+def contract_read(document, arguments, *, provider_catalog=None):
     _exact_arguments(
         arguments,
         required={"capability"},
@@ -169,7 +169,9 @@ def contract_read(document, arguments):
         raise ValueError("include 只接受 consistency-review。")
     if len(include) != len(set(include)):
         raise ValueError("include 不能重复。")
-    body = read_contract(arguments["capability"], include=tuple(include))
+    body = read_contract(
+        arguments["capability"], include=tuple(include), provider_catalog=provider_catalog
+    )
     digest = _content_hash(body)
     if_hash = _validate_if_hash(arguments.get("if_hash"))
     if if_hash is not None and if_hash == digest:
@@ -181,7 +183,7 @@ def contract_read(document, arguments):
     }
 
 
-def contract_page_read(document, arguments):
+def contract_page_read(document, arguments, *, provider_catalog=None):
     _exact_arguments(
         arguments,
         required={"capability"},
@@ -193,7 +195,7 @@ def contract_page_read(document, arguments):
     if "include" in arguments:
         query["include"] = arguments["include"]
     return _agent_page(
-        contract_read(document, query),
+        contract_read(document, query, provider_catalog=provider_catalog),
         query={"project_id": document.project_id, "capability": arguments["capability"]},
         cursor=arguments.get("cursor"),
         page_bytes=arguments.get("page_bytes", _AGENT_PAGE_BYTES),
@@ -242,7 +244,7 @@ def workset_read(
             "aspect_ratio": document.aspect_ratio.value,
             "scenes": _json_value(scenes),
             "location_library": _location_library_facts(document),
-            "image_prompt": image_prompt_guide(provider_catalog),
+            "image_prompt": image_prompt_guide(provider_catalog, skill_text=False),
         }
         schema = location_schema()
         provenance = [
@@ -297,7 +299,7 @@ def workset_read(
                 "saved_keyframe_plan": _saved_keyframe_plan(document, scene_ids),
                 "location_library": _keyframe_location_library(document, scenes),
                 "location_images": _keyframe_location_images(document),
-                "image_prompt": image_prompt_guide(provider_catalog),
+                "image_prompt": image_prompt_guide(provider_catalog, skill_text=False),
             }
             schema = keyframe_schema(scenes, video_inputs)
             provenance.extend(["keyframe_plan", "generations", "location_library"])

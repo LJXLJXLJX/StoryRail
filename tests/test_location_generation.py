@@ -21,7 +21,7 @@ from core.model_providers.boundary import (
     ProviderHandle,
 )
 from core.model_providers.qwen_image import MANIFEST as QWEN_MANIFEST
-from core.model_providers.qwen_image.plugin import format_prompt_workset
+from core.model_providers.qwen_image.plugin import prompt_skills
 from core.model_providers.registry import PluginInstance, ProviderRegistry
 from core.structured_director import StructuredDirectorService
 from core.structured_director.models import (
@@ -99,7 +99,7 @@ class Rig:
             PluginInstance(
                 QWEN_MANIFEST,
                 recipes={recipe.id: self.image for recipe in QWEN_MANIFEST.recipes},
-                prompt_formatter=format_prompt_workset,
+                prompt_skills=prompt_skills,
             )
         )
         if pano:

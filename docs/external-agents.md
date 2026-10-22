@@ -172,7 +172,10 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
   需要越出授权范围时先说明。它是共享工作原则，不是第七个生产阶段。
 - 工作集返回当前 revision 的事实、输出 schema 与 provenance：
   - 图片写作统一遵守 `storyrail-image-prompt-writing`。地点与 Keyframe 契约默认附带 `global/` 下的该 Skill，
-    图片工作集的 `image_prompt.global_skills` 同样交付正文与哈希，`recipes`、`plugin_skills` 补充当前模型标签与写法。
+    图片工作集的 `image_prompt.global_skills` 同样交付正文与哈希，`recipes` 补充当前模型标签。
+  - 随当前绑定插件发布的提示词 Skill（如 `qwen-image-prompt-writing`、`h3-prompt-writing`）只在对应专业契约中交付全文
+    （`plugin/<skill>/<file>` 资源）；工作集的 `plugin_skills` 只是目录（资源名、sha256、字节数）。契约可用 `if_hash` 缓存，
+    逐 Segment 读取工作集不再重复传输 Skill 正文。
     有输入图时在 `prompt_text` 顶部逐图写“真实标签: 用途与保留边界”，空行后正文逐图引用，不写文件名；无图时只写正文。
     默认标签为 `<PictureN>`，Qwen 多图为 `<imageN>`、单图为“图片”。
   - Keyframe 工作集读取目标 Segment 所属完整 Scene 作上下文，并明确 `context_segment_ids` / `writable_segment_ids`
@@ -199,8 +202,8 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
   - 视频工作集给出当前 `video_recipe`（槽位与参数声明、`editable_params`）、`context`（含 `scene.driver`，决定无对白时是否声明预留旁白通道；
     `context.shots` 按覆盖顺序列出 Segment 的每个 Shot（构图、运镜、动作、声音、可见角色名与视图建议名）；
     `segment.continues_from_previous_segment` / `continues_into_next_segment` 表示相邻 Segment 共享边界 Shot 的延续关系；
-    `segment.dialogue[]` 的 `on_screen` 为 null 表示引用库外的临时说话者）、`dialogue_timing`（已选 WAV 的真实起点、时长与最晚结束时间；未完成 TTS 时明确标记未就绪）、`core_prepended_dialogue_prompt`（Core 提交时自动前置的 Audio 标签与原台词映射，正文不要重复）、`asset_inputs`、`plugin_skills`（随插件发布的
-    Skill 与参考正文），以及 `recipe_inputs`（已保存的 `{bindings, params}`；`save_video_prompt.recipe_inputs` 只需给出要改的槽位与参数）与
+    `segment.dialogue[]` 的 `on_screen` 为 null 表示引用库外的临时说话者）、`dialogue_timing`（已选 WAV 的真实起点、时长与最晚结束时间；未完成 TTS 时明确标记未就绪）、`core_prepended_dialogue_prompt`（Core 提交时自动前置的 Audio 标签与原台词映射，正文不要重复）、`asset_inputs`、`plugin_skills`（插件 Skill 目录，
+    全文在 `video_prompt` 契约中），以及 `recipe_inputs`（已保存的 `{bindings, params}`；`save_video_prompt.recipe_inputs` 只需给出要改的槽位与参数）与
     `bindable_assets`（当前 recipe 显式槽位可接受的项目 Asset：`asset_id`、`name`、`media_type`、`duration_seconds`、`slots`；
     只列导入素材、引用库与地点库已选资源、本 Scene 已选的关键帧/旁白/视频与显式媒体参考）。标签按 manifest namespace 由 Core 计算，绑定变化后重读
     工作集取新标签；插件只转换自己的专业格式。软时长提示来自插件 hints；H3 声明 15 秒，超过可能 OOM但不拒绝；缺帧直接拒绝。

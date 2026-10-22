@@ -11,7 +11,7 @@
   },
   "environment": {
     "date": "2026-10-22",
-    "git_sha": "757fbaa0545054c3a8c25cc57d157e024334b483",
+    "git_sha": "d5aa4c02ab008cd015ee7f4a68ade25dbea14f97",
     "python_version": "3.12.12",
     "platform": "macOS-26.6.2-arm64-arm-64bit",
     "driver": "scripts/harness/benchmark/fake_agent_driver.py"
@@ -23,16 +23,16 @@
     "tools_list_bytes": 45256,
     "scenarios": {
       "h3": {
-        "total_wire_bytes": 97555
+        "total_wire_bytes": 91509
       },
       "keyframe": {
-        "total_wire_bytes": 112389
+        "total_wire_bytes": 112439
       },
       "location": {
         "total_wire_bytes": 68722
       },
       "ref2va": {
-        "total_wire_bytes": 99237
+        "total_wire_bytes": 93183
       },
       "reference": {
         "total_wire_bytes": 30056
@@ -49,13 +49,13 @@
       "summary": {
         "tools_list_bytes": 45256,
         "tool_count": 26,
-        "requests": 8,
-        "input_bytes": 2201,
-        "output_bytes": 95354,
-        "total_wire_bytes": 97555,
-        "contract_read_bytes": 7716,
-        "workset_read_bytes": 75423,
-        "pagination_rounds": 8,
+        "requests": 6,
+        "input_bytes": 1527,
+        "output_bytes": 89982,
+        "total_wire_bytes": 91509,
+        "contract_read_bytes": 66441,
+        "workset_read_bytes": 10652,
+        "pagination_rounds": 6,
         "wait_rounds": 1,
         "error_responses": 0
       },
@@ -77,7 +77,7 @@
           "tool": "read_professional_contract",
           "action": "pages",
           "input_bytes": 157,
-          "output_bytes": 7559,
+          "output_bytes": 66284,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -88,35 +88,13 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 255,
-          "output_bytes": 27723,
+          "output_bytes": 10397,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
         },
         {
           "index": 4,
-          "step": "workset",
-          "tool": "read_professional_workset",
-          "action": "pages",
-          "input_bytes": 337,
-          "output_bytes": 26873,
-          "is_error": false,
-          "pagination_rounds": 1,
-          "wait_again": null
-        },
-        {
-          "index": 5,
-          "step": "workset",
-          "tool": "read_professional_workset",
-          "action": "pages",
-          "input_bytes": 337,
-          "output_bytes": 19898,
-          "is_error": false,
-          "pagination_rounds": 1,
-          "wait_again": null
-        },
-        {
-          "index": 6,
           "step": "prompt",
           "tool": "save_video_prompt",
           "action": "call",
@@ -127,7 +105,7 @@
           "wait_again": null
         },
         {
-          "index": 7,
+          "index": 5,
           "step": "generate",
           "tool": "generate_media",
           "action": "call",
@@ -138,7 +116,7 @@
           "wait_again": null
         },
         {
-          "index": 8,
+          "index": 6,
           "step": "wait",
           "tool": "manage_generation",
           "action": "wait",
@@ -158,9 +136,9 @@
         "tool_count": 26,
         "requests": 8,
         "input_bytes": 2019,
-        "output_bytes": 110370,
-        "total_wire_bytes": 112389,
-        "contract_read_bytes": 40857,
+        "output_bytes": 110420,
+        "total_wire_bytes": 112439,
+        "contract_read_bytes": 40907,
         "workset_read_bytes": 33769,
         "pagination_rounds": 8,
         "wait_rounds": 1,
@@ -184,7 +162,7 @@
           "tool": "read_professional_contract",
           "action": "pages",
           "input_bytes": 159,
-          "output_bytes": 40698,
+          "output_bytes": 40748,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -348,13 +326,13 @@
       "summary": {
         "tools_list_bytes": 45256,
         "tool_count": 26,
-        "requests": 9,
-        "input_bytes": 2463,
-        "output_bytes": 96774,
-        "total_wire_bytes": 99237,
-        "contract_read_bytes": 7720,
-        "workset_read_bytes": 75435,
-        "pagination_rounds": 9,
+        "requests": 7,
+        "input_bytes": 1781,
+        "output_bytes": 91402,
+        "total_wire_bytes": 93183,
+        "contract_read_bytes": 66445,
+        "workset_read_bytes": 10656,
+        "pagination_rounds": 7,
         "wait_rounds": 1,
         "error_responses": 0
       },
@@ -376,7 +354,7 @@
           "tool": "read_professional_contract",
           "action": "pages",
           "input_bytes": 161,
-          "output_bytes": 7559,
+          "output_bytes": 66284,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -387,35 +365,13 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 259,
-          "output_bytes": 27723,
+          "output_bytes": 10397,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
         },
         {
           "index": 4,
-          "step": "workset",
-          "tool": "read_professional_workset",
-          "action": "pages",
-          "input_bytes": 341,
-          "output_bytes": 26873,
-          "is_error": false,
-          "pagination_rounds": 1,
-          "wait_again": null
-        },
-        {
-          "index": 5,
-          "step": "workset",
-          "tool": "read_professional_workset",
-          "action": "pages",
-          "input_bytes": 341,
-          "output_bytes": 19898,
-          "is_error": false,
-          "pagination_rounds": 1,
-          "wait_again": null
-        },
-        {
-          "index": 6,
           "step": "mode",
           "tool": "set_video_recipe",
           "action": "call",
@@ -426,7 +382,7 @@
           "wait_again": null
         },
         {
-          "index": 7,
+          "index": 5,
           "step": "prompt",
           "tool": "save_video_prompt",
           "action": "call",
@@ -437,7 +393,7 @@
           "wait_again": null
         },
         {
-          "index": 8,
+          "index": 6,
           "step": "generate",
           "tool": "generate_media",
           "action": "call",
@@ -448,7 +404,7 @@
           "wait_again": null
         },
         {
-          "index": 9,
+          "index": 7,
           "step": "wait",
           "tool": "manage_generation",
           "action": "wait",

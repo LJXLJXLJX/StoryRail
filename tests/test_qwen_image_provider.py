@@ -19,7 +19,7 @@ from core.model_providers.codex_image.manifest import MANIFEST as CODEX_MANIFEST
 from core.model_providers.http import HttpResponse
 from core.model_providers.manifest import ImagePromptConvention, Role
 from core.model_providers.qwen_image import MANIFEST, QwenImageProvider
-from core.model_providers.qwen_image.plugin import format_prompt_workset
+from core.model_providers.qwen_image.plugin import prompt_skills
 from core.model_providers.qwen_image.provider import canvas, to_request
 from core.model_providers.recipe import MediaInput
 from core.model_providers.registry import PluginInstance, ProviderRegistry
@@ -202,7 +202,7 @@ def _qwen_service(store):
         PluginInstance(
             MANIFEST,
             recipes={recipe.id: provider for recipe in MANIFEST.recipes},
-            prompt_formatter=format_prompt_workset,
+            prompt_skills=prompt_skills,
         )
     )
     return StructuredDirectorService(store, registry=registry), provider, registry

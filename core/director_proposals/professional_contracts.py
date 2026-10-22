@@ -6,6 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from core.model_providers.image_prompt_skill import image_prompt_skill
+from core.model_providers.manifest import Capability
 
 _SKILLS = Path(__file__).resolve().parent / "skills"
 
@@ -50,7 +51,34 @@ CONTRACTS = {
 }
 
 
-def read_contract(capability, *, include: tuple[str, ...] = ()):
+# 专业能力 → 随当前绑定插件发布的提示词 Skill 所属媒体能力。
+_PLUGIN_SKILL_CAPABILITIES = {
+    "keyframe": (Capability.IMAGE_GENERATE, Capability.IMAGE_EDIT),
+    "location": (Capability.IMAGE_GENERATE, Capability.IMAGE_EDIT),
+    "video_prompt": (Capability.VIDEO_GENERATE,),
+}
+
+
+def _plugin_skill_resources(capability, provider_catalog):
+    if provider_catalog is None:
+        return []
+    skills = {}
+    for media_capability in _PLUGIN_SKILL_CAPABILITIES.get(capability, ()):
+        for skill in provider_catalog.prompt_skills(media_capability):
+            skills.setdefault(skill["name"], skill)
+    return [
+        {
+            "name": f"plugin/{skill['name']}/{resource['name']}",
+            "text": resource["text"],
+            "sha256": resource["sha256"],
+        }
+        for skill in skills.values()
+        for resource in skill["resources"]
+    ]
+
+
+def read_contract(capability, *, include: tuple[str, ...] = (), provider_catalog=None):
+    """Core 契约正文；给出 Provider 目录时追加当前绑定插件的提示词 Skill（``plugin/`` 前缀）。"""
     if not isinstance(capability, str) or capability not in CONTRACTS:
         raise ValueError("未知专业能力。")
     if any(item != "consistency-review" for item in include):
@@ -69,6 +97,7 @@ def read_contract(capability, *, include: tuple[str, ...] = ()):
             {**resource, "name": f"global/{skill_resource['name']}/{resource['name']}"}
             for resource in skill_resource["resources"]
         )
+    resources.extend(_plugin_skill_resources(capability, provider_catalog))
     if "consistency-review" in include:
         content = (_SKILLS / "storyrail-consistency-review" / "SKILL.md").read_text(
             encoding="utf-8"

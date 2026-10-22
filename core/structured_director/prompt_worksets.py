@@ -1,6 +1,7 @@
 """从项目领域事实与 recipe 声明构造专业输入；不解释插件采样机制。"""
 
 from core.model_providers.image_prompt_skill import image_prompt_guide as image_prompt_guide
+from core.model_providers.image_prompt_skill import prompt_skill_index
 from core.model_providers.manifest import Capability, Role, recipe_from_json
 from core.model_providers.recipe import SlotBinding, binding_labels, explicit_slots
 
@@ -167,11 +168,15 @@ def video_prompt_workset(
         ],
     }
 
-    return (
-        result
-        if provider_catalog is None
-        else provider_catalog.format_prompt_workset(Capability.VIDEO_GENERATE, recipe.id, result)
-    )
+    if provider_catalog is None:
+        return result
+    return {
+        **provider_catalog.format_prompt_workset(Capability.VIDEO_GENERATE, recipe.id, result),
+        # 插件 Skill 全文经 read_professional_contract(capability="video_prompt") 读取。
+        "plugin_skills": prompt_skill_index(
+            provider_catalog.prompt_skills(Capability.VIDEO_GENERATE)
+        ),
+    }
 
 
 def dialogue_prompt_prefix(labels, dialogue_inputs):
