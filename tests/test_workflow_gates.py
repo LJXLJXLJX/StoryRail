@@ -383,9 +383,11 @@ def test_visual_workflow_uses_current_inputs_generations_and_reviewable_candidat
             selection = next(
                 item
                 for item in candidate
-                if item["action"] == "candidate_selection" and item["kind"] == "keyframe_image"
+                if item["action"] == "keyframe.select_candidate"
+                and item["kind"] == "keyframe_image"
             )
-            assert selection["candidate_count"] >= 1 and selection["human_only"]
+            assert selection["candidate_count"] >= 1 and not selection["human_only"]
+            assert selection["tool"] == "select_keyframe_candidate"
             document = await core.select_keyframe(
                 keyframe_id=frame.id,
                 asset_id=document.generations[-1].output_asset_id,

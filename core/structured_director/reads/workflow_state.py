@@ -377,6 +377,17 @@ def _candidate_action(document, kind, target_ids):
     if not candidates:
         return None
     candidate_targets = tuple(dict.fromkeys(item.target_id for item in candidates))
+    if kind is ReferenceGenerationKind.KEYFRAME_IMAGE:
+        # Keyframe 候选 Agent 与人类都可采用；人类随时可改选。
+        return _action(
+            "keyframe.select_candidate",
+            tool="select_keyframe_candidate",
+            target_ids=candidate_targets,
+            kind=kind.value,
+            candidate_count=len(candidates),
+            candidate_count_unit="generation_outputs",
+            verification_tool="list_candidates",
+        )
     return _human_action(
         document,
         "candidate_selection",

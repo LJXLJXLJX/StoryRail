@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from core.director_commands import (
     CommandReceipt,
+    KeyframeCandidateSelection,
     KeyframeOperation,
     SetKeyframeActivation,
     ShareKeyframeBoundary,
@@ -676,6 +677,96 @@ class KeyframeDomain(_DomainBase):
             mutator=mutate,
         )
         return updated
+
+    def select_keyframe_candidate(
+        self,
+        selection: KeyframeCandidateSelection,
+        *,
+        expected_revision: int,
+        command_id: str,
+    ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
+        """Agent 采用一条 Keyframe 候选；与人类选择同一字段，任一方随时可以改选。"""
+
+        def mutate(document: StructuredDirectorDocument) -> MutationResult:
+            plan = document.keyframe_plan
+            if plan is None:
+                raise ValueError("关键帧计划尚未建立。")
+            keyframe = next(
+                (item for item in plan.keyframes if item.id == selection.keyframe_id), None
+            )
+            if keyframe is None:
+                raise ValueError("Keyframe 不存在。")
+            if not _keyframe_is_enabled(plan, keyframe.id):
+                raise ValueError("该 Keyframe 未激活，不能选择候选。")
+            generation = next(
+                (item for item in document.generations if item.id == selection.generation_id),
+                None,
+            )
+            if (
+                generation is None
+                or generation.kind
+                not in {ReferenceGenerationKind.KEYFRAME_IMAGE, ReferenceGenerationKind.VIDEO_FRAME}
+                or generation.target_id != keyframe.id
+            ):
+                raise ValueError("该 Generation 不是这个 Keyframe 的候选。")
+            asset_id = generation.output_asset_id
+            asset = next((item for item in document.assets if item.id == asset_id), None)
+            if (
+                generation.phase is not ReferenceGenerationPhase.SUCCEEDED
+                or generation.dismissed
+                or asset is None
+                or not asset.media_type.startswith("image/")
+            ):
+                raise ValueError("只能采用成功、未隐藏且产出图片的 Keyframe 候选。")
+            if keyframe.selected_asset_id == asset.id:
+                return MutationResult(
+                    document,
+                    CommandReceipt(
+                        command_id=command_id,
+                        status="noop",
+                        old_revision=document.revision,
+                        new_revision=document.revision,
+                        preserved=("keyframe_selection",),
+                        decision_summary="该候选已经是当前选择。",
+                    ),
+                    write=False,
+                )
+            updated = replace(
+                document,
+                revision=document.revision + 1,
+                keyframe_plan=replace(
+                    plan,
+                    keyframes=tuple(
+                        replace(item, selected_asset_id=asset.id)
+                        if item.id == keyframe.id
+                        else item
+                        for item in plan.keyframes
+                    ),
+                ),
+            )
+            return MutationResult(
+                updated,
+                CommandReceipt(
+                    command_id=command_id,
+                    status="succeeded",
+                    old_revision=document.revision,
+                    new_revision=updated.revision,
+                    changed_ids=(keyframe.id,),
+                    preserved=("asset_history", "generation_history"),
+                    decision_summary="已采用该 Keyframe 候选；人类可随时改选。",
+                    next_allowed_actions=(
+                        "keyframe.generate",
+                        "keyframe.continue_batch",
+                        "video.generate",
+                    ),
+                ),
+            )
+
+        return commit_mutation(
+            self,
+            loader=lambda: self._editable_document(expected_revision),
+            mutator=mutate,
+        )
 
     def scope_keyframe_generation(
         self, target_ids: tuple[str, ...], *, expected_revision: int

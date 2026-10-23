@@ -351,7 +351,7 @@ Segment 当前生效视频（有超分取超分）的一帧。产物只作为该
 不重复、只引用本项目 Asset、进行中任务冲突与 revision。`video_prompt` 工作集给出槽位声明、已保存输入（`recipe_inputs`，
 按槽位、按键合并：给出的槽位整体替换，未给出的保留）、可绑定 Asset（`bindable_assets`）与参数声明；Agent 只在用户明确要求时增删或替换绑定。
 含对白 Segment 的对白 TTS 是必需输入：命令带 `attach_dialogue_audio: true` 时，Core 按与 Web“一键添加本段对白 TTS”相同的规则合并进参考音频列表。
-候选选择与清除选择仍只属于人类。
+视频候选选择与清除选择仍只属于人类。
 
 **H3 提示词**由用户手工编辑，或由 Agent 显式使用 `h3-prompt-writing` Skill 优化。用户指定语言时必须服从；未指定时不额外约束
 自然语言正文，但官方字段、引用标签与时间语法保持 Provider 格式。含对白时，Core 提交 H3 时确定性地在正文前加上同一句强约束

@@ -2525,6 +2525,44 @@
     "name": "list_candidates"
   },
   {
+    "description": "采用一个 Keyframe 的成功候选（keyframe_image 或抽帧），成为后续生成与引用的选中图；人类可随时改选。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "generation_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "keyframe_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "keyframe_id",
+        "generation_id"
+      ],
+      "type": "object"
+    },
+    "name": "select_keyframe_candidate"
+  },
+  {
     "description": "设置单Segment视频模式，不生成。",
     "inputSchema": {
       "additionalProperties": false,

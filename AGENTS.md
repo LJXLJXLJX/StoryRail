@@ -154,7 +154,7 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
 - Segment 视频候选的选择只要求“成功、未隐藏、属于该 Segment 且有 MP4 产物”，由用户决定选哪一条。
   候选生成时的关键帧、提示词或参考输入快照变化只作软提示（快照中的 `inputs_outdated`），不阻止选择，
   也不阻止超分、Scene 成片和最终装配使用它；不因此把已生成候选降级为不可选历史。
-- 每个项目在外部 Agent 中使用 Director 职责；Core 不持有厂商会话。引用库、脚本、旁白、地点、Keyframe、视频提示词和生产检查都是它按需使用的 Skill/类型化能力，不拥有独立 Thread、对话、阶段或权限。Director 可以提出类型化的脚本回改、地点、Keyframe、Segment 视频或超分动作，但不能绕过 Core 校验、候选选择和审核。
+- 每个项目在外部 Agent 中使用 Director 职责；Core 不持有厂商会话。引用库、脚本、旁白、地点、Keyframe、视频提示词和生产检查都是它按需使用的 Skill/类型化能力，不拥有独立 Thread、对话、阶段或权限。Director 可以提出类型化的脚本回改、地点、Keyframe、Segment 视频或超分动作并采用 Keyframe 候选，但不能绕过 Core 校验、其它候选选择和审核。
 - 阶段能力按 `workspace_layers` 累加；后续阶段继承前面已解锁能力。上游回改只失效相关产物和生产基线，不退回阶段、不重锁入口；历史 Asset/Generation 保留。Agent 工作期间仍锁定冲突写入，Approval 后仍须显式重新开放生产。
 - 相邻 Segment（无论是否共享边界 Shot）默认硬切，仅边界 Keyframe identity 相同且两侧都启用才做 0.1 秒系统接缝融合（`seam_blend`），不是导演 dissolve；跨 Scene 使用同一规则。用户选择成片后仍需单独 Approval。
 - Scene 成片是 Scene 内已审核 Segment 视频加旁白的确定性渲染结果；最终成片装配只按脚本顺序拼接各 Scene 成片的字节，不再读取原始 Segment 或重新混入旁白。每个 Scene 都必须存在基于当前 Segment 视频与旁白选择生成的 Scene 成片，缺失或过期的 Scene 阻止最终装配并一次列出；重新生成或删除 Scene 成片会作废已建立的装配计划。
@@ -168,9 +168,10 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
   Agent 不能跨域复制 Asset。
 - 本机用户启动的外部 Agent 获得当前项目、有限期的 `project.execute` 委托，仅可调用既有 Agent 操作白名单。
   启动不发送任务，询问下一步只读取；具体执行等待用户指令，由外部 Agent 判断意图。Core 校验操作/状态/范围/版本，
-  不以 Agent 自报正文授予能力，不开放候选选择、Approval、人类操作或直接项目文件写入。其它部署默认仍使用精确 grant。
+  不以 Agent 自报正文授予能力，除 Keyframe 候选选择外不开放候选选择，也不开放 Approval、人类操作或直接项目文件写入。其它部署默认仍使用精确 grant。
 
-- Agent 只能提交类型化 proposal；不能直接写项目文件、选择候选、批准、发布或调用 Provider。
+- Agent 只能提交类型化 proposal 与白名单命令；不能直接写项目文件、选择 Keyframe 以外的候选、批准、发布或调用 Provider。
+  Keyframe 候选由 Agent 或人类经同一字段采用，任一方随时可改选，便于自动化连贯生产。
 - Web 只消费服务端资源、状态、影响预览和 `allowed_actions`；不得复制状态机或猜测下一步。
 - 执行由外部成熟 Agent 承担；Core 不装配厂商 Agent runtime、SDK、CLI 或隐藏 fallback。专业契约位于 `core/director_proposals/`，领域 run/cursor 仍由 Core 持久化。
 - Model Provider 是用户安装的 Core 侧插件。每个插件自行调用独立外部 HTTP API，并翻译成 Core 的 Generation 语义。

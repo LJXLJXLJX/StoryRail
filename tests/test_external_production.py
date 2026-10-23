@@ -735,3 +735,79 @@ def test_agent_edits_looks_and_generates_sheet_idempotently(tmp_path):
         assert added is not None and result is not None
 
     asyncio.run(run())
+
+
+def test_agent_selects_keyframe_candidate_and_human_can_reselect(tmp_path, monkeypatch):
+    monkeypatch.setenv("STORYRAIL_GENERATION_WAIT_MAX_SECONDS", "0")
+
+    async def run():
+        store, provider, doc = await setup(tmp_path)
+        keyframe_id = doc.keyframe_plan.segments[0].start_keyframe_id
+        generation_ids = []
+        for key in ("kf-a", "kf-b"):
+            started, _ = await call(
+                store, provider, "keyframe.generate", key, {"keyframe_id": keyframe_id}
+            )
+            generation_ids.append(started.body["data"]["generation_ids"][0])
+            provider.observations = [GenerationPhase.SUCCEEDED]
+            await call(
+                store,
+                provider,
+                "generation.wait",
+                "wait-" + key,
+                {"generation_ids": generation_ids[-1:]},
+            )
+        first, second = (
+            next(g for g in store.read().generations if g.id == gid) for gid in generation_ids
+        )
+        assert first.output_asset_id and second.output_asset_id
+
+        selected, command = await call(
+            store,
+            provider,
+            "keyframe.select_candidate",
+            "select-a",
+            {"keyframe_id": keyframe_id, "generation_id": first.id},
+        )
+        assert selected.body["receipt"]["changed_ids"] == [keyframe_id]
+        keyframe = next(k for k in store.read().keyframe_plan.keyframes if k.id == keyframe_id)
+        assert keyframe.selected_asset_id == first.output_asset_id
+        before = store.path.read_bytes()
+        replay = await http(service(store, provider), agent(doc, command), command)
+        assert replay.body["replay"] and store.path.read_bytes() == before
+
+        # 别的 Keyframe 的候选不能借用。
+        other_id = doc.keyframe_plan.segments[0].end_keyframe_id
+        wrong = DirectorCommand(
+            "keyframe.select_candidate",
+            store.read().revision,
+            "select-wrong",
+            {"keyframe_id": other_id, "generation_id": second.id},
+        )
+        denied = await http(service(store, provider), agent(store.read(), wrong), wrong)
+        assert denied.status != 200
+        assert store.path.read_bytes() == before
+
+        # 人类改选与 Agent 写同一字段，Agent 之后仍可再次改选。
+        current = await service(store, provider).select_keyframe(
+            keyframe_id=keyframe_id,
+            asset_id=second.output_asset_id,
+            expected_revision=store.read().revision,
+        )
+        assert (
+            next(
+                k for k in current.keyframe_plan.keyframes if k.id == keyframe_id
+            ).selected_asset_id
+            == second.output_asset_id
+        )
+        await call(
+            store,
+            provider,
+            "keyframe.select_candidate",
+            "select-a-again",
+            {"keyframe_id": keyframe_id, "generation_id": first.id},
+        )
+        keyframe = next(k for k in store.read().keyframe_plan.keyframes if k.id == keyframe_id)
+        assert keyframe.selected_asset_id == first.output_asset_id
+
+    asyncio.run(run())

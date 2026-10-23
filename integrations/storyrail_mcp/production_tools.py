@@ -517,6 +517,11 @@ class Candidates(ReadRequest):
     limit: Annotated[int, Field(ge=1, le=100)] = 30
 
 
+class KeyframeSelection(Request):
+    keyframe_id: ID
+    generation_id: ID
+
+
 class VideoRecipe(Request):
     scene_ids: Targets
     segment_id: ID
@@ -547,6 +552,7 @@ MODELS = {
     "read_human_handoff": ProjectRead,
     "read_workflow_state": ProjectRead,
     "list_candidates": Candidates,
+    "select_keyframe_candidate": KeyframeSelection,
     "set_video_recipe": VideoRecipe,
     "set_dialogue_timing": DialogueTiming,
     "save_reference_image_plan": ReferenceImagePlan,
@@ -574,6 +580,8 @@ DESCRIPTIONS = {
             "读取人类审核入口与Core允许动作，不授予人类权限。",
             "读取主流程阶段、必需下一步、可选准备和阻塞原因；推进请求只按必需下一步处理。",
             "分页读取明确目标候选，不选择。",
+            "采用一个 Keyframe 的成功候选（keyframe_image 或抽帧），成为后续生成与引用的选中图；"
+            "人类可随时改选。",
             "设置单Segment视频模式，不生成。",
             "按已选 TTS WAV 的真实时长设置逐句发声起点与 Segment 视频时长。",
             "新建或编辑一个 Segment 的其他图片规划，slot_index 为 0–3；"
@@ -611,6 +619,7 @@ def translate(name, request):
         "read_human_handoff": "project.get_handoff",
         "read_workflow_state": "project.get_workflow_state",
         "list_candidates": "project.list_candidates",
+        "select_keyframe_candidate": "keyframe.select_candidate",
         "set_video_recipe": "video.set_recipe",
         "set_dialogue_timing": "dialogue.set_timing",
         "save_reference_image_plan": "video.save_reference_image_plan",

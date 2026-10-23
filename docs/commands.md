@@ -167,7 +167,7 @@ Core 分配。不支持单独移动 Shot：重排或跨 Scene 迁移 Shot 时，
 | `keyframe.generate` | A | 单个 `keyframe_id`；只提交该帧 |
 | `keyframe.generate_batch` | A | `target_ids` 为显式、不重复、已启用的 Keyframe 集合；本轮只提交依赖已满足的帧 |
 | `keyframe.continue_batch` | A | `batch_id` 或任一关联 `run_id`；不能带新范围 |
-| `keyframe.select_candidate` | H | 采用候选 |
+| `keyframe.select_candidate` | A/H | Agent 以 `keyframe_id` + `generation_id` 采用该帧成功、未隐藏且产出图片的 `keyframe_image` 或抽帧候选；人类也可直接采用项目图片。双方写同一字段，任一方随时可改选 |
 
 人类 HTTP 另有：保存首帧卡共享开关（`PUT segments/{id}/keyframe-boundary`）与“从上一 seg 抽取”（`POST keyframes/{id}/extract-frame`，
 必须给 `frame_index`）。
@@ -207,7 +207,7 @@ Core 分配。不支持单独移动 Shot：重排或跨 Scene 迁移 Shot 时，
 | `final.approve` | H | 以精确 Asset 一次批准所选语言版本；要求本轮明确批准，且 Asset、Generation、装配与 revision 完全对应 |
 | `final.reopen_production` | H | 清除当前装配与 Approval，回到视频审核位置；历史与内容层保留 |
 
-候选选择、普通正面反馈与最终批准是三种不同权限。
+候选选择、普通正面反馈与最终批准是三种不同权限；只有 Keyframe 候选选择对 Agent 开放。
 
 ## 领域 run
 
@@ -232,4 +232,4 @@ Core 分配。不支持单独移动 Shot：重排或跨 Scene 迁移 Shot 时，
 `video.select_reference_image` 是人类操作，以 Scene scope、Segment ID、槽位序号、项目 `asset_id` 和
 实际内容/参考用途说明原子更新当前 recipe 的图片输入；`asset_id=null` 移除该图片。未填的槽位不占提交名额。
 `read_story` 的 Segment `selection` / `keyframe` / `video_prompt` 扩展返回 `video_inputs`，其中包含规划 ID、正文、选图状态与实际图片绑定；
-Keyframe 与视频专业工作集提供同一 `video_inputs[]`。规划与生成可由 Agent 明确调用，候选采用保留给人类；Agent 的通用 recipe 输入写入不能采用尚未经人类选入的参考图候选。
+Keyframe 与视频专业工作集提供同一 `video_inputs[]`。规划与生成可由 Agent 明确调用，视频参考图候选采用保留给人类；Agent 的通用 recipe 输入写入不能采用尚未经人类选入的参考图候选。

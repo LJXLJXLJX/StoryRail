@@ -1,7 +1,7 @@
 # 外部 Agent 接入
 
 StoryRail 不内置 Agent。用户在自己的终端启动成熟的外部 Agent，Agent 通过 MCP 工具调用 Core 的正式入口，
-完成专业规划与生产操作；候选采用、审核确认与 Approval 永远留给人类。
+完成专业规划与生产操作，并可采用 Keyframe 候选（人类随时可改选）；其它候选采用、审核确认与 Approval 永远留给人类。
 
 ## 支持的 Agent
 
@@ -84,7 +84,7 @@ flowchart TB
 本机 Web Origin；Agent Bearer 与 cookie 人类身份分别验证。它只防御非宿主权限的进程，不防御宿主管理员。
 
 **项目执行委托**（`project.execute`）：替代逐命令 grant，覆盖整个 Agent 操作白名单，但不绕过有效期、项目范围、Core schema、
-状态、revision 与 proposal 归属校验。选择、Approval、repair 与旧写路由仍拒绝。Core 不读取外部对话，也不声称能验证指令来源。
+状态、revision 与 proposal 归属校验。Keyframe 以外的候选选择、Approval、repair 与旧写路由仍拒绝。Core 不读取外部对话，也不声称能验证指令来源。
 
 **自定义部署**：策略根严格为 `{version: 2, external_mutations: false|true, callers: [...]}`；策略文件由服务用户持有，必须是普通文件、
 0600、无 symlink 祖先，**每次请求重读**——失效、撤销、损坏都直接拒绝。Bearer 只经受保护渠道交付，不进入 URL、日志或业务 JSON。
@@ -123,8 +123,8 @@ flowchart LR
 
 ## MCP 工具
 
-项目 scope 的 `tools/list` 发布 26 个工具（逐字节基线：`tests/fixtures/mcp_project_tools.json`）。没有任意 command、shell、文件、
-路径、URL、模型目录、候选采用或 Approval 工具。所有工具顶层与嵌套参数都拒绝未知字段，条件参数用公开 `oneOf` 表达，MCP runtime
+项目 scope 的 `tools/list` 发布 27 个工具（逐字节基线：`tests/fixtures/mcp_project_tools.json`）。没有任意 command、shell、文件、
+路径、URL、模型目录、Approval 工具，候选采用工具只有 `select_keyframe_candidate`。所有工具顶层与嵌套参数都拒绝未知字段，条件参数用公开 `oneOf` 表达，MCP runtime
 与 schema 共用同一参数矩阵。
 
 | 分组 | 工具 | 翻译为 |
@@ -135,6 +135,7 @@ flowchart LR
 | | `read_workflow` | 主流程 + handoff + contract hashes |
 | | `read_media_input` | 受控 Asset 内容（见下文） |
 | | `list_candidates` / `read_run` / `read_request` | 对应读取命令 |
+| 选择 | `select_keyframe_candidate` | `keyframe.select_candidate`（`keyframe_id` + 该帧成功、未隐藏的 `keyframe_image` 或抽帧 `generation_id`） |
 | 规划 | `submit_proposal` | 统一入口：`capability` + `payload`；schema 按 capability 与 `payload.action` 公开完整字段：request（`raw_user_instruction`；keyframe 另需 `scene_ids` 与 Segment `target_ids`）/ get、cancel（`request_id`）/ submit（`request_id` 加内联 `proposal` 或受限 `proposal_source`）/ reject（`request_id`、`reason`） |
 | 编辑 | `edit_script` / `edit_narration` / `edit_locations` / `edit_keyframes` / `edit_looks` | 各自的 `*.apply_operations` / `narration.update_cue` / `reference.apply_look_operations`（`add_look` / `update_look`，字段形状随 `reference_library` 契约下发）；`edit_narration.fields.clear_selected_audio = "zh"\|"en"` 独占一次调用并翻译为 `narration.clear_selection`；`edit_locations` 的 scope 是 `location_ids` / `scene_ids`，可编辑地点、状态、陈设、独立图片和 Scene 绑定，字段形状随 `location` 契约下发；`edit_script` 的 `insert_shot` 必须给出 `attach_to_segment_id` 或 `new_segment`，Segment 操作以 `scene_id` 为容器 |
 | | `save_video_prompt` / `save_keyframe_prompt` | 不带 `recipe_inputs` 时 `video.set_prompt`；带 `recipe_inputs: {bindings, params}` 或 `attach_dialogue_audio` 时 `video.update_recipe_inputs`（正文整体保存，绑定按槽位、参数按键合并）/ 单项 `update_frame_fields` |

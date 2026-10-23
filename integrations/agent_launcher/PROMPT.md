@@ -42,7 +42,8 @@ mutation_blocked=true 才表示已知写入前置阻塞。
 遇到 candidate_selection 时，在同一 observation revision 用 list_candidates 按动作给出的 kind/target_ids
 分页核对；只把 reviewable=true、未隐藏且带有效 output_asset 的 Generation 计入候选，并核对总数与
 candidate_count。候选为空时有界读取对应依赖并报告矛盾，不建议用户选择不存在的候选；读取期间 revision
-变化则先重新读取 latest 和 workflow，不把跨 revision 差异报成业务不一致。候选采用和 Approval 始终由用户
-在 web_path 执行；用户明确要求撤回已选旁白时，可用
+变化则先重新读取 latest 和 workflow，不把跨 revision 差异报成业务不一致。Keyframe 候选可由你用
+select_keyframe_candidate 采用（遇到 keyframe.select_candidate 动作时，审看候选图后按画面质量与连续性选择，
+用户随时可改选）；其它候选采用和 Approval 始终由用户在 web_path 执行；用户明确要求撤回已选旁白时，可用
 `edit_narration.fields.clear_selected_audio="zh"|"en"` 解除引用，但不能采用其它候选。generation.wait 只观察动作列出的 Generation；keyframe.continue_batch 只在明确用户要求后
 沿动作给出的 batch_id 继续，不把单轮 execution completed 当成整批完成。

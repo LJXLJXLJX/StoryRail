@@ -23,7 +23,7 @@ caller 策略（本机一键接入或 `--access-policy-file`）的既有单写�
 
 ## 项目 scope（默认）
 
-`tools/list` 发布 26 个工具，逐字节基线是 `tests/fixtures/mcp_project_tools.json`。`read_human_handoff`、`read_workflow_state`、
+`tools/list` 发布 27 个工具，逐字节基线是 `tests/fixtures/mcp_project_tools.json`。`read_human_handoff`、`read_workflow_state`、
 `script_proposal`、`reference_proposal`、`location_proposal`、`keyframe_proposal` 仍可调用但不下发 schema；统一提交入口是
 `submit_proposal`（`capability` 为 `script`、`reference_library`、`location` 或 `keyframe`）。submit 可直接内联 `proposal`；大型
 proposal 可改用 `proposal_source={kind:"workspace_json", byte_count, sha256}`，adapter 只读取固定
@@ -33,7 +33,7 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 只有 `raw_user_instruction`，翻译为 `location.*_proposal`。`edit_script`、`edit_keyframes`、`edit_locations`、`edit_looks` 发布严格的操作 schema：
 每个 `op` 分支同时公开嵌套字段形状、枚举和必填项，并由同一 runtime 模型校验；`edit_looks` 翻译为 `reference.apply_look_operations`，字段形状随 reference_library 契约
 （`references/look-sheets.md`）下发；`edit_locations` 各操作的字段形状随 location 专业契约（`references/location-bible.md` 附录）下发。`edit_locations` 翻译为 `location.apply_operations`，顶层 `location_ids`、`scene_ids`
-组成 scope；不提供地点图片候选选择。`generate_media` 的 `look_sheet` 翻译为 `reference.generate_look_sheet`（`identity_asset_ids` 为 0–4 张身份参考）；
+组成 scope；不提供地点图片候选选择。`select_keyframe_candidate` 翻译为 `keyframe.select_candidate`，是唯一的候选采用工具（只限该 Keyframe 的成功、未隐藏图片候选）。`generate_media` 的 `look_sheet` 翻译为 `reference.generate_look_sheet`（`identity_asset_ids` 为 0–4 张身份参考）；
 `reference_image` 翻译为 `video.generate_reference_image`（`target_id` 为图片规划 ID）；`save_reference_image_plan`
 以 Scene scope、Segment ID 和 0–3 槽位保存一张任意内容的其他图片规划，完整字段在 tools/list 下发，不生成、不选择。
 `read_story` 的 Segment `selection` / `keyframe` / `video_prompt` 扩展返回 `video_inputs`，Keyframe 与视频专业工作集也给出

@@ -75,6 +75,7 @@ _AGENT_OPERATIONS = {
     "reference.request_proposal",
     "keyframe.request_proposal",
     "keyframe.apply_operations",
+    "keyframe.select_candidate",
     "location.request_proposal",
     "location.apply_operations",
     "location.generate_image",

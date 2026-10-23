@@ -139,6 +139,14 @@ class ClearKeyframeSelection:
     keyframe_id: str
 
 
+@dataclass(frozen=True, slots=True)
+class KeyframeCandidateSelection:
+    """采用某个 Keyframe 的一条成功候选；Agent 与人类都可改选。"""
+
+    keyframe_id: str
+    generation_id: str
+
+
 KeyframeOperation: TypeAlias = (
     SetKeyframeActivation
     | UpdateKeyframeFields
@@ -164,6 +172,13 @@ def parse_director_command(value: object) -> DirectorCommand:
         expected_revision=_integer(item["expected_revision"], "command.expected_revision"),
         idempotency_key=_string(item["idempotency_key"], "command.idempotency_key"),
         arguments=dict(arguments),
+    )
+
+
+def parse_keyframe_candidate_selection(value: object) -> KeyframeCandidateSelection:
+    item = _exact_object(value, {"keyframe_id", "generation_id"}, "keyframe.select_candidate")
+    return KeyframeCandidateSelection(
+        _id(item["keyframe_id"], "keyframe_id"), _id(item["generation_id"], "generation_id")
     )
 
 

@@ -6,7 +6,7 @@
 ## 依赖方向与分层
 
 执行方向：外部成熟 Agent → MCP/HTTP → Core application/严格命令或 proposal → Store → `project.json`；
-媒体生成经 Core → Model Provider adapters → 外部媒体 API。Web 使用同一 Core，候选采用与 Approval 仍需
+媒体生成经 Core → Model Provider adapters → 外部媒体 API。Web 使用同一 Core；Keyframe 候选 Agent 与人类都可采用，其它候选采用与 Approval 仍需
 human 权限；明确撤回旁白音频可由 Agent 经窄命令解除引用。
 
 `core/structured_director/` 内部分层（由 `tests/test_layer_rules.py` 守卫，只允许向下依赖）：

@@ -46,9 +46,11 @@ from .models import (
     CommandReceipt,
     DirectorCommand,
     InvalidArgumentsError,
+    KeyframeCandidateSelection,
     RepairPatch,
     RepairReceipt,
     director_command_id,
+    parse_keyframe_candidate_selection,
     parse_keyframe_operations,
     parse_repair_patch,
 )
@@ -114,6 +116,14 @@ class DirectorCommandStore(Protocol):
         expected_revision: int,
         command_id: str,
     ) -> tuple[StructuredDirectorDocument, CommandReceipt, dict[str, object]]: ...
+
+    def select_keyframe_candidate(
+        self,
+        selection: KeyframeCandidateSelection,
+        *,
+        expected_revision: int,
+        command_id: str,
+    ) -> tuple[StructuredDirectorDocument, CommandReceipt]: ...
 
     def select_location_image(
         self,
@@ -412,11 +422,14 @@ _COMMAND_SPECS: dict[str, _CommandSpec] = {
     "final.approve": _CommandSpec(_parse(parse_final_approval), "approve_final_command"),
     "final.reopen_production": _CommandSpec(_parse_empty, "reopen_final_production_command"),
     "keyframe.apply_operations": _CommandSpec(_parse_keyframe_command, "apply_keyframe_operations"),
+    "keyframe.select_candidate": _CommandSpec(
+        _parse(parse_keyframe_candidate_selection), "select_keyframe_candidate"
+    ),
     "location.apply_operations": _CommandSpec(None, _execute_location_operations),
     "reference.apply_look_operations": _CommandSpec(
         _parse(parse_look_operations_patch), "apply_look_operations"
     ),
-    # 候选选择只开放给人类：不在 Agent 操作白名单（core.application.caller）。
+    # 地点图片选择只开放给人类：不在 Agent 操作白名单（core.application.caller）。
     "location.select_image": _CommandSpec(
         _parse(parse_location_image_selection), "select_location_image"
     ),
