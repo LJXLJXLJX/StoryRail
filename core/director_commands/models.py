@@ -103,6 +103,8 @@ class UpdateKeyframeFields:
     visible_character_ids: tuple[str, ...] | None
     # None 表示不修改；提交时整体替换本帧的角色参考图选择。
     character_references: tuple[KeyframeCharacterReferenceSelection, ...] | None = None
+    # None 表示不修改；提交时整体替换本帧参考的其它 Keyframe（必须已有选中图）。
+    reference_keyframe_ids: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -316,6 +318,7 @@ def _parse_keyframe_operation(value: object) -> KeyframeOperation:
             "prompt_text",
             "visible_character_ids",
             "character_references",
+            "reference_keyframe_ids",
         }
         if not set(fields) <= allowed:
             raise ValueError("update_frame_fields.fields 包含未声明字段。")
@@ -335,6 +338,11 @@ def _parse_keyframe_operation(value: object) -> KeyframeOperation:
                 None
                 if "character_references" not in fields
                 else _parse_character_reference_selections(fields["character_references"])
+            ),
+            reference_keyframe_ids=(
+                None
+                if "reference_keyframe_ids" not in fields
+                else _id_list(fields["reference_keyframe_ids"], "reference_keyframe_ids")
             ),
         )
     if op == "set_aux_references":

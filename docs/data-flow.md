@@ -107,15 +107,19 @@ flowchart TB
     c1 & c2 --> pred{有前置帧且本 Segment 首帧启用?}
     pred -- 前置帧无可用图 --> wait[返回“前置未就绪”，本轮不提交]
     pred -- 有图 --> p1[前置帧图；编辑底图]
-    pred -- 否 --> aux
-    p1 --> aux[绑定该 Keyframe 的 Segment 手工辅助图]
-    aux --> dedupe[名额顺序：角色 → 前置帧 → 辅助图<br/>按 Asset 去重，合并来源角色]
+    pred -- 否 --> refs
+    p1 --> refs{参考关键帧 reference_keyframe_ids}
+    refs -- 任一未选定图片 --> rwait[拒绝单帧生成；批次中等待该帧被采用候选]
+    refs -- 全部已选 --> r1[各参考帧当前选中图]
+    r1 --> aux[绑定该 Keyframe 的 Segment 手工辅助图]
+    aux --> dedupe[名额顺序：角色 → 前置帧 → 参考关键帧 → 辅助图<br/>按 Asset 去重，合并来源角色]
     dedupe --> limit{总数 ≤ 5?}
     limit -- 否 --> reject[拒绝，按名额顺序列出被挤掉的输入]
     limit -- 是 --> op[编辑底图移到第 1 位<br/>有底图 → operation = edit，否则 generate]
 ```
 
-前置帧图取其已选 Asset；未选择时取最近一个成功、未隐藏的候选。Core 只向人和 Agent 提供实际图片输入清单，
+前置帧图取其已选 Asset；未选择时取最近一个成功、未隐藏的候选。参考关键帧只取当前选中图，不回退到候选；
+参考帧被改选后，按旧图生成的本帧候选在快照中带 `inputs_outdated` 软提示，仍可选择。Core 只向人和 Agent 提供实际图片输入清单，
 不将该清单或自动用途说明拼接到提示词。Agent 必须看图后编写完整提示词；没有多模态能力或无法读图时，请用户说明各图内容与用途。
 最终提交给图片 Provider 的 instruction 保留已保存提示词，再附加领域硬约束：
 

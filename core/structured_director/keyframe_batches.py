@@ -5,6 +5,7 @@ from .keyframe_requests import (
     _keyframe_existing_result,
     _keyframe_generation_inputs,
     _keyframe_label,
+    unselected_reference_keyframes,
 )
 from .manual_commands import (
     keyframe_edit_command,
@@ -88,6 +89,16 @@ async def execute_keyframe_wave(
                 outcomes.append(
                     f"{_keyframe_label(document, target_id)} 此前任务失败或已取消，"
                     "本轮未自动重试；请明确重试对应 Generation。"
+                )
+                continue
+            unselected = unselected_reference_keyframes(document, keyframe)
+            if unselected:
+                deferred.append(
+                    (
+                        target_id,
+                        f"等待 {_keyframe_label(document, unselected[0])} 选定图片"
+                        "（采用候选后再继续批次）",
+                    )
                 )
                 continue
             inputs = _keyframe_generation_inputs(document, target_id)

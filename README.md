@@ -102,7 +102,7 @@ Docker Desktop 或 OrbStack。之后可以直接问 Agent“现在该做什么�
 
 ## 技术边界
 
-- `.stories/<项目名>-<project_id>/project.json` 是唯一业务事实源（当前 schema v35），`assets/` 保存不可变媒体；
+- `.stories/<项目名>-<project_id>/project.json` 是唯一业务事实源（当前 schema v36），`assets/` 保存不可变媒体；
   更早版本不迁移，需新建项目。删除项目只移入 `.stories/.trash/`。
 - Core 是 ID、revision、scope、授权、失效、血缘、幂等和状态迁移的唯一 authority；Web 只消费 Core 返回的
   状态与 `allowed_actions`，不复制状态机。

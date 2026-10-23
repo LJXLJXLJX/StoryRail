@@ -664,6 +664,7 @@ body.is-resizing-agent-sidebar { cursor: ew-resize; user-select: none; }
 .keyframe-candidate-preview { padding: 5px; border: 1px solid var(--line); background: var(--paper); }
 .keyframe-candidate-preview.is-selected { border-color: var(--green); }
 .keyframe-candidate-preview img { width: 100%; aspect-ratio: 1; object-fit: cover; }
+.keyframe-candidate-notice { display: block; margin-top: 4px; color: var(--muted); }
 .keyframe-candidate-select { padding: 5px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 9px; }
 .keyframe-candidate > .delete-button { padding: 5px 7px; text-align: center; }
 .keyframe-dismiss-confirm { display: grid; gap: 6px; padding: 7px; border: 1px solid #d7aaa0; background: #fff3ef; }

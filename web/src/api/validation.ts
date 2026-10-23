@@ -6153,6 +6153,22 @@ const schemas: Record<string, JsonSchema> = {
                 "additionalProperties": false
               },
               "maxItems": 4
+            },
+            "start_reference_keyframe_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$"
+              },
+              "maxItems": 4
+            },
+            "end_reference_keyframe_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$"
+              },
+              "maxItems": 4
             }
           },
           "required": [

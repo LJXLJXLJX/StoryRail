@@ -24,6 +24,7 @@ def test_keyframe_model_has_no_location_or_environment_binding():
         "visible_character_ids",
         "selected_asset_id",
         "character_references",
+        "reference_keyframe_ids",
     }
 
 

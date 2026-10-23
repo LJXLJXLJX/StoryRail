@@ -97,7 +97,7 @@ Director 本轮采用的连续长镜头方案即使记录在 `director_hypothese
 `required_shared_boundaries` 是最低强制集合，空数组不表示禁止或不需要共享。
 
 设置为 `true` 时，当前 Segment 的 `start_*` 字段必须为空：`start_prompt_text=""`、
-`start_visible_character_ids=[]`、`start_character_references=[]`；Core 沿用上一 Segment 的 `end_*`。
+`start_visible_character_ids=[]`、`start_character_references=[]`、`start_reference_keyframe_ids=[]`；Core 沿用上一 Segment 的 `end_*`。
 每个 Scene 的第一个 Segment 必须为 `false`。
 
 相邻 Segment 不共享边界 Shot（明确切镜）时，`continues_from_previous=false`，两个边界默认是独立 Keyframe：
@@ -145,6 +145,19 @@ FL2VA 至少需要一个边界帧；Ref2VA 可以没有首尾帧，但必须有�
 - Core 只提交所选造型的造型图，并在 `reference_mapping` 中标明角色与造型名；未列入可见角色的角色不得提交。
   角色造型图、前置帧与辅助参考合计最多 5 张输入图，多角色同框时尤其要精简选择。
 - 用户在关键帧计划弹窗中选择的项目图片属于额外辅助参考，不替代角色卡身份参考。
+
+## 参考其它已选关键帧
+
+- 工作集 `referenceable_keyframes` 列出全项目**已有选中图**的 Keyframe（ID、所在 Scene/Segment/槽位、画面正文、
+  `selected_asset_id`）。只有这些帧可被参考；只有候选、尚未选定的帧不能参考，因为最终选哪张未定。
+- 可选字段 `start_reference_keyframe_ids` / `end_reference_keyframe_ids`（各 0–4 个，不含本帧）让本帧生图时附带
+  这些帧的**当前**选中图，作为“参考关键帧”输入，排在前置帧之后、辅助图之前，与其它输入合计最多 5 张。
+- 用于跨 Segment 保持同一空间、人物状态、道具或光线：例如回到同一机位、同一房间的另一角度、换场后人物服装与伤痕延续。
+  先用 `read_media_input` 审看被参考帧的实际图片，再在正文里写清该参考图要保留什么、改变什么；不要把参考当成复刻。
+- 连贯的自动化生产顺序：先生成并采用上游关键帧（`select_keyframe_candidate`），再规划或编辑引用它的下游帧
+  （`edit_keyframes` 的 `update_frame_fields.fields.reference_keyframe_ids` 与本 proposal 写同一字段）。
+- 被参考帧之后被改选时，下游已生成候选只带 `inputs_outdated` 软提示，是否重生成由用户或你按指令决定；
+  被参考帧撤销选择时，下游帧在其重新选定前不能生成，批次会把它列为等待项。
 
 ## 地点语义与图片
 

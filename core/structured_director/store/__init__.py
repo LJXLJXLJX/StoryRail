@@ -152,6 +152,7 @@ from ..models import (
     StructuredDirectorDocument,
     StructuredDirectorStatus,
     WorkspaceLayers,
+    prune_reference_keyframes,
 )
 from ..models import (
     CapabilityGapAlert as CapabilityGapAlert,
@@ -816,6 +817,9 @@ class StructuredDirectorStore:
             self._application_capture.append(document)
             return
         document = attach_submission_request(self, document)
+        pruned_plan = prune_reference_keyframes(document.keyframe_plan)
+        if pruned_plan is not document.keyframe_plan:
+            document = replace(document, keyframe_plan=pruned_plan)
         if not exclusive and self._path.is_file() and not self._path.is_symlink():
             previous = self.read()
             if document.narration_languages != previous.narration_languages:

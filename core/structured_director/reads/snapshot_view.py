@@ -8,7 +8,11 @@ from ..assembly_timeline import (
     _build_scene_final_plan,
     _current_scene_final_asset_id,
 )
-from ..candidate_eligibility import dialogue_inputs_unchanged, generation_is_reviewable
+from ..candidate_eligibility import (
+    dialogue_inputs_unchanged,
+    generation_is_reviewable,
+    keyframe_references_unchanged,
+)
 from ..codec.keyframe import serialize_character_references
 from ..codec.video import _serialize_reference_image
 from ..models import (
@@ -848,6 +852,10 @@ def serialize_snapshot(
                     or (
                         item.kind is ReferenceGenerationKind.DIALOGUE_AUDIO
                         and not dialogue_inputs_unchanged(document, item)
+                    )
+                    or (
+                        item.kind is ReferenceGenerationKind.KEYFRAME_IMAGE
+                        and not keyframe_references_unchanged(document, item)
                     )
                 ),
                 "allowed_actions": list(_generation_allowed_actions(document, item)),

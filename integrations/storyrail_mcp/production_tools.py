@@ -213,11 +213,14 @@ FrameFields = object_model(
         "visible_character_ids": IDs,
         # 本帧每个可见角色提交的角色卡参考图；空 asset_ids 表示不提交该角色图片。
         "character_references": list[CharacterReference],
+        # 整体替换本帧参考的其它 Keyframe；只能引用已有选中图的 Keyframe。
+        "reference_keyframe_ids": Annotated[list[ID], Field(max_length=4)],
     },
     (
         "prompt_text",
         "visible_character_ids",
         "character_references",
+        "reference_keyframe_ids",
     ),
 )
 FrameOperation = reduce(

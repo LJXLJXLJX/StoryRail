@@ -9,6 +9,7 @@ from ..models import (
     KeyframeCharacterReference,
     KeyframePlan,
     SegmentKeyframes,
+    require_known_reference_keyframes,
 )
 from ._shared import (
     _boolean,
@@ -28,6 +29,7 @@ _KEYFRAME_FIELDS = {
     "visible_character_ids",
     "selected_asset_id",
     "character_references",
+    "reference_keyframe_ids",
 }
 
 _CHARACTER_REFERENCE_FIELDS = {"character_id", "look_id"}
@@ -63,6 +65,7 @@ def _serialize_keyframe_plan(plan: KeyframePlan) -> dict[str, Any]:
                 "visible_character_ids": list(item.visible_character_ids),
                 "selected_asset_id": item.selected_asset_id,
                 "character_references": serialize_character_references(item),
+                "reference_keyframe_ids": list(item.reference_keyframe_ids),
             }
             for item in plan.keyframes
         ],
@@ -82,13 +85,15 @@ def _serialize_keyframe_plan(plan: KeyframePlan) -> dict[str, Any]:
 
 def _parse_keyframe_plan(value: object) -> KeyframePlan:
     fields = _exact_object(value, _KEYFRAME_PLAN_FIELDS)
-    return KeyframePlan(
+    plan = KeyframePlan(
         source_script_revision=_integer(
             fields["source_script_revision"], "keyframe_plan.source_script_revision"
         ),
         keyframes=_object_list(fields["keyframes"], _parse_keyframe),
         segments=_object_list(fields["segments"], _parse_segment_keyframes),
     )
+    require_known_reference_keyframes(plan)
+    return plan
 
 
 def _parse_keyframe(value: object) -> Keyframe:
@@ -108,6 +113,9 @@ def _parse_keyframe(value: object) -> Keyframe:
         ),
         character_references=_object_list(
             fields["character_references"], _parse_character_reference
+        ),
+        reference_keyframe_ids=_string_list(
+            fields["reference_keyframe_ids"], "keyframe.reference_keyframe_ids"
         ),
     )
 

@@ -189,7 +189,7 @@ flowchart LR
 ```text
 .stories/
 ├── <项目名>-<project_id>/
-│   ├── project.json            唯一项目 authority（schema v35）
+│   ├── project.json            唯一项目 authority（schema v36）
 │   └── assets/                 不可变媒体字节（路径规则见数据模型）
 ├── .playground/
 │   ├── playground.json         唯一 Playground authority（schema v2）

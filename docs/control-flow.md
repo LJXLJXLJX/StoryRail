@@ -281,7 +281,7 @@ sequenceDiagram
     loop 本轮依赖已满足的帧
         C->>P: 提交（逐个持久化 Generation）
     end
-    C-->>A: batch_id + execution_run_id + 本轮提交 / 等待前置帧或角色造型图的帧
+    C-->>A: batch_id + execution_run_id + 本轮提交 / 等待前置帧、参考关键帧选图或角色造型图的帧
     Note over C: 本轮提交结束 → 执行 run completed<br/>（≠ 批次完成）
     A->>C: generation.wait / read_run …
     U->>A: “继续生成关键帧”
@@ -291,7 +291,7 @@ sequenceDiagram
 
 - 每个 start 建立独立稳定 `batch_id`；每轮使用新的 `execution_run_id`，在原回执中保存 root/previous 关联与原目标。
   continue 不能携带新范围，也不能凭目标相同合并两个独立批次。
-- 依赖包括前置帧已有成功候选，以及每个显式选择的角色造型已有造型图。未满足的帧留作等待项并写明原因；满足后同样需要
+- 依赖包括前置帧已有成功候选、参考关键帧已有选中图（`dependency_kind = reference_keyframe`），以及每个显式选择的角色造型已有造型图。未满足的帧留作等待项并写明原因；满足后同样需要
   显式 continue。地点图片不是 Keyframe 绑定或批次依赖；只有人类已加入 Segment 辅助参考的 Asset 才作为普通显式输入。
 - 批次跳过已有成功候选或已选 Asset 的帧；要为这类帧追加候选，使用单帧 `keyframe.generate`。
 - 空提示词的帧被拒绝；不存在内置 Planner 兜底补写。

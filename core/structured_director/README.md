@@ -1,6 +1,6 @@
 # Structured Director
 
-本目录拥有 StoryRail schema v35 项目的结构化导演领域：模型、编解码、领域变换、Store、读取投影、媒体提交、Service 与
+本目录拥有 StoryRail schema v36 项目的结构化导演领域：模型、编解码、领域变换、Store、读取投影、媒体提交、Service 与
 HTTP contract。`project.json` 的创建、读取、校验、revision compare-and-swap 与原子替换都在这里完成，它是唯一的项目写者。
 
 行为说明在产品说明书中：[数据模型](../../docs/data-model.md)、[生产工作流](../../docs/production-workflow.md)、

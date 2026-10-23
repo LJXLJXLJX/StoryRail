@@ -113,6 +113,7 @@ def _saved_keyframe_plan(document, scene_ids):
                 "prompt_text": item.prompt_text,
                 "visible_character_ids": list(item.visible_character_ids),
                 "character_references": serialize_character_references(item),
+                "reference_keyframe_ids": list(item.reference_keyframe_ids),
                 "selected_asset_id": item.selected_asset_id,
                 "bindings": frame_bindings[item.id],
             }
@@ -120,6 +121,38 @@ def _saved_keyframe_plan(document, scene_ids):
             if item.id in frame_ids
         ],
     }
+
+
+def _referenceable_keyframes(document):
+    """全项目已有选中图的 Keyframe：规划时可作为其它帧的参考，提交时用其当前选中图。"""
+    plan = document.keyframe_plan
+    script = document.director_script
+    if plan is None or script is None:
+        return []
+    slots: dict[str, list[dict[str, str]]] = {}
+    for scene in script.scenes:
+        for segment in scene_segments(scene):
+            binding = next((b for b in plan.segments if b.segment_id == segment.id), None)
+            if binding is None:
+                continue
+            for slot, keyframe_id in (
+                ("start", binding.start_keyframe_id),
+                ("end", binding.end_keyframe_id),
+            ):
+                slots.setdefault(keyframe_id, []).append(
+                    {"scene_id": scene.id, "segment_id": segment.id, "slot": slot}
+                )
+    return [
+        {
+            "keyframe_id": item.id,
+            "bindings": slots[item.id],
+            "prompt_text": item.prompt_text,
+            "visible_character_ids": list(item.visible_character_ids),
+            "selected_asset_id": item.selected_asset_id,
+        }
+        for item in plan.keyframes
+        if item.selected_asset_id is not None and item.id in slots
+    ]
 
 
 def _location_library_facts(document):
@@ -300,8 +333,13 @@ def workset_read(
                 "location_library": _keyframe_location_library(document, scenes),
                 "location_images": _keyframe_location_images(document),
                 "image_prompt": image_prompt_guide(provider_catalog, skill_text=False),
+                "referenceable_keyframes": _referenceable_keyframes(document),
             }
-            schema = keyframe_schema(scenes, video_inputs)
+            schema = keyframe_schema(
+                scenes,
+                video_inputs,
+                [item["keyframe_id"] for item in facts["referenceable_keyframes"]],
+            )
             provenance.extend(["keyframe_plan", "generations", "location_library"])
         else:
             cues = narration_inputs(document)

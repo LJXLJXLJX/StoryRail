@@ -22,8 +22,8 @@ human 权限；明确撤回旁白音频可由 Agent 经窄命令解除引用。
 | 边缘 | `service.py`、`http_api.py` | 应用 facade 与 HTTP contract |
 
 项目只需 `project.json` 与不可变 `assets/`。领域 run/cursor/回执在业务 authority 内；外部会话、工作区与
-历史 `.runtime/` 不参与恢复事实读取。没有数据库、双写或旧 schema 迁移；当前 schema 为 v35
-（Scene 下并列 Shot 与 Segment、Segment 以 `shot_ids` 记录覆盖的 Shot、一个 Segment 可覆盖多个相邻 Shot 且一个 Shot 可跨多个相邻 Segment、旁白 Cue 不带 Shot 锚点、造型为角色图唯一单位与造型设定图、地点库与 Scene/Shot/Keyframe 视图绑定（Shot 视图为软参考）、`workspace_layers` 持久化内容层、创建时选择旁白语言、每种启用语言一套旁白音色、Keyframe 按 Segment 建首尾槽位并按帧选择角色造型、视频保存 `active_recipe` 与按 recipe 隔离的输入簿、Generation 记录提交时的 Provider 快照），更早版本一律拒绝读取，需新建项目。
+历史 `.runtime/` 不参与恢复事实读取。没有数据库、双写或旧 schema 迁移；当前 schema 为 v36
+（Scene 下并列 Shot 与 Segment、Segment 以 `shot_ids` 记录覆盖的 Shot、一个 Segment 可覆盖多个相邻 Shot 且一个 Shot 可跨多个相邻 Segment、旁白 Cue 不带 Shot 锚点、造型为角色图唯一单位与造型设定图、地点库与 Scene/Shot/Keyframe 视图绑定（Shot 视图为软参考）、`workspace_layers` 持久化内容层、创建时选择旁白语言、每种启用语言一套旁白音色、Keyframe 按 Segment 建首尾槽位、按帧选择角色造型并可参考其它已选 Keyframe、视频保存 `active_recipe` 与按 recipe 隔离的输入簿、Generation 记录提交时的 Provider 快照），更早版本一律拒绝读取，需新建项目。
 
 Core 不包含厂商 Agent adapter、会话、Director loop 或 Agent SDK 依赖；执行由外部成熟 Agent 承担。
 Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent runtime。产品说明书见 [docs/](docs/README.md)。
@@ -190,7 +190,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `proposal_schema.py`：各 codec 输出 schema 的 TypeScript 类型标注。
 - `ts_emit.py`：JSON Schema → TypeScript 类型与结构校验代码。
 
-### core/structured_director/ — schema v35 结构化导演领域
+### core/structured_director/ — schema v36 结构化导演领域
 
 - `README.md`：领域、Store、Service 与 HTTP contract 总览。
 - `__init__.py`：公开 Store/Service/HTTP API 与模型（惰性导出）。
@@ -503,6 +503,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `metrics.py`：工程指标测量（模块规模、依赖、门禁耗时、Agent 驻留字节）。
 - `benchmark_project_storage.py`：临时目录内的项目存储基准。
 - `seedvr2_upscale_acceptance.py`、`ref2va_acceptance.py`：真实媒体服务验收。
+- `migrate_project_v35_to_v36.py`：作者本机一次性迁移 v35 项目（Keyframe 补 `reference_keyframe_ids`），先备份再经 Core codec 校验；Core 本身不读旧 schema。
 - `harness/README.md`：开发期 harness 总入口（产品代码不得 import）。
 - `harness/benchmark/README.md`：token benchmark 说明。
 - `harness/benchmark/fake_agent_driver.py`：真实 MCP + 真实 Core 的确定性 fake Agent。

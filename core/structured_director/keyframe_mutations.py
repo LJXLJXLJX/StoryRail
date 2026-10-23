@@ -239,15 +239,30 @@ def _apply_keyframe_operations(
                     for item in operation.character_references
                 )
             )
+            reference_keyframe_ids = (
+                keyframe.reference_keyframe_ids
+                if operation.reference_keyframe_ids is None
+                else operation.reference_keyframe_ids
+            )
+            if reference_keyframe_ids != keyframe.reference_keyframe_ids:
+                for reference_id in reference_keyframe_ids:
+                    if reference_id == keyframe.id:
+                        raise ValueError("Keyframe 不能参考自身。")
+                    if require_keyframe(reference_id).selected_asset_id is None:
+                        raise ValueError(
+                            f"Keyframe {reference_id} 还没有选中图片，只能参考已选定的关键帧。"
+                        )
             generation_changed = (
                 prompt_text != keyframe.prompt_text
                 or character_references != keyframe.character_references
+                or reference_keyframe_ids != keyframe.reference_keyframe_ids
             )
             replacement = replace(
                 keyframe,
                 prompt_text=prompt_text,
                 visible_character_ids=visible_character_ids,
                 character_references=character_references,
+                reference_keyframe_ids=reference_keyframe_ids,
                 selected_asset_id=None if generation_changed else keyframe.selected_asset_id,
             )
             if replacement != keyframe:

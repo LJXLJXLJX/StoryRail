@@ -178,3 +178,23 @@ def reviewable_generations(document, kind, target_ids):
         and generation.target_id in targets
         and generation_is_reviewable(document, generation)
     )
+
+
+def keyframe_references_unchanged(document, generation) -> bool:
+    """Keyframe 候选提交时是否包含它参考的每个 Keyframe 的当前选中图。
+
+    参考帧被改选后旧候选只作软提示，不阻止选择；上游变化由人或 Agent 决定是否重生成。
+    """
+    plan = document.keyframe_plan
+    if generation.kind is not ReferenceGenerationKind.KEYFRAME_IMAGE or plan is None:
+        return True
+    frames = {item.id: item for item in plan.keyframes}
+    keyframe = frames.get(generation.target_id)
+    if keyframe is None:
+        return True
+    submitted = set(generation.input_asset_ids)
+    return all(
+        frames[reference_id].selected_asset_id in submitted
+        for reference_id in keyframe.reference_keyframe_ids
+        if reference_id in frames and frames[reference_id].selected_asset_id is not None
+    )

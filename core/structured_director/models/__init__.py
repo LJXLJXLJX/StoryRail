@@ -32,12 +32,17 @@ from .final import SceneAssemblyPlan as SceneAssemblyPlan
 from .generation import ReferenceGeneration as ReferenceGeneration
 from .generation import transition_generation as transition_generation
 from .generation import unresolved_uncertain_ids as unresolved_uncertain_ids
+from .keyframe import MAX_REFERENCE_KEYFRAMES as MAX_REFERENCE_KEYFRAMES
 from .keyframe import Keyframe as Keyframe
 from .keyframe import KeyframeCharacterReference as KeyframeCharacterReference
 from .keyframe import KeyframePlan as KeyframePlan
 from .keyframe import SegmentKeyframes as SegmentKeyframes
 from .keyframe import blank_keyframe as blank_keyframe
 from .keyframe import prune_character_references as prune_character_references
+from .keyframe import prune_reference_keyframes as prune_reference_keyframes
+from .keyframe import (
+    require_known_reference_keyframes as require_known_reference_keyframes,
+)
 from .location import Location as Location
 from .location import LocationFixture as LocationFixture
 from .location import LocationImage as LocationImage
@@ -125,6 +130,7 @@ __all__ = [
     "PanoramaCaptureRequest",
     "PanoramaCaptureSource",
     "MAX_IMAGE_INPUTS",
+    "MAX_REFERENCE_KEYFRAMES",
     "NARRATION_LANGUAGES",
     "NarrationCue",
     "NarrationLanguage",
@@ -158,6 +164,8 @@ __all__ = [
     "transition_generation",
     "unresolved_uncertain_ids",
     "prune_character_references",
+    "prune_reference_keyframes",
+    "require_known_reference_keyframes",
 ]
 
 # 校验函数注入（P2-C1）：validation 需要 models 的类做 isinstance，models 的

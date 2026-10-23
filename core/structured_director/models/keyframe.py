@@ -7,6 +7,8 @@ from dataclasses import dataclass, replace
 from ._shared import _require_id
 from .reference import ReferenceLibrary
 
+MAX_REFERENCE_KEYFRAMES = 4
+
 
 @dataclass(frozen=True, slots=True)
 class KeyframeCharacterReference:
@@ -31,6 +33,8 @@ class Keyframe:
     selected_asset_id: str | None = None
     # 未列出的可见角色按默认规则：角色只有一套造型时使用它，多套造型必须显式选择。
     character_references: tuple[KeyframeCharacterReference, ...] = ()
+    # 生图时参考的其它 Keyframe；提交时解析为它们当前的已选图，未选定时不能生成。
+    reference_keyframe_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         _require_id(self.id, "keyframe.id")
@@ -52,6 +56,14 @@ class Keyframe:
             raise ValueError("Keyframe 角色参考图选择只能针对本帧可见角色。")
         if self.selected_asset_id is not None:
             _require_id(self.selected_asset_id, "keyframe.selected_asset_id")
+        for reference_id in self.reference_keyframe_ids:
+            _require_id(reference_id, "keyframe.reference_keyframe_ids")
+        if len(self.reference_keyframe_ids) != len(set(self.reference_keyframe_ids)):
+            raise ValueError("Keyframe 参考关键帧不能重复。")
+        if len(self.reference_keyframe_ids) > MAX_REFERENCE_KEYFRAMES:
+            raise ValueError(f"Keyframe 最多参考 {MAX_REFERENCE_KEYFRAMES} 个其它关键帧。")
+        if self.id in self.reference_keyframe_ids:
+            raise ValueError("Keyframe 不能参考自身。")
 
 
 def blank_keyframe(
@@ -169,3 +181,32 @@ def prune_character_references(
     if tuple(keyframes) == plan.keyframes:
         return plan
     return replace(plan, keyframes=tuple(keyframes))
+
+
+def prune_reference_keyframes(plan: KeyframePlan | None) -> KeyframePlan | None:
+    """剪除指向已不在计划中的 Keyframe 的参考；脚本回改或拆并边界都可能移除被参考帧。"""
+    if plan is None:
+        return None
+    known = {item.id for item in plan.keyframes}
+    keyframes = tuple(
+        item
+        if set(item.reference_keyframe_ids) <= known
+        else replace(
+            item,
+            reference_keyframe_ids=tuple(
+                reference_id
+                for reference_id in item.reference_keyframe_ids
+                if reference_id in known
+            ),
+        )
+        for item in plan.keyframes
+    )
+    if keyframes == plan.keyframes:
+        return plan
+    return replace(plan, keyframes=keyframes)
+
+
+def require_known_reference_keyframes(plan: KeyframePlan) -> None:
+    known = {item.id for item in plan.keyframes}
+    if any(not set(item.reference_keyframe_ids) <= known for item in plan.keyframes):
+        raise ValueError("Keyframe 参考了不存在的关键帧。")

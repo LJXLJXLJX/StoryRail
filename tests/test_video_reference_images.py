@@ -1,4 +1,4 @@
-"""无时间位置参考图：v35 兼容、规划/生成/选用分离、真实 recipe 绑定。"""
+"""无时间位置参考图：当前 schema 兼容、规划/生成/选用分离、真实 recipe 绑定。"""
 
 import asyncio
 from dataclasses import replace
@@ -17,6 +17,7 @@ from core.structured_director.reads.professional_worksets import workset_read
 from core.structured_director.reads.semantic_projection import build_semantic_projection
 from core.structured_director.reads.video_recipes import keyframe_video_context
 from core.structured_director.reads.workflow_state import workflow_state
+from core.structured_director.schema import PROJECT_SCHEMA_VERSION
 
 
 def image_update(doc, index=0):
@@ -155,7 +156,7 @@ def test_agent_can_discover_plan_and_generate_arbitrary_other_image_through_mcp(
         asyncio.run(run(server))
 
 
-def test_reference_image_planning_preserves_v35_and_video_bindings(tmp_path):
+def test_reference_image_planning_preserves_schema_and_video_bindings(tmp_path):
     async def run():
         store, service, doc, _ = await fixture(tmp_path)
         before_bindings = doc.video_plan.segments[0].recipes
@@ -169,7 +170,7 @@ def test_reference_image_planning_preserves_v35_and_video_bindings(tmp_path):
         assert doc.video_plan.segments[0].recipes == before_bindings
         reread = store.read()
         assert reread.video_plan.segments[0].reference_images == (image,)
-        assert '"schema_version": 35' in store.path.read_text()
+        assert f'"schema_version": {PROJECT_SCHEMA_VERSION}' in store.path.read_text()
         facts = workset_read(
             doc,
             {

@@ -1253,7 +1253,7 @@ export function KeyframeSlot({
         dismissAllowed={(generation) =>
           generation.allowed_actions.includes("dismiss_history") && enabled
         }
-        renderCandidate={(_, asset) =>
+        renderCandidate={(generation, asset) =>
           asset ? (
             <div
               className={`keyframe-candidate-preview${asset.id === keyframe.selected_asset_id ? " is-selected" : ""}`}
@@ -1262,6 +1262,11 @@ export function KeyframeSlot({
                 src={asset.content_url}
                 alt={`候选 @${asset.id.slice(0, 6)}`}
               />
+              {generation.inputs_outdated ? (
+                <small className="keyframe-candidate-notice">
+                  生成后参考关键帧已改选；仍可选择，如需与当前参考一致请重新生成。
+                </small>
+              ) : null}
             </div>
           ) : null
         }

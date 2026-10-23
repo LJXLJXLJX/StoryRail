@@ -171,6 +171,19 @@ def _resolve_keyframe_generation_targets(
     return tuple(dict.fromkeys(resolved))
 
 
+def unselected_reference_keyframes(
+    document: StructuredDirectorDocument, keyframe: Keyframe
+) -> tuple[str, ...]:
+    """本帧参考、但当前没有选中图的 Keyframe；它们被采用候选之前本帧不能生成。"""
+    plan = document.keyframe_plan
+    by_id = {} if plan is None else {item.id: item for item in plan.keyframes}
+    return tuple(
+        reference_id
+        for reference_id in keyframe.reference_keyframe_ids
+        if reference_id in by_id and by_id[reference_id].selected_asset_id is None
+    )
+
+
 def _keyframe_generation_inputs(
     document: StructuredDirectorDocument, keyframe_id: str
 ) -> ImageInputs | None:
@@ -195,7 +208,7 @@ def _keyframe_generation_inputs(
         raise ValueError("Keyframe owner Segment 没有输入绑定。")
     if find_segment(script.scenes, keyframe.owner_segment_id) is None:
         raise ValueError("Keyframe owner Segment 不在当前脚本中。")
-    # 名额优先级：可见角色参考 → 前置帧 → 本次显式辅助图。
+    # 名额优先级：可见角色参考 → 前置帧 → 参考关键帧 → 本次显式辅助图。
     source_asset_id: str | None = None
     predecessor_input: ImageInput | None = None
     if keyframe.predecessor_keyframe_id is not None and binding.start_enabled:
@@ -223,6 +236,22 @@ def _keyframe_generation_inputs(
         )
         if source_asset_id is None:
             source_asset_id = predecessor_asset
+    unselected = unselected_reference_keyframes(document, keyframe)
+    if unselected:
+        raise ValueError(
+            f"参考关键帧 {_keyframe_label(document, unselected[0])} 还没有选中图片，"
+            "请先采用它的候选。"
+        )
+    frames_by_id = {item.id: item for item in plan.keyframes}
+    reference_inputs = [
+        ImageInput(
+            frames_by_id[reference_id].selected_asset_id,
+            "参考关键帧",
+            f"{_keyframe_label(document, reference_id)}的当前选中图。",
+        )
+        for reference_id in keyframe.reference_keyframe_ids
+        if reference_id in frames_by_id
+    ]
     character_by_id = {item.id: item for item in document.reference_library.characters}
     character_inputs: list[ImageInput] = []
     for character_id in keyframe.visible_character_ids:
@@ -269,6 +298,7 @@ def _keyframe_generation_inputs(
         [
             *character_inputs,
             *([predecessor_input] if predecessor_input is not None else []),
+            *reference_inputs,
             *auxiliary_inputs,
         ],
         operation=(
@@ -276,7 +306,7 @@ def _keyframe_generation_inputs(
             if source_asset_id is not None
             else GenerationOperation.GENERATE
         ),
-        label=f"{_keyframe_label(document, keyframe_id)}的角色参考、前置帧与显式参考图",
+        label=f"{_keyframe_label(document, keyframe_id)}的角色参考、前置帧、参考关键帧与显式参考图",
         source_asset_id=source_asset_id,
     )
 

@@ -1038,6 +1038,8 @@ export interface KeyframeSegmentProposal {
   start_character_references: KeyframeCharacterReferenceProposal[];
   end_character_references: KeyframeCharacterReferenceProposal[];
   reference_images?: KeyframeReferenceImageProposal[];
+  start_reference_keyframe_ids?: string[];
+  end_reference_keyframe_ids?: string[];
 }
 
 export interface KeyframeCharacterReferenceProposal {

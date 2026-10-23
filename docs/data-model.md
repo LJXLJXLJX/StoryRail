@@ -1,6 +1,6 @@
 # 数据模型
 
-`.stories/<项目名>-<project_id>/project.json` 是项目唯一权威结构化状态，当前 `schema_version = 35`。
+`.stories/<项目名>-<project_id>/project.json` 是项目唯一权威结构化状态，当前 `schema_version = 36`。
 更早版本按开发期规则不迁移，一律拒绝读取，需要新建项目。代码位置：
 `core/structured_director/models/`（值对象与不变量）、`codec/`（严格 JSON）、`schema.py`（版本号）。
 
@@ -46,6 +46,7 @@ erDiagram
     SEGMENT_KEYFRAMES }o--|| KEYFRAME : start_keyframe_id
     SEGMENT_KEYFRAMES }o--|| KEYFRAME : end_keyframe_id
     KEYFRAME }o--o| KEYFRAME : predecessor_keyframe_id
+    KEYFRAME }o--o{ KEYFRAME : reference_keyframe_ids
 
     VIDEO_PLAN ||--|{ SEGMENT_VIDEO : "segments (每个 Segment 一条)"
     FINAL_ASSEMBLY ||--|{ FINAL_CLIP : "clips (每个 Scene 一条)"
@@ -62,7 +63,7 @@ erDiagram
 
 | 字段 | 类型 | 语义 |
 | --- | --- | --- |
-| `schema_version` | int | 固定 33 |
+| `schema_version` | int | 固定 36 |
 | `project_id` | id | 项目 ID |
 | `revision` | int ≥ 1 | 项目 revision；每次持久写入恰好 +1，是全部 CAS 的基准 |
 | `title` / `aspect_ratio` | 创建时固化 | 没有修改 API |
@@ -291,7 +292,7 @@ Scene 保存可选 `location_id` / `state_id`，state 必须属于该 Location�
 
 | 实体 | 字段与约束 |
 | --- | --- |
-| `Keyframe` | `id`；`owner_segment_id`；`predecessor_keyframe_id`（时间上前一个边界帧，图必须无环）；`prompt_text` ≤ 18,000；`visible_character_ids`；`character_references`（`[{character_id, look_id}]`：只针对本帧可见角色、每角色一项，`look_id` 必须是该角色当前造型；`look_id = null` = 不提交该角色图；未列出时只有一套造型默认使用它，多套造型必须显式选择才能生成；所选造型没有造型图时不能生成）；`selected_asset_id` |
+| `Keyframe` | `id`；`owner_segment_id`；`predecessor_keyframe_id`（时间上前一个边界帧，图必须无环）；`prompt_text` ≤ 18,000；`visible_character_ids`；`character_references`（`[{character_id, look_id}]`：只针对本帧可见角色、每角色一项，`look_id` 必须是该角色当前造型；`look_id = null` = 不提交该角色图；未列出时只有一套造型默认使用它，多套造型必须显式选择才能生成；所选造型没有造型图时不能生成）；`selected_asset_id`；`reference_keyframe_ids`（0–4 个其它 Keyframe，不含自身、不重复；写入时每个都必须已有选中图，生成时解析为它们**当前**的选中图并以“参考关键帧”角色提交；被参考帧撤销选择后本帧不能生成，批次等待；被参考帧被移除时引用随写入剪除，读取时引用必须存在） |
 | `SegmentKeyframes` | `segment_id`；`start_keyframe_id` ≠ `end_keyframe_id`；`start_enabled` / `end_enabled`（默认都关闭）；`reference_asset_ids` 手工辅助图 ≤ 4 张 |
 
 - Keyframe 计划以 Segment 为单位：当前脚本的每个 Segment 恰好一条 `SegmentKeyframes`，脚本回改后 Core 立即重建，
@@ -488,7 +489,7 @@ Segment `duration_estimate_seconds/action`。
 
 ## Segment 无时间位置参考图片
 
-`video_plan.segments[].reference_images` 为可选图片规划数组，未建立时为空且可省略，项目 schema 仍为 v35。
+`video_plan.segments[].reference_images` 为可选图片规划数组，未建立时为空且可省略。
 每项保存 Core 分配的 `id`、`recipe_id`、`slot_index`（0–3）、`prompt_text`、`description`、
 `visible_character_ids`、`character_references` 和 `reference_asset_ids`。它没有视频时间位置，也不保存独立选图状态；
 实际提交的视频图片仍唯一来自 `recipes[recipe_id].bindings`。同一 recipe 的槽位位置不重复。

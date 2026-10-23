@@ -47,7 +47,7 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
 
 ## 事实来源
 
-1. `.stories/<项目名>-<project_id>/project.json` 是唯一权威结构化状态，当前 schema 为 v35（Scene 下并列 `shots` 与 `segments`、Segment 以 `shot_ids` 记录覆盖的 Shot、旁白 Cue 不带 Shot 锚点、角色造型 `looks` 为角色图唯一单位、地点库保存 Scene 级语义绑定与独立图片而 Shot/Keyframe 不绑定地点、创建时选择中英文旁白语言、各启用语言一套音色、Keyframe 按帧选择角色造型、视频保存 `active_recipe` 与 `recipes` 输入簿，旁白保存 `recipe_params`，Generation 记录提交时的 `provider_snapshot`）。
+1. `.stories/<项目名>-<project_id>/project.json` 是唯一权威结构化状态，当前 schema 为 v36（Scene 下并列 `shots` 与 `segments`、Segment 以 `shot_ids` 记录覆盖的 Shot、旁白 Cue 不带 Shot 锚点、角色造型 `looks` 为角色图唯一单位、地点库保存 Scene 级语义绑定与独立图片而 Shot/Keyframe 不绑定地点、创建时选择中英文旁白语言、各启用语言一套音色、Keyframe 按帧选择角色造型并可参考其它已选 Keyframe、视频保存 `active_recipe` 与 `recipes` 输入簿，旁白保存 `recipe_params`，Generation 记录提交时的 `provider_snapshot`）。
    更早版本的 Segment 挂在 Shot 下，或没有英文旁白、只有一套旁白音色，无法无损转换，一律拒绝读取并提示新建项目。
    `workspace_layers` 持久化旁白、Keyframe、视频和成片内容层是否已经解锁；这些事实不由 Web
    根据全局状态猜测。
@@ -106,7 +106,9 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
   不自动选择；需要后期处理时用户导入处理后的图片再选择。所有抽帧入口都按帧号工作，Core 不再维护“尾帧续接”状态。关键帧辅助参考图只用于关键帧生图，不会自动进入视频输入；视频卡按当前 recipe 的槽位声明显式保存参考。H3 Ref2VA 声明最多 4 张附加图片、每张必填描述；Core 按槽位顺序与标签 namespace 计算映射，专业工作集与实际 Provider 提交共用该映射。生产期脚本回改（合并、拆分、增删 Segment）后，Core 必须立即按当前脚本重建关键帧绑定：保留仍在的 Segment 原绑定与已选关键帧，新 Segment 立即获得独立的空首尾槽位，已删除 Segment 的槽位随之移除；显式共享的边界只在两侧仍紧邻时保留，否则复制为独立首帧；关键帧计划必须完整对应每个当前 Segment，由 Core 校验强制，不允许缺卡。
 - Keyframe 不保存地点字段。Planner 工作集给出 Scene 的地点/状态、地点语义和地点图片的强制说明，LLM 据此结合 Shot 与叙事上下文
   自行建立画面；地点图片不自动进入 Provider 输入，也不构成生成依赖。只有用户把某张已选地点图片显式加入 Segment 辅助参考时才提交。
-  输入名额顺序为可见角色参考 → 前置帧 → 辅助图，合计 ≤ 5 张，超额拒绝并列出被挤掉的输入；前置帧作为编辑底图时排第一。
+  Keyframe 可用 `reference_keyframe_ids` 参考 0–4 个其它已选 Keyframe（写入时必须已有选中图，提交时取其当前选中图；
+  参考帧未选定时不能生成，改选后旧候选只带 `inputs_outdated` 软提示）。Planner 与 `edit_keyframes` 写同一字段。
+  输入名额顺序为可见角色参考 → 前置帧 → 参考关键帧 → 辅助图，合计 ≤ 5 张，超额拒绝并列出被挤掉的输入；前置帧作为编辑底图时排第一。
 - 角色实体唯一，同一角色可有多套造型（不同时期、服装或状态，各带使用场合）。每个 Keyframe 用 `character_references`
   为可见角色选择本帧使用的造型（`look_id`，null 表示不提交）；只有一套造型时默认使用，多套造型未选择时 Core 拒绝生成该帧，
   所选造型没有造型图时也拒绝。Keyframe 引用造型而不是图片，改选造型图不改写 Keyframe；删除造型时剪除对它的选择。

@@ -112,6 +112,10 @@ from .keyframe_requests import (
     _keyframe_generation_inputs as _keyframe_generation_inputs,
 )
 from .keyframe_requests import (
+    _keyframe_label,
+    unselected_reference_keyframes,
+)
+from .keyframe_requests import (
     _keyframe_preview_document as _keyframe_preview_document,
 )
 from .keyframe_requests import (
@@ -782,6 +786,18 @@ class StructuredDirectorService:
                 character_references=character_references,
                 reference_asset_ids=reference_asset_ids,
             )
+            unselected = unselected_reference_keyframes(
+                preview_document, _find_keyframe(preview_document, keyframe_id)
+            )
+            if unselected:
+                return KeyframeSubmissionPreview(
+                    "实际图片输入：\n参考关键帧 "
+                    f"{_keyframe_label(preview_document, unselected[0])} 尚未选定图片。",
+                    None,
+                    False,
+                    GenerationOperation.EDIT,
+                    (),
+                )
             inputs = _keyframe_generation_inputs(preview_document, keyframe_id)
             if inputs is None:
                 return KeyframeSubmissionPreview(

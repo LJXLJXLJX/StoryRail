@@ -156,8 +156,16 @@ class KeyframeSegmentProposal:
     start_character_references: tuple[KeyframeCharacterReferenceProposal, ...] = ()
     end_character_references: tuple[KeyframeCharacterReferenceProposal, ...] = ()
     reference_images: tuple[KeyframeReferenceImageProposal, ...] = ()
+    # 生图时参考的其它 Keyframe（工作集 referenceable_keyframes 中已有选中图者）。
+    start_reference_keyframe_ids: tuple[str, ...] = ()
+    end_reference_keyframe_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
+        for references in (self.start_reference_keyframe_ids, self.end_reference_keyframe_ids):
+            if any(not _ID.fullmatch(item) for item in references):
+                raise ValueError("参考关键帧 ID 不合法。")
+            if len(references) != len(set(references)) or len(references) > 4:
+                raise ValueError("每帧参考关键帧不能重复且最多 4 个。")
         positions = [item.slot_index for item in self.reference_images]
         if len(positions) > 4 or len(positions) != len(set(positions)):
             raise ValueError("其他图片规划最多 4 张且槽位不得重复。")
@@ -189,6 +197,11 @@ class KeyframeSegmentProposal:
                 raise ValueError(
                     "承接上一 Segment 时不能单独给出首帧角色造型；"
                     "请清空 start_character_references。"
+                )
+            if self.start_reference_keyframe_ids:
+                raise ValueError(
+                    "承接上一 Segment 时不能单独给出首帧参考关键帧；"
+                    "请清空 start_reference_keyframe_ids。"
                 )
             return
         if len(self.start_prompt_text) > 18_000 or (
