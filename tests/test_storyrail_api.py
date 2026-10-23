@@ -253,6 +253,12 @@ class StoryRailApiTests(unittest.IsolatedAsyncioTestCase):
             _MAX_APPLICATION_COMMAND_REQUEST_BYTES,
         )
         self.assertEqual(
+            _request_body_limit(
+                "/api/projects/" + "a" * 32 + "/structured-director/director-script"
+            ),
+            _MAX_APPLICATION_COMMAND_REQUEST_BYTES,
+        )
+        self.assertEqual(
             _request_body_limit("/api/projects/" + "a" * 32 + "/structured-director/director-plan"),
             256 * 1024,
         )

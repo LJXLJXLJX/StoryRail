@@ -382,8 +382,10 @@ def _request_body_limit(path: str) -> int:
         route_path,
     ):
         return _MAX_PROJECT_REQUEST_BYTES
+    # 人工保存脚本提交整份 Scene 列表，与结构化命令同属大请求。
     if re.fullmatch(
-        r"/api/projects/[0-9a-f]{32}/structured-director/application/commands",
+        r"/api/projects/[0-9a-f]{32}/structured-director/"
+        r"(?:application/commands|director-script)",
         route_path,
     ):
         return _MAX_APPLICATION_COMMAND_REQUEST_BYTES
