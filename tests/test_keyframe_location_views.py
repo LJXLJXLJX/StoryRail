@@ -25,6 +25,8 @@ def test_keyframe_model_has_no_location_or_environment_binding():
         "selected_asset_id",
         "character_references",
         "reference_keyframe_ids",
+        # 显式参考的地点图片条目只是生图输入，不是 Keyframe 的地点或视图绑定。
+        "reference_location_image_ids",
     }
 
 

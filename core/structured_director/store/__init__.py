@@ -153,6 +153,7 @@ from ..models import (
     StructuredDirectorStatus,
     WorkspaceLayers,
     prune_reference_keyframes,
+    prune_reference_location_images,
 )
 from ..models import (
     CapabilityGapAlert as CapabilityGapAlert,
@@ -817,7 +818,9 @@ class StructuredDirectorStore:
             self._application_capture.append(document)
             return
         document = attach_submission_request(self, document)
-        pruned_plan = prune_reference_keyframes(document.keyframe_plan)
+        pruned_plan = prune_reference_location_images(
+            prune_reference_keyframes(document.keyframe_plan), document.location_library
+        )
         if pruned_plan is not document.keyframe_plan:
             document = replace(document, keyframe_plan=pruned_plan)
         if not exclusive and self._path.is_file() and not self._path.is_symlink():

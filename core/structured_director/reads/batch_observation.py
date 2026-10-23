@@ -20,6 +20,7 @@ from ..keyframe_requests import (
     _find_keyframe,
     _keyframe_generation_inputs,
     unselected_reference_keyframes,
+    unselected_reference_location_images,
 )
 from ..location_requests import LOCATION_SET_TERMINAL, location_set_items
 from ..models import ReferenceGenerationKind, ReferenceGenerationPhase
@@ -284,6 +285,10 @@ def _keyframe_batch_observation(document, batch_id: str) -> dict[str, object]:
                 ReferenceGenerationPhase.CANCELLED,
             }:
                 status = current.phase.value
+            elif unselected_reference_location_images(document, keyframe):
+                status = "dependency_blocked"
+                dependency_kind = "reference_location_image"
+                dependency_target_id = unselected_reference_location_images(document, keyframe)[0]
             elif unselected_reference_keyframes(document, keyframe):
                 status = "dependency_blocked"
                 dependency_kind = "reference_keyframe"

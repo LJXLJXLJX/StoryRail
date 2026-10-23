@@ -155,7 +155,7 @@ Core 分配。不支持单独移动 Shot：重排或跨 Scene 迁移 Shot 时，
 | 操作 | 要点 |
 | --- | --- |
 | `set_activation` | 同时设置 Segment 首尾槽位是否启用 |
-| `update_frame_fields` | 画面正文、可见角色、每个可见角色本帧使用的造型（`character_references`，`look_id` 或 null）、参考的其它 Keyframe（`reference_keyframe_ids`，0–4 个，整体替换，每个都必须已有选中图且不能是自身）；不含地点或地点图片绑定。正文、造型或参考变化会清除本帧选择 |
+| `update_frame_fields` | 画面正文、可见角色、每个可见角色本帧使用的造型（`character_references`，`look_id` 或 null）、参考的其它 Keyframe（`reference_keyframe_ids`，0–4 个，整体替换，每个都必须已有选中图且不能是自身）、参考的地点图片条目（`reference_location_image_ids`，0–4 个，整体替换，只限已有选中图的普通图片）；不含地点绑定。正文、造型或参考变化会清除本帧选择 |
 | `set_aux_references` | 替换 Segment 手工辅助图集合（≤4） |
 | `bind_slot` | 把已有 Keyframe 绑定到某首帧或尾帧槽位 |
 | `share_boundary` | 让真实相邻 Segment 的左尾与右首共享一个 Keyframe；可给 `source_keyframe_id` 复用现有对象及其血缘，否则 Core 从边界事实中挑选可复用对象，没有时才新建 |

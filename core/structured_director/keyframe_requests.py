@@ -184,6 +184,19 @@ def unselected_reference_keyframes(
     )
 
 
+def unselected_reference_location_images(
+    document: StructuredDirectorDocument, keyframe: Keyframe
+) -> tuple[str, ...]:
+    """本帧参考、但当前没有选中图的地点图片条目；被选定之前本帧不能生成。"""
+    library = document.location_library
+    return tuple(
+        image_id
+        for image_id in keyframe.reference_location_image_ids
+        if library.image_owner(image_id) is not None
+        and library.selected_image_asset(image_id) is None
+    )
+
+
 def _keyframe_generation_inputs(
     document: StructuredDirectorDocument, keyframe_id: str
 ) -> ImageInputs | None:
@@ -208,7 +221,7 @@ def _keyframe_generation_inputs(
         raise ValueError("Keyframe owner Segment 没有输入绑定。")
     if find_segment(script.scenes, keyframe.owner_segment_id) is None:
         raise ValueError("Keyframe owner Segment 不在当前脚本中。")
-    # 名额优先级：可见角色参考 → 前置帧 → 参考关键帧 → 本次显式辅助图。
+    # 名额优先级：可见角色参考 → 前置帧 → 参考关键帧 → 参考地点图片 → 本次显式辅助图。
     source_asset_id: str | None = None
     predecessor_input: ImageInput | None = None
     if keyframe.predecessor_keyframe_id is not None and binding.start_enabled:
@@ -252,6 +265,23 @@ def _keyframe_generation_inputs(
         for reference_id in keyframe.reference_keyframe_ids
         if reference_id in frames_by_id
     ]
+    unselected_images = unselected_reference_location_images(document, keyframe)
+    if unselected_images:
+        _location, image = document.location_library.image_owner(unselected_images[0])
+        raise ValueError(f"参考地点图片「{image.name}」还没有选中图片，请先采用它的候选。")
+    location_inputs = []
+    for image_id in keyframe.reference_location_image_ids:
+        owner = document.location_library.image_owner(image_id)
+        if owner is None or owner[1].selected_asset_id is None:
+            continue
+        location, image = owner
+        location_inputs.append(
+            ImageInput(
+                owner[1].selected_asset_id,
+                "地点参考",
+                f"地点「{location.name}」的图片「{image.name}」：{image.description}",
+            )
+        )
     character_by_id = {item.id: item for item in document.reference_library.characters}
     character_inputs: list[ImageInput] = []
     for character_id in keyframe.visible_character_ids:
@@ -299,6 +329,7 @@ def _keyframe_generation_inputs(
             *character_inputs,
             *([predecessor_input] if predecessor_input is not None else []),
             *reference_inputs,
+            *location_inputs,
             *auxiliary_inputs,
         ],
         operation=(

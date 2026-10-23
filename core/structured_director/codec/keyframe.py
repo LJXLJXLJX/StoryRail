@@ -30,6 +30,7 @@ _KEYFRAME_FIELDS = {
     "selected_asset_id",
     "character_references",
     "reference_keyframe_ids",
+    "reference_location_image_ids",
 }
 
 _CHARACTER_REFERENCE_FIELDS = {"character_id", "look_id"}
@@ -66,6 +67,7 @@ def _serialize_keyframe_plan(plan: KeyframePlan) -> dict[str, Any]:
                 "selected_asset_id": item.selected_asset_id,
                 "character_references": serialize_character_references(item),
                 "reference_keyframe_ids": list(item.reference_keyframe_ids),
+                "reference_location_image_ids": list(item.reference_location_image_ids),
             }
             for item in plan.keyframes
         ],
@@ -116,6 +118,9 @@ def _parse_keyframe(value: object) -> Keyframe:
         ),
         reference_keyframe_ids=_string_list(
             fields["reference_keyframe_ids"], "keyframe.reference_keyframe_ids"
+        ),
+        reference_location_image_ids=_string_list(
+            fields["reference_location_image_ids"], "keyframe.reference_location_image_ids"
         ),
     )
 

@@ -1264,7 +1264,7 @@ export function KeyframeSlot({
               />
               {generation.inputs_outdated ? (
                 <small className="keyframe-candidate-notice">
-                  生成后参考关键帧已改选；仍可选择，如需与当前参考一致请重新生成。
+                  生成后参考关键帧或地点图片已改选；仍可选择，如需与当前参考一致请重新生成。
                 </small>
               ) : null}
             </div>

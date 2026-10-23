@@ -13,6 +13,7 @@ from core.director_proposals.script_codec import _OUTPUT_SCHEMA as SCRIPT_SCHEMA
 from core.director_proposals.video_prompt import OUTPUT_SCHEMA as H3_SCHEMA
 
 from ..codec.keyframe import serialize_character_references
+from ..models import LocationImageKind
 from ..planning_inputs import (
     keyframe_inputs,
     location_inputs,
@@ -114,6 +115,7 @@ def _saved_keyframe_plan(document, scene_ids):
                 "visible_character_ids": list(item.visible_character_ids),
                 "character_references": serialize_character_references(item),
                 "reference_keyframe_ids": list(item.reference_keyframe_ids),
+                "reference_location_image_ids": list(item.reference_location_image_ids),
                 "selected_asset_id": item.selected_asset_id,
                 "bindings": frame_bindings[item.id],
             }
@@ -167,7 +169,7 @@ def _location_library_facts(document):
 
 
 def _keyframe_location_images(document):
-    """Keyframe 规划可由人显式加入辅助参考的地点图片及其强制说明。"""
+    """地点图片及其强制说明；referenceable 的条目可由本帧显式参考，提交其当前选中图。"""
     result = []
     for location in document.location_library.locations:
         result.extend(
@@ -179,6 +181,8 @@ def _keyframe_location_images(document):
                 "location_id": location.id,
                 "location_name": location.name,
                 "selected_asset_id": image.selected_asset_id,
+                "referenceable": image.kind is LocationImageKind.IMAGE
+                and image.selected_asset_id is not None,
             }
             for image in location.images
         )
@@ -339,6 +343,7 @@ def workset_read(
                 scenes,
                 video_inputs,
                 [item["keyframe_id"] for item in facts["referenceable_keyframes"]],
+                [item["image_id"] for item in facts["location_images"] if item["referenceable"]],
             )
             provenance.extend(["keyframe_plan", "generations", "location_library"])
         else:

@@ -62,6 +62,14 @@ _KEYFRAME_OVERRIDES = {
         "maxItems": 4,
         "items": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
     },
+    "segments[].start_reference_location_image_ids": {
+        "maxItems": 4,
+        "items": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    },
+    "segments[].end_reference_location_image_ids": {
+        "maxItems": 4,
+        "items": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    },
 }
 _STATIC_OUTPUT_SCHEMA = generate_schema(KeyframePlanProposal, _KEYFRAME_OVERRIDES)
 
@@ -211,6 +219,7 @@ def compile_plan_operations(
                         visible_character_ids=planned.start_visible_character_ids,
                         character_references=_selections(planned.start_character_references),
                         reference_keyframe_ids=planned.start_reference_keyframe_ids,
+                        reference_location_image_ids=planned.start_reference_location_image_ids,
                     )
                 )
             if planned.frame_strategy in {"end", "both"}:
@@ -221,6 +230,7 @@ def compile_plan_operations(
                         visible_character_ids=planned.end_visible_character_ids,
                         character_references=_selections(planned.end_character_references),
                         reference_keyframe_ids=planned.end_reference_keyframe_ids,
+                        reference_location_image_ids=planned.end_reference_location_image_ids,
                     )
                 )
             operations.append(
@@ -383,7 +393,10 @@ def _enforce_required_shared_boundaries(
 
 
 def _output_schema(
-    scenes: tuple[KeyframeSceneInput, ...], video_inputs=(), referenceable_keyframe_ids=()
+    scenes: tuple[KeyframeSceneInput, ...],
+    video_inputs=(),
+    referenceable_keyframe_ids=(),
+    referenceable_location_image_ids=(),
 ) -> dict[str, object]:
     segments = [
         segment for scene in scenes for segment in scene.segments if segment.planning_enabled
@@ -395,7 +408,13 @@ def _output_schema(
         minItems=len(segments),
         maxItems=len(segments),
         prefixItems=[
-            _segment_schema(scene, index, by_id.get(segment.id), tuple(referenceable_keyframe_ids))
+            _segment_schema(
+                scene,
+                index,
+                by_id.get(segment.id),
+                tuple(referenceable_keyframe_ids),
+                tuple(referenceable_location_image_ids),
+            )
             for scene in scenes
             for index, segment in enumerate(scene.segments)
             if segment.planning_enabled
@@ -406,7 +425,11 @@ def _output_schema(
 
 
 def _segment_schema(
-    scene: KeyframeSceneInput, index: int, video_input=None, referenceable_keyframe_ids=()
+    scene: KeyframeSceneInput,
+    index: int,
+    video_input=None,
+    referenceable_keyframe_ids=(),
+    referenceable_location_image_ids=(),
 ) -> dict[str, object]:
     segment = scene.segments[index]
     character_ids = [item.id for item in segment.visible_characters]
@@ -447,12 +470,17 @@ def _segment_schema(
     ):
         # 只能参考已有选中图的其它 Keyframe；本帧自身不在可选范围内。
         ids = [item for item in referenceable_keyframe_ids if item != keyframe_id]
-        properties[f"{slot}_reference_keyframe_ids"] = (
-            {"type": "array", "maxItems": 4, "items": {"type": "string", "enum": ids}}
-            if ids
-            else {"type": "array", "maxItems": 0, "items": {"type": "string"}}
+        properties[f"{slot}_reference_keyframe_ids"] = _enum_array_schema(ids)
+        properties[f"{slot}_reference_location_image_ids"] = _enum_array_schema(
+            list(referenceable_location_image_ids)
         )
     return segment_schema
+
+
+def _enum_array_schema(ids: list[str]) -> dict[str, object]:
+    if not ids:
+        return {"type": "array", "maxItems": 0, "items": {"type": "string"}}
+    return {"type": "array", "maxItems": 4, "items": {"type": "string", "enum": ids}}
 
 
 def _restrict_reference_characters(schema: dict, ids: list[str]) -> None:

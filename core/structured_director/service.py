@@ -114,6 +114,7 @@ from .keyframe_requests import (
 from .keyframe_requests import (
     _keyframe_label,
     unselected_reference_keyframes,
+    unselected_reference_location_images,
 )
 from .keyframe_requests import (
     _keyframe_preview_document as _keyframe_preview_document,
@@ -786,9 +787,16 @@ class StructuredDirectorService:
                 character_references=character_references,
                 reference_asset_ids=reference_asset_ids,
             )
-            unselected = unselected_reference_keyframes(
-                preview_document, _find_keyframe(preview_document, keyframe_id)
-            )
+            preview_frame = _find_keyframe(preview_document, keyframe_id)
+            if unselected_reference_location_images(preview_document, preview_frame):
+                return KeyframeSubmissionPreview(
+                    "实际图片输入：\n参考地点图片尚未选定图片。",
+                    None,
+                    False,
+                    GenerationOperation.EDIT,
+                    (),
+                )
+            unselected = unselected_reference_keyframes(preview_document, preview_frame)
             if unselected:
                 return KeyframeSubmissionPreview(
                     "实际图片输入：\n参考关键帧 "

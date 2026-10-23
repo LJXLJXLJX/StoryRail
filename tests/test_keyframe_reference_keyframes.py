@@ -201,6 +201,7 @@ def test_planner_proposal_compiles_frame_references():
                 end_prompt_text="结束",
                 end_visible_character_ids=(),
                 end_reference_keyframe_ids=(source_id,),
+                end_reference_location_image_ids=("5" * 32,),
             ),
         )
     )
@@ -212,6 +213,8 @@ def test_planner_proposal_compiles_frame_references():
     }
     assert by_frame[start_id].reference_keyframe_ids == ()
     assert by_frame[end_id].reference_keyframe_ids == (source_id,)
+    assert by_frame[end_id].reference_location_image_ids == ("5" * 32,)
+    assert by_frame[start_id].reference_location_image_ids == ()
     with pytest.raises(ValueError, match="start_reference_keyframe_ids"):
         KeyframeSegmentProposal(
             segment_id=segment_id,
@@ -223,3 +226,81 @@ def test_planner_proposal_compiles_frame_references():
             end_visible_character_ids=(),
             start_reference_keyframe_ids=(source_id,),
         )
+
+
+def test_frame_references_selected_location_images_with_their_description(tmp_path):
+    from structured_director_fixtures import install_location
+
+    from core.director_commands import LocationImageSelection
+    from core.structured_director.models import ReferenceGenerationKind
+    from scripts.harness.fixtures.candidates import register_image_candidate
+
+    async def run():
+        store, provider, source_id, target_id, _waiting_id = await _project(tmp_path)
+        document = install_location(store)
+        location = document.location_library.locations[-1]
+        image_id = location.images[0].id
+        unselected = await _try(
+            store,
+            provider,
+            "keyframe.apply_operations",
+            "loc-unselected",
+            _location_edit(target_id, [image_id]),
+        )
+        assert unselected.status != 200
+
+        asset_id = (
+            await _generate(store, provider, source_id, "loc-asset", b"loc")
+        ).output_asset_id
+        register_image_candidate(
+            store,
+            kind=ReferenceGenerationKind.LOCATION_IMAGE,
+            target_id=image_id,
+            asset_id=asset_id,
+        )
+        store.select_location_image(
+            LocationImageSelection(image_id, asset_id),
+            expected_revision=store.read().revision,
+            command_id="select-location-image",
+        )
+        await call(
+            store,
+            provider,
+            "keyframe.apply_operations",
+            "loc-ok",
+            _location_edit(target_id, [image_id]),
+        )
+        assert _frame(store.read(), target_id).reference_location_image_ids == (image_id,)
+
+        candidate = await _generate(store, provider, target_id, "loc-target", b"lt")
+        assert asset_id in candidate.input_asset_ids
+        assert keyframe_references_unchanged(store.read(), candidate)
+
+        # 删除地点图片不级联失效 Keyframe，只剪除对它的参考。
+        await call(
+            store,
+            provider,
+            "location.apply_operations",
+            "delete-location-image",
+            {
+                "scope": {"location_ids": [location.id], "scene_ids": []},
+                "operations": [{"op": "delete_image", "image_id": image_id}],
+            },
+        )
+        frame = _frame(store.read(), target_id)
+        assert frame.reference_location_image_ids == ()
+        assert frame.selected_asset_id == _frame(document, target_id).selected_asset_id
+
+    asyncio.run(run())
+
+
+def _location_edit(keyframe_id, image_ids):
+    return {
+        "operations": [
+            {
+                "op": "update_frame_fields",
+                "keyframe_id": keyframe_id,
+                "fields": {"reference_location_image_ids": image_ids},
+            }
+        ]
+    }

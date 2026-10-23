@@ -12,6 +12,7 @@ from ..models import (
     StructuredDirectorDocument,
     StructuredDirectorStatus,
     WorkspaceLayers,
+    require_known_reference_location_images,
 )
 from ..models._shared import parse_narration_languages
 from ..schema import (
@@ -184,7 +185,7 @@ def _parse_document(value: object) -> StructuredDirectorDocument:
     )
     loaded_status = StructuredDirectorStatus(_string(structured["status"], "status"))
     try:
-        return StructuredDirectorDocument(
+        document = StructuredDirectorDocument(
             schema_version=PROJECT_SCHEMA_VERSION,
             project_id=_string(root["project_id"], "project_id"),
             revision=_integer(root["revision"], "revision"),
@@ -269,5 +270,7 @@ def _parse_document(value: object) -> StructuredDirectorDocument:
                 structured["director_directives"], _parse_director_directive
             ),
         )
+        require_known_reference_location_images(document.keyframe_plan, document.location_library)
+        return document
     except ValueError as exc:
         raise ValueError(f"project.json schema 不合法：{exc}") from exc

@@ -19,6 +19,7 @@ from .models import (
     Keyframe,
     KeyframeCharacterReference,
     KeyframePlan,
+    LocationImageKind,
     ReferenceGenerationKind,
     ReferenceGenerationPhase,
     SegmentKeyframes,
@@ -252,10 +253,29 @@ def _apply_keyframe_operations(
                         raise ValueError(
                             f"Keyframe {reference_id} 还没有选中图片，只能参考已选定的关键帧。"
                         )
+            reference_location_image_ids = (
+                keyframe.reference_location_image_ids
+                if operation.reference_location_image_ids is None
+                else operation.reference_location_image_ids
+            )
+            if reference_location_image_ids != keyframe.reference_location_image_ids:
+                for image_id in reference_location_image_ids:
+                    owner = document.location_library.image_owner(image_id)
+                    if owner is None:
+                        raise ValueError(f"地点图片 {image_id} 不存在。")
+                    if owner[1].kind is not LocationImageKind.IMAGE:
+                        raise ValueError(
+                            f"地点图片「{owner[1].name}」是全景图；请先取景为普通子图再参考。"
+                        )
+                    if owner[1].selected_asset_id is None:
+                        raise ValueError(
+                            f"地点图片「{owner[1].name}」还没有选中图片，只能参考已选定的地点图片。"
+                        )
             generation_changed = (
                 prompt_text != keyframe.prompt_text
                 or character_references != keyframe.character_references
                 or reference_keyframe_ids != keyframe.reference_keyframe_ids
+                or reference_location_image_ids != keyframe.reference_location_image_ids
             )
             replacement = replace(
                 keyframe,
@@ -263,6 +283,7 @@ def _apply_keyframe_operations(
                 visible_character_ids=visible_character_ids,
                 character_references=character_references,
                 reference_keyframe_ids=reference_keyframe_ids,
+                reference_location_image_ids=reference_location_image_ids,
                 selected_asset_id=None if generation_changed else keyframe.selected_asset_id,
             )
             if replacement != keyframe:

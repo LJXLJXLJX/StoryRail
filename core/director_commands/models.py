@@ -105,6 +105,8 @@ class UpdateKeyframeFields:
     character_references: tuple[KeyframeCharacterReferenceSelection, ...] | None = None
     # None 表示不修改；提交时整体替换本帧参考的其它 Keyframe（必须已有选中图）。
     reference_keyframe_ids: tuple[str, ...] | None = None
+    # None 表示不修改；提交时整体替换本帧参考的地点库普通图片条目（必须已有选中图）。
+    reference_location_image_ids: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -319,6 +321,7 @@ def _parse_keyframe_operation(value: object) -> KeyframeOperation:
             "visible_character_ids",
             "character_references",
             "reference_keyframe_ids",
+            "reference_location_image_ids",
         }
         if not set(fields) <= allowed:
             raise ValueError("update_frame_fields.fields 包含未声明字段。")
@@ -343,6 +346,13 @@ def _parse_keyframe_operation(value: object) -> KeyframeOperation:
                 None
                 if "reference_keyframe_ids" not in fields
                 else _id_list(fields["reference_keyframe_ids"], "reference_keyframe_ids")
+            ),
+            reference_location_image_ids=(
+                None
+                if "reference_location_image_ids" not in fields
+                else _id_list(
+                    fields["reference_location_image_ids"], "reference_location_image_ids"
+                )
             ),
         )
     if op == "set_aux_references":

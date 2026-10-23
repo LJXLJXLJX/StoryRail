@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from ._shared import _require_id
+from .location import LocationLibrary
 from .reference import ReferenceLibrary
 
 MAX_REFERENCE_KEYFRAMES = 4
@@ -35,6 +36,8 @@ class Keyframe:
     character_references: tuple[KeyframeCharacterReference, ...] = ()
     # 生图时参考的其它 Keyframe；提交时解析为它们当前的已选图，未选定时不能生成。
     reference_keyframe_ids: tuple[str, ...] = ()
+    # 生图时参考的地点库普通图片条目；提交时取其当前已选图并附带图片说明。
+    reference_location_image_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         _require_id(self.id, "keyframe.id")
@@ -64,6 +67,12 @@ class Keyframe:
             raise ValueError(f"Keyframe 最多参考 {MAX_REFERENCE_KEYFRAMES} 个其它关键帧。")
         if self.id in self.reference_keyframe_ids:
             raise ValueError("Keyframe 不能参考自身。")
+        for image_id in self.reference_location_image_ids:
+            _require_id(image_id, "keyframe.reference_location_image_ids")
+        if len(self.reference_location_image_ids) != len(set(self.reference_location_image_ids)):
+            raise ValueError("Keyframe 参考地点图片不能重复。")
+        if len(self.reference_location_image_ids) > MAX_REFERENCE_KEYFRAMES:
+            raise ValueError(f"Keyframe 最多参考 {MAX_REFERENCE_KEYFRAMES} 张地点图片。")
 
 
 def blank_keyframe(
@@ -204,6 +213,41 @@ def prune_reference_keyframes(plan: KeyframePlan | None) -> KeyframePlan | None:
     if keyframes == plan.keyframes:
         return plan
     return replace(plan, keyframes=keyframes)
+
+
+def prune_reference_location_images(
+    plan: KeyframePlan | None, library: LocationLibrary
+) -> KeyframePlan | None:
+    """剪除指向已删除地点图片条目的参考；地点库编辑不级联失效 Keyframe。"""
+    if plan is None:
+        return None
+    keyframes = tuple(
+        item
+        if all(library.image_owner(image_id) for image_id in item.reference_location_image_ids)
+        else replace(
+            item,
+            reference_location_image_ids=tuple(
+                image_id
+                for image_id in item.reference_location_image_ids
+                if library.image_owner(image_id) is not None
+            ),
+        )
+        for item in plan.keyframes
+    )
+    if keyframes == plan.keyframes:
+        return plan
+    return replace(plan, keyframes=keyframes)
+
+
+def require_known_reference_location_images(
+    plan: KeyframePlan | None, library: LocationLibrary
+) -> None:
+    if plan is not None and any(
+        library.image_owner(image_id) is None
+        for item in plan.keyframes
+        for image_id in item.reference_location_image_ids
+    ):
+        raise ValueError("Keyframe 参考了不存在的地点图片。")
 
 
 def require_known_reference_keyframes(plan: KeyframePlan) -> None:

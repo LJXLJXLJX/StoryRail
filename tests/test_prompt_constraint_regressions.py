@@ -28,13 +28,15 @@ def test_keyframe_contract_carries_location_decoupling_and_user_boundary():
     assert "environment_view_id" not in text
 
 
-def test_keyframe_contract_treats_location_images_as_explicit_auxiliary_references():
-    """地点图片只在用户显式加入辅助参考后才进入实际输入。"""
+def test_keyframe_contract_treats_location_images_as_explicit_references():
+    """地点图片只在本帧显式参考（或用户加入辅助参考）后才进入实际输入。"""
     skill = read_contract("keyframe")["resources"][0]["text"]
     for required in (
         "地点语义与图片",
-        "显式放入 Segment 辅助参考",
-        "不假设任何地点图片会自动作为生图输入",
+        "start_reference_location_image_ids",
+        "referenceable=true",
+        "只有显式参考的地点图片才会作为生图输入",
+        "全景图不能直接参考",
     ):
         assert required in skill
     assert "地点视图的使用" not in skill

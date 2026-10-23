@@ -159,13 +159,21 @@ class KeyframeSegmentProposal:
     # 生图时参考的其它 Keyframe（工作集 referenceable_keyframes 中已有选中图者）。
     start_reference_keyframe_ids: tuple[str, ...] = ()
     end_reference_keyframe_ids: tuple[str, ...] = ()
+    # 生图时参考的地点库普通图片条目（工作集 location_images 中 referenceable 为 true 者）。
+    start_reference_location_image_ids: tuple[str, ...] = ()
+    end_reference_location_image_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        for references in (self.start_reference_keyframe_ids, self.end_reference_keyframe_ids):
+        for references in (
+            self.start_reference_keyframe_ids,
+            self.end_reference_keyframe_ids,
+            self.start_reference_location_image_ids,
+            self.end_reference_location_image_ids,
+        ):
             if any(not _ID.fullmatch(item) for item in references):
-                raise ValueError("参考关键帧 ID 不合法。")
+                raise ValueError("参考关键帧或地点图片 ID 不合法。")
             if len(references) != len(set(references)) or len(references) > 4:
-                raise ValueError("每帧参考关键帧不能重复且最多 4 个。")
+                raise ValueError("每帧参考关键帧或地点图片不能重复且各最多 4 个。")
         positions = [item.slot_index for item in self.reference_images]
         if len(positions) > 4 or len(positions) != len(set(positions)):
             raise ValueError("其他图片规划最多 4 张且槽位不得重复。")
@@ -198,10 +206,10 @@ class KeyframeSegmentProposal:
                     "承接上一 Segment 时不能单独给出首帧角色造型；"
                     "请清空 start_character_references。"
                 )
-            if self.start_reference_keyframe_ids:
+            if self.start_reference_keyframe_ids or self.start_reference_location_image_ids:
                 raise ValueError(
-                    "承接上一 Segment 时不能单独给出首帧参考关键帧；"
-                    "请清空 start_reference_keyframe_ids。"
+                    "承接上一 Segment 时不能单独给出首帧参考；"
+                    "请清空 start_reference_keyframe_ids 与 start_reference_location_image_ids。"
                 )
             return
         if len(self.start_prompt_text) > 18_000 or (

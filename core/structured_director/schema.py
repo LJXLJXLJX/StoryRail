@@ -12,6 +12,7 @@
 #     选择、机制参数与 Segment 内真实音频起点，有对白视频必须先完成对白音频生产。
 # v35 地点库改为带强制说明的独立图片集合；全景图只提供确定性取景，取景结果
 #     记录来源但独立存在；Shot 与 Keyframe 不再绑定地点视图，Scene 只保留可选语义地点。
-# v36 Keyframe 新增 reference_keyframe_ids：生图时参考其它 Keyframe 的当前已选图。
+# v36 Keyframe 新增 reference_keyframe_ids 与 reference_location_image_ids：生图时参考其它
+#     Keyframe 或地点库普通图片条目的当前已选图。
 # 更早版本按开发期规则不迁移，需新建项目。
 PROJECT_SCHEMA_VERSION = 36

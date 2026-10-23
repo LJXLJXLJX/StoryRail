@@ -6,6 +6,7 @@ from .keyframe_requests import (
     _keyframe_generation_inputs,
     _keyframe_label,
     unselected_reference_keyframes,
+    unselected_reference_location_images,
 )
 from .manual_commands import (
     keyframe_edit_command,
@@ -89,6 +90,13 @@ async def execute_keyframe_wave(
                 outcomes.append(
                     f"{_keyframe_label(document, target_id)} 此前任务失败或已取消，"
                     "本轮未自动重试；请明确重试对应 Generation。"
+                )
+                continue
+            unselected_images = unselected_reference_location_images(document, keyframe)
+            if unselected_images:
+                _location, image = document.location_library.image_owner(unselected_images[0])
+                deferred.append(
+                    (target_id, f"等待地点图片「{image.name}」选定图片（采用候选后再继续批次）")
                 )
                 continue
             unselected = unselected_reference_keyframes(document, keyframe)

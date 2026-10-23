@@ -11,7 +11,7 @@
   },
   "environment": {
     "date": "2026-10-23",
-    "git_sha": "90f7eae884077a0539a1c08427d2287bb64803bb",
+    "git_sha": "23bc579a8779d5973332175aca7e4d54d34f93eb",
     "python_version": "3.12.12",
     "platform": "macOS-26.6.2-arm64-arm-64bit",
     "driver": "scripts/harness/benchmark/fake_agent_driver.py"
@@ -20,13 +20,13 @@
     "scenario_total_multiplier": 1.0
   },
   "frozen": {
-    "tools_list_bytes": 45984,
+    "tools_list_bytes": 46098,
     "scenarios": {
       "h3": {
         "total_wire_bytes": 91509
       },
       "keyframe": {
-        "total_wire_bytes": 114670
+        "total_wire_bytes": 116060
       },
       "location": {
         "total_wire_bytes": 68722
@@ -47,7 +47,7 @@
       "capability": "video_prompt",
       "bootstrap": "keyframes",
       "summary": {
-        "tools_list_bytes": 45984,
+        "tools_list_bytes": 46098,
         "tool_count": 27,
         "requests": 6,
         "input_bytes": 1527,
@@ -132,14 +132,14 @@
       "capability": "keyframe",
       "bootstrap": "unlocked",
       "summary": {
-        "tools_list_bytes": 45984,
+        "tools_list_bytes": 46098,
         "tool_count": 27,
         "requests": 8,
         "input_bytes": 2019,
-        "output_bytes": 112651,
-        "total_wire_bytes": 114670,
-        "contract_read_bytes": 42394,
-        "workset_read_bytes": 34283,
+        "output_bytes": 114041,
+        "total_wire_bytes": 116060,
+        "contract_read_bytes": 43028,
+        "workset_read_bytes": 34787,
         "pagination_rounds": 8,
         "wait_rounds": 1,
         "error_responses": 0
@@ -162,7 +162,7 @@
           "tool": "read_professional_contract",
           "action": "pages",
           "input_bytes": 159,
-          "output_bytes": 42235,
+          "output_bytes": 42869,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -173,7 +173,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 207,
-          "output_bytes": 16549,
+          "output_bytes": 16801,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -184,7 +184,7 @@
           "tool": "keyframe_proposal",
           "action": "request",
           "input_bytes": 313,
-          "output_bytes": 19396,
+          "output_bytes": 19648,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -206,7 +206,7 @@
           "tool": "read_professional_workset",
           "action": "pages",
           "input_bytes": 205,
-          "output_bytes": 17322,
+          "output_bytes": 17574,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null
@@ -239,7 +239,7 @@
       "capability": "location",
       "bootstrap": "timing",
       "summary": {
-        "tools_list_bytes": 45984,
+        "tools_list_bytes": 46098,
         "tool_count": 27,
         "requests": 6,
         "input_bytes": 1673,
@@ -324,7 +324,7 @@
       "capability": "video_prompt",
       "bootstrap": "keyframes",
       "summary": {
-        "tools_list_bytes": 45984,
+        "tools_list_bytes": 46098,
         "tool_count": 27,
         "requests": 7,
         "input_bytes": 1781,
@@ -420,7 +420,7 @@
       "capability": "reference_library",
       "bootstrap": "empty",
       "summary": {
-        "tools_list_bytes": 45984,
+        "tools_list_bytes": 46098,
         "tool_count": 27,
         "requests": 5,
         "input_bytes": 1382,
@@ -494,7 +494,7 @@
       "capability": "script",
       "bootstrap": "ready",
       "summary": {
-        "tools_list_bytes": 45984,
+        "tools_list_bytes": 46098,
         "tool_count": 27,
         "requests": 5,
         "input_bytes": 1662,

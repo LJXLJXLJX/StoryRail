@@ -1,4 +1,4 @@
-"""一次性把本机 v35 project.json 升到 v36：每个 Keyframe 补空 reference_keyframe_ids。
+"""一次性把本机 v35 project.json 升到 v36：每个 Keyframe 补空参考关键帧与参考地点图片。
 
 Core 不读取旧 schema；本脚本只供作者在本机显式运行，迁移前备份原文件，
 迁移后用 Core 当前 codec 完整解析校验，失败则不写入。
@@ -33,9 +33,10 @@ def migrate(project_directory: Path) -> str:
         raise ValueError(f"{path}: schema_version={version}，只迁移 v35。")
     plan = document["structured_director"].get("keyframe_plan")
     for keyframe in [] if plan is None else plan["keyframes"]:
-        if "reference_keyframe_ids" in keyframe:
-            raise ValueError(f"{path}: Keyframe 已含 reference_keyframe_ids，不是干净的 v35。")
+        if {"reference_keyframe_ids", "reference_location_image_ids"} & set(keyframe):
+            raise ValueError(f"{path}: Keyframe 已含 v36 参考字段，不是干净的 v35。")
         keyframe["reference_keyframe_ids"] = []
+        keyframe["reference_location_image_ids"] = []
     document["schema_version"] = 36
     _parse_document(document)
 

@@ -215,12 +215,15 @@ FrameFields = object_model(
         "character_references": list[CharacterReference],
         # 整体替换本帧参考的其它 Keyframe；只能引用已有选中图的 Keyframe。
         "reference_keyframe_ids": Annotated[list[ID], Field(max_length=4)],
+        # 整体替换本帧参考的地点库普通图片条目 ID；只能引用已有选中图的条目。
+        "reference_location_image_ids": Annotated[list[ID], Field(max_length=4)],
     },
     (
         "prompt_text",
         "visible_character_ids",
         "character_references",
         "reference_keyframe_ids",
+        "reference_location_image_ids",
     ),
 )
 FrameOperation = reduce(

@@ -217,7 +217,7 @@ flowchart TB
     C --> CI[新建并直接选中普通子图]
     V -- 否 --> U[按需继续积累]
     CI --> U
-    U --> K[Keyframe 规划<br/>不建立地点图片绑定]
+    U --> K[Keyframe 规划<br/>不建立地点绑定，可显式参考已选地点图片]
     S --> U
 ```
 
@@ -292,10 +292,11 @@ Scene。地点缺口不阻止解锁或生图。
 
 ### Keyframe 与地点解耦
 
-Keyframe 不保存地点或地点图片字段。Planner 工作集给出当前 Scene 的 `location_id` / `state_id`、相应地点语义，以及地点图片的
-强制说明；Agent 用它们理解空间，再结合 Shot 构图自行写静态画面。地点图片不会自动进入 Provider 输入，也不会成为生成依赖。
-需要使用某张图片时，用户把它的已选 Asset 显式加入 Segment 辅助参考；它与其它辅助图片遵守相同名额和用途展示。
-图片输入只有角色造型图、前置帧、参考关键帧（`reference_keyframe_ids` 指向的其它已选 Keyframe 的当前选中图）和手工辅助图，
+Keyframe 不保存地点绑定。Planner 工作集给出当前 Scene 的 `location_id` / `state_id`、相应地点语义，以及地点图片的
+强制说明和是否可参考（`referenceable`）；Agent 用它们理解空间，再结合 Shot 构图自行写静态画面。地点图片不会自动进入 Provider 输入。
+需要使用某张图片时，Planner 或 `edit_keyframes` 把它写进本帧 `reference_location_image_ids`（只限已选的普通图片条目），
+提交时取其当前选中图并附带强制说明；用户也可把已选 Asset 显式加入 Segment 辅助参考。
+图片输入只有角色造型图、前置帧、参考关键帧（`reference_keyframe_ids` 指向的其它已选 Keyframe 的当前选中图）、参考地点图片和手工辅助图，
 按实际输入编译并合计不超过 5 张。Agent 可先采用上游关键帧候选，再让后续帧参考它们，从而沿已选图保持连续性。
 
 **生成**：
@@ -304,7 +305,7 @@ Keyframe 不保存地点或地点图片字段。Planner 工作集给出当前 Sc
   Keyframe、其他图片、地点图与 Playground 共用该规范，模型专用 Skill 仅补充标签与写法；Core 只提供输入清单并校验真实标签，不补写或拼接引用说明与参考方式指令。Agent 必须实际看图，无法看图时请用户提供各图内容与用途，信息不足时暂停相关编写与生成。
 - 卡片单图按钮只提交该 Keyframe，成功回调只保存结果，不触发其它任何 Keyframe。
 - 批量（`keyframe.generate_batch`，MCP `media_batch` `kind=keyframe` `action=start`）固定一个显式目标集合，每轮只提交其中“当前依赖已满足”的帧
-  （例如前置帧有成功候选、角色造型已有选图、参考关键帧已有选中图）；其余帧留作等待项并在回复中说明原因。依赖满足后，
+  （例如前置帧有成功候选、角色造型已有选图、参考关键帧与参考地点图片已有选中图）；其余帧留作等待项并在回复中说明原因。依赖满足后，
   需要用户再次明确“继续”（`keyframe.continue_batch`，`action=continue`），批次不会自动补齐；输入超额仍是计划错误，整轮拒绝。见 [控制流 · Keyframe 批次](control-flow.md#7-keyframe-批次)。
 - 图片输入的编译顺序与映射见 [数据流 · Keyframe 输入编译](data-flow.md#keyframe-输入编译)。
 

@@ -41,7 +41,13 @@ from .keyframe import blank_keyframe as blank_keyframe
 from .keyframe import prune_character_references as prune_character_references
 from .keyframe import prune_reference_keyframes as prune_reference_keyframes
 from .keyframe import (
+    prune_reference_location_images as prune_reference_location_images,
+)
+from .keyframe import (
     require_known_reference_keyframes as require_known_reference_keyframes,
+)
+from .keyframe import (
+    require_known_reference_location_images as require_known_reference_location_images,
 )
 from .location import Location as Location
 from .location import LocationFixture as LocationFixture
@@ -165,6 +171,8 @@ __all__ = [
     "unresolved_uncertain_ids",
     "prune_character_references",
     "prune_reference_keyframes",
+    "prune_reference_location_images",
+    "require_known_reference_location_images",
     "require_known_reference_keyframes",
 ]
 

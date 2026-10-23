@@ -241,7 +241,7 @@ Segment 也保留生成候选与已选音频，只清空发声起点；正文、
 
 地点（Location）是跨 Scene 共享的固定空间。同一空间的昼夜、天气、布置或破坏变化是状态（LocationState），不是新地点。
 每个地点可保存一组扁平、彼此独立的图片（LocationImage）；没有必需主图，也没有从主图派生视图的层级。
-Shot 与 Keyframe 不引用地点图片。代码位置：`models/location.py`。
+Shot 不引用地点图片；Keyframe 只能经 `reference_location_image_ids` 把已选普通图片条目作为生图输入显式参考，不形成地点绑定。代码位置：`models/location.py`。
 
 ```mermaid
 erDiagram
@@ -292,7 +292,7 @@ Scene 保存可选 `location_id` / `state_id`，state 必须属于该 Location�
 
 | 实体 | 字段与约束 |
 | --- | --- |
-| `Keyframe` | `id`；`owner_segment_id`；`predecessor_keyframe_id`（时间上前一个边界帧，图必须无环）；`prompt_text` ≤ 18,000；`visible_character_ids`；`character_references`（`[{character_id, look_id}]`：只针对本帧可见角色、每角色一项，`look_id` 必须是该角色当前造型；`look_id = null` = 不提交该角色图；未列出时只有一套造型默认使用它，多套造型必须显式选择才能生成；所选造型没有造型图时不能生成）；`selected_asset_id`；`reference_keyframe_ids`（0–4 个其它 Keyframe，不含自身、不重复；写入时每个都必须已有选中图，生成时解析为它们**当前**的选中图并以“参考关键帧”角色提交；被参考帧撤销选择后本帧不能生成，批次等待；被参考帧被移除时引用随写入剪除，读取时引用必须存在） |
+| `Keyframe` | `id`；`owner_segment_id`；`predecessor_keyframe_id`（时间上前一个边界帧，图必须无环）；`prompt_text` ≤ 18,000；`visible_character_ids`；`character_references`（`[{character_id, look_id}]`：只针对本帧可见角色、每角色一项，`look_id` 必须是该角色当前造型；`look_id = null` = 不提交该角色图；未列出时只有一套造型默认使用它，多套造型必须显式选择才能生成；所选造型没有造型图时不能生成）；`selected_asset_id`；`reference_keyframe_ids`（0–4 个其它 Keyframe，不含自身、不重复；写入时每个都必须已有选中图，生成时解析为它们**当前**的选中图并以“参考关键帧”角色提交；被参考帧撤销选择后本帧不能生成，批次等待；被参考帧被移除时引用随写入剪除，读取时引用必须存在）；`reference_location_image_ids`（0–4 个地点库普通图片条目，规则相同：写入时必须已有选中图且不是全景图，提交时取当前选中图并附图片说明，以“地点参考”角色提交；条目删除时随写入剪除） |
 | `SegmentKeyframes` | `segment_id`；`start_keyframe_id` ≠ `end_keyframe_id`；`start_enabled` / `end_enabled`（默认都关闭）；`reference_asset_ids` 手工辅助图 ≤ 4 张 |
 
 - Keyframe 计划以 Segment 为单位：当前脚本的每个 Segment 恰好一条 `SegmentKeyframes`，脚本回改后 Core 立即重建，

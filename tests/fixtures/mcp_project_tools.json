@@ -1075,6 +1075,14 @@
               "maxItems": 4,
               "type": "array"
             },
+            "reference_location_image_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 4,
+              "type": "array"
+            },
             "visible_character_ids": {
               "items": {
                 "pattern": "^[0-9a-f]{32}$",

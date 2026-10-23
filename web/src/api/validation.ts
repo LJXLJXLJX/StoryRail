@@ -6169,6 +6169,22 @@ const schemas: Record<string, JsonSchema> = {
                 "pattern": "^[0-9a-f]{32}$"
               },
               "maxItems": 4
+            },
+            "start_reference_location_image_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$"
+              },
+              "maxItems": 4
+            },
+            "end_reference_location_image_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$"
+              },
+              "maxItems": 4
             }
           },
           "required": [
