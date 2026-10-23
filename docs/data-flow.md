@@ -51,22 +51,28 @@ flowchart LR
     m --> t{下一个 Scene 也是<br/>有旁白的 Narration Scene?}
     t -- 是 --> plus[+ 0.4 秒尾部画面缓冲]
     t -- 否 --> zero[+ 0]
-    plus & zero --> target[Cue 覆盖区间的目标画面时长]
+    plus & zero --> minimum[最短画面时长]
+    minimum --> cmp{Segment 时长之和 ≥ 最短?}
+    cmp -- 是 --> keep[保留脚本时长<br/>旁白居中：前后各留 多出部分/2]
+    cmp -- 否 --> stretch[等比拉长 Segment 到最短画面时长]
 ```
 
 - 0.4 秒缓冲只加在前一个 Scene 最后一个 Segment 的结尾，不按 Segment 重复累加；它让下一段旁白开始前形成确定性的呼吸间隔。
-- 规划 Shot/Segment 时，Core 把真实时长、缓冲值与目标画面时长一起提供给 Agent。
-- 旁白层解锁后的每次脚本/旁白写入，Core 都按同一规则把 Cue 覆盖范围内的 Segment 时长等比校准到目标值（余数落在最后一个
-  Segment），并在同一次写入里写入生产基线；覆盖区间已对齐（误差 ≤ 1e-6 秒）时保持原值，重算不改写时长。
-- 同一个确定性函数（`narration_timing.py`）被脚本规划、生产基线、Animatic 与成片装配共用。
+- 规划 Shot/Segment 时，Core 把真实时长、缓冲值与最短画面时长（`minimum_duration_seconds`）一起提供给 Agent。
+- Scene 画面时长 = max(Segment 时长之和, 最短画面时长)。人或 Agent 可以把 Segment 调得比旁白长，让画面停留；
+  旁白起点 = 首个 Segment 起点 + (画面时长 − 最短画面时长) / 2，即多出的时间在旁白前后平分。
+- 旁白层解锁后的每次脚本/旁白写入，Core 只在 Segment 时长之和短于最短画面时长时把它们等比拉长（余数落在最后一个
+  Segment），并在同一次写入里写入生产基线；已经足够长的时长逐位保留，重算不改写。
+- 同一组确定性函数（`narration_timing.py`）被脚本规划、生产基线、Animatic 与成片装配共用。
 
 ### 装配时的精确对轨
 
 装配时 Core 用**已选视频的真实时长**（不是脚本预估）重新计算时间轴：
 
 - **Narration Scene**：Cue 覆盖整个 Scene 的全部 Segment。从第一个 Segment 的起始 clip 到最后一个 Segment 的结尾 clip，
-  考虑接缝重叠后，画面区间必须精确等于目标画面时长。Core 迭代调整该区间**最后一个 clip** 的时长（裁切或补足，最多 24 轮
+  考虑接缝重叠后，画面区间必须精确等于 Scene 画面时长。Core 迭代调整该区间**最后一个 clip** 的时长（裁切或补足，最多 24 轮
   收敛）；需要的调整使该 clip 短于 0.05 秒时拒绝，提示缩短前序视频或合并过短的 Segment。
+- 旁白居中的前置偏移由 Core 在 WAV 数据前补等长静音实现，FFmpeg 仍从首个 clip 起点混入旁白。
 - **Drama Scene** 没有旁白，不参与对轨，按已选视频真实时长拼接。
 - 不用延长整部成片来掩盖局部时长不足。
 
@@ -224,7 +230,7 @@ flowchart TB
     trans -- 是 --> blend[transition = seam_blend（0.1 秒接缝融合）]
     trans -- 否 --> cut[硬切]
     blend & cut --> clips[SceneAssemblyPlan.clips]
-    cue[该语言已选旁白 + 时间基准（所选语言最长音频）] --> place[Cue 覆盖 Scene 全部 Segment<br/>旁白从首个 Segment 开始]
+    cue[该语言已选旁白 + 时间基准（所选语言最长音频）] --> place[Cue 覆盖 Scene 全部 Segment<br/>旁白在 Scene 画面中居中]
     clips & place --> align[按真实时长精确对轨（见上）]
     align --> render[FFmpeg 渲染该语言 Scene 成片]
 ```

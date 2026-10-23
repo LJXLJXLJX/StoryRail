@@ -11,7 +11,7 @@
   },
   "environment": {
     "date": "2026-10-23",
-    "git_sha": "23bc579a8779d5973332175aca7e4d54d34f93eb",
+    "git_sha": "94ee2013db3cc475e56a4094133fc3acaa77d713",
     "python_version": "3.12.12",
     "platform": "macOS-26.6.2-arm64-arm-64bit",
     "driver": "scripts/harness/benchmark/fake_agent_driver.py"
@@ -38,7 +38,7 @@
         "total_wire_bytes": 30056
       },
       "script": {
-        "total_wire_bytes": 77154
+        "total_wire_bytes": 77228
       }
     }
   },
@@ -498,9 +498,9 @@
         "tool_count": 27,
         "requests": 5,
         "input_bytes": 1662,
-        "output_bytes": 75492,
-        "total_wire_bytes": 77154,
-        "contract_read_bytes": 52102,
+        "output_bytes": 75566,
+        "total_wire_bytes": 77228,
+        "contract_read_bytes": 52176,
         "workset_read_bytes": 9546,
         "pagination_rounds": 5,
         "wait_rounds": 0,
@@ -524,7 +524,7 @@
           "tool": "read_professional_contract",
           "action": "pages",
           "input_bytes": 154,
-          "output_bytes": 51948,
+          "output_bytes": 52022,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null

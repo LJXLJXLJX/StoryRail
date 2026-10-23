@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from uuid import uuid4
 
+from core.media_assets.media_bytes import prepend_wav_silence
 from core.model_providers.contracts import (
     AnimaticClip,
     AnimaticNarration,
@@ -68,12 +69,14 @@ class AnimaticSubmission:
                 clip_inputs.append(AnimaticClip(content, transition, duration))
                 input_asset_ids.append(asset.id)
             narration_inputs = []
-            for asset_id, start in zip(
+            for asset_id, start, offset in zip(
                 spec.narration_asset_ids,
                 spec.narration_start_clip_indices,
+                spec.narration_start_offsets,
                 strict=True,
             ):
                 asset, content = self._store.read_asset(asset_id)
+                content = prepend_wav_silence(content, offset)
                 narration_inputs.append(AnimaticNarration(content, start))
                 input_asset_ids.append(asset.id)
             generation = ReferenceGeneration(

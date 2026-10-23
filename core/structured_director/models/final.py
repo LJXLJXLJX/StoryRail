@@ -32,6 +32,8 @@ class FinalNarrationPlacement:
     start_segment_id: str
     # 画面对齐使用的时间基准：中英已选旁白中较长的真实时长。
     timing_seconds: float = 0.0
+    # 旁白在 Scene 画面里居中：相对首个 Segment 起点的延迟秒数。
+    start_offset_seconds: float = 0.0
 
     def __post_init__(self) -> None:
         _require_id(self.cue_id, "scene_assembly.narration.cue_id")

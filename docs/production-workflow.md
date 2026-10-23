@@ -190,9 +190,10 @@ sequenceDiagram
 - 修改某语言正文或合成参数只清除该语言的音频选择，并使时序与装配失效；既有视觉设计保留。纯结构锚点重建不重做 TTS。
 - 用户明确要求时，Agent 可用 `narration.clear_selection` 解除某语言当前音频引用；这不授予采用其它候选的能力。
 - 旁白层解锁后，每次脚本或旁白写入（含选择音频、规划 Shot）都由 Core 在同一次写入里自动校准时序，没有人工确认步骤。
-  校准要求每条 Cue 已选语言的音频都已选择、存在旁白身份、所有 Narration Scene 已有可校准的 Shot 与 Segment；成功时按真实音频校准 Narration Scene
-  的画面覆盖，并把校准后的脚本写为**生产基线**。已对齐的时长逐位保留，重算不会让无关 Segment 的视频选择失效。
-- 无法校准（缺音频、Shot 或 Segment，或缩放后 Segment 短于 0.2 秒）时生产基线保持失效，主流程返回
+  校准要求每条 Cue 已选语言的音频都已选择、存在旁白身份、所有 Narration Scene 已有可校准的 Shot 与 Segment；成功时保证 Narration Scene
+  画面不短于真实音频（加相邻旁白边界缓冲），不足时等比拉长，并把校准后的脚本写为**生产基线**。画面可以比旁白长，
+  多出的时间在旁白前后平分；足够长的时长逐位保留，重算不会让无关 Segment 的视频选择失效。
+- 无法校准（缺音频、Shot 或 Segment）时生产基线保持失效，主流程返回
   `script.apply_operations`（`reason = narration_timing_conflict`，`message` 为 Core 的具体原因，`target_ids` 为无法校准的 Scene），
   Web 在项目概览显示该原因；修正脚本的那次写入即重新建立基线。
 - Drama Scene 没有旁白，不参与校准，表演时长保持脚本设计。

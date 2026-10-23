@@ -95,3 +95,42 @@ def mp4_duration(content: bytes) -> float:
     if timescale <= 0 or duration <= 0 or duration == (1 << (duration_size * 8)) - 1:
         raise ValueError("MP4 Asset 时长不合法。")
     return duration / timescale
+
+
+def prepend_wav_silence(content: bytes, seconds: float) -> bytes:
+    """在 WAV 数据前补指定秒数的静音，其余 chunk 原样保留；用于把旁白定位到 Scene 中间。"""
+    if seconds <= 0:
+        return content
+    if len(content) < 12 or content[:4] != b"RIFF" or content[8:12] != b"WAVE":
+        raise ValueError("旁白音频必须是真实 WAV。")
+    offset = 12
+    block_align = sample_rate = None
+    silence_byte = b"\x00"
+    while offset + 8 <= len(content):
+        kind = content[offset : offset + 4]
+        size = struct.unpack_from("<I", content, offset + 4)[0]
+        body = offset + 8
+        if kind == b"fmt " and size >= 16:
+            format_tag, _channels, sample_rate, _byte_rate, block_align, bits = struct.unpack_from(
+                "<HHIIHH", content, body
+            )
+            if format_tag == 1 and bits == 8:
+                # 8-bit PCM 是无符号采样，静音为 0x80。
+                silence_byte = b"\x80"
+        elif kind == b"data":
+            if not block_align or not sample_rate:
+                raise ValueError("WAV 缺少可用的 fmt chunk。")
+            padding = silence_byte * (round(seconds * sample_rate) * block_align)
+            data_size = size + len(padding)
+            riff_size = struct.unpack_from("<I", content, 4)[0] + len(padding)
+            return (
+                content[:4]
+                + struct.pack("<I", riff_size)
+                + content[8:offset]
+                + b"data"
+                + struct.pack("<I", data_size)
+                + padding
+                + content[body:]
+            )
+        offset = body + size + (size & 1)
+    raise ValueError("WAV 缺少 data chunk。")

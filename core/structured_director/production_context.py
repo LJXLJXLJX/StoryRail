@@ -125,7 +125,7 @@ def _narration_timing(cue: dict, all_scenes, source: Scene, visual_tail_seconds:
         "timing_language": (None if not ready else max(durations, key=durations.get)),
         "duration_seconds": duration,
         "visual_tail_seconds": visual_tail_seconds,
-        "planning_duration_seconds": (
+        "minimum_duration_seconds": (
             None
             if source.driver != "narration" or duration is None
             else narration_visual_duration_seconds(all_scenes, source.id, duration)

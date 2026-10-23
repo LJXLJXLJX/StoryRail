@@ -15,9 +15,10 @@ from .models import (
     StructuredDirectorDocument,
 )
 from .narration_timing import (
+    narration_scene_visual_seconds,
+    narration_start_offset_seconds,
     narration_timing_language,
     narration_timing_seconds,
-    narration_visual_duration_seconds,
 )
 from .script_index import scene_segments
 from .video_inputs import effective_video
@@ -30,6 +31,8 @@ class _SceneAnimaticSpec:
     clip_durations: tuple[float, ...]
     narration_asset_ids: tuple[str, ...]
     narration_start_clip_indices: tuple[int, ...]
+    # 旁白在 Scene 画面里居中时，相对起始 clip 的静音前置秒数。
+    narration_start_offsets: tuple[float, ...]
     duration_seconds: float
 
 
@@ -99,6 +102,7 @@ def _build_scene_animatic_spec(
 
     narration_asset_ids: list[str] = []
     narration_starts: list[int] = []
+    narration_offsets: list[float] = []
     ranges: list[tuple[int, int, float]] = []
     for cue in scene.narration_cues:
         # 预览节奏与成片一致：按中英较长的一条对轨并播放它。
@@ -108,17 +112,16 @@ def _build_scene_animatic_spec(
         start = segment_first_clip[scene.segments[0].id]
         end_segment = scene.segments[-1].id
         end = segment_first_clip[end_segment] + segment_clip_counts[end_segment] - 1
-        # 只有 Narration Scene 有旁白（模型不变量），画面按旁白加边界缓冲对齐。
+        # 只有 Narration Scene 有旁白（模型不变量），画面不短于旁白加边界缓冲，旁白居中。
         ranges.append(
-            (
-                start,
-                end,
-                narration_visual_duration_seconds(script.scenes, scene.id, audio_duration),
-            )
+            (start, end, narration_scene_visual_seconds(script.scenes, scene, audio_duration))
         )
         assert timing_track.selected_audio_asset_id is not None
         narration_asset_ids.append(timing_track.selected_audio_asset_id)
         narration_starts.append(start)
+        narration_offsets.append(
+            narration_start_offset_seconds(script.scenes, scene, audio_duration)
+        )
     clip_durations = _align_animatic_durations(
         clip_durations, clip_transitions, ranges, transition_seconds
     )
@@ -129,6 +132,7 @@ def _build_scene_animatic_spec(
         clip_durations=tuple(clip_durations),
         narration_asset_ids=tuple(narration_asset_ids),
         narration_start_clip_indices=tuple(narration_starts),
+        narration_start_offsets=tuple(narration_offsets),
         duration_seconds=starts[-1] + clip_durations[-1],
     )
 
@@ -158,7 +162,7 @@ def _align_animatic_durations(
     ranges: list[tuple[int, int, float]],
     transition_seconds: float,
 ) -> list[float]:
-    """把 Cue 画面精确对齐到真实 WAV 与确定性的旁白边界视觉缓冲。"""
+    """把 Cue 覆盖区间的画面精确对齐到 Scene 画面时长（不短于旁白加边界缓冲）。"""
     adjusted = list(durations)
     for start, end, audio_duration in ranges:
         for _ in range(24):
@@ -170,8 +174,8 @@ def _align_animatic_durations(
             candidate = adjusted[end] + delta
             if candidate < 0.05:
                 raise ValueError(
-                    "Animatic 画面时长无法与旁白覆盖区间精确对齐；"
-                    "请缩短该 Cue 的旁白或调整其 Shot 范围。"
+                    "Animatic 画面时长无法与 Scene 画面时长精确对齐；"
+                    "请调整该 Scene 的 Segment 时长。"
                 )
             adjusted[end] = candidate
         starts = _animatic_clip_starts(adjusted, transitions, transition_seconds)
@@ -232,12 +236,14 @@ def _build_scene_final_plan(
             raise ValueError("旁白 Cue 的起始 Shot 无法定位。")
         asset_id = cue.track(language).selected_audio_asset_id
         assert asset_id is not None
+        timing_seconds = narration_timing_seconds(cue, asset_by_id)
         narrations.append(
             FinalNarrationPlacement(
                 cue.id,
                 asset_id,
                 scene.segments[0].id,
-                narration_timing_seconds(cue, asset_by_id),
+                timing_seconds,
+                narration_start_offset_seconds(script.scenes, scene, timing_seconds),
             )
         )
         timing_asset_ids.extend(
@@ -371,7 +377,7 @@ def _align_clip_durations_to_narration(
     *,
     scene_ids: set[str] | None = None,
 ) -> list[float]:
-    """Trim or pad the final clip of each Cue so its visual range equals the WAV."""
+    """Trim or pad the final clip of each Cue so its visual range equals the Scene duration."""
     if document.director_script is None:
         raise ValueError("结构化导演脚本不存在。")
     if any(duration <= 0 for duration in source_durations):
@@ -391,10 +397,8 @@ def _align_clip_durations_to_narration(
                 (
                     start,
                     end,
-                    narration_visual_duration_seconds(
-                        document.director_script.scenes,
-                        scene.id,
-                        audio_duration,
+                    narration_scene_visual_seconds(
+                        document.director_script.scenes, scene, audio_duration
                     ),
                 )
             )

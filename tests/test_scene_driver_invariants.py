@@ -128,9 +128,15 @@ def insert_shot(
     inserted = next(shot for shot in scene.shots if shot.id not in known_shot_ids)
     if rest:
         covering = [segment.id for segment in scene.segments if inserted.id in segment.shot_ids]
-        # narration Scene 每次写入都会把 Segment 时长校准到规划总长；同批补段时按总长填，
-        # 最终各段均分。drama Scene 不做校准，按字面时长写入。
-        total = float(sum(durations))
+        # narration Scene 的首段可能已被拉长到旁白时长；同批把首段改回字面时长并补其余段，
+        # 写入后各段保持字面时长。
+        restore_first = [
+            {
+                "op": "update_segment_fields",
+                "segment_id": covering[0],
+                "fields": {"duration_estimate_seconds": first},
+            }
+        ]
         result = registry.execute(
             DirectorCommand(
                 "script.apply_operations",
@@ -138,17 +144,15 @@ def insert_shot(
                 f"{idempotency_key}-rest",
                 {
                     "scope": {"scene_ids": [scene_id]},
-                    "operations": [
+                    "operations": restore_first
+                    + [
                         {
                             "op": "insert_segment",
                             "scene_id": scene_id,
                             "after_segment_id": covering[-1],
                             "segment": {
                                 "shot_ids": [inserted.id],
-                                **segment_input(
-                                    total if existing.driver == "narration" else duration,
-                                    index,
-                                ),
+                                **segment_input(duration, index),
                             },
                         }
                         for index, duration in enumerate(rest, start=1)
@@ -371,11 +375,11 @@ async def _test_adjacent_narration_planning_keeps_fixed_visual_tail(tmp_path):
         "timing_language": "zh",
         "duration_seconds": 16,
         "visual_tail_seconds": 0.4,
-        "planning_duration_seconds": 16.4,
+        "minimum_duration_seconds": 16.4,
     }
     assert second_timing["duration_seconds"] == 16
     assert second_timing["visual_tail_seconds"] == 0.0
-    assert second_timing["planning_duration_seconds"] == 16.0
+    assert second_timing["minimum_duration_seconds"] == 16.0
 
     registry = DirectorCommandRegistry(store)
     first, second = document.director_script.scenes

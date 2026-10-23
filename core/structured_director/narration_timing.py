@@ -33,6 +33,22 @@ def narration_visual_duration_seconds(
     return audio_duration_seconds + narration_visual_tail_seconds(scenes, scene_id)
 
 
+def narration_scene_visual_seconds(
+    scenes: Sequence[Scene], scene: Scene, audio_duration_seconds: float
+) -> float:
+    """Narration Scene 的画面时长：脚本 Segment 时长之和，但不短于旁白加边界缓冲。"""
+    planned = sum(segment.duration_estimate_seconds for segment in scene.segments)
+    return max(planned, narration_visual_duration_seconds(scenes, scene.id, audio_duration_seconds))
+
+
+def narration_start_offset_seconds(
+    scenes: Sequence[Scene], scene: Scene, audio_duration_seconds: float
+) -> float:
+    """旁白在 Scene 画面里居中：超出最短画面（旁白加缓冲）的部分前后平分。"""
+    minimum = narration_visual_duration_seconds(scenes, scene.id, audio_duration_seconds)
+    return (narration_scene_visual_seconds(scenes, scene, audio_duration_seconds) - minimum) / 2
+
+
 def narration_audio_seconds(
     cue: NarrationCue, language: NarrationLanguage, assets: Mapping[str, Asset]
 ) -> float:
@@ -74,7 +90,10 @@ def conform_scene_narration(
     assets: Mapping[str, Asset],
     source_scenes: Sequence[Scene],
 ) -> Scene:
-    """让 Narration Scene 画面覆盖真实音频及相邻旁白边界的固定尾部缓冲。"""
+    """保证 Narration Scene 画面不短于真实音频加相邻旁白边界的固定尾部缓冲。
+
+    画面更长时保留脚本时长，旁白在画面中居中；只有画面不足时才等比拉长各 Segment。
+    """
     if not scene.shots:
         raise ValueError("请基于已选 TTS 真实时长规划 Shot / Segment。")
     segments = scene.segments
@@ -87,18 +106,14 @@ def conform_scene_narration(
             scene.id,
             timing_seconds,
         )
-        if abs(current_duration - required) <= 0.000_001:
-            # 每次脚本写入都会重新校准；已对齐的画面保持原值，避免浮点重算改写时长。
+        if current_duration >= required - 0.000_001:
+            # 每次脚本写入都会重新校准；足够长的画面保持原值，避免浮点重算改写时长。
             continue
         factor = required / current_duration
         scaled_durations = [segment.duration_estimate_seconds * factor for segment in segments]
         # Put the floating-point remainder on the final Segment so the serialized
         # script remains an exact timing contract instead of accumulating drift.
         scaled_durations[-1] = required - sum(scaled_durations[:-1])
-        if any(duration < 0.2 for duration in scaled_durations):
-            raise ValueError(
-                "旁白真实时长无法在当前 Segment 结构内精确分配；请合并过短的 Segment。"
-            )
         segments = tuple(
             replace(segment, duration_estimate_seconds=duration)
             for segment, duration in zip(segments, scaled_durations, strict=True)

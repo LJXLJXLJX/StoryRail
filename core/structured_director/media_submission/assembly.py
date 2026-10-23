@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from uuid import uuid4
 
+from core.media_assets.media_bytes import prepend_wav_silence
 from core.model_providers.contracts import (
     AssemblyClip,
     AssemblyNarration,
@@ -69,6 +70,8 @@ class AssemblySubmission:
         for item in plan.narrations:
             _asset, content = self._store.read_asset(item.asset_id)
             start = clip_index[item.start_segment_id]
+            # 旁白居中：在 WAV 前补静音，FFmpeg 仍从起始 clip 对齐。
+            content = prepend_wav_silence(content, item.start_offset_seconds)
             narration_inputs.append(AssemblyNarration(content, start))
             narration_durations[item.cue_id] = item.timing_seconds
         clip_durations = _align_clip_durations_to_narration(

@@ -315,6 +315,55 @@ def test_conform_production_scenes_is_idempotent_for_calibrated_timing():
     assert conform_production_scenes(first, assets, narrator_ready=True) == first
 
 
+def test_narration_scene_may_hold_picture_longer_with_centered_narration():
+    """画面不短于旁白即可：更长时保留脚本时长，旁白在画面中居中；不足时等比拉长。"""
+    from core.structured_director.narration_timing import (
+        narration_scene_visual_seconds,
+        narration_start_offset_seconds,
+    )
+
+    shot_id = "9" * 32
+    shot = Shot(shot_id, (), "全景", "固定", "动作", "风声", None)
+    cue = _cue(selected=ID_D, selected_en=ID_C)
+    assets = {ID_D: _wav_asset(ID_D, 1.2), ID_C: _wav_asset(ID_C, 1.0)}
+
+    def scene(duration: float) -> Scene:
+        segment = ShotSegment("7" * 32, (shot_id,), duration, "动作", (), None)
+        return Scene(ID_B, "场景", "摘要", "环境", (shot,), (segment,), (cue,), "narration", None)
+
+    held = conform_production_scenes((scene(3.0),), assets, narrator_ready=True)
+    assert held[0].segments[0].duration_estimate_seconds == 3.0
+    assert narration_scene_visual_seconds(held, held[0], 1.2) == 3.0
+    assert narration_start_offset_seconds(held, held[0], 1.2) == pytest.approx(0.9)
+
+    stretched = conform_production_scenes((scene(0.5),), assets, narrator_ready=True)
+    assert stretched[0].segments[0].duration_estimate_seconds == pytest.approx(1.2)
+    assert narration_start_offset_seconds(stretched, stretched[0], 1.2) == pytest.approx(0.0)
+
+
+def test_prepend_wav_silence_keeps_format_and_adds_exact_duration():
+    import io
+    import wave
+
+    from core.media_assets.media_bytes import prepend_wav_silence, wav_duration
+
+    output = io.BytesIO()
+    with wave.open(output, "wb") as target:
+        target.setnchannels(2)
+        target.setsampwidth(2)
+        target.setframerate(24_000)
+        target.writeframes(b"\x01\x02\x03\x04" * 24_000)
+    source = output.getvalue()
+    padded = prepend_wav_silence(source, 0.5)
+    assert wav_duration(padded) == pytest.approx(1.5)
+    with wave.open(io.BytesIO(padded), "rb") as result:
+        assert (result.getnchannels(), result.getsampwidth()) == (2, 2)
+        frames = result.readframes(result.getnframes())
+    assert frames[: 12_000 * 4] == b"\x00" * (12_000 * 4)
+    assert frames[12_000 * 4 :] == b"\x01\x02\x03\x04" * 24_000
+    assert prepend_wav_silence(source, 0.0) is source
+
+
 def test_begin_narration_edit_guards():
     document = _document()
     _expect(

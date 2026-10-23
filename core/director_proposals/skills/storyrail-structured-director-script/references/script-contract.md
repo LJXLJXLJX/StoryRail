@@ -18,11 +18,11 @@ Scene 的 `driver` 必须明确为 `narration` 或 `drama`，同一项目可混�
 
 `narration`：正文是一个语义原子的旁白单元，通常接近一句完整旁白，不能用标点计数替代语义判断。
 初稿仅返回一个 Cue 与空 `shots`、空 `segments`；Cue 没有 Shot 锚点，永远覆盖整个 Scene。
-用户先生成、审核并选择项目所选语言的 TTS。后续根据 Core 提供的 `narration_timing.planning_duration_seconds` 规划
+用户先生成、审核并选择项目所选语言的 TTS。后续根据 Core 提供的 `narration_timing.minimum_duration_seconds` 规划
 Shot 与 Segment（见下文 ShotSegment）。该值以所选语言已选音频中最长一条的真实时长为基础（`timing_language` 标明是
 哪种语言）；当下一 Scene 也是 narration 时，Core 固定给当前
-Scene 增加 `visual_tail_seconds=0.4` 的尾部画面缓冲。各 Segment 时长总和应等于规划时长，且缓冲只放在
-最后一个 Shot 的结尾，不重复加到每个 Segment。任一语言音频未选择时不能规划 Shot timing，不按字符数估算最终时序。
+Scene 增加 `visual_tail_seconds=0.4` 的尾部画面缓冲，缓冲不重复加到每个 Segment。各 Segment 时长总和不得短于该值，
+短了由 Core 等比拉长；画面需要停留时可以更长，多出的时间在旁白前后平分，旁白居中。任一语言音频未选择时不能规划 Shot timing，不按字符数估算最终时序。
 后续规划的 Segment 只写画面动作，`dialogue_lines` 始终为空数组；画面中人物可以有口型以外的表演，但不说台词。
 旁白正文回改只使该语言的音频选择失效，并使时序与装配失效；保留现有视觉设计，待新音频就绪后再调整时序。
 
