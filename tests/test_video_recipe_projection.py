@@ -298,17 +298,23 @@ def test_generation_never_injects_missing_dialogue_references(tmp_path):
         state = service.preview_segment_video_inputs(
             video.segment_id, document.video_plan.segments[0].recipe_inputs, document.revision
         )
-        assert not state["ready"] and "缺少本段已选对白" in state["reason"]
+        # 未绑定的对白只软提示：仍可生成，且 Core 不替用户补入缺失的对白音频。
+        segment = document.director_script.scenes[0].segments[0]
+        assert state["ready"] and state["reason"] is None
+        lines = [line.text for line in segment.dialogue_lines]
+        assert state["dialogue_audio"]["unbound_lines"] == lines
+        assert workset["dialogue_audio"]["unbound_lines"] == lines
         dependency = _dependency(
             document, "video.generate", video.segment_id, catalog=service._registry
         )
-        assert not dependency["ready"]
-        assert any("缺少本段已选对白" in reason for reason in dependency["reasons"])
-        with pytest.raises(ValueError, match="缺少本段已选对白"):
-            await service._media.generate_segment_video(
-                segment_id=video.segment_id, expected_revision=document.revision
-            )
+        assert dependency["ready"], dependency["reasons"]
         assert store.path.read_bytes() == before
+        provider = RecordingProvider(media_type="video/mp4", content=b"fake")
+        replace_video_provider(service, "ref2va", provider)
+        await service._media.generate_segment_video(
+            segment_id=video.segment_id, expected_revision=document.revision
+        )
+        assert len(provider.requests[-1].reference_audios) == 2
 
     asyncio.run(run())
 

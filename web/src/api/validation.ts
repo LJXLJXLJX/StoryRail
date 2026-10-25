@@ -2626,6 +2626,14 @@ const schemas: Record<string, JsonSchema> = {
                   "pattern": "^[0-9a-f]{32}$"
                 }
               },
+              "unbound_lines": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-trimmed-nonempty": true
+                }
+              },
               "error": {
                 "anyOf": [
                   {
@@ -2641,6 +2649,7 @@ const schemas: Record<string, JsonSchema> = {
               "slot",
               "bindings",
               "replace_asset_ids",
+              "unbound_lines",
               "error"
             ],
             "additionalProperties": false

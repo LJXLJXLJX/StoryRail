@@ -944,9 +944,10 @@ def snapshot_schemas() -> dict[str, dict]:
                                 "slot": TEXT,
                                 "bindings": _array(_ref("RecipeBinding")),
                                 "replace_asset_ids": _array(ID),
+                                "unbound_lines": _array(TEXT),
                                 "error": _nullable({"type": "string"}),
                             },
-                            ["slot", "bindings", "replace_asset_ids", "error"],
+                            ["slot", "bindings", "replace_asset_ids", "unbound_lines", "error"],
                         )
                     ),
                     "slot_labels": {

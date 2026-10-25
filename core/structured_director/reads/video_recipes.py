@@ -54,8 +54,8 @@ def video_recipe_state(document, video, catalog, views):
     if view is None:
         return state
     _plugin, recipe = catalog.recipe_definition(Capability.VIDEO_GENERATE, video.active_recipe)
-    state["dialogue_audio"] = dialogue_audio_addition(document, video.segment_id, recipe)
     bindings = dict(video.recipe_inputs.bindings)
+    state["dialogue_audio"] = dialogue_audio_addition(document, video.segment_id, recipe, bindings)
     boundary = binding_for(document, video.segment_id)
     frames = {item.id: item for item in document.keyframe_plan.keyframes}
     for slot in recipe.slots:

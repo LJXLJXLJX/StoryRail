@@ -459,7 +459,8 @@
         "slot": "reference_audios",
         "bindings": [],
         "error": "本 Segment 没有对白。",
-        "replace_asset_ids": []
+        "replace_asset_ids": [],
+        "unbound_lines": []
       }
     },
     "blocked": {
@@ -541,7 +542,8 @@
         "slot": "reference_audios",
         "bindings": [],
         "error": "本 Segment 没有对白。",
-        "replace_asset_ids": []
+        "replace_asset_ids": [],
+        "unbound_lines": []
       }
     },
     "dialogue": {
@@ -672,7 +674,8 @@
           "b05d48179a5ae8adf3695bd06cb6f05b",
           "9330f424a42a42b5caf52134ce730cae",
           "ccaddebb5a671220e481852404815a00"
-        ]
+        ],
+        "unbound_lines": []
       }
     },
     "dialogue_missing": {
@@ -790,7 +793,8 @@
           "b05d48179a5ae8adf3695bd06cb6f05b",
           "9330f424a42a42b5caf52134ce730cae",
           "ccaddebb5a671220e481852404815a00"
-        ]
+        ],
+        "unbound_lines": []
       }
     }
   }

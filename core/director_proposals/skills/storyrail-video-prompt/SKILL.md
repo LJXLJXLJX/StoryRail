@@ -22,7 +22,8 @@ description: 根据当前视频 recipe 与实际输入优化单个 Segment 的�
 - 只改正文：`video.set_prompt`（MCP `save_video_prompt` 不带 `recipe_inputs`）。
 - 绑定参考素材或填写机制参数：`video.update_recipe_inputs`（MCP `save_video_prompt` 带 `recipe_inputs`），与正文原子保存。
   `bindings` 与 `params` 按槽位、按键合并：给出的槽位整体替换（空列表表示清空），未给出的槽位与参数保持原样。
-- 含对白的 Segment：对白 TTS 是视频生成的必需输入。保存时带 `attach_dialogue_audio: true`，Core 按与 Web“一键添加本段对白 TTS”
+- 含对白的 Segment：每句对白须已选 TTS 才能生成；未加入参考音频不阻止生成，但视频不会用到这些对白音频，
+  工作集 `dialogue_audio.unbound_lines` 列出未加入的台词。通常保存时带 `attach_dialogue_audio: true`，Core 按与 Web“一键添加本段对白 TTS”
   相同的规则把已选 WAV 按剧本顺序放在参考音频最前，覆盖本句旧 WAV 并保留其他手动参考；缺任一句 TTS 或超出名额时整次拒绝。
 
 都不生成媒体、不选择候选。用户明确要求生成时，再单独调用 `video.generate`。

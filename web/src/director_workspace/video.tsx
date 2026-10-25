@@ -310,6 +310,15 @@ export function SegmentVideoPanel({
           {preview?.reason ? (
             <small>{preview.reason}</small>
           ) : null}
+          {preview?.dialogue_audio?.unbound_lines.length ? (
+            <em>
+              参考音频未包含本段对白：
+              {preview.dialogue_audio.unbound_lines
+                .map((text) => `「${text}」`)
+                .join("、")}
+              ；仍可生成，但视频不会使用这些对白音频
+            </em>
+          ) : null}
         </article>
         <article>
           <strong>画面约束</strong>

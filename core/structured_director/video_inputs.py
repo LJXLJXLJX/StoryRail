@@ -261,8 +261,8 @@ def attach_dialogue_audio(document, segment_id, slot, bindings):
     return {**bindings, slot.key: merged}
 
 
-def dialogue_audio_addition(document, segment_id, recipe):
-    """完整引用草稿和可覆盖的历史资产集合，供 Web 与专业工作集共用。"""
+def dialogue_audio_addition(document, segment_id, recipe, bindings):
+    """完整引用草稿、可覆盖的历史资产集合与未绑定台词提示，供 Web 与专业工作集共用。"""
     _, _, segment, _ = segment_context(document, segment_id)
     audio_slot = next((slot for slot in recipe.slots if slot.role is Role.REFERENCE_AUDIO), None)
     if audio_slot is not None:
@@ -271,6 +271,7 @@ def dialogue_audio_addition(document, segment_id, recipe):
             "bindings": [],
             "error": None,
             "replace_asset_ids": _dialogue_history_asset_ids(document, segment),
+            "unbound_lines": unbound_dialogue_lines(document, segment_id, recipe, bindings),
         }
         try:
             addition["bindings"] = [
@@ -302,22 +303,22 @@ def dialogue_audio_description(document, line, asset):
 
 
 def validate_dialogue_video_bindings(document, segment_id, recipe, bindings):
-    """生成门禁：仅校验完整显式引用，绝不补入缺失的对白音频。"""
+    """生成门禁：对白音频须已就绪且 recipe 支持参考音频；是否绑定对白只做软提示。"""
     dialogue = dialogue_audio_inputs(document, segment_id)
-    if not dialogue:
-        return dialogue
-    audio_slots = [slot for slot in recipe.slots if slot.role is Role.REFERENCE_AUDIO]
-    if not audio_slots:
+    if dialogue and not any(slot.role is Role.REFERENCE_AUDIO for slot in recipe.slots):
         raise ValueError("含对白的 Segment 必须使用支持参考音频的 Ref2VA recipe。")
-    bound = {item.asset_id for slot in audio_slots for item in bindings.get(slot.key, ())}
-    missing = [line.text for line, _, asset in dialogue if asset.id not in bound]
-    if missing:
-        raise ValueError(
-            "视频参考音频缺少本段已选对白："
-            + "、".join(f"「{text}」" for text in missing)
-            + "。请点击“一键添加本段对白 TTS”并保存视频计划。"
-        )
     return dialogue
+
+
+def unbound_dialogue_lines(document, segment_id, recipe, bindings):
+    """已选对白 TTS 中没有出现在参考音频槽位里的台词；只提示，不阻止生成。"""
+    audio_slots = [slot for slot in recipe.slots if slot.role is Role.REFERENCE_AUDIO]
+    bound = {item.asset_id for slot in audio_slots for item in bindings.get(slot.key, ())}
+    return [
+        line.text
+        for line, _, asset in dialogue_audio_inputs(document, segment_id, require_ready=False)
+        if asset.id not in bound
+    ]
 
 
 def video_candidate_selectable(document, generation):

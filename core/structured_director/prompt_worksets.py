@@ -160,7 +160,9 @@ def video_prompt_workset(
         "exceeds_soft_duration_limit": isinstance(soft, int | float)
         and segment.duration_estimate_seconds > soft,
         "dialogue_timing": actual_dialogue_timing(document, segment),
-        "dialogue_audio": dialogue_audio_addition(document, segment_id, recipe),
+        "dialogue_audio": dialogue_audio_addition(
+            document, segment_id, recipe, dict(video.recipe_inputs.bindings)
+        ),
         # 插件 Skill 规定对白在正文中的写法；Core 原样提交正文，不前置任何文字。
         "prompt_dialogue": facts["dialogue"],
         "video_inputs": [
