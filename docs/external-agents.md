@@ -43,7 +43,7 @@ sequenceDiagram
     B-->>U: 当前项目的启动命令（--project <id> --agent <name>）
     U->>L: 粘贴到终端运行
     L->>CS: {"action":"connect","project_id":…}
-    CS-->>L: Agent caller：当前项目 · 12 小时<br/>project.read/mutate/propose/execute
+    CS-->>L: Agent caller：当前项目 · 30 天<br/>project.read/mutate/propose/execute
     L->>D: 构建/复用镜像 · 准备工作区卷 · 写 AGENTS.md 与 startup.json（无凭据）
     D-->>U: 原生 Agent 空闲启动，不发送任何初始消息
     U->>D: “现在该做什么？” / 具体任务
@@ -70,8 +70,8 @@ sequenceDiagram
 flowchart TB
     subgraph local[本机一键接入（start.sh 默认）]
         lc1[浏览器 caller：human<br/>project.read · human.write · workspace.manage]
-        lc2[项目 Agent caller：agent · 单项目 · 12 小时<br/>project.read · mutate · propose · execute]
-        lc3[Playground Agent caller：agent · 无项目 · 12 小时<br/>playground.use]
+        lc2[项目 Agent caller：agent · 单项目 · 30 天<br/>project.read · mutate · propose · execute]
+        lc3[Playground Agent caller：agent · 无项目 · 30 天<br/>playground.use]
     end
     subgraph custom[自定义部署（--access-policy-file）]
         cp[策略文件 version 2<br/>callers: id · role · project_ids · capabilities<br/>expires_at · token_sha256 · grants]
@@ -272,7 +272,7 @@ WAV、MP3，单项 ≤ 8 MiB，逐项核对 MIME、长度与 SHA-256；拒绝任
 
 ## Playground Agent
 
-从 Playground 页面复制的命令使用 `--playground`（与 `--project` 互斥）。它获得只有 `playground.use`、`project_ids = []` 的 12 小时 caller，
+从 Playground 页面复制的命令使用 `--playground`（与 `--project` 互斥）。它获得只有 `playground.use`、`project_ids = []` 的 30 天 caller，
 独立的 `storyrail-<agent>-playground` 卷与 `playground.launch.lock`（同一时刻只允许一个），工作区提示词为 `PLAYGROUND_PROMPT.md`，
 MCP 以 `--scope playground` 启动、只发布 5 个工具。项目 Agent 拿不到 Playground，Playground Agent 拿不到任何项目，双方都不能跨域复制
 资产。详见 [Playground](playground.md#agent)。

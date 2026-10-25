@@ -15,7 +15,7 @@ Pi auth.json、models.json、settings.json，之后不覆盖，支持 Pi 原生�
 启动器直接报错并要求重新复制启动命令。Playground 模式：
 
 - 锁文件为 `<socket 目录>/playground.launch.lock`，同一时刻只允许一个 Playground Agent；
-- 控制请求发送 `{"action": "connect_playground"}`，凭据只有 `playground.use`、`project_ids=[]`，有效期 12 小时；
+- 控制请求发送 `{"action": "connect_playground"}`，凭据只有 `playground.use`、`project_ids=[]`，有效期 30 天；
 - Docker volume 为 `storyrail-<agent>-playground`，与任何项目工作区隔离；
 - gateway 容器只设置 `STORYRAIL_SCOPE=playground`（不传 `PROJECT_ID`），只放行 `POST /api/playground/commands`；
 - 工作区写入 `startup.json = {"scope": "playground"}`（不含 project_id）和来自 `/app/PLAYGROUND_PROMPT.md` 的

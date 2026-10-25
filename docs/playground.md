@@ -195,7 +195,7 @@ Web 复制到项目前先读目标项目 revision；遇到 `revision_conflict` �
 
 `integrations/agent_launcher` 的 `--playground`（与 `--project` 互斥）启动只连 Playground 的 Agent：
 
-- 本机控制请求 `{"action": "connect_playground"}`，凭据只有 `playground.use`、`project_ids = []`，有效期 12 小时；
+- 本机控制请求 `{"action": "connect_playground"}`，凭据只有 `playground.use`、`project_ids = []`，有效期 30 天；
 - 锁文件 `<socket 目录>/playground.launch.lock`，同一时刻只允许一个 Playground Agent；卷 `storyrail-<agent>-playground`；
 - gateway 只设置 `STORYRAIL_SCOPE=playground`，只放行 `POST /api/playground/commands`；
 - 工作区写入 `startup.json = {"scope": "playground"}` 与来自 `PLAYGROUND_PROMPT.md` 的 `AGENTS.md`；

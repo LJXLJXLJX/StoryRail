@@ -4,7 +4,7 @@
 HTTP 每次请求重读受保护策略；`ContextVar` 只在受信调度期间存在；请求正文永远不能授予权限。
 
 - Agent 写入需要部署开关、`project.mutate`，并且命令在 Agent 操作白名单内；再满足其一：受信 `project.execute`
-  项目委托（本机启动签发，单项目、12 小时），或绑定命令名、参数与原 revision 的精确 grant。
+  项目委托（本机启动签发，单项目、30 天），或绑定命令名、参数与原 revision 的精确 grant。
 - `project.propose` 只允许提交、拒绝、取消**自己的** proposal 任务；Core 每次提交与重放都重新验证原请求的 grant 或委托。
 - Agent 可经 `keyframe.select_candidate` 采用 Keyframe 候选，人类随时可改选；其它候选采用、审核确认、Approval、
   重新开放、repair 与旧写路由不在白名单内，Agent 永远拒绝。

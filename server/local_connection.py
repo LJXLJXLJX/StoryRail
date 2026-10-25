@@ -18,6 +18,9 @@ from core.application.caller import AccessPolicy, strict_json
 
 from .access import reject_symlink_ancestors
 
+# 纯本机使用：浏览器与 Agent 凭据 30 天有效，重连续期。
+CALLER_LIFETIME_SECONDS = 30 * 24 * 3600
+
 
 class LocalConnection:
     def __init__(self, directory: Path, api, loop, project_ids):
@@ -91,7 +94,7 @@ class LocalConnection:
             "role": role,
             "project_ids": projects,
             "capabilities": capabilities,
-            "expires_at": int(time.time()) + 43200,
+            "expires_at": int(time.time()) + CALLER_LIFETIME_SECONDS,
             "token_sha256": hashlib.sha256(token.encode()).hexdigest(),
             "grants": list(grants),
         }
@@ -138,7 +141,7 @@ class LocalConnection:
                 caller["project_ids"] = []
                 caller["capabilities"] = ["playground.use"]
                 caller["grants"] = []
-                caller["expires_at"] = int(time.time()) + 43200
+                caller["expires_at"] = int(time.time()) + CALLER_LIFETIME_SECONDS
                 self._save(policy)
                 connection = {
                     "scope": "playground",
@@ -184,7 +187,7 @@ class LocalConnection:
                 "project.execute",
             ]
             caller["grants"] = []
-            caller["expires_at"] = int(time.time()) + 43200
+            caller["expires_at"] = int(time.time()) + CALLER_LIFETIME_SECONDS
             self._save(policy)
             connection = {
                 "project_id": project_id,

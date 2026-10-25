@@ -85,7 +85,7 @@ def test_connect_playground_reuses_token_and_renews():
 
         policy = local._load()  # noqa: SLF001
         caller = next(c for c in policy["callers"] if c["id"] == first["caller_id"])
-        # 模拟旧凭据被改宽、过期后的重连：必须回到只有 playground.use 的 12 小时凭据。
+        # 模拟旧凭据被改宽、过期后的重连：必须回到只有 playground.use 的 30 天凭据。
         caller["project_ids"] = [PROJECT_ID]
         caller["capabilities"] = ["project.read"]
         caller["expires_at"] = 1
@@ -100,7 +100,7 @@ def test_connect_playground_reuses_token_and_renews():
         assert renewed["project_ids"] == []
         assert renewed["capabilities"] == ["playground.use"]
         assert renewed["grants"] == []
-        assert renewed["expires_at"] > int(time.time()) + 40000
+        assert renewed["expires_at"] > int(time.time()) + 29 * 24 * 3600
 
 
 def test_connect_playground_token_cannot_access_projects():
