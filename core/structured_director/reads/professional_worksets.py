@@ -3,7 +3,7 @@
 import hashlib
 import json
 
-from core.director_proposals.keyframe_codec import _output_schema as keyframe_schema
+from core.director_proposals.keyframe_codec import output_schema as keyframe_schema
 from core.director_proposals.location_codec import output_schema as location_schema
 from core.director_proposals.narration_codec import _OUTPUT_SCHEMA as NARRATION_SCHEMA
 from core.director_proposals.professional_contracts import CONTRACTS, read_contract
@@ -36,8 +36,10 @@ _CAPABILITY_ACTION_NAMESPACE = {
     "video_prompt": "video",
 }
 
+# 工作集按范围裁剪后通常一次返回；分页只兜底多 Scene 读取，
+# 页大小仍低于常见 Agent 的单次工具输出上限。
 _AGENT_RESULT_MAX_BYTES = 64 * 1024
-_AGENT_PAGE_BYTES = 24 * 1024
+_AGENT_PAGE_BYTES = 60 * 1024
 _AGENT_MIN_PAGE_BYTES = 4 * 1024
 
 
@@ -126,7 +128,10 @@ def _saved_keyframe_plan(document, scene_ids):
 
 
 def _referenceable_keyframes(document):
-    """全项目已有选中图的 Keyframe：规划时可作为其它帧的参考，提交时用其当前选中图。"""
+    """全项目已有选中图的 Keyframe 索引：可作为其它帧的参考，提交时用其当前选中图。
+
+    只给定位信息；画面正文等完整详情经 ``project.get_details(kind="keyframe")`` 按需读取。
+    """
     plan = document.keyframe_plan
     script = document.director_script
     if plan is None or script is None:
@@ -148,51 +153,72 @@ def _referenceable_keyframes(document):
         {
             "keyframe_id": item.id,
             "bindings": slots[item.id],
-            "prompt_text": item.prompt_text,
             "visible_character_ids": list(item.visible_character_ids),
-            "selected_asset_id": item.selected_asset_id,
         }
         for item in plan.keyframes
         if item.selected_asset_id is not None and item.id in slots
     ]
 
 
-def _location_library_facts(document):
-    """完整地点库加上每个独立图片条目的选图状态。"""
-    result = []
-    for location in document.location_library.locations:
-        item = _json_value(location)
-        for image, value in zip(location.images, item["images"], strict=True):
-            value["has_selected_image"] = image.selected_asset_id is not None
-        result.append(item)
-    return result
-
-
 def _keyframe_location_images(document):
-    """地点图片及其强制说明；referenceable 的条目可由本帧显式参考，提交其当前选中图。"""
-    result = []
-    for location in document.location_library.locations:
-        result.extend(
-            {
-                "image_id": image.id,
-                "name": image.name,
-                "kind": image.kind.value,
-                "description": image.description,
-                "location_id": location.id,
-                "location_name": location.name,
-                "selected_asset_id": image.selected_asset_id,
-                "referenceable": image.kind is LocationImageKind.IMAGE
-                and image.selected_asset_id is not None,
-            }
-            for image in location.images
-        )
-    return result
+    """全项目地点图片索引；referenceable 的条目可由本帧显式参考，提交其当前选中图。
+
+    本 Scene 地点的图片强制说明在 ``location_library`` 中；其它地点图片的说明经
+    ``project.get_details(kind="location_image")`` 按需读取。
+    """
+    return [
+        {
+            "image_id": image.id,
+            "name": image.name,
+            "kind": image.kind.value,
+            "location_id": location.id,
+            "location_name": location.name,
+            "referenceable": image.kind is LocationImageKind.IMAGE
+            and image.selected_asset_id is not None,
+        }
+        for location in document.location_library.locations
+        for image in location.images
+    ]
 
 
 def _keyframe_location_library(document, scenes):
-    """只投影当前 Scene 使用的地点语义；图片说明用于理解，不构成自动输入。"""
+    """只投影当前 Scene 使用的地点语义与图片强制说明；不含图片生成正文，不构成自动输入。"""
     location_ids = {scene.location_id for scene in scenes if scene.location_id is not None}
-    return [item for item in _location_library_facts(document) if item["id"] in location_ids]
+    result = []
+    for location in document.location_library.locations:
+        if location.id not in location_ids:
+            continue
+        value = _json_value(location)
+        value["images"] = [
+            {
+                "id": image.id,
+                "name": image.name,
+                "kind": image.kind.value,
+                "description": image.description,
+                "has_selected_image": image.selected_asset_id is not None,
+            }
+            for image in location.images
+        ]
+        result.append(value)
+    return result
+
+
+def _location_planning_library(document):
+    """地点规划所需的已有地点语义；图片只给索引，说明与生成正文经 project.get_details 读取。"""
+    result = []
+    for location in document.location_library.locations:
+        value = _json_value(location)
+        value["images"] = [
+            {
+                "id": image.id,
+                "name": image.name,
+                "kind": image.kind.value,
+                "has_selected_image": image.selected_asset_id is not None,
+            }
+            for image in location.images
+        ]
+        result.append(value)
+    return result
 
 
 def contract_read(document, arguments, *, provider_catalog=None):
@@ -276,16 +302,15 @@ def workset_read(
         if scope != {"project_id": document.project_id} or targets is not None:
             raise ValueError("地点规划工作集使用当前项目 scope，不能带 target_ids。")
         scenes, _existing = location_inputs(document)
+        # 导演脚本是核心事实；原始导演方案全文与地点图片详情经 project.get_details 按需读取。
         facts = {
-            "director_plan_markdown": document.director_plan_markdown,
             "aspect_ratio": document.aspect_ratio.value,
             "scenes": _json_value(scenes),
-            "location_library": _location_library_facts(document),
+            "location_library": _location_planning_library(document),
             "image_prompt": image_prompt_guide(provider_catalog, skill_text=False),
         }
         schema = location_schema()
         provenance = [
-            "director_plan_markdown",
             "director_script.scenes",
             "reference_library.characters",
             "location_library",
@@ -339,12 +364,7 @@ def workset_read(
                 "image_prompt": image_prompt_guide(provider_catalog, skill_text=False),
                 "referenceable_keyframes": _referenceable_keyframes(document),
             }
-            schema = keyframe_schema(
-                scenes,
-                video_inputs,
-                [item["keyframe_id"] for item in facts["referenceable_keyframes"]],
-                [item["image_id"] for item in facts["location_images"] if item["referenceable"]],
-            )
+            schema = keyframe_schema()
             provenance.extend(["keyframe_plan", "generations", "location_library"])
         else:
             cues = narration_inputs(document)
@@ -471,12 +491,15 @@ def _agent_page(result, *, query, cursor, page_bytes):
     else:  # pragma: no cover - page minimum ensures at least one full codepoint
         raise RuntimeError("专业读取分页失败。")
     next_cursor = f"{query_digest}:{end}" if end < len(encoded) else None
+    header = {
+        key: result.get(key)
+        for key in ("capability", "kind", "scope", "target_ids")
+        if key in result or key in {"scope", "target_ids"}
+    }
     return {
         "project_id": result["project_id"],
         "observation_revision": result.get("source_revision", query.get("revision")),
-        "capability": result["capability"],
-        "scope": result.get("scope"),
-        "target_ids": result.get("target_ids"),
+        **header,
         "pagination": {
             "mode": "json_utf8_chunks",
             "content_sha256": content_sha256,
@@ -486,8 +509,8 @@ def _agent_page(result, *, query, cursor, page_bytes):
             "next_cursor": next_cursor,
             "is_last": next_cursor is None,
             "instruction": (
-                "使用相同 project/revision/capability/scope/target_ids/page_bytes 和 next_cursor "
-                "续读；按 offset 拼接 content_chunk 后校验 SHA-256 并解析 JSON。"
+                "使用与首次读取相同的参数和 next_cursor 续读；"
+                "按 offset 拼接 content_chunk 后校验 SHA-256 并解析 JSON。"
             ),
         },
         "content_chunk": content_chunk,

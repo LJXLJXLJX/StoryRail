@@ -5,6 +5,7 @@ import gzip
 import json
 import re
 import threading
+import time
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 from http.cookies import SimpleCookie
@@ -19,6 +20,7 @@ from storyrail_contracts.errors import error_payload
 from storyrail_contracts.http_edge import is_media_upload_path
 
 from .access import load_access_policy
+from .agent_timing import AgentTimingLog
 from .request_context import current_http_origin
 
 _MAX_REQUEST_BYTES = 64 * 1024
@@ -78,6 +80,7 @@ class StoryRailHttpServer(ThreadingHTTPServer):
             raise ValueError("max_worker_threads 必须为正数。")
         self.access_policy_file = access_policy_file
         self.local_connection = None
+        self.agent_timing: AgentTimingLog | None = None
         self.request_timeout_seconds = request_timeout_seconds
         self._worker_slots = threading.BoundedSemaphore(max_worker_threads)
         if access_policy_file is not None:
@@ -152,8 +155,26 @@ class StoryRailHttpServer(ThreadingHTTPServer):
                     ),
                 )
             caller_context = current_caller.set(caller)
+            timing = (
+                self.agent_timing
+                if self.agent_timing is not None
+                and caller.role == "agent"
+                and AgentTimingLog.applies(urlsplit(path).path)
+                else None
+            )
+            started = time.monotonic()
             try:
                 response = await self.api.handle(method, path, body, media_type=media_type)
+                if timing is not None:
+                    timing.record(
+                        caller_id=caller.id,
+                        path=urlsplit(path).path,
+                        body=body,
+                        status=response.status,
+                        response_body=response.body,
+                        started=started,
+                        finished=time.monotonic(),
+                    )
                 if (
                     self.local_connection
                     and method == "POST"

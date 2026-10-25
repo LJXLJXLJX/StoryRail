@@ -27,6 +27,7 @@
 | --- | --- | --- |
 | `project.get_projection` | R | 共源故事语义投影（outline / scene / shot / segment，显式 scope，分页） |
 | `project.locate_story` | R | 把“场景 N”“场景 N－镜头 N”或“场景 N－片段 N”（片段在 Scene 内编号）解析为稳定 ID 与上下文 |
+| `project.get_details` | R | 专业工作集索引之外的完整详情：`keyframe` / `location` / `location_image` / `character` 按 1–20 个 ID 读取，`director_plan` 读取原始导演方案全文 |
 | `project.get_contract` | R | 某专业能力的完整 Skill 与参考正文及 SHA-256 |
 | `project.get_workset` | R | 某专业能力在当前 revision 的事实工作集与输出 schema |
 | `project.get_asset_manifest` | R | 实际媒体输入清单（Asset ID、MIME、长度、SHA-256） |

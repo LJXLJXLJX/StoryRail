@@ -32,6 +32,10 @@ whisper-server --host 127.0.0.1 --port 8793 \
 `STORYRAIL_WHISPER_SERVER`、`STORYRAIL_WHISPER_MODEL` 和 `STORYRAIL_WHISPER_ENDPOINT`
 覆盖。服务只绑定回环地址。识别结果仅回填 Web 文本框，用户校对并提交 Breeze 后才进入业务状态；
 Agent 没有 ASR 入口或自动转写提示。
+`agent_timing.py` 为外部 Agent（`role=agent`）的项目与 Playground 命令写轻量计时日志 `.stories/.runtime/agent-timing.jsonl`：每行一条命令，
+含调用方 ID、命令名、读取能力或 kind（`detail`）、状态、请求与响应字节数、Core 处理耗时 `core_ms`，以及上一次响应完成到本次请求到达的
+`agent_ms`（Agent 自身思考、生成与传输耗时）。只记元数据，不记参数正文、响应正文或凭据；超过 8 MiB 时轮转为 `.prev.jsonl`，写入失败不影响请求。
+
 `access.py` 的 `--access-policy-file` 提供受信 caller、项目 scope、有效期和精确 mutation grant；`writer.py` 锁定 stories inode，拒绝第二写服务和 symlink 祖先。
 
 默认监听回环 `127.0.0.1:8765`。未配置策略的开发服务不能开放给外部 Agent。配置、正式入口与隔离要求见 [外部 Agent 接入](../docs/external-agents.md)。

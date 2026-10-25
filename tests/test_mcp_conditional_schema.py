@@ -7,7 +7,13 @@ from jsonschema import Draft202012Validator
 from mcp import Client
 from pydantic import ValidationError
 
-from integrations.storyrail_mcp.app import Read, WorksetRead, create_server, tool_schema
+from integrations.storyrail_mcp.app import (
+    DetailsRead,
+    Read,
+    WorksetRead,
+    create_server,
+    tool_schema,
+)
 from integrations.storyrail_mcp.production_tools import MODELS, Assemble, Batch, GenerationAction
 
 READ_BASE = {"project_id": "a" * 32, "level": "outline"}
@@ -39,6 +45,7 @@ def test_every_public_tool_schema_is_draft_2020_12_valid_and_conditionals_are_ex
             Draft202012Validator.check_schema(schema)
         for name in {
             "read_story",
+            "read_details",
             "read_professional_workset",
             "manage_generation",
             "media_batch",
@@ -303,3 +310,52 @@ def test_typed_operation_unions_are_already_exact_discriminated_branches(name):
         definition = schema["$defs"][alternative["$ref"].removeprefix("#/$defs/")]
         assert definition["additionalProperties"] is False
         assert "const" in definition["properties"]["op"]
+
+
+DETAILS_BASE = {"project_id": "a" * 32}
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"kind": "director_plan"},
+        {"kind": "keyframe", "ids": [SEGMENT_ID]},
+        {"kind": "location_image", "ids": [SCENE_ID, SHOT_ID]},
+    ],
+)
+def test_read_details_legal_combinations_match_schema_and_runtime(arguments):
+    value = {**DETAILS_BASE, **arguments}
+    Draft202012Validator(tool_schema("read_details", DetailsRead)).validate(value)
+    DetailsRead.model_validate(value)
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"kind": "director_plan", "ids": [SCENE_ID]},
+        {"kind": "keyframe"},
+        {"kind": "character", "ids": [f"{index:032x}" for index in range(21)]},
+    ],
+)
+def test_read_details_illegal_combinations_fail_schema_and_runtime(arguments):
+    value = {**DETAILS_BASE, **arguments}
+    assert list(Draft202012Validator(tool_schema("read_details", DetailsRead)).iter_errors(value))
+    with pytest.raises(ValidationError):
+        DetailsRead.model_validate(value)
+
+
+def test_read_details_translates_to_core_get_details():
+    async def run():
+        bridge = RecordingBridge()
+        async with Client(create_server(bridge)) as client:
+            result = await client.call_tool(
+                "read_details", {**DETAILS_BASE, "kind": "keyframe", "ids": [SEGMENT_ID]}
+            )
+            plan = await client.call_tool("read_details", {**DETAILS_BASE, "kind": "director_plan"})
+        assert not result.is_error and not plan.is_error
+        assert [(name, arguments) for _, name, _, _, arguments in bridge.calls] == [
+            ("project.get_details", {"kind": "keyframe", "ids": [SEGMENT_ID]}),
+            ("project.get_details", {"kind": "director_plan"}),
+        ]
+
+    asyncio.run(run())

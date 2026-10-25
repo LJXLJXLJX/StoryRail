@@ -314,7 +314,8 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `location_image.py`：独立地点图片卡的类型、说明、状态、候选、选图、全景取景能力与允许动作投影。
 - `workflow_state.py`：主流程阶段、必需下一步、可选推荐动作与门禁投影。
 - `semantic_projection.py`：人和 Agent 共源的故事投影；Segment 生产扩展包含其他图片规划、选图状态与实际媒体绑定。
-- `professional_worksets.py`：专业能力工作集读取。
+- `professional_worksets.py`：专业能力工作集读取（导演脚本、本次目标与极简索引）。
+- `details.py`：`project.get_details`，按 ID 读取索引之外的完整详情与原始导演方案。
 - `execution_reads.py`：外部恢复与人类审核衔接的最小状态。
 - `read_tools.py`：`project.*` 只读命令分派。
 - `impact.py`：命令影响预览（试算不落盘）。
@@ -357,6 +358,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `writer.py`：单写实例租约。
 - `local_connection.py`：受信本机 Unix 控制入口与项目连接授权。
 - `windows_runtime_lease.py`：对 Windows 媒体服务的控制租约心跳。
+- `agent_timing.py`：外部 Agent 命令的轻量计时日志（`.stories/.runtime/agent-timing.jsonl`）。
 
 ## integrations/ — 外围集成
 

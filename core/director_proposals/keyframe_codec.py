@@ -392,115 +392,12 @@ def _enforce_required_shared_boundaries(
     return replace(proposal, segments=tuple(segments))
 
 
-def _output_schema(
-    scenes: tuple[KeyframeSceneInput, ...],
-    video_inputs=(),
-    referenceable_keyframe_ids=(),
-    referenceable_location_image_ids=(),
-) -> dict[str, object]:
-    segments = [
-        segment for scene in scenes for segment in scene.segments if segment.planning_enabled
-    ]
-    schema = deepcopy(_STATIC_OUTPUT_SCHEMA)
-    by_id = {item["segment_id"]: item for item in video_inputs}
-    segments_schema = schema["properties"]["segments"]
-    segments_schema.update(
-        minItems=len(segments),
-        maxItems=len(segments),
-        prefixItems=[
-            _segment_schema(
-                scene,
-                index,
-                by_id.get(segment.id),
-                tuple(referenceable_keyframe_ids),
-                tuple(referenceable_location_image_ids),
-            )
-            for scene in scenes
-            for index, segment in enumerate(scene.segments)
-            if segment.planning_enabled
-        ],
-        items=False,
-    )
-    return schema
+def output_schema() -> dict[str, object]:
+    """工作集下发的通用输出格式，不逐段展开。
 
-
-def _segment_schema(
-    scene: KeyframeSceneInput,
-    index: int,
-    video_input=None,
-    referenceable_keyframe_ids=(),
-    referenceable_location_image_ids=(),
-) -> dict[str, object]:
-    segment = scene.segments[index]
-    character_ids = [item.id for item in segment.visible_characters]
-    boundary_character_ids = list(character_ids)
-    next_segment = scene.segments[index + 1] if index + 1 < len(scene.segments) else None
-    if next_segment is not None and (
-        next_segment.continues_from_previous
-        or next_segment.start_keyframe_id == segment.end_keyframe_id
-    ):
-        boundary_character_ids.extend(
-            item.id
-            for item in next_segment.visible_characters
-            if item.id not in boundary_character_ids
-        )
-    segment_schema = deepcopy(_STATIC_OUTPUT_SCHEMA["properties"]["segments"]["items"])
-    properties = segment_schema["properties"]
-    properties["segment_id"] = {"type": "string", "const": segment.id}
-    if video_input is not None and video_input["available"]:
-        properties["frame_strategy"] = {"type": "string", "enum": video_input["frame_strategies"]}
-    if index == 0:
-        properties["continues_from_previous"] = {"type": "boolean", "const": False}
-        properties["start_prompt_text"] = {
-            "type": "string",
-            "maxLength": 18_000,
-        }
-    else:
-        properties["start_prompt_text"] = {
-            "type": "string",
-            "maxLength": 18_000,
-        }
-    properties["start_visible_character_ids"] = _id_array_schema(character_ids)
-    properties["end_visible_character_ids"] = _id_array_schema(boundary_character_ids)
-    _restrict_reference_characters(properties["start_character_references"], character_ids)
-    _restrict_reference_characters(properties["end_character_references"], boundary_character_ids)
-    for slot, keyframe_id in (
-        ("start", segment.start_keyframe_id),
-        ("end", segment.end_keyframe_id),
-    ):
-        # 只能参考已有选中图的其它 Keyframe；本帧自身不在可选范围内。
-        ids = [item for item in referenceable_keyframe_ids if item != keyframe_id]
-        properties[f"{slot}_reference_keyframe_ids"] = _enum_array_schema(ids)
-        properties[f"{slot}_reference_location_image_ids"] = _enum_array_schema(
-            list(referenceable_location_image_ids)
-        )
-    return segment_schema
-
-
-def _enum_array_schema(ids: list[str]) -> dict[str, object]:
-    if not ids:
-        return {"type": "array", "maxItems": 0, "items": {"type": "string"}}
-    return {"type": "array", "maxItems": 4, "items": {"type": "string", "enum": ids}}
-
-
-def _restrict_reference_characters(schema: dict, ids: list[str]) -> None:
-    if not ids:
-        schema["maxItems"] = 0
-        return
-    schema["items"]["properties"]["character_id"] = {"type": "string", "enum": ids}
-
-
-def _id_array_schema(ids: list[str]) -> dict[str, object]:
-    if not ids:
-        return {
-            "type": "array",
-            "maxItems": 0,
-            "items": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
-        }
-    return {
-        "type": "array",
-        "items": {"type": "string", "enum": ids},
-    }
+    Segment 顺序、可见角色、造型与参考范围由 Core 领域校验。
+    """
+    return deepcopy(_STATIC_OUTPUT_SCHEMA)
 
 
 def compile_keyframe_proposal(proposal, scenes, required_shared_boundaries=()):

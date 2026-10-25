@@ -27,6 +27,7 @@ from core.project_workspaces import ProjectWorkspaceStore
 from core.structured_director import StructuredDirectorService
 
 from .access import load_access_policy
+from .agent_timing import AgentTimingLog
 from .api import StoryRailApi
 from .http import StoryRailHttpServer
 from .provider_plugins import load_plugin
@@ -186,6 +187,9 @@ def _serve(arguments: argparse.Namespace, parser: argparse.ArgumentParser) -> No
             if arguments.access_policy_file is not None
             else {}
         ),
+    )
+    server.agent_timing = AgentTimingLog(
+        workspaces.root_directory / ".runtime" / "agent-timing.jsonl"
     )
     local_connection = None
     if arguments.local_connection_directory:

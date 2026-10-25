@@ -102,8 +102,11 @@ def test_worksets_current_facts_schema_scope_and_no_writes(tmp_path):
                 provider_catalog=service._registry,
             )
             assert aux not in [x["asset_id"] for x in result["core_facts"]["asset_inputs"]]
-        elif capability in {"reference_library", "script", "location"}:
+        elif capability in {"reference_library", "script"}:
             assert result["core_facts"]["director_plan_markdown"] == document.director_plan_markdown
+        elif capability == "location":
+            # 地点规划以导演脚本为核心；原始方案经 get_details 按需读取。
+            assert "director_plan_markdown" not in result["core_facts"]
         assert execute_project_read(document, "project.get_contract", {"capability": capability})[
             "resources"
         ]

@@ -123,7 +123,7 @@ flowchart LR
 
 ## MCP 工具
 
-项目 scope 的 `tools/list` 发布 27 个工具（逐字节基线：`tests/fixtures/mcp_project_tools.json`）。没有任意 command、shell、文件、
+项目 scope 的 `tools/list` 发布 28 个工具（逐字节基线：`tests/fixtures/mcp_project_tools.json`）。没有任意 command、shell、文件、
 路径、URL、模型目录、Approval 工具，候选采用工具只有 `select_keyframe_candidate`。所有工具顶层与嵌套参数都拒绝未知字段，条件参数用公开 `oneOf` 表达，MCP runtime
 与 schema 共用同一参数矩阵。
 
@@ -131,6 +131,7 @@ flowchart LR
 | --- | --- | --- |
 | 读取 | `read_story` | `project.get_projection`（outline 用项目 scope；scene/shot/segment 必须给 `scene_ids`；`parent_id` 只用于 segment 且是 Scene ID；Shot 与 Segment 都直接属于 Scene，shot 层给出 `segment_ids`、segment 层给出 `shot_ids`；Segment 的 `dialogue_lines` 给出稳定 `id` 与完整写回字段，脚本编辑前应带 `text` 扩展读取完整正文；`video_prompt` / `keyframe` 扩展只用于 segment；Segment 的 `selection` / `keyframe` / `video_prompt` 扩展同时给出 `video_inputs`，含其他图片规划与实际绑定） |
 | | `locate_story` | `project.locate_story` |
+| | `read_details` | `project.get_details`（`kind` 为 `keyframe` / `location` / `location_image` / `character` 时给 1–20 个 `ids`，`director_plan` 不带 ids；只读，超长时与工作集同样分块续读） |
 | | `read_professional_contract` / `read_professional_workset` | `project.get_contract` / `get_workset`（支持 `if_hash` 内容协商与分块续读） |
 | | `read_workflow` | 主流程 + handoff + contract hashes |
 | | `read_media_input` | 受控 Asset 内容（见下文） |
@@ -208,8 +209,10 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
     `reference_image_plans` 给出稳定 ID、正文与选图状态；没有生成计划的已绑定图片也会出现在 `reference_inputs`，
     每张已保存规划还给出其生图用 `image_inputs`（含角色造型参考），无法解析时给出 `image_inputs_error`；
     其中 `slot_index` 是当前媒体槽位中的位置，`asset_id` 可直接交给 `read_media_input` 查看真实图片。
-  - Keyframe 工作集另给出当前 Scene 使用的 `location_library` 语义与扁平 `location_images`（图片 ID、名称、kind、强制说明、
-    所属地点和已选图）；这些只帮助 Agent 理解空间，不会自动成为 Provider 图片输入。
+  - Keyframe 工作集另给出当前 Scene 使用的 `location_library` 语义（含该地点图片的强制说明）与全项目 `location_images`
+    索引（图片 ID、名称、kind、所属地点、是否可参考）；这些只帮助 Agent 理解空间，不会自动成为 Provider 图片输入。
+  - 专业工作集只给导演脚本、本次目标与其它对象的极简索引：`referenceable_keyframes` 不含画面正文，地点规划不含原始导演方案全文与
+    地点图片说明；完整详情由 `read_details` 按 ID 读取（`director_plan` 不带 ID）。
   - 视频工作集给出当前 `video_recipe`（槽位与参数声明、`editable_params`）、`context`（含 `scene.driver`，决定无对白时是否声明预留旁白通道；
     `context.shots` 按覆盖顺序列出 Segment 的每个 Shot（构图、运镜、动作、声音、可见角色名与视图建议名）；
     `segment.continues_from_previous_segment` / `continues_into_next_segment` 表示相邻 Segment 共享边界 Shot 的延续关系；
@@ -269,6 +272,19 @@ WAV、MP3，单项 ≤ 8 MiB，逐项核对 MIME、长度与 SHA-256；拒绝任
    抽取、转码或分析图片。读取被拒绝时如实报告原因，不自行绕道。当前模型没有多模态视觉能力或看不到图片时，
    告知用户并请其提供各图的内容、参考用途和保留/修改要求；已有充分说明时可据此编写并说明信息来源，缺必要说明则暂停相关提示词编写与生成。
    不用命令行工具、文件名、元数据、提示词或计划文字推测画面来冒充看图。
+
+## 命令计时
+
+Core 为每条外部 Agent 命令（项目与 Playground）追加一行 `.stories/.runtime/agent-timing.jsonl`，用于判断慢在 Core 还是慢在 Agent 自身：
+
+| 字段 | 含义 |
+| --- | --- |
+| `command` / `detail` | 命令名与读取能力、kind、level 或 action |
+| `request_bytes` / `response_bytes` | 请求体与响应 JSON 字节数 |
+| `core_ms` | Core 处理耗时 |
+| `agent_ms` | 同一调用方上一次响应完成到本次请求到达的间隔，即 Agent 思考、生成与传输耗时；首条为 null |
+
+日志只含元数据，不含参数正文、响应正文或凭据；超过 8 MiB 轮转为 `.prev.jsonl`。
 
 ## Playground Agent
 

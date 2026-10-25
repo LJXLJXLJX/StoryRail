@@ -148,8 +148,9 @@ FL2VA 至少需要一个边界帧；Ref2VA 可以没有首尾帧，但必须有�
 
 ## 参考其它已选关键帧
 
-- 工作集 `referenceable_keyframes` 列出全项目**已有选中图**的 Keyframe（ID、所在 Scene/Segment/槽位、画面正文、
-  `selected_asset_id`）。只有这些帧可被参考；只有候选、尚未选定的帧不能参考，因为最终选哪张未定。
+- 工作集 `referenceable_keyframes` 是全项目**已有选中图**的 Keyframe 索引（ID、所在 Scene/Segment/槽位、可见角色）。
+  只有这些帧可被参考；只有候选、尚未选定的帧不能参考，因为最终选哪张未定。确实要参考某帧时，用
+  `read_details(kind="keyframe", ids=[...])` 读取它的画面正文，不必为每个候选都读。
 - 可选字段 `start_reference_keyframe_ids` / `end_reference_keyframe_ids`（各 0–4 个，不含本帧）让本帧生图时附带
   这些帧的**当前**选中图，作为“参考关键帧”输入，排在前置帧之后、辅助图之前，与其它输入合计最多 5 张。
 - 用于跨 Segment 保持同一空间、人物状态、道具或光线：例如回到同一机位、同一房间的另一角度、换场后人物服装与伤痕延续。
@@ -162,7 +163,8 @@ FL2VA 至少需要一个边界帧；Ref2VA 可以没有首尾帧，但必须有�
 ## 地点语义与图片
 
 Scene 可以绑定一个语义地点与状态；Shot 和 Keyframe 都不绑定地点。工作集 `location_library` 给出当前 Scene 使用的地点、
-固定陈设、主光、状态和图片说明，`location_images` 列出全项目地点图片及其强制说明，`referenceable=true` 表示可被本帧参考。
+固定陈设、主光、状态和图片强制说明，`location_images` 是全项目地点图片索引，`referenceable=true` 表示可被本帧参考。
+要参考其它地点的图片时，先用 `read_details(kind="location_image", ids=[...])` 读取它的强制说明。
 Planner 应把这些事实与 Scene setting、Shot 构图和动作一起用于写出自洽空间，不能假设地点图片的机位会被复刻。
 
 - 地点图片默认只是资料。需要它的实际画面约束空间时，在 `start_reference_location_image_ids` /

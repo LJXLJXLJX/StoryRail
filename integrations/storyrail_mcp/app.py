@@ -109,6 +109,26 @@ class StoryLocationRead(ReadRequest):
     ]
 
 
+class DetailsRead(ReadRequest):
+    kind: Literal["keyframe", "location", "location_image", "character", "director_plan"]
+    ids: list[ID] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=20,
+        description="要读取的对象 ID；director_plan 不带 ids，其它 kind 必填。",
+    )
+    cursor: str | None = Field(
+        default=None,
+        description="详情超过单次响应预算时返回的续读游标。",
+    )
+
+    @model_validator(mode="after")
+    def ids_contract(self):
+        if (self.kind == "director_plan") != (self.ids is None):
+            raise ValueError("director_plan 不带 ids；其它 kind 必须给出 ids。")
+        return self
+
+
 Capability = Literal[
     "reference_library", "script", "location", "narration", "keyframe", "video_prompt"
 ]
@@ -166,7 +186,7 @@ class ContractRead(ReadRequest):
         default=None,
         description="超过 Agent 响应预算时返回的 query/content-bound 续读游标。",
     )
-    page_bytes: Annotated[int, Field(ge=4096, le=24576)] = 24576
+    page_bytes: Annotated[int, Field(ge=4096, le=61440)] = 61440
 
 
 class SubmitProposal(Request):
@@ -187,7 +207,7 @@ class WorksetRead(ReadRequest):
         default=None,
         description="超过 Agent 响应预算时返回的 query/content-bound 续读游标。",
     )
-    page_bytes: Annotated[int, Field(ge=4096, le=24576)] = 24576
+    page_bytes: Annotated[int, Field(ge=4096, le=61440)] = 61440
     scene_ids: list[ID] = Field(default_factory=list, max_length=100)
     target_ids: list[ID] | None = Field(default=None, min_length=1, max_length=100)
 
@@ -319,6 +339,19 @@ def tool_schema(name, model):
         schema["oneOf"] = _read_story_branches(schema)
     elif name == "read_professional_workset":
         schema["oneOf"] = _workset_branches(schema)
+    elif name == "read_details":
+        schema["oneOf"] = [
+            {
+                "properties": {"kind": {"const": "director_plan"}, "ids": {"type": "null"}},
+            },
+            {
+                "properties": {
+                    "kind": {"enum": ["keyframe", "location", "location_image", "character"]},
+                    "ids": _array_property(schema, "ids", minimum=1, maximum=20),
+                },
+                "required": ["ids"],
+            },
+        ]
     elif name == "manage_generation":
         many = _array_property(schema, "generation_ids", minimum=1, maximum=100)
         one = _array_property(schema, "generation_ids", minimum=1, maximum=1)
@@ -617,6 +650,7 @@ def published_models() -> dict[str, object]:
             "read_media_input": MediaRead,
             "read_story": Read,
             "locate_story": StoryLocationRead,
+            "read_details": DetailsRead,
             "read_professional_contract": ContractRead,
             "read_professional_workset": WorksetRead,
             "read_workflow": ProjectRead,
@@ -635,6 +669,7 @@ def project_models() -> dict[str, object]:
         "read_media_input": MediaRead,
         "read_story": Read,
         "locate_story": StoryLocationRead,
+        "read_details": DetailsRead,
         "read_professional_contract": ContractRead,
         "read_professional_workset": WorksetRead,
         "read_workflow": ProjectRead,
@@ -771,6 +806,12 @@ def create_server(
             "video_prompt/keyframe 扩展只用于 segment；selection、keyframe 或 video_prompt 扩展"
             "同时返回 video_inputs：其他图片规划 ID、slot_index、正文、选图状态及显式媒体绑定。"
         ),
+        "read_details": (
+            "按 ID 读取专业工作集索引之外的完整详情：keyframe（画面正文、参考、选图）、"
+            "location、location_image（说明与生成正文）、character（角色卡与造型）；"
+            "director_plan 读取原始导演方案全文。"
+            "只在当前任务确实需要时调用。"
+        ),
         "locate_story": (
             "按“场景 N”“场景 N－镜头 N”或“场景 N－片段 N”（片段在场景内编号）"
             "解析当前脚本的稳定 ID；只读，不修改项目。"
@@ -848,6 +889,12 @@ def create_server(
             if isinstance(request, StoryLocationRead):
                 name = "project.locate_story"
                 arguments = {"location": request.location}
+            elif isinstance(request, DetailsRead):
+                name = "project.get_details"
+                arguments = request.model_dump(
+                    include={"kind", "ids", "cursor"},
+                    exclude_none=True,
+                )
             elif isinstance(request, ProjectRead) and dispatch_name == "read_workflow":
                 name = "project.get_workflow_state"
                 arguments = request.model_dump(

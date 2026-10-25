@@ -28,6 +28,7 @@ PROPOSAL_KINDS = ("script", "reference", "keyframe", "location")
 READ_OPERATIONS = {
     "project.get_projection",
     "project.locate_story",
+    "project.get_details",
     "project.get_contract",
     "project.get_workset",
     "project.get_asset_manifest",

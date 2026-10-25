@@ -58,7 +58,8 @@ def test_large_keyframe_proposal_submit_is_not_limited_by_read_envelope(tmp_path
 
         started = await http(service, caller, start_command)
         assert started.status == 200, started.body
-        assert _object_count(started.body["data"]) > 500
+        # 工作集只含脚本与极简索引后仍是大型返回；提交体积不受读取信封限制。
+        assert _object_count(started.body["data"]) > 200
         request_id = started.body["data"]["request_id"]
 
         current = store.read()
@@ -98,7 +99,7 @@ def test_large_keyframe_proposal_submit_is_not_limited_by_read_envelope(tmp_path
                     },
                 )
                 assert not recovered.is_error, recovered
-                assert _object_count(recovered.structured_content["data"]) > 500
+                assert _object_count(recovered.structured_content["data"]) > 200
                 submitted = await client.call_tool(
                     "keyframe_proposal",
                     {

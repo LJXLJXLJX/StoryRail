@@ -43,6 +43,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_TOOLS = (set(MODELS) - {"read_human_handoff", "read_workflow_state"}) | {
     "read_story",
     "locate_story",
+    "read_details",
     "read_media_input",
     "read_professional_contract",
     "read_professional_workset",
@@ -103,7 +104,7 @@ def test_oracle_mcp_wire_tools_translation_pagination_and_errors(journey, http_s
             async with Client(create_server(in_process_bridge)) as local:
                 local_tools = {tool.name: tool for tool in (await local.list_tools()).tools}
             assert set(wire_tools) == EXPECTED_TOOLS
-            assert len(wire_tools) == 27
+            assert len(wire_tools) == 28
             assert set(local_tools) == set(wire_tools)
             for name, tool in wire_tools.items():
                 assert tool.input_schema == local_tools[name].input_schema, name

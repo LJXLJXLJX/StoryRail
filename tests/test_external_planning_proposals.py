@@ -154,11 +154,8 @@ def test_keyframe_partial_scope_schema_and_second_shot_submit(tmp_path):
         facts = data["core_facts"]
         assert facts["context_segment_ids"] == [segment.id for segment in scene.segments]
         assert facts["writable_segment_ids"] == [target]
-        segment_schema = data["output_schema"]["properties"]["segments"]
-        assert segment_schema["minItems"] == segment_schema["maxItems"] == 1
-        assert [
-            schema["properties"]["segment_id"]["const"] for schema in segment_schema["prefixItems"]
-        ] == [target]
+        # 输出 schema 是通用格式，不逐段展开；授权范围由 writable_segment_ids 给出、Core 校验。
+        assert "prefixItems" not in data["output_schema"]["properties"]["segments"]
 
         before = store.read()
         untouched_segment = scene.segments[0].id

@@ -19,7 +19,9 @@ description: 从完整结构化脚本规划跨 Scene 共享的地点语义、状
 ## 入口
 
 1. `read_professional_contract(capability="location")` 读本 Skill；`read_professional_workset(capability="location")`
-   读 `director_plan_markdown`、完整 Scene/Shot 上下文、当前地点库、项目画幅与图片插件约定。
+   读完整 Scene/Shot 上下文、当前地点库（图片只给索引）、项目画幅与图片插件约定。脚本缺少空间细节时用
+   `read_details(kind="director_plan")` 查原始导演方案；需要已有图片的说明或生成正文时用
+   `read_details(kind="location_image", ids=[...])`。
 2. `submit_proposal(capability="location", payload={"action":"request","raw_user_instruction":用户原话})` 建立请求；
    返回的工作集不可变，规划期间冲突写入被锁定。
 3. 设计后以 `action="submit"` 提交；放弃用 `action="cancel"`。工作集过期时取消后重新请求。

@@ -3149,6 +3149,113 @@
     "name": "locate_story"
   },
   {
+    "description": "按 ID 读取专业工作集索引之外的完整详情：keyframe（画面正文、参考、选图）、location、location_image（说明与生成正文）、character（角色卡与造型）；director_plan 读取原始导演方案全文。只在当前任务确实需要时调用。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "ids": {
+              "type": "null"
+            },
+            "kind": {
+              "const": "director_plan"
+            }
+          }
+        },
+        {
+          "properties": {
+            "ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "kind": {
+              "enum": [
+                "keyframe",
+                "location",
+                "location_image",
+                "character"
+              ]
+            }
+          },
+          "required": [
+            "ids"
+          ]
+        }
+      ],
+      "properties": {
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "ids": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "keyframe",
+            "location",
+            "location_image",
+            "character",
+            "director_plan"
+          ],
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "name": "read_details"
+  },
+  {
     "description": "按固定能力读取完整 Skill 与参考；支持 if_hash 内容协商，不接受文件路径。",
     "inputSchema": {
       "additionalProperties": false,
@@ -3210,7 +3317,7 @@
           "type": "array"
         },
         "page_bytes": {
-          "maximum": 24576,
+          "maximum": 61440,
           "minimum": 4096,
           "type": "integer"
         },
@@ -3370,7 +3477,7 @@
           ]
         },
         "page_bytes": {
-          "maximum": 24576,
+          "maximum": 61440,
           "minimum": 4096,
           "type": "integer"
         },

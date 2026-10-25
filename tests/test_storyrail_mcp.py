@@ -143,6 +143,7 @@ def test_stdio_disconnect_retry_proposal_cancel_and_scope(tmp_path):
             ) | {
                 "read_story",
                 "locate_story",
+                "read_details",
                 "read_media_input",
                 "read_professional_contract",
                 "read_professional_workset",

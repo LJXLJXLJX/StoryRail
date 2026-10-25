@@ -27,7 +27,9 @@
 - `semantic_projection.py`：显式 Scene scope 的版本化共源故事投影与语义树；Segment 对白投影包含稳定
   `id` 与临时说话者 `voice_description`，可在完整文本模式下无损回填脚本编辑命令；
   Segment 的生产扩展同时返回 `video_inputs`，展示无时间位置的任意图片规划、选图状态与实际媒体绑定。
-- `professional_worksets.py`：`project.get_contract`/`project.get_workset` 分页专业工作集。
+- `professional_worksets.py`：`project.get_contract`/`project.get_workset` 分页专业工作集；工作集只含导演脚本、
+  本次目标与其它对象的极简索引（不逐段展开输出 schema）。
+- `details.py`：`project.get_details`，按 ID 读取索引之外的 Keyframe、地点、地点图片、角色完整详情与原始导演方案。
 - `execution_reads.py`：handoff（workflow + allowed_actions + task discovery）、request 与
   asset manifest 只读衔接。
 - `impact.py`：`preview_command_impact`，在 document 副本上试算正式命令的保守影响上界；

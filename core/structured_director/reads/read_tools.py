@@ -26,6 +26,7 @@ from .common import (
 )
 from .common import _object_count as _object_count
 from .dependencies import _get_dependencies, _selected_assets
+from .details import details_page_read
 from .execution_reads import asset_manifest, handoff_read, request_read
 from .impact import preview_command_impact
 from .professional_worksets import contract_page_read, workset_page_read
@@ -68,6 +69,7 @@ def execute_project_read(
             current, args, provider_recipes=provider_recipes, provider_catalog=provider_catalog
         ),
         "project.locate_story": _locate_story,
+        "project.get_details": details_page_read,
         "project.get_outline": _get_outline,
         "project.get_entities": _get_entities,
         "project.get_scene": _get_scene,

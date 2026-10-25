@@ -353,7 +353,8 @@ stateDiagram-v2
 | Web 快照（GET structured-director） | 人类导演台 | 完整快照 + `allowed_actions` + Asset 使用状态 + 内存进度 |
 | `project.get_projection` / `read_story` | 故事语义投影 | 显式 scope；outline/scene/shot/segment 分层；默认长文本截至 240 字符（`text_mode=preview`），`extensions=["text"]` 取完整正文；`limit` 默认 30、最大 100 |
 | `project.locate_story` | 把“场景 N－镜头 N”或“场景 N－片段 N”解析为稳定 ID | 只读 |
-| `project.get_contract` / `get_workset` | 专业 Skill 与工作集 | 超过 64 KiB 自动切成 ≤ 24 KiB UTF-8 chunk；cursor 绑定 project/revision/capability/scope/targets/page size/内容 SHA-256，拼接后校验摘要 |
+| `project.get_contract` / `get_workset` | 专业 Skill 与工作集 | 工作集只含导演脚本、本次目标与极简索引；超过 64 KiB 自动切成 ≤ 60 KiB UTF-8 chunk；cursor 绑定 project/revision/capability/scope/targets/page size/内容 SHA-256，拼接后校验摘要 |
+| `project.get_details` / `read_details` | 索引之外的完整详情 | `keyframe` / `location` / `location_image` / `character` 按 1–20 个 ID 读取，`director_plan` 读取原始导演方案；超长时同样分块 |
 | `project.get_workflow_state` / `get_handoff` | 主流程与人类交接 | 见 [外部 Agent 接入](external-agents.md#主流程读取) |
 | `project.get_request` / `run.get_status` | 恢复 | 只返回紧凑状态与恢复入口，不重复展开大型工作集 |
 | `project.list_candidates` / `get_dependencies` / `preview_impact` | 候选、依赖、影响预览 | `preview_impact` 复用正式 parser 与影响计算，与同 revision 真实执行结果一致 |

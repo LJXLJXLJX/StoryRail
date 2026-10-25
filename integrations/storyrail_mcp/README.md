@@ -23,7 +23,7 @@ caller 策略（本机一键接入或 `--access-policy-file`）的既有单写�
 
 ## 项目 scope（默认）
 
-`tools/list` 发布 27 个工具，逐字节基线是 `tests/fixtures/mcp_project_tools.json`。`read_human_handoff`、`read_workflow_state`、
+`tools/list` 发布 28 个工具，逐字节基线是 `tests/fixtures/mcp_project_tools.json`。`read_human_handoff`、`read_workflow_state`、
 `script_proposal`、`reference_proposal`、`location_proposal`、`keyframe_proposal` 仍可调用但不下发 schema；统一提交入口是
 `submit_proposal`（`capability` 为 `script`、`reference_library`、`location` 或 `keyframe`）。submit 可直接内联 `proposal`；大型
 proposal 可改用 `proposal_source={kind:"workspace_json", byte_count, sha256}`，adapter 只读取固定
