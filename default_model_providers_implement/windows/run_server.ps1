@@ -28,11 +28,37 @@ if (-not (Test-Path -LiteralPath $TokenFile -PathType Leaf)) {
 $env:STORYRAIL_MODEL_SERVICE_TOKEN = [System.IO.File]::ReadAllText($TokenFile).Trim()
 
 $Python = $env:STORYRAIL_H3_PYTHON
-& $Python -m default_model_providers_implement.server `
-    --host $ListenAddress `
-    --port 8791 `
-    --state-root "E:\StoryRailModelProviders" `
-    --services "mock,h3_fl2va,h3_ref2va,breeze_tts_2,indextts2,seedvr2_7b_sharp_fp8,stable_audio_3,qwen_image" `
-    --resource-name "exclusive_gpu" `
-    --auth-token-env "STORYRAIL_MODEL_SERVICE_TOKEN" `
-    --controller-lease-timeout-seconds 20
+$StateRoot = "E:\StoryRailModelProviders"
+$env:PYTHONUNBUFFERED = "1"
+# Keep this file pure ASCII (PowerShell 5.1 reads BOM-less .ps1 as ANSI).
+# Persist server output and keep the previous run as .prev.log. Start-Process
+# writes stderr to a file instead of turning it into terminating PowerShell errors.
+$OutLog = Join-Path $StateRoot "server.out.log"
+$ErrLog = Join-Path $StateRoot "server.err.log"
+foreach ($Log in @($OutLog, $ErrLog)) {
+    if (Test-Path -LiteralPath $Log -PathType Leaf) {
+        Move-Item -LiteralPath $Log -Destination ($Log -replace "\.log$", ".prev.log") -Force
+    }
+}
+$Server = Start-Process -FilePath $Python -NoNewWindow -PassThru `
+    -RedirectStandardOutput $OutLog `
+    -RedirectStandardError $ErrLog `
+    -ArgumentList @(
+        "-m", "default_model_providers_implement.server",
+        "--host", $ListenAddress,
+        "--port", "8791",
+        "--state-root", $StateRoot,
+        "--services", "mock,h3_fl2va,h3_ref2va,breeze_tts_2,indextts2,seedvr2_7b_sharp_fp8,stable_audio_3,qwen_image",
+        "--resource-name", "exclusive_gpu",
+        "--auth-token-env", "STORYRAIL_MODEL_SERVICE_TOKEN",
+        "--controller-lease-timeout-seconds", "20"
+    )
+# Cache the handle before waiting: Windows PowerShell 5.1 otherwise may report
+# a null ExitCode, and Start-Process -Wait would also wait for child runtimes.
+$null = $Server.Handle
+$Server.WaitForExit()
+# Hand the server exit code to the scheduled task so RestartCount applies on failure.
+if ($null -eq $Server.ExitCode) {
+    exit 1
+}
+exit $Server.ExitCode

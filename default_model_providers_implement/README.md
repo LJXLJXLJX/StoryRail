@@ -57,6 +57,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows\stop_services.ps
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows\uninstall_scheduled_task.ps1
 ```
 
+`run_server.ps1` 把服务 stdout/stderr 写入状态目录的 `server.out.log` / `server.err.log`（上一次运行保留为 `.prev.log`），并以服务的退出码结束，计划任务据此在异常退出后按 `RestartCount` 自动重启。
+
 `stop_services.ps1` 只停止当前运行的 Windows Model Provider、Breeze 和受管 ComfyUI 进程，保留计划任务。
 计划任务配了失败自动重启（每分钟一次、共三次），因此脚本在结束进程之后会再停一次任务压掉已排队的重启，
 并按固定服务模块名清理孤儿进程，最后确认进程与监听端口都已释放，否则直接报错而不是静默留下 GPU 服务。
@@ -146,7 +148,7 @@ WSL NAT 模式的 localhost 转发在虚拟机冷启动后可能不建立，因�
 只在 Windows 主机与 WSL 之间的 NAT 网段内可达，局域网无法访问。
 
 Breeze API 的 stdout/stderr 追加写入 `resident-runtimes/breeze-api.log`（每次启动写分隔行，超过 16 MiB 时从头写），
-启动失败的错误消息附带日志末尾。启动期以退出码 139（段错误）退出时，通常是 WSL 虚拟机的 GPU 半虚拟化失效，
+启动失败的错误消息附带日志末尾。启动期以退出码 139（段错误）或 132（非法指令）退出时，通常是 WSL 虚拟机的 GPU 半虚拟化失效，
 同一虚拟机内重试必然再崩：worker 执行 `wsl --terminate` 重启发行版后重试一次，仍失败才报错。exclusive_gpu
 保证此时没有 IndexTTS2 等其它 WSL runtime 在运行。
 

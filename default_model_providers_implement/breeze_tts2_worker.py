@@ -28,9 +28,10 @@ _REQUEST_ID = re.compile(r"[0-9a-f]{32}")
 _SYNTHESIS_TIMEOUT_SECONDS = 1_800.0
 # --fast-all 在加载后捕获 CUDA Graph 并编译 depth decoder，16 GB 卡上实测约 70 秒。
 _STARTUP_TIMEOUT_SECONDS = 600.0
-# 启动期段错误（128 + SIGSEGV）实测来自 WSL 虚拟机 GPU 半虚拟化失效：同一虚拟机内重试必然再崩，
-# 重启发行版后即恢复。exclusive_gpu 保证此时没有其它 WSL runtime（IndexTTS2）在运行。
-_WSL_RESET_EXIT_CODES = frozenset({139})
+# 启动期段错误（128 + SIGSEGV）与非法指令（128 + SIGILL）实测来自 WSL 虚拟机 GPU 半虚拟化失效：
+# 同一虚拟机内重试必然再崩，重启发行版后即恢复。
+# exclusive_gpu 保证此时没有其它 WSL runtime（IndexTTS2）在运行。
+_WSL_RESET_EXIT_CODES = frozenset({132, 139})
 _API_LOG_LIMIT_BYTES = 16 * 1024 * 1024
 _API_LOG_TAIL_BYTES = 600
 

@@ -162,6 +162,12 @@ class BreezeWorkerStartupCrashTests(unittest.TestCase):
         self.assertEqual(len(resets), 1)
         self.assertEqual(len(spawned), 2)
 
+    def test_illegal_instruction_also_resets_wsl(self) -> None:
+        error, resets, spawned = self._run([132, None])
+        self.assertIsNone(error)
+        self.assertEqual(len(resets), 1)
+        self.assertEqual(len(spawned), 2)
+
     def test_other_exit_codes_do_not_reset_wsl(self) -> None:
         error, resets, spawned = self._run([1])
         self.assertIn("退出码 1。", error or "")
