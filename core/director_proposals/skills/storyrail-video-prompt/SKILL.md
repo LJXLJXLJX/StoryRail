@@ -54,5 +54,9 @@ true 时（`context.duration_seconds` 超过插件声明的 `soft_duration_limit
 `shot_ids` 并在后一段填写 `boundary_from_previous`；因视频模型 15 秒软约束拆分时，`reason` 使用
 `model_constraint`。用户选择不拆时照常保存或生成，不擅自拆分，也不拒绝提交。
 
+对白句数超过当前 recipe 参考音频名额（当前 H3 为 3 条）时，工作集 `dialogue_audio.error` 给出提示，
+`attach_dialogue_audio` 会整次拒绝。生成前主动提醒用户并建议在台词之间或 Shot 边界用 `split_segment` 拆分，
+`reason` 使用 `model_constraint`；用户不拆时，按用户指定只绑定其中几句，未绑定的台词不会进入视频。
+
 有对白时只认工作集 `dialogue_timing` 的真实 WAV 时序；未就绪不猜秒数。真实结束时间超过 Segment 时长时建议
 加长或拆分，不删减、改写或加速台词。

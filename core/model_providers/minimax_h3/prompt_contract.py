@@ -6,6 +6,8 @@ from math import isfinite
 
 
 class H3PromptMode(StrEnum):
+    # FL2VA recipe 尚未选定任何边界帧时的草稿状态；只读工作集照常返回，生成仍由 recipe 拒绝。
+    T2VA = "t2va"
     I2VA = "i2va"
     L2VA = "l2va"
     FL2VA = "fl2va"
@@ -89,6 +91,10 @@ class H3PromptContext:
             raise ValueError("H3 prompt 用户创作方向不合法或过长。")
         if self.scene_driver not in {None, "narration", "drama"}:
             raise ValueError("H3 prompt Scene driver 不合法。")
+        if self.mode is H3PromptMode.T2VA and (
+            self.start_frame_description is not None or self.end_frame_description is not None
+        ):
+            raise ValueError("T2VA 不能提供首尾帧描述。")
         if self.mode is H3PromptMode.I2VA and self.start_frame_description is None:
             raise ValueError("I2VA 必须提供首帧描述。")
         if self.mode is H3PromptMode.L2VA and self.end_frame_description is None:
@@ -103,10 +109,9 @@ class H3PromptContext:
             raise ValueError("Ref2VA 附加图片描述不能为空、超过 2000 字或多于 4 项。")
         if self.additional_image_descriptions and self.mode is not H3PromptMode.REF2VA:
             raise ValueError("附加图片描述只适用于 Ref2VA。")
-        if len(self.audio_reference_descriptions) > 8 or any(
-            not item.strip() or len(item) > 2_000 for item in self.audio_reference_descriptions
-        ):
-            raise ValueError("Ref2VA 参考音频描述不能为空、超过 2000 字或多于 8 项。")
+        # 条数上限由 recipe 槽位在保存与提交时校验；旧项目可能已保存超额绑定，只读工作集仍须可读。
+        if any(not item.strip() or len(item) > 2_000 for item in self.audio_reference_descriptions):
+            raise ValueError("Ref2VA 参考音频描述不能为空或超过 2000 字。")
         if self.audio_reference_descriptions and self.mode is not H3PromptMode.REF2VA:
             raise ValueError("参考音频只适用于 Ref2VA。")
         if len(self.video_reference_descriptions) > 3 or any(

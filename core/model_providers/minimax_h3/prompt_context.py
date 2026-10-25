@@ -28,6 +28,8 @@ def context_from_workset(value):
         else H3PromptMode.I2VA
         if first is not None
         else H3PromptMode.L2VA
+        if last is not None
+        else H3PromptMode.T2VA
     )
 
     def descriptions(role):

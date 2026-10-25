@@ -34,8 +34,6 @@ def test_preview_labels_switch_guards_and_revision_are_read_only(tmp_path):
         "<Audio 1>",
         "<Audio 2>",
         "<Audio 3>",
-        "<Audio 4>",
-        "<Audio 5>",
     ]
     options = {item["id"]: item for item in state["options"]}
     assert not options["minimax_h3.fl2va"]["allowed"]
@@ -203,7 +201,7 @@ def test_ref2va_submits_without_images_when_audio_is_present(tmp_path):
         assert request.first_frame is None
         assert request.last_frame is None
         assert request.additional_frames == ()
-        assert len(request.reference_audios) == 5
+        assert len(request.reference_audios) == 3
         assert request.reference_videos == ()
 
     asyncio.run(run())
@@ -275,7 +273,7 @@ def test_generation_never_injects_missing_dialogue_references(tmp_path):
         store, service, document, _ = await fixture(tmp_path)
         video = document.video_plan.segments[0]
         inputs = video.recipe_inputs.to_json()
-        inputs["bindings"]["reference_audios"] = inputs["bindings"]["reference_audios"][:2]
+        inputs["bindings"]["reference_audios"] = inputs["bindings"]["reference_audios"][:1]
         document = await service.save_segment_video_inputs(
             segment_id=video.segment_id,
             prompt_text="测试显式对白引用。",
@@ -291,17 +289,21 @@ def test_generation_never_injects_missing_dialogue_references(tmp_path):
         )
         assert (
             len([item for item in workset["asset_inputs"] if item["label"].startswith("<Audio")])
-            == 2
+            == 1
         )
-        # 只剩手工参考音频：对白没有 Audio 标签，Core 也不在正文外补任何对白映射。
-        assert [item["audio_label"] for item in workset["prompt_dialogue"]] == [None] * 3
+        # 只保留第一句对白：其余对白没有 Audio 标签，Core 也不在正文外补任何对白映射。
+        assert [item["audio_label"] for item in workset["prompt_dialogue"]] == [
+            "<Audio 1>",
+            None,
+            None,
+        ]
         state = service.preview_segment_video_inputs(
             video.segment_id, document.video_plan.segments[0].recipe_inputs, document.revision
         )
         # 未绑定的对白只软提示：仍可生成，且 Core 不替用户补入缺失的对白音频。
         segment = document.director_script.scenes[0].segments[0]
         assert state["ready"] and state["reason"] is None
-        lines = [line.text for line in segment.dialogue_lines]
+        lines = [line.text for line in segment.dialogue_lines][1:]
         assert state["dialogue_audio"]["unbound_lines"] == lines
         assert workset["dialogue_audio"]["unbound_lines"] == lines
         dependency = _dependency(
@@ -314,7 +316,7 @@ def test_generation_never_injects_missing_dialogue_references(tmp_path):
         await service._media.generate_segment_video(
             segment_id=video.segment_id, expected_revision=document.revision
         )
-        assert len(provider.requests[-1].reference_audios) == 2
+        assert len(provider.requests[-1].reference_audios) == 1
 
     asyncio.run(run())
 
@@ -352,7 +354,7 @@ def test_dialogue_labels_follow_explicit_order_without_duplicate_submission(tmp_
         await service._media.generate_segment_video(
             segment_id=video.segment_id, expected_revision=document.revision
         )
-        assert len(provider.requests[-1].reference_audios) == 5
+        assert len(provider.requests[-1].reference_audios) == 3
         assert [item.content for item in provider.requests[-1].reference_audios] == [
             store.read_asset(binding["asset_id"])[1]
             for binding in inputs["bindings"]["reference_audios"]
@@ -379,10 +381,10 @@ def test_reselecting_tts_only_replaces_existing_corresponding_audio(tmp_path, al
         )
         inputs = video.recipe_inputs.to_json()
         if not already_bound:
-            inputs["bindings"]["reference_audios"] = inputs["bindings"]["reference_audios"][:2]
+            inputs["bindings"]["reference_audios"] = inputs["bindings"]["reference_audios"][1:]
             document = await service.save_segment_video_inputs(
                 segment_id=video.segment_id,
-                prompt_text="只保存手动参考。",
+                prompt_text="只保存其余对白。",
                 bindings=inputs["bindings"],
                 params=inputs["params"],
                 expected_revision=document.revision,
@@ -411,7 +413,7 @@ def test_reselecting_tts_only_replaces_existing_corresponding_audio(tmp_path, al
         )
         updated = document.video_plan.segments[0].recipe_inputs.to_json()
         if already_bound:
-            assert len(updated["bindings"]["reference_audios"]) == 5
+            assert len(updated["bindings"]["reference_audios"]) == 3
             replacement = next(
                 binding
                 for binding in updated["bindings"]["reference_audios"]
@@ -422,8 +424,8 @@ def test_reselecting_tts_only_replaces_existing_corresponding_audio(tmp_path, al
                 binding["asset_id"] != old for binding in updated["bindings"]["reference_audios"]
             )
             assert (
-                updated["bindings"]["reference_audios"][:2]
-                == inputs["bindings"]["reference_audios"][:2]
+                updated["bindings"]["reference_audios"][1:]
+                == inputs["bindings"]["reference_audios"][1:]
             )
         else:
             assert updated == inputs
@@ -570,5 +572,75 @@ def test_dialogue_prompt_problems_are_soft_hints_and_prompt_is_submitted_verbati
         )
         assert provider.requests[-1].prompt == legacy
         assert document.generations[-1].prompt_text == legacy
+
+    asyncio.run(run())
+
+
+def test_dialogue_beyond_audio_slot_maximum_is_only_hinted(tmp_path):
+    from core.model_providers.manifest import Role
+    from core.model_providers.minimax_h3.manifest import MANIFEST
+    from core.structured_director.video_inputs import dialogue_audio_addition
+
+    store, _, document, _ = asyncio.run(fixture(tmp_path))
+    video = document.video_plan.segments[0]
+    recipe = MANIFEST.recipe("minimax_h3.ref2va")
+    bindings = dict(video.recipe_inputs.bindings)
+    # 三句对白恰好占满 H3 的 3 条名额：不提示。
+    assert dialogue_audio_addition(document, video.segment_id, recipe, bindings)["error"] is None
+    narrow = replace(
+        recipe,
+        slots=tuple(
+            replace(slot, maximum=2) if slot.role is Role.REFERENCE_AUDIO else slot
+            for slot in recipe.slots
+        ),
+    )
+    addition = dialogue_audio_addition(document, video.segment_id, narrow, bindings)
+    assert "本段有 3 句对白" in addition["error"] and "2 条上限" in addition["error"]
+    assert len(addition["bindings"]) == 3
+
+
+def test_legacy_over_limit_audio_bindings_stay_readable_but_block_generation(tmp_path):
+    import json
+
+    from core.structured_director.prompt_worksets import video_prompt_workset
+
+    async def run():
+        store, service, document, _ = await fixture(tmp_path)
+        video = document.video_plan.segments[0]
+        extra = [
+            {"asset_id": card.voice_reference_asset_id, "description": "旧音色参考。"}
+            for card in document.reference_library.characters
+            if card.voice_reference_asset_id is not None
+        ]
+        # 模拟旧上限（8 条）下保存的项目：直接写入 authority，绕过当前槽位上限。
+        raw = json.loads(store.path.read_text(encoding="utf-8"))
+        plan = next(
+            item
+            for item in raw["structured_director"]["video_plan"]["segments"]
+            if item["segment_id"] == video.segment_id
+        )
+        plan["recipes"][plan["active_recipe"]]["bindings"]["reference_audios"] += extra
+        plan["prompt_text"] = "旧项目已保存的正文。"
+        store.path.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+        document = store.read()
+        # 经插件格式化（H3 专业上下文）后仍可读取。
+        workset = video_prompt_workset(
+            document,
+            video.segment_id,
+            provider_recipes=service.provider_recipe_views(),
+            provider_catalog=service._registry,
+        )
+        assert len(workset["context"]["segment"]["audio_references"]) == 3 + len(extra)
+        dependency = execute_project_read(
+            document,
+            "project.get_dependencies",
+            {"action": "video.generate", "target_ids": [video.segment_id]},
+            provider_catalog=service._registry,
+        )
+        assert "参考音频必须是 0 到 3 项。" in dependency["items"][0]["reasons"]
+        with pytest.raises(ValueError, match="0 到 3 项"):
+            await service._media.generate_segment_video(
+                segment_id=video.segment_id, expected_revision=document.revision
+            )
 
     asyncio.run(run())

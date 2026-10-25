@@ -114,7 +114,7 @@ def parse_request(path: Path) -> Request:
         _required_task_image(task_dir, name) for name in raw_additional_images
     )
     raw_reference_audios = data["reference_audios"]
-    if not isinstance(raw_reference_audios, list) or len(raw_reference_audios) > 8:
+    if not isinstance(raw_reference_audios, list) or len(raw_reference_audios) > 3:
         raise ValueError("H3 参考音频列表不合法。")
     reference_audios = tuple(_required_task_audio(task_dir, name) for name in raw_reference_audios)
     raw_reference_videos = data["reference_videos"]

@@ -245,8 +245,8 @@ def prepare_h3_ref2va(payload: Any):
     ):
         raise RequestError("Ref2VA additional_references 必须是最多 4 项的数组。")
     audios = data["audio_references"]
-    if not isinstance(audios, list) or len(audios) > 8:
-        raise RequestError("Ref2VA audio_references 必须是最多 8 项的数组。")
+    if not isinstance(audios, list) or len(audios) > 3:
+        raise RequestError("Ref2VA audio_references 必须是最多 3 项的数组。")
     audio_contents: list[bytes] = []
     for index, raw_audio in enumerate(audios, start=1):
         audio = object_fields(raw_audio, required={"media_type", "content"})

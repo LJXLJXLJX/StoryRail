@@ -106,7 +106,7 @@ MANIFEST = PluginManifest(
                     "reference_audios",
                     Role.REFERENCE_AUDIO,
                     "参考音频",
-                    maximum=8,
+                    maximum=3,
                     media_types=("audio/wav",),
                     describe="required",
                     namespace="audio",

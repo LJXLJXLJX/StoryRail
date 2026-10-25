@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 from dataclasses import asdict, replace
 from uuid import uuid4
 
@@ -52,6 +51,7 @@ from core.model_providers.contracts import (
     AudioRemixRequest,
 )
 from core.model_providers.manifest import Capability, Role
+from core.model_providers.observation_wait import BoundedObserver, wait_budget
 from core.model_providers.recipe import MediaInput
 from core.model_providers.registry import ProviderRegistry
 
@@ -254,6 +254,7 @@ class StructuredDirectorService:
         self._lock = asyncio.Lock()
         self._application_lock = asyncio.Lock()
         self._generation_observer = GenerationObserver(store, self._lock, self._provider_for)
+        self._bounded_observer = BoundedObserver()
         self._media = MediaSubmissionUseCases(
             _store=self._store,
             _lock=self._lock,
@@ -1512,20 +1513,17 @@ class StructuredDirectorService:
             request = _parse_application_arguments(parse_generation_wait, command.arguments)
             for generation_id in request.generation_ids:
                 _find_generation(self._store.read(), generation_id)
-            # 默认 18s 在 bridge 20s HTTP timeout 前返回；gateway 30s 覆盖整个往返。
-            max_wait = max(
-                0.0,
-                float(os.environ.get("STORYRAIL_GENERATION_WAIT_MAX_SECONDS", "18")),
-            )
-            poll_seconds = max(
-                0.01,
-                float(os.environ.get("STORYRAIL_GENERATION_WAIT_POLL_SECONDS", "2")),
-            )
+            # 单轮刷新也受截止时间约束，保证在 bridge 20s HTTP timeout 前返回；
+            # 未完成的 Provider 观察或 Artifact 导入留在后台，下一次 wait 复用。
+            max_wait, poll_seconds = wait_budget()
             loop = asyncio.get_running_loop()
             deadline = loop.time() + max_wait
             while True:
-                for generation_id in request.generation_ids:
-                    await self._generation_observer.refresh_generation(generation_id)
+                await self._bounded_observer.refresh(
+                    request.generation_ids,
+                    self._generation_observer.refresh_generation,
+                    deadline,
+                )
                 updated = self._store.read()
                 observed = [
                     _find_generation(updated, generation_id)

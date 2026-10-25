@@ -1,6 +1,6 @@
 # MiniMax H3 Ref2VA Provider
 
-插件标识：`minimax.h3.ref2va`。该用法可携带 0 到 8 条由 Segment 显式选择的 WAV 参考音频；
+插件标识：`minimax.h3.ref2va`。该用法可携带 0 到 3 条由 Segment 显式选择的 WAV 参考音频；
 音频按视频计划顺序组成有序列表，并与提示词中的 `<Audio N>` 一一对应。音频用途由 Core 保存的必填说明表达，Provider 不推断角色或音色语义。
 还可携带 0 到 3 条 2–15 秒 MP4 参考视频（payload `video_references`，base64，稳定顺序对应 `<Video N>`，
 `plugin_version` 4）；参考视频只作视觉参考，Provider 不把其音轨当作音频参考。

@@ -216,8 +216,10 @@ flowchart TB
 
 - 本轮观察期间新产生的依赖任务留到下一轮，避免单轮无界扩展。
 - **观察从不扩大生成授权**：单目标完成后只导入该目标产物，不触发任何其它目标；批次的下一波必须显式 continue。
-- `generation.wait` 是动态观察：对明确的 Generation ID 集合最多等待约 18 秒（默认，每 2 秒一轮），
-  在 MCP bridge 20 秒超时前返回 `wait_again`。Provider 事实无变化时不写 ApplicationRequest、不递增 revision；
+- `generation.wait` 是动态观察：对明确的 Generation ID 集合最多等待约 15 秒（默认，每 2 秒一轮），
+  在 MCP bridge 20 秒超时前返回 `wait_again`。单轮刷新同样受截止时间约束（至少 1 秒宽限）：Provider 观察或大文件
+  Artifact 导入未完成时先返回当前快照，刷新在后台继续并落盘，下一次 wait 复用同一刷新而不重复观察；Playground 的
+  `wait_runs` 使用同一机制。Provider 事实无变化时不写 ApplicationRequest、不递增 revision；
   因此断连后可以安全再次 wait，但上一次响应不代表当前状态。wait 不校验 `expected_revision`，可以省略：Generation 回调本身
   会推进 revision，观察动作不应因此冲突。
 

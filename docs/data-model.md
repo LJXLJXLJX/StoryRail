@@ -321,7 +321,7 @@ Scene 保存可选 `location_id` / `state_id`，state 必须属于该 Location�
 切换 recipe 保留每个 recipe 的输入与参数，清除当前视频和超分选择并失效相关装配；同值切换为 noop。
 若当前显式输入的角色或约束不受目标 recipe 支持，必须先移除这些输入。卸载插件后历史输入仍保留，可选择新的可用 recipe。
 
-H3 插件的 `minimax_h3.ref2va` 声明附加图 0–4 张、WAV 音频 0–8 条、MP4 视频 0–3 条（2–15 秒），各槽位内资产唯一且必填说明。
+H3 插件的 `minimax_h3.ref2va` 声明附加图 0–4 张、WAV 音频 0–3 条、MP4 视频 0–3 条（2–15 秒），各槽位内资产唯一且必填说明。
 `minimax_h3.fl2va` 不接受这些显式引用。约束来自插件 manifest，不是 Segment 模型的固定字段。
 Web 快照另有只读 `recipe_state`：当前可用性、切换选项及原因、完整生成时长、软时长提示和 Core 计算的输入标签。
 

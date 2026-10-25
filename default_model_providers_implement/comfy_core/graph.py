@@ -103,8 +103,8 @@ class H3GraphInputs:
             raise ValueError("FL2VA workflow 不接受附加参考图、参考音频或参考视频。")
         if len(self.additional_images) > 4 or any(not item for item in self.additional_images):
             raise ValueError("Ref2VA workflow 最多支持 4 张附加参考图。")
-        if len(self.reference_audios) > 8 or any(not item for item in self.reference_audios):
-            raise ValueError("Ref2VA workflow 最多支持 8 条参考音频。")
+        if len(self.reference_audios) > 3 or any(not item for item in self.reference_audios):
+            raise ValueError("Ref2VA workflow 最多支持 3 条参考音频。")
         if len(self.reference_videos) > 3 or any(not item for item in self.reference_videos):
             raise ValueError("Ref2VA workflow 最多支持 3 条参考视频。")
         # 潜变量 16 倍下采样后还要 2×2 patchify；FL2VA+SelfLift 实测 848×480、1280×720 失败。

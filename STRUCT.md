@@ -138,6 +138,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `image_prompt_skill.py`、`skills/storyrail-image-prompt-writing/SKILL.md`：项目与 Playground 共用的全局图片提示词规范、当前插件指代约定与插件 Skill 目录（`prompt_skill_index`），随图片工作集交付。
 - `settings.py`：`.runtime/providers.json` 的严格读写与原子替换。
 - `http.py`：插件共享的低级 HTTP 传输与响应校验。
+- `observation_wait.py`：项目 `generation.wait` 与 Playground `wait_runs` 共用的有界观察与等待预算。
 - 每个插件子目录都有 `README.md`（用法与契约）、`provider.py`（请求翻译与 submit/observe/cancel/read_artifact）
   和导出用 `__init__.py`；可绑定的插件另有 `manifest.py`（recipe、槽位、参数、设置）与 `plugin.py`（`plugin_instance` 安装工厂）：
   - `agy_image/`：AGY 图片生成/编辑。

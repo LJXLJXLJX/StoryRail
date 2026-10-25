@@ -179,10 +179,10 @@ class Ref2VARequest:
             raise ValueError("Ref2VA 附加参考图必须是最多 4 项的图片元组。")
         if (
             not isinstance(self.reference_audios, tuple)
-            or len(self.reference_audios) > 8
+            or len(self.reference_audios) > 3
             or any(not isinstance(item, ReferenceAudio) for item in self.reference_audios)
         ):
-            raise ValueError("Ref2VA 参考音频必须是最多 8 项的元组。")
+            raise ValueError("Ref2VA 参考音频必须是最多 3 项的元组。")
         if (
             not isinstance(self.reference_videos, tuple)
             or len(self.reference_videos) > 3

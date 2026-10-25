@@ -73,6 +73,9 @@ Shot；同一 Shot 跨多个 Segment 时是同一连续镜头的生产切片。�
   这类有明确剪辑理由的镜头组，实验前每个 Segment 不超过 3 个；不要为凑节拍虚构切镜，也不要把时间跳跃或
   视角主体切换塞进同一 Segment。
 - 需要精确构图控制的镜头独占 Segment：建立镜头、关键揭示、全场最重的镜头、需要严格首尾状态的镜头。
+- 每个 Segment 的 `dialogue_lines` 不超过 3 条：当前默认本地 H3 每条对白占一条参考音频，最多 3 条。对话更长时
+  在 Shot 边界或台词之间拆成相邻 Segment；不要为凑数合并不同说话者的台词，也不要删减台词。这是机器约束，
+  Core 不会拒绝，超出的 Segment 生成视频前由 Director 提醒用户拆分。
 - 相邻 Segment 共享边界 Shot 即延续同一镜头，后一段必须填写 `boundary_from_previous`，写清交接时刻的角色、
   摄影机、道具和光线状态；不共享边界 Shot 即剪辑，`boundary_from_previous` 必须为 null；第一个 Segment 为 null。
   `boundary_from_previous.reason` 只允许：模型或时长约束拆段用 `model_constraint`，连续性锚点用

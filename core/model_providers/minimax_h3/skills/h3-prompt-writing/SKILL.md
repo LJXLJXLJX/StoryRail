@@ -44,7 +44,7 @@ Read `references/ref-en.txt` for label rules, retention analysis, and complete e
 
 - FL2VA 没有可显式绑定的槽位；需要参考素材时先经用户同意切到 `minimax_h3.ref2va`。切回 FL2VA 前必须先清空下列槽位。
 - `additional_images`：最多 4 张图片，例如角色参考图、用户显式选择的地点图片；说明写它定义的主体或环境。
-- `reference_audios`：最多 8 条 WAV。已选对白 TTS 按剧本顺序占用前面的 Audio 标签；其余名额才用于用户显式添加的音色、环境声或原声参考。系统对白音频来自 DialoguePlan，不从角色卡参考音色直接推导。
+- `reference_audios`：最多 3 条 WAV（官方 ComfyUI 节点上限）；对白超过 3 句的 Segment 需拆分，或由用户决定只绑定其中几句。已选对白 TTS 按剧本顺序占用前面的 Audio 标签；其余名额才用于用户显式添加的音色、环境声或原声参考。系统对白音频来自 DialoguePlan，不从角色卡参考音色直接推导。
 - `reference_videos`：最多 3 条 2–15 秒 MP4，只参考画面；说明运镜、节奏或动作用途。
 - 每项说明必填且 Asset 不重复；Ref2VA 可无图片，但五类媒体槽至少一项；`params` 传 `{}`。
 - 绑定变化后正文要引用新标签时，重读工作集，用新的 `actual_provider_inputs` 标签写正文。

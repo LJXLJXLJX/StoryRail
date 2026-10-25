@@ -15,7 +15,7 @@
 - 内存调度保持该 ComfyUI 版本自己的 DynamicVRAM、RAM-pressure cache 和阶段卸载实现；
 - 外层 Windows Provider 仍然常驻，并继续负责互斥调度、取消、恢复与 Core 租约。
 
-Ref2VA 固定图使用官方 `MiniMaxH3ReferenceToVideo`。首尾图片在前、最多 4 张附加图片随后按顺序作为 `<Picture N>` 输入；参考音频为可选输入，存在时按 Core 给出的稳定顺序作为 `ref_audio_N`。Prompt 的 `<Audio N>` 与同序输入对应，音频用途由 Core 保存的说明表达；没有音频时固定图只建立图片参考条件。可选参考视频（最多 3 条）先在暂存阶段用 PyAV 重采样为 24fps、无音轨的 H.264 MP4（官方节点按 24fps 解释参考帧），再经 `LoadVideo` → `GetVideoComponents` 取 IMAGE 帧，以 0 起的 `ref_videos.ref_video_{N-1}` 接入（`ref_video_0` 对应 `<Video 1>`）；不接 `ref_video_audios`，只作视觉参考。时间对齐语句负责近精确首尾安排。这里不再注入自定义 latent 节点，也不把
+Ref2VA 固定图使用官方 `MiniMaxH3ReferenceToVideo`。首尾图片在前、最多 4 张附加图片随后按顺序作为 `<Picture N>` 输入；参考音频为可选输入（官方节点 `ref_audios` 上限 3 条），存在时按 Core 给出的稳定顺序以 0 起的 `ref_audios.ref_audio_{N-1}` 接入。Prompt 的 `<Audio N>` 与同序输入对应，音频用途由 Core 保存的说明表达；没有音频时固定图只建立图片参考条件。可选参考视频（最多 3 条）先在暂存阶段用 PyAV 重采样为 24fps、无音轨的 H.264 MP4（官方节点按 24fps 解释参考帧），再经 `LoadVideo` → `GetVideoComponents` 取 IMAGE 帧，以 0 起的 `ref_videos.ref_video_{N-1}` 接入（`ref_video_0` 对应 `<Video 1>`）；不接 `ref_video_audios`，只作视觉参考。时间对齐语句负责近精确首尾安排。这里不再注入自定义 latent 节点，也不把
 模型的提示词服从性提升为像素级硬约束。FL2VA 和 Ref2VA 使用不同 resident runner；相邻同 mode 复用，
 两者切换时先释放旧进程，避免两个进程同时持有扩散权重占用 16 GB VRAM / 32 GB RAM。
 

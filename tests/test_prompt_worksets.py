@@ -181,16 +181,8 @@ async def fixture(tmp_path):
         segment_id=scene.segments[0].id,
         prompt_text="",
         additional_image_references=(),
-        audio_references=tuple(
-            (
-                SegmentVideoAudioReference(
-                    character.voice_reference_asset_id,
-                    f"{character.name} 的音色参考。" if index == 0 else "原样使用这段对白。",
-                )
-                for index, character in enumerate(doc.reference_library.characters)
-                if character.voice_reference_asset_id is not None
-            )
-        ),
+        # 三句对白 TTS 已占满 H3 官方节点的 3 条参考音频上限，不再追加角色音色参考。
+        audio_references=(),
         expected_revision=doc.revision,
     )
     current_video = doc.video_plan.segments[0]
@@ -300,9 +292,9 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
         assert request.last_frame.content == assets["<Picture 2>"]
         assert request.additional_frames[0].content == assets["<Picture 3>"]
         assert [audio.content for audio in request.reference_audios] == [
-            assets[f"<Audio {index}>"] for index in range(1, 6)
+            assets[f"<Audio {index}>"] for index in range(1, 4)
         ]
-        assert len(store.read().generations[-1].input_asset_ids) == 8
+        assert len(store.read().generations[-1].input_asset_ids) == 6
         picture = workset["context"]["actual_provider_inputs"]["pictures"][2]
         assert picture == {
             "label": "<Picture 3>",
@@ -312,7 +304,7 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
             "time_seconds": None,
         }
         audios = workset["context"]["actual_provider_inputs"]["audios"]
-        assert [item["label"] for item in audios] == [f"<Audio {index}>" for index in range(1, 6)]
+        assert [item["label"] for item in audios] == [f"<Audio {index}>" for index in range(1, 4)]
         assert [item["description"] for item in audios] == [
             item.description
             for item in video_slot(document.video_plan.segments[0], "reference_audios")
@@ -384,7 +376,7 @@ def test_ref2va_submits_reference_videos_with_lineage(tmp_path):
         assert [item.duration_seconds for item in request.reference_videos] == [3.0]
         generation = generated.generations[-1]
         assert reference_video.id in generation.input_asset_ids
-        assert len(generation.input_asset_ids) == 8
+        assert len(generation.input_asset_ids) == 6
 
     asyncio.run(run())
 
@@ -448,8 +440,6 @@ def test_video_labels_number_independently_and_map_to_provider_order(tmp_path):
             "<Audio 1>",
             "<Audio 2>",
             "<Audio 3>",
-            "<Audio 4>",
-            "<Audio 5>",
             "<Video 1>",
             "<Video 2>",
         ]
@@ -582,12 +572,12 @@ def test_invalid_input_and_specialized_scope_are_read_only(tmp_path):
     with pytest.raises(ValueError, match="必须填写说明"):
         SegmentVideoVideoReference(document.assets[0].id, "   ")
     current_video = document.video_plan.segments[0]
-    with pytest.raises(ValueError, match="0 到 8 项"):
+    with pytest.raises(ValueError, match="0 到 3 项"):
         replace_video(
             current_video,
             audio_references=tuple(
                 SegmentVideoAudioReference(f"{index + 1:032x}", "通用参考音频。")
-                for index in range(9)
+                for index in range(4)
             ),
         )
     with pytest.raises(ValueError, match="不能重复"):
@@ -635,7 +625,11 @@ def test_invalid_input_and_specialized_scope_are_read_only(tmp_path):
     generic_audio_video = replace_video(
         next(item for item in document.video_plan.segments if item.segment_id == quiet_segment.id),
         generation_mode=SegmentVideoGenerationMode.REF2VA,
-        audio_references=(video_slot(document.video_plan.segments[0], "reference_audios")[1],),
+        audio_references=(
+            SegmentVideoAudioReference(
+                characters[1].voice_reference_asset_id, "原样使用这段对白。"
+            ),
+        ),
     )
     generic_audio_document = replace(
         document,
@@ -884,6 +878,29 @@ def test_single_boundary_labels_follow_actual_enabled_slot(tmp_path):
         assert len(workset["asset_inputs"]) == 1
 
 
+def test_fl2va_workset_without_boundary_frames_reads_as_t2va(tmp_path):
+    store, _, document, _ = asyncio.run(fixture(tmp_path))
+    binding = document.keyframe_plan.segments[1]
+    changed = replace(
+        document,
+        keyframe_plan=replace(
+            document.keyframe_plan,
+            segments=tuple(
+                replace(item, start_enabled=False, end_enabled=False)
+                if item.segment_id == binding.segment_id
+                else item
+                for item in document.keyframe_plan.segments
+            ),
+        ),
+    )
+    workset = video_prompt_workset(changed, binding.segment_id)
+    assert workset["context"]["mode"] == "t2va"
+    assert workset["context"]["segment"]["start_frame_description"] is None
+    assert workset["context"]["segment"]["end_frame_description"] is None
+    assert workset["context"]["actual_provider_inputs"]["pictures"] == []
+    assert workset["asset_inputs"] == []
+
+
 def test_ref2va_reference_audio_has_no_duration_limit(tmp_path):
     from structured_director_fixtures import RecordingProvider
 
@@ -906,7 +923,7 @@ def test_ref2va_reference_audio_has_no_duration_limit(tmp_path):
             expected_revision=document.revision,
             prompt_text="中文正文；无字幕、无水印。",
             additional_image_references=(),
-            audio_references=(*dialogue_audio_bindings(document, segment.id), *references),
+            audio_references=(*dialogue_audio_bindings(document, segment.id)[:1], *references),
             video_references=(),
         )
         await service._media.generate_segment_video(

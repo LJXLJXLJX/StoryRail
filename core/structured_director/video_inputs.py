@@ -280,6 +280,13 @@ def dialogue_audio_addition(document, segment_id, recipe, bindings):
             ]
         except ValueError as exc:
             addition["error"] = str(exc)
+        # 软约束：对白句数超过参考音频名额时只提示拆分，不阻止保存其中几句或生成。
+        if len(segment.dialogue_lines) > audio_slot.maximum:
+            addition["error"] = (
+                f"本段有 {len(segment.dialogue_lines)} 句对白，超过当前 recipe {audio_slot.label}"
+                f" {audio_slot.maximum} 条上限，无法全部加入。建议拆分 Segment；"
+                "也可只手动绑定其中几句，未绑定台词不会进入视频。"
+            )
         addition["replace_asset_ids"] = list(
             dict.fromkeys(
                 [

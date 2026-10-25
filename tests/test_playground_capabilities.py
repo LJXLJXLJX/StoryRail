@@ -315,10 +315,10 @@ def test_ref2va_list_limits_and_required_descriptions() -> None:
             PlaygroundCapability.VIDEO_REF2VA,
             {**base, "additional_images": [_described(ID_B)] * 5},
         )
-    with pytest.raises(ValueError, match="0 到 8 项"):
+    with pytest.raises(ValueError, match="0 到 3 项"):
         _parse(
             PlaygroundCapability.VIDEO_REF2VA,
-            {**base, "reference_audios": [_described(ID_B)] * 9},
+            {**base, "reference_audios": [_described(ID_B)] * 4},
         )
     with pytest.raises(ValueError, match="0 到 3 项"):
         _parse(

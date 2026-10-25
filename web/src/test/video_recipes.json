@@ -205,7 +205,7 @@
             "role": "reference_audio",
             "label": "参考音频",
             "minimum": 0,
-            "maximum": 8,
+            "maximum": 3,
             "media_types": [
               "audio/wav"
             ],
@@ -442,12 +442,7 @@
         "reference_audios": [
           "<Audio 1>",
           "<Audio 2>",
-          "<Audio 3>",
-          "<Audio 4>",
-          "<Audio 5>",
-          "<Audio 6>",
-          "<Audio 7>",
-          "<Audio 8>"
+          "<Audio 3>"
         ],
         "reference_videos": [
           "<Video 1>",
@@ -525,12 +520,7 @@
         "reference_audios": [
           "<Audio 1>",
           "<Audio 2>",
-          "<Audio 3>",
-          "<Audio 4>",
-          "<Audio 5>",
-          "<Audio 6>",
-          "<Audio 7>",
-          "<Audio 8>"
+          "<Audio 3>"
         ],
         "reference_videos": [
           "<Video 1>",
@@ -587,41 +577,25 @@
           "slot": "reference_audios",
           "role": "reference_audio",
           "index": 0,
-          "asset_id": "5047c3400c95d28535674b5aa83eecd4",
-          "description": "甲 的音色参考。",
+          "asset_id": "b05d48179a5ae8adf3695bd06cb6f05b",
+          "description": "说话人：乙。\n说话内容：先听我说。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
           "label": "<Audio 1>"
         },
         {
           "slot": "reference_audios",
           "role": "reference_audio",
           "index": 1,
-          "asset_id": "86a1437e2b56c2fe54a5e3f6c89c4f3d",
-          "description": "原样使用这段对白。",
+          "asset_id": "9330f424a42a42b5caf52134ce730cae",
+          "description": "说话人：甲。\n说话内容：好的。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
           "label": "<Audio 2>"
         },
         {
           "slot": "reference_audios",
           "role": "reference_audio",
           "index": 2,
-          "asset_id": "b05d48179a5ae8adf3695bd06cb6f05b",
-          "description": "说话人：乙。\n说话内容：先听我说。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
-          "label": "<Audio 3>"
-        },
-        {
-          "slot": "reference_audios",
-          "role": "reference_audio",
-          "index": 3,
-          "asset_id": "9330f424a42a42b5caf52134ce730cae",
-          "description": "说话人：甲。\n说话内容：好的。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
-          "label": "<Audio 4>"
-        },
-        {
-          "slot": "reference_audios",
-          "role": "reference_audio",
-          "index": 4,
           "asset_id": "ccaddebb5a671220e481852404815a00",
           "description": "说话人：乙。\n说话内容：我们开始。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
-          "label": "<Audio 5>"
+          "label": "<Audio 3>"
         }
       ],
       "slot_labels": {
@@ -640,12 +614,7 @@
         "reference_audios": [
           "<Audio 1>",
           "<Audio 2>",
-          "<Audio 3>",
-          "<Audio 4>",
-          "<Audio 5>",
-          "<Audio 6>",
-          "<Audio 7>",
-          "<Audio 8>"
+          "<Audio 3>"
         ],
         "reference_videos": [
           "<Video 1>",
@@ -719,41 +688,25 @@
           "slot": "reference_audios",
           "role": "reference_audio",
           "index": 0,
-          "asset_id": "5047c3400c95d28535674b5aa83eecd4",
-          "description": "甲 的音色参考。",
+          "asset_id": "b05d48179a5ae8adf3695bd06cb6f05b",
+          "description": "说话人：乙。\n说话内容：先听我说。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
           "label": "<Audio 1>"
         },
         {
           "slot": "reference_audios",
           "role": "reference_audio",
           "index": 1,
-          "asset_id": "86a1437e2b56c2fe54a5e3f6c89c4f3d",
-          "description": "原样使用这段对白。",
+          "asset_id": "9330f424a42a42b5caf52134ce730cae",
+          "description": "说话人：甲。\n说话内容：好的。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
           "label": "<Audio 2>"
         },
         {
           "slot": "reference_audios",
           "role": "reference_audio",
           "index": 2,
-          "asset_id": "b05d48179a5ae8adf3695bd06cb6f05b",
-          "description": "说话人：乙。\n说话内容：先听我说。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
-          "label": "<Audio 3>"
-        },
-        {
-          "slot": "reference_audios",
-          "role": "reference_audio",
-          "index": 3,
-          "asset_id": "9330f424a42a42b5caf52134ce730cae",
-          "description": "说话人：甲。\n说话内容：好的。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
-          "label": "<Audio 4>"
-        },
-        {
-          "slot": "reference_audios",
-          "role": "reference_audio",
-          "index": 4,
           "asset_id": "ccaddebb5a671220e481852404815a00",
           "description": "说话人：乙。\n说话内容：我们开始。\n真实时长：1.000 秒。\n后续视频生成必须严格应用这段对白，保持原台词、声音与表演节奏，不得改写、遗漏或自行替换。",
-          "label": "<Audio 5>"
+          "label": "<Audio 3>"
         }
       ],
       "slot_labels": {
@@ -772,12 +725,7 @@
         "reference_audios": [
           "<Audio 1>",
           "<Audio 2>",
-          "<Audio 3>",
-          "<Audio 4>",
-          "<Audio 5>",
-          "<Audio 6>",
-          "<Audio 7>",
-          "<Audio 8>"
+          "<Audio 3>"
         ],
         "reference_videos": [
           "<Video 1>",

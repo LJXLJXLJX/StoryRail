@@ -17,6 +17,7 @@
   `ArtifactDescriptor.duration_seconds` 返回实测时长，Core 优先将它写入 Asset，不能用提交时预估值
   冒充媒体事实；
 - `http.py`：插件可复用的低级 HTTP 传输，不是公共 Provider RPC；
+- `observation_wait.py`：项目 `generation.wait` 与 Playground `wait_runs` 共用的有界观察：等待预算环境变量、单轮截止与后台续跑的刷新复用；
 - `minimax_h3/`：MiniMax H3 插件实例的 manifest、设置换算与安装工厂，包含 `fl2va/`、`ref2va/` HTTP 实现、请求 DTO、渲染换算与专业 Skill；
 - `seedvr2_7b_sharp_fp8/`：SeedVR2 7B Sharp FP8 视频超分插件；
 - `ffmpeg_final_assembly/`：FFmpeg 确定性成片装配插件；

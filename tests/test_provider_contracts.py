@@ -458,7 +458,7 @@ def test_fl2va_request_rejects(factory, message: str) -> None:
 
 
 def test_ref2va_request_constructs() -> None:
-    audios = tuple(_reference_audio() for _ in range(8))
+    audios = tuple(_reference_audio() for _ in range(3))
     frames = tuple(_reference_image() for _ in range(4))
     videos = (ReferenceVideo("video/mp4", _mp4(), 2.0), _reference_video(15.0), _reference_video())
     request = Ref2VARequest(
@@ -475,7 +475,7 @@ def test_ref2va_request_constructs() -> None:
         save_audio=True,
         reference_videos=videos,
     )
-    assert len(request.reference_audios) == 8
+    assert len(request.reference_audios) == 3
     assert len(request.additional_frames) == 4
     assert len(request.reference_videos) == 3
     assert request.reference_videos[0].duration_seconds == 2.0
@@ -573,13 +573,13 @@ def test_ref2va_request_constructs() -> None:
         ),
         (
             lambda: Ref2VARequest(
-                "房间", (_reference_audio(),) * 9, first_frame=_reference_image()
+                "房间", (_reference_audio(),) * 4, first_frame=_reference_image()
             ),
-            "Ref2VA 参考音频必须是最多 8 项的元组。",
+            "Ref2VA 参考音频必须是最多 3 项的元组。",
         ),
         (
             lambda: Ref2VARequest("房间", [_reference_audio()], first_frame=_reference_image()),
-            "Ref2VA 参考音频必须是最多 8 项的元组。",
+            "Ref2VA 参考音频必须是最多 3 项的元组。",
         ),
         (
             lambda: Ref2VARequest("", (), first_frame=_reference_image()),

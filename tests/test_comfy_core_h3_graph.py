@@ -169,6 +169,19 @@ class ComfyCoreH3GraphTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "至少需要一个媒体参考"):
             _inputs("ref2va", 20, True, False, first_image=None, last_image=None)
 
+    def test_ref2va_reference_audios_stop_at_official_node_maximum(self) -> None:
+        # 官方 MiniMaxH3ReferenceToVideo 的 ref_audios Autogrow 只声明 ref_audio_0..2。
+        audios = tuple(f"storyrail/task/reference-{index}.wav" for index in range(1, 4))
+        inputs = build_h3_workflow(_inputs("ref2va", 20, True, False, reference_audios=audios))[
+            "7"
+        ]["inputs"]
+        self.assertEqual(
+            sorted(key for key in inputs if key.startswith("ref_audios.")),
+            [f"ref_audios.ref_audio_{index}" for index in range(3)],
+        )
+        with self.assertRaisesRegex(ValueError, "最多支持 3 条参考音频"):
+            _inputs("ref2va", 20, True, False, reference_audios=(*audios, "extra.wav"))
+
     def test_fl2va_rejects_reference_inputs_and_missing_anchor(self) -> None:
         with self.assertRaisesRegex(ValueError, "不接受"):
             _inputs("fl2va", 20, True, True, reference_audios=("a.wav",))

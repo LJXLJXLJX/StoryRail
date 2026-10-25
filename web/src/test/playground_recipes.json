@@ -800,7 +800,7 @@
               "role": "reference_audio",
               "label": "参考音频",
               "minimum": 0,
-              "maximum": 8,
+              "maximum": 3,
               "media_types": [
                 "audio/wav"
               ],

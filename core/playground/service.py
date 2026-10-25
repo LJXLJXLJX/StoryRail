@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 from collections.abc import Callable
 from dataclasses import replace
 from uuid import uuid4
@@ -24,6 +23,7 @@ from core.audio_effects import (
 from core.media_assets import Mp4VideoFrames, read_mp4_video_frames, uploaded_asset_label
 from core.model_providers.boundary import ModelProviderError, ProviderHandle
 from core.model_providers.manifest import Capability, ProviderSnapshot, Recipe
+from core.model_providers.observation_wait import BoundedObserver, wait_budget
 from core.model_providers.recipe import recipe_wire_schema
 from core.model_providers.registry import (
     PreparedRecipe,
@@ -105,6 +105,7 @@ class PlaygroundService:
         store.ensure_created()
         store.recover_interrupted_submissions()
         self._observer = PlaygroundObserver(store, self._lock, self.provider_for)
+        self._bounded_observer = BoundedObserver()
 
     @property
     def store(self) -> PlaygroundStore:
@@ -907,8 +908,7 @@ class PlaygroundService:
         loop = asyncio.get_running_loop()
         deadline = loop.time() + max_wait
         while True:
-            for run_id in ordered:
-                await self.refresh_run(run_id)
+            await self._bounded_observer.refresh(ordered, self.refresh_run, deadline)
             document = self._store.read()
             observed = [find_run(document, run_id) for run_id in ordered]
             if all(run.phase in TERMINAL_PHASES for run in observed):
@@ -968,10 +968,3 @@ def _reject_active_frame_extraction(document: PlaygroundDocument, video_asset_id
     )
     if conflict:
         raise RunStateConflictError("该视频已有抽帧任务在进行中。")
-
-
-def wait_budget() -> tuple[float, float]:
-    """与项目 generation.wait 共用同样的两个环境变量。"""
-    max_wait = max(0.0, float(os.environ.get("STORYRAIL_GENERATION_WAIT_MAX_SECONDS", "18")))
-    poll_seconds = max(0.01, float(os.environ.get("STORYRAIL_GENERATION_WAIT_POLL_SECONDS", "2")))
-    return max_wait, poll_seconds
