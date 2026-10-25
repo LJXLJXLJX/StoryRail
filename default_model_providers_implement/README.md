@@ -57,7 +57,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows\stop_services.ps
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows\uninstall_scheduled_task.ps1
 ```
 
-`run_server.ps1` 把服务 stdout/stderr 写入状态目录的 `server.out.log` / `server.err.log`（上一次运行保留为 `.prev.log`），并以服务的退出码结束，计划任务据此在异常退出后按 `RestartCount` 自动重启。
+`run_server.ps1` 把服务 stdout/stderr 写入状态目录的 `server.out.log` / `server.err.log`，每次启动前把上一次运行（可能是崩溃的那次）轮转为 `.prev.log`。计划任务的 `RestartCount` 只覆盖启动失败，不覆盖运行后退出，因此脚本自己守护服务：非零退出后 10 秒重启，10 分钟内超过 5 次则放弃并以该退出码结束。`stop_services.ps1` 与安装脚本先停止计划任务（即这层守护）再结束服务进程，主动停止不会被拉回。
 
 `stop_services.ps1` 只停止当前运行的 Windows Model Provider、Breeze 和受管 ComfyUI 进程，保留计划任务。
 计划任务配了失败自动重启（每分钟一次、共三次），因此脚本在结束进程之后会再停一次任务压掉已排队的重启，
