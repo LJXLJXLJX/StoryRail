@@ -100,6 +100,86 @@ class BreezeWorkerChildProcessTests(unittest.TestCase):
             self.assertIs(kwargs.get("stdin"), subprocess.DEVNULL)
 
 
+class BreezeWorkerStartupCrashTests(unittest.TestCase):
+    """启动期段错误来自失效的 WSL 虚拟机：重启发行版后重试一次，并把 API 输出写进日志。"""
+
+    def _run(self, exit_codes: list[int | None], log_path: Path | None = None):
+        runs: list[list[str]] = []
+        spawned: list[dict[str, object]] = []
+        codes = iter(exit_codes)
+
+        class _Process:
+            def __init__(self, code: int | None) -> None:
+                self.returncode = code
+
+            def poll(self) -> int | None:
+                return self.returncode
+
+            def wait(self, timeout: float | None = None) -> int:
+                return 0
+
+            def kill(self) -> None:
+                pass
+
+        def record(argv: list[str], **kwargs: object) -> object:
+            runs.append(argv)
+            return subprocess.CompletedProcess(argv, 0, "172.30.33.123\n", "")
+
+        def spawn(argv: list[str], **kwargs: object) -> _Process:
+            stdout = kwargs["stdout"]
+            if hasattr(stdout, "write"):
+                stdout.write(b"Capturing CUDA graph for backbone decode...\nSegmentation fault\n")
+            spawned.append(kwargs)
+            return _Process(next(codes))
+
+        api = BreezeApi()
+        api._log_path = log_path
+        with (
+            mock.patch.object(breeze_tts2_worker.os, "name", "nt"),
+            mock.patch.object(subprocess, "CREATE_NO_WINDOW", 0, create=True),
+            mock.patch.object(breeze_tts2_worker.subprocess, "run", side_effect=record),
+            mock.patch.object(breeze_tts2_worker.subprocess, "Popen", side_effect=spawn),
+            mock.patch.object(breeze_tts2_worker.socket, "create_connection", mock.MagicMock()),
+            mock.patch.object(breeze_tts2_worker, "emit"),
+        ):
+            try:
+                api.ensure_started()
+                error = None
+            except RuntimeError as exc:
+                error = str(exc)
+        resets = [argv for argv in runs if "--terminate" in argv]
+        return error, resets, spawned
+
+    def test_segfault_resets_wsl_and_retries_once(self) -> None:
+        error, resets, spawned = self._run([139, None])
+        self.assertIsNone(error)
+        self.assertEqual(resets, [[r"C:\Windows\System32\wsl.exe", "--terminate", "Ubuntu"]])
+        self.assertEqual(len(spawned), 2)
+
+    def test_second_segfault_reports_after_single_retry(self) -> None:
+        error, resets, spawned = self._run([139, 139])
+        self.assertRegex(error or "", "退出码 139.*已重启 WSL 并重试一次")
+        self.assertEqual(len(resets), 1)
+        self.assertEqual(len(spawned), 2)
+
+    def test_other_exit_codes_do_not_reset_wsl(self) -> None:
+        error, resets, spawned = self._run([1])
+        self.assertIn("退出码 1。", error or "")
+        self.assertEqual(resets, [])
+        self.assertEqual(len(spawned), 1)
+
+    def test_api_output_is_logged_and_tail_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            log_path = Path(directory) / "logs" / "breeze-api.log"
+            error, _, spawned = self._run([1], log_path)
+            self.assertIs(spawned[0]["stderr"], subprocess.STDOUT)
+            content = log_path.read_text(encoding="utf-8")
+        self.assertIn("===== Breeze API start", content)
+        self.assertIn("Segmentation fault", content)
+        self.assertIn("最后输出：", error or "")
+        self.assertIn("Segmentation fault", error or "")
+
+
 class BreezeWorkerAddressTests(unittest.TestCase):
     """WSL NAT 的 localhost 转发不可靠：API 绑定并直连 WSL eth0 地址。"""
 

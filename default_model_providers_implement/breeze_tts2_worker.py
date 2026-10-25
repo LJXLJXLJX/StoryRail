@@ -28,6 +28,11 @@ _REQUEST_ID = re.compile(r"[0-9a-f]{32}")
 _SYNTHESIS_TIMEOUT_SECONDS = 1_800.0
 # --fast-all 在加载后捕获 CUDA Graph 并编译 depth decoder，16 GB 卡上实测约 70 秒。
 _STARTUP_TIMEOUT_SECONDS = 600.0
+# 启动期段错误（128 + SIGSEGV）实测来自 WSL 虚拟机 GPU 半虚拟化失效：同一虚拟机内重试必然再崩，
+# 重启发行版后即恢复。exclusive_gpu 保证此时没有其它 WSL runtime（IndexTTS2）在运行。
+_WSL_RESET_EXIT_CODES = frozenset({139})
+_API_LOG_LIMIT_BYTES = 16 * 1024 * 1024
+_API_LOG_TAIL_BYTES = 600
 
 
 def emit(event: str, message: str, **values: Any) -> None:
@@ -48,6 +53,9 @@ class BreezeApi:
             "STORYRAIL_BREEZE_PYTHON", "/home/ljx/ai/breeze-tts/.venv/bin/python"
         )
         self._model = os.environ.get("STORYRAIL_BREEZE_MODEL", "/home/ljx/ai/models/Breeze-TTS-2")
+        # Breeze API 的 stdout/stderr 落到 Windows 侧日志；未配置时（测试）丢弃。
+        log = os.environ.get("STORYRAIL_BREEZE_API_LOG")
+        self._log_path = Path(log) if log else None
         # WSL NAT 模式的 localhost 转发在虚拟机冷启动后可能不建立，因此 API 绑定并直连
         # WSL eth0 地址；该地址只在 Windows 主机与 WSL 之间的 NAT 网段内可达。
         self._host = "127.0.0.1"
@@ -57,6 +65,24 @@ class BreezeApi:
             return
         if os.name != "nt":
             raise RuntimeError("Breeze runtime 只能从 Windows 调用 WSL。")
+        code = self._start_once()
+        if code is None:
+            return
+        if code not in _WSL_RESET_EXIT_CODES:
+            raise RuntimeError(self._startup_failure(code))
+        emit(
+            "progress",
+            f"Breeze API 启动崩溃（退出码 {code}），正在重启 WSL 后重试一次。",
+            value=0.05,
+        )
+        self.stop()
+        self._reset_wsl()
+        code = self._start_once()
+        if code is not None:
+            raise RuntimeError(self._startup_failure(code) + "已重启 WSL 并重试一次。")
+
+    def _start_once(self) -> int | None:
+        """启动并等到端口可连；进程在启动期退出时返回退出码。"""
         probe = (
             f"test -x '{self._python}' && test -d '{self._model}' && "
             f"test -f '{self._repository}/breeze_infer/api.py' && hostname -I"
@@ -78,27 +104,67 @@ class BreezeApi:
             f"cd '{self._repository}' && exec '{self._python}' -m breeze_infer.api "
             f"'{self._model}' --host {self._host} --port {self._port} --fast-all"
         )
-        self._process = subprocess.Popen(
-            [self._wsl, "--distribution", self._distribution, "--", "/bin/bash", "-lc", command],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-        )
+        with self._open_log() as log:
+            self._process = subprocess.Popen(
+                [
+                    self._wsl,
+                    "--distribution",
+                    self._distribution,
+                    "--",
+                    "/bin/bash",
+                    "-lc",
+                    command,
+                ],
+                stdin=subprocess.DEVNULL,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                text=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
         emit("progress", "Breeze TTS 2 正在加载并预热快速推理路径。", value=0.05)
         deadline = time.monotonic() + _STARTUP_TIMEOUT_SECONDS
         while time.monotonic() < deadline:
             if self._process.poll() is not None:
-                raise RuntimeError(f"Breeze API 启动失败，退出码 {self._process.returncode}。")
+                code = self._process.returncode
+                self._process = None
+                return code
             try:
                 with socket.create_connection((self._host, self._port), timeout=0.5):
                     emit("progress", "Breeze TTS 2 已加载并驻留。", value=0.18)
-                    return
+                    return None
             except OSError:
                 time.sleep(0.25)
         self.stop()
         raise RuntimeError("Breeze API 启动超时。")
+
+    def _open_log(self) -> Any:
+        if self._log_path is None:
+            return contextlib.nullcontext(subprocess.DEVNULL)
+        self._log_path.parent.mkdir(parents=True, exist_ok=True)
+        # 子进程继承句柄后父进程即可关闭；超过上限时从头写，保留最近几次启动。
+        with contextlib.suppress(OSError):
+            if self._log_path.stat().st_size > _API_LOG_LIMIT_BYTES:
+                self._log_path.unlink()
+        log = self._log_path.open("ab")
+        log.write(f"\n===== Breeze API start {time.strftime('%Y-%m-%d %H:%M:%S')} =====\n".encode())
+        log.flush()
+        return log
+
+    def _startup_failure(self, code: int) -> str:
+        message = f"Breeze API 启动失败，退出码 {code}。"
+        tail = _log_tail(self._log_path)
+        return f"{message}最后输出：{tail}" if tail else message
+
+    def _reset_wsl(self) -> None:
+        subprocess.run(
+            [self._wsl, "--terminate", self._distribution],
+            check=False,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=60,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
 
     def synthesize(self, request: dict[str, Any], task_dir: Path, cancel: Any) -> Path:
         self.ensure_started()
@@ -229,6 +295,18 @@ def _effective_cfg_scale(request: dict[str, Any]) -> float:
     if request.get("voice") and not request.get("instruction"):
         return 1.0
     return float(request["cfg_scale"])
+
+
+def _log_tail(path: Path | None) -> str:
+    if path is None:
+        return ""
+    try:
+        with path.open("rb") as log:
+            log.seek(max(0, log.seek(0, os.SEEK_END) - _API_LOG_TAIL_BYTES))
+            data = log.read()
+    except OSError:
+        return ""
+    return " ".join(data.decode("utf-8", errors="replace").split())[-_API_LOG_TAIL_BYTES:]
 
 
 def _wsl_address(output: str) -> str:

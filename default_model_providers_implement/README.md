@@ -145,6 +145,11 @@ Breeze 是 WSL 内的既有部署（固定仓库、venv 与模型目录），wor
 WSL NAT 模式的 localhost 转发在虚拟机冷启动后可能不建立，因此不使用 Windows 侧 `127.0.0.1`；eth0 地址
 只在 Windows 主机与 WSL 之间的 NAT 网段内可达，局域网无法访问。
 
+Breeze API 的 stdout/stderr 追加写入 `resident-runtimes/breeze-api.log`（每次启动写分隔行，超过 16 MiB 时从头写），
+启动失败的错误消息附带日志末尾。启动期以退出码 139（段错误）退出时，通常是 WSL 虚拟机的 GPU 半虚拟化失效，
+同一虚拟机内重试必然再崩：worker 执行 `wsl --terminate` 重启发行版后重试一次，仍失败才报错。exclusive_gpu
+保证此时没有 IndexTTS2 等其它 WSL runtime 在运行。
+
 `--fast-all` 为文本编码、backbone prefill/decode、depth decoder 与 codec 全部启用 CUDA Graph / 编译路径，
 不改变模型与权重。当前 16 GB 开发卡上冷启动（加载 + 预热）约 70 秒，生成耗时约为音频时长的 0.48 倍，
 显存峰值约 15.9 GB 且与文本长度无关。

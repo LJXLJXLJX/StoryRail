@@ -522,6 +522,7 @@ def create_breeze_resident_runner(runtime_root: Path) -> ResidentProcessRunner:
         )
         value["PYTHONUTF8"] = "1"
         value["PYTHONIOENCODING"] = "utf-8"
+        value.setdefault("STORYRAIL_BREEZE_API_LOG", str(runtime_root / "breeze-api.log"))
         return value
 
     def terminate_runtime(_pid: int) -> None:
