@@ -70,6 +70,9 @@ def video_recipe_state(document, video, catalog, views):
         asset_id = frames[frame_id].selected_asset_id if enabled else None
         bindings[slot.key] = () if asset_id is None else (SlotBinding(asset_id),)
     try:
+        script = document.director_script
+        if script.production_baseline_revision != script.revision:
+            raise ValueError("当前生产时序已失效，请先按真实音频校准时长后再生成视频。")
         resolve_video_inputs(document, video.segment_id)
         validate_dialogue_video_bindings(document, video.segment_id, recipe, bindings)
         validate_required_slots(recipe, bindings)

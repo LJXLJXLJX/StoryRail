@@ -77,6 +77,30 @@ async def build(output):
             )
             for recipe_id in ("minimax_h3.fl2va", "minimax_h3.ref2va")
         }
+        states["stale_baseline"] = video_recipe_state(
+            replace(
+                document,
+                director_script=replace(
+                    document.director_script,
+                    revision=document.director_script.revision + 1,
+                ),
+                keyframe_plan=replace(
+                    document.keyframe_plan,
+                    source_script_revision=document.director_script.revision + 1,
+                ),
+                video_plan=replace(
+                    document.video_plan,
+                    source_script_revision=document.director_script.revision + 1,
+                ),
+                dialogue_plan=replace(
+                    document.dialogue_plan,
+                    source_script_revision=document.director_script.revision + 1,
+                ),
+            ),
+            video,
+            service._registry,
+            views,
+        )
         inputs = RecipeInputs.from_json(
             {
                 "bindings": {

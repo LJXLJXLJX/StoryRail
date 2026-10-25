@@ -14,6 +14,7 @@ from core.model_providers.recipe import RecipeBook
 from core.model_providers.registry import PluginInstance
 from core.structured_director.errors import RevisionConflictError
 from core.structured_director.reads.read_tools import execute_project_read
+from core.structured_director.reads.snapshot_view import serialize_snapshot
 from core.structured_director.reads.video_recipes import video_recipe_state
 
 
@@ -43,6 +44,56 @@ def test_preview_labels_switch_guards_and_revision_are_read_only(tmp_path):
         service.preview_segment_video_inputs(
             video.segment_id, video.recipe_inputs, document.revision - 1
         )
+    assert store.path.read_bytes() == before
+
+
+@pytest.mark.parametrize("blocker", ["baseline", "dialogue_timing"])
+def test_video_readiness_explains_uncalibrated_timing_and_recovers(tmp_path, blocker):
+    store, service, document, _ = asyncio.run(fixture(tmp_path))
+    video = document.video_plan.segments[0]
+    before = store.path.read_bytes()
+    if blocker == "baseline":
+        blocked = replace(
+            document,
+            director_script=replace(
+                document.director_script,
+                revision=document.director_script.revision + 1,
+            ),
+            keyframe_plan=replace(
+                document.keyframe_plan,
+                source_script_revision=document.director_script.revision + 1,
+            ),
+            video_plan=replace(
+                document.video_plan,
+                source_script_revision=document.director_script.revision + 1,
+            ),
+            dialogue_plan=replace(
+                document.dialogue_plan,
+                source_script_revision=document.director_script.revision + 1,
+            ),
+        )
+        message = "当前生产时序已失效"
+    else:
+        blocked = replace(
+            document,
+            dialogue_plan=replace(
+                document.dialogue_plan,
+                items=tuple(
+                    replace(item, start_seconds=None) for item in document.dialogue_plan.items
+                ),
+            ),
+        )
+        message = "请先点击「按真实音频自动校准时长」"
+    preview = video_recipe_state(blocked, video, service._registry, service.provider_recipe_views())
+    snapshot = serialize_snapshot(blocked, service, "/api/projects/fixture")
+    state = snapshot["video_plan"]["segments"][0]["recipe_state"]
+    assert not state["ready"]
+    assert message in state["reason"]
+    assert preview == state
+    restored = video_recipe_state(
+        document, video, service._registry, service.provider_recipe_views()
+    )
+    assert restored["ready"] and restored["reason"] is None
     assert store.path.read_bytes() == before
 
 

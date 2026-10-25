@@ -1083,6 +1083,8 @@ details[open] > .segment-layer-summary::after { transform: rotate(180deg); }
 .segment-video-prompt textarea { min-height: 120px; }
 .segment-video-optimization-request textarea { min-height: 72px; }
 .segment-video-plan-actions { display: flex; justify-content: flex-end; }
+.segment-video-generate { display: grid; gap: 6px; }
+.segment-video-generate > small { color: var(--muted); font-size: 11px; line-height: 1.55; }
 .segment-video-notice { margin: 0; padding: 9px 11px; border-left: 3px solid #b56f3f; background: #f5eee4; color: var(--muted); font-size: 10px; line-height: 1.55; }
 .video-working, .video-empty { padding: 32px; border: 1px dashed #aebbc7; text-align: center; }
 .video-working { display: grid; gap: 12px; }

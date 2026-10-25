@@ -458,6 +458,54 @@
         "unbound_lines": []
       }
     },
+    "stale_baseline": {
+      "available": true,
+      "ready": false,
+      "reason": "当前生产时序已失效，请先按真实音频校准时长后再生成视频。",
+      "options": [
+        {
+          "id": "minimax_h3.fl2va",
+          "label": "FL2VA",
+          "allowed": true,
+          "reason": null
+        },
+        {
+          "id": "minimax_h3.ref2va",
+          "label": "Ref2VA",
+          "allowed": true,
+          "reason": null
+        }
+      ],
+      "duration_seconds": 3.0,
+      "soft_duration_limit_seconds": 15,
+      "bindings": [
+        {
+          "slot": "first_frame",
+          "role": "first_frame",
+          "index": 0,
+          "asset_id": "11111111111111111111111111111111",
+          "description": null,
+          "label": "<Picture 1>"
+        },
+        {
+          "slot": "last_frame",
+          "role": "last_frame",
+          "index": 0,
+          "asset_id": "22222222222222222222222222222222",
+          "description": null,
+          "label": "<Picture 2>"
+        }
+      ],
+      "slot_labels": {
+        "first_frame": [
+          "<Picture 1>"
+        ],
+        "last_frame": [
+          "<Picture 2>"
+        ]
+      },
+      "dialogue_audio": null
+    },
     "blocked": {
       "available": true,
       "ready": true,
@@ -650,7 +698,7 @@
     "dialogue_missing": {
       "available": true,
       "ready": false,
-      "reason": "请先按真实 TTS 时长校准该 Segment 的对白时序。",
+      "reason": "对白时序尚未校准，请先点击「按真实音频自动校准时长」后再生成视频。",
       "options": [
         {
           "id": "minimax_h3.fl2va",

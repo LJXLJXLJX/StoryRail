@@ -165,7 +165,9 @@ def dialogue_audio_inputs(document, segment_id, *, require_ready=True):
             raise ValueError("对白选择的 WAV Asset 不存在或没有真实时长。")
         if require_ready:
             if item.start_seconds is None:
-                raise ValueError("请先按真实 TTS 时长校准该 Segment 的对白时序。")
+                raise ValueError(
+                    "对白时序尚未校准，请先点击「按真实音频自动校准时长」后再生成视频。"
+                )
             if item.start_seconds + 1e-6 < previous_end:
                 raise ValueError("对白真实音频时序发生重叠，请重新校准。")
             previous_end = item.start_seconds + asset.duration_seconds

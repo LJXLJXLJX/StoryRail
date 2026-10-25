@@ -1,5 +1,5 @@
 import { stableStringify, useProtectedValue } from "./draft_protection";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   RecipeInputsControl,
   recipeInputsError,
@@ -69,6 +69,7 @@ export function SegmentVideoPanel({
   onUpscale: (segmentId: string) => void;
 }) {
   const segmentId = segment.id;
+  const generateReasonId = useId();
   const plan = snapshot.video_plan?.segments.find(
     (item) => item.segment_id === segmentId,
   );
@@ -240,12 +241,44 @@ export function SegmentVideoPanel({
   const inputsError = recipe
     ? recipeInputsError(recipe, draftInputs)
     : "当前视频 recipe 不可用。";
-  const canGenerate =
-    plan !== undefined &&
-    preview?.ready === true &&
-    draftPrompt.trim().length > 0 &&
-    seedValid &&
-    inputsError === null;
+  const generationBlockers: string[] = [];
+  if (active !== undefined) {
+    generationBlockers.push("本片段已有视频任务正在进行，请等待完成或取消任务后再生成。");
+  } else if (busy) {
+    generationBlockers.push(
+      preparing
+        ? "正在校验输入并提交视频任务，请稍候。"
+        : "正在处理当前操作，请稍候再生成视频。",
+    );
+  } else if (plan === undefined) {
+    generationBlockers.push("当前视频计划尚未就绪，请先完成关键帧规划并进入视频生产。");
+  } else {
+    if (preview?.ready !== true) {
+      generationBlockers.push(
+        preview?.reason ?? previewError ?? "视频输入尚未就绪，正在等待校验结果。",
+      );
+    }
+    if (!draftPrompt.trim()) {
+      generationBlockers.push("请先填写并保存视频提示词。");
+    } else if (planDirty) {
+      generationBlockers.push(
+        promptDirty && !referencesDirty
+          ? "当前提示词有未保存修改，请先保存视频计划再生成。"
+          : "当前视频计划有未保存修改，请先保存再生成。",
+      );
+    }
+    if (!seedValid) {
+      generationBlockers.push("Seed 须为 0 到 9223372036854775807 的整数，或留空自动分配。");
+    }
+    if (inputsError !== null) generationBlockers.push(inputsError);
+    if (
+      !snapshot.allowed_actions.includes("generate_segment_video") &&
+      !(preview?.ready === false && preview.reason)
+    ) {
+      generationBlockers.push("当前项目暂不允许生成视频，请先处理项目概览中的待办事项。");
+    }
+  }
+  const generationDisabled = generationBlockers.length > 0;
   const frameSummary =
     startAsset !== null && endAsset !== null
       ? "首帧 + 尾帧"
@@ -307,9 +340,6 @@ export function SegmentVideoPanel({
             .map((option) => (
               <small key={option.id}>{option.reason}</small>
             ))}
-          {preview?.reason ? (
-            <small>{preview.reason}</small>
-          ) : null}
           {preview?.dialogue_audio?.unbound_lines.length ? (
             <em>
               参考音频未包含本段对白：
@@ -362,7 +392,6 @@ export function SegmentVideoPanel({
         </div>
       ) : null}
       {previewError ? <p role="alert">{previewError}</p> : null}
-      {inputsError ? <p role="alert">{inputsError}</p> : null}
       {promptConflict || inputsConflict ? (
         <p role="alert">
           视频计划已更新，未保存输入已保留。请先复制需要的内容并取消修改，再编辑最新版本。
@@ -411,18 +440,6 @@ export function SegmentVideoPanel({
         </small>
       </label>
 
-      {!draftPrompt.trim() ? (
-        <p className="segment-video-notice">
-          请填写并保存当前 视频提示词，或通过外部 Agent 提交专业提示词
-          proposal。
-        </p>
-      ) : planDirty ? (
-        <p className="segment-video-notice">
-          {promptDirty && !referencesDirty
-            ? "当前提示词有未保存修改，请先保存视频计划再生成。"
-            : "当前视频计划有未保存修改，请先保存再生成。"}
-        </p>
-      ) : null}
       {plan === undefined ? (
         <p className="segment-video-notice">
           之前的视频层仍然保留显示，但当前脚本 revision
@@ -711,20 +728,22 @@ export function SegmentVideoPanel({
           </section>
         )}
       />
-      <button
-        type="button"
-        className="primary-button"
-        disabled={
-          busy ||
-          active !== undefined ||
-          !canGenerate ||
-          planDirty ||
-          !snapshot.allowed_actions.includes("generate_segment_video")
-        }
-        onClick={() => onGenerate(segmentId, normalizedSeed || undefined)}
-      >
-        {active === undefined ? "生成一个视频候选" : "视频生成中…"}
-      </button>
+      <div className="segment-video-generate">
+        <button
+          type="button"
+          className="primary-button"
+          disabled={generationDisabled}
+          aria-describedby={generationDisabled ? generateReasonId : undefined}
+          onClick={() => onGenerate(segmentId, normalizedSeed || undefined)}
+        >
+          {active === undefined ? "生成一个视频候选" : "视频生成中…"}
+        </button>
+        {generationDisabled ? (
+          <small id={generateReasonId} role="status">
+            暂时无法生成：{[...new Set(generationBlockers)].join(" ")}
+          </small>
+        ) : null}
+      </div>
       <button
         type="button"
         className="secondary-button"

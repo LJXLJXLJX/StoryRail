@@ -557,3 +557,87 @@ it("本次视频时长直接显示 Core 预览值，超过十秒保持完整", (
   expect(screen.getByText("17.2 秒 · 16:9")).toBeInTheDocument();
   expect(screen.getByText("超过 15 秒软约束，可能 OOM；仍可生成")).toBeInTheDocument();
 });
+
+it.each([
+  ["dialogue_missing", "请先点击「按真实音频自动校准时长」"],
+  ["stale_baseline", "当前生产时序已失效"],
+])("%s 的 Core 原因显示在生成按钮下，恢复就绪后消失", async (state, message) => {
+  const { snapshot, plan, segment } = ref2vaVideoSnapshot();
+  plan.recipe_state = videoState(state);
+  if (state === "stale_baseline") {
+    snapshot.allowed_actions = snapshot.allowed_actions.filter(
+      (action) => action !== "generate_segment_video",
+    );
+  }
+  const props = {
+    busy: false, dependenciesEditable: true, preparing: false,
+    onPreview: vi.fn(async () => plan.recipe_state!),
+    onSave: vi.fn(), onSaveRecipe: vi.fn(), onGenerate: vi.fn(),
+    onAttachCandidate: vi.fn(), onSelect: vi.fn(), onClearSelection: vi.fn(),
+    onDismiss: vi.fn(), onUpscale: vi.fn(),
+  };
+  const view = render(<SegmentVideoPanel snapshot={snapshot} segment={segment} {...props} />);
+  const button = screen.getByRole("button", { name: "生成一个视频候选" });
+  expect(button).toBeDisabled();
+  expect(button).toHaveAccessibleDescription(expect.stringContaining(message));
+  expect(button.nextElementSibling).toHaveTextContent(message);
+  fireEvent.click(button);
+  expect(props.onGenerate).not.toHaveBeenCalled();
+
+  plan.recipe_state = videoState("minimax_h3.ref2va");
+  snapshot.revision += 1;
+  snapshot.allowed_actions.push("generate_segment_video");
+  view.rerender(<SegmentVideoPanel snapshot={snapshot} segment={segment} {...props} />);
+  await waitFor(() => expect(button).toBeEnabled());
+  expect(button).not.toHaveAttribute("aria-describedby");
+  fireEvent.click(button);
+  expect(props.onGenerate).toHaveBeenCalledWith(segment.id, undefined);
+});
+
+it.each([
+  ["seed", "Seed 须为"],
+  ["prompt", "当前提示词有未保存修改"],
+  ["inputs", "当前视频计划有未保存修改"],
+  ["empty_prompt", "请先填写并保存视频提示词"],
+  ["busy", "正在处理当前操作"],
+  ["active", "本片段已有视频任务正在进行"],
+  ["permission", "当前项目暂不允许生成视频"],
+  ["plan", "当前视频计划尚未就绪"],
+])("生成按钮因 %s 禁用时给出就近说明", (blocker, message) => {
+  const { snapshot, segment } = ref2vaVideoSnapshot();
+  if (blocker === "permission") {
+    snapshot.allowed_actions = snapshot.allowed_actions.filter(
+      (action) => action !== "generate_segment_video",
+    );
+  } else if (blocker === "plan") {
+    snapshot.video_plan!.segments = [];
+  } else if (blocker === "active") {
+    const generation = structuredClone(fixture.continuity.production_snapshot.generations[0]);
+    snapshot.generations.push({
+      ...generation, kind: "segment_video", target_id: segment.id,
+      phase: "running", progress: 0.2, output_asset_id: null,
+    } as StructuredDirectorSnapshot["generations"][number]);
+  }
+  render(<SegmentVideoPanel snapshot={snapshot} segment={segment}
+    busy={blocker === "busy"} dependenciesEditable preparing={false}
+    onSave={vi.fn()} onSaveRecipe={vi.fn()} onGenerate={vi.fn()}
+    onAttachCandidate={vi.fn()} onSelect={vi.fn()} onClearSelection={vi.fn()}
+    onDismiss={vi.fn()} onUpscale={vi.fn()} />);
+  if (blocker === "seed") {
+    fireEvent.change(screen.getByLabelText("本次 Seed（留空自动递增）"), { target: { value: "-1" } });
+  } else if (blocker === "prompt" || blocker === "empty_prompt") {
+    fireEvent.change(screen.getByLabelText("当前 视频提示词"), {
+      target: { value: blocker === "prompt" ? "未保存的新提示词" : "" },
+    });
+  } else if (blocker === "inputs") {
+    fireEvent.click(screen.getByRole("button", { name: "添加参考视频" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "增加 运镜参考" }));
+  }
+  const button = screen.getByRole("button", {
+    name: blocker === "active" ? "视频生成中…" : "生成一个视频候选",
+  });
+  expect(button).toBeDisabled();
+  expect(button).toHaveAccessibleDescription(expect.stringContaining(message));
+  expect(button.nextElementSibling).toHaveTextContent(message);
+});
