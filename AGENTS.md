@@ -31,6 +31,11 @@
 内置 Pi/Codex Agent adapters、装配和依赖已删除，不重新引入内置执行器或隐藏 fallback。
 Core authority、专业契约、领域 run/cursor 和媒体 Provider adapters 保留；名称含 Codex 的媒体插件是图片 Provider，不是 Agent runtime。
 
+**硬约束与软约束**：Core 只拒绝会破坏项目状态或违反硬性契约的操作（schema、revision 与幂等、权限与范围、
+状态迁移、Asset 完整性、Provider 声明的输入约束等）。不破坏项目状态的创作质量与写法规范（提示词结构、
+格式惯例、风格建议等）一律做软约束：用 Skill、工作集提示与 lint 结果降低 Agent 犯错的概率，允许 Agent 犯错，
+由人审核候选来兜底；不得把这类检查做成 Core 拒绝、依赖阻塞原因或生成门禁。
+
 ## 当前产品
 
 StoryRail 从用户提供的完整 Markdown 导演方案开始。创建项目时写入项目名称、`16:9`、`9:16` 或 `2:1` 画面比例、必须选择的旁白语言和不可变的 `director_plan_markdown`，随后直接进入结构化导演台。系统保留引用库、结构化脚本、旁白审核、地点库、Segment 关键帧、视频、超分、最终装配和 Approval；不再包含 Creative Intake、剧情发展或导演方案讨论阶段。
@@ -146,7 +151,7 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
   视频使用 `recipes[recipe_id].params`；Web 按声明渲染控件，Agent 按 `speech_recipe` 或 `video_prompt` 工作集填写。
   Agent 与人类经同一 `video.update_recipe_inputs` 原子保存视频正文、当前 recipe 的参考素材绑定与机制参数，校验相同；
   Agent 只在用户明确要求时增删或替换绑定；绑定按槽位、参数按键合并，未给出的部分保持原样。含对白 Segment 以
-  `attach_dialogue_audio` 由 Core 按“一键添加本段对白 TTS”同一规则合并对白 WAV；对白约束文字由 Core 提交时唯一前置。
+  `attach_dialogue_audio` 由 Core 按“一键添加本段对白 TTS”同一规则合并对白 WAV；Core 原样提交已保存正文、不追加对白约束；视频插件的提示词 linter 只在工作集 `prompt_problems` 中软提示格式问题，不阻止生成。
   音色描述仍是领域字段，映射到 prompt 角色。Breeze 的表演指示和 IndexTTS2.5 的语速/情感向量属于各自插件机制参数。
 - 每个媒体能力的插件绑定与实例设置是 Core 全局 Provider 设置，项目与 Playground 共用、只有人类可改；每次提交读取
   当前值并在 Generation 的 `provider_snapshot` 中记录，改设置不失效已有候选。连接由启动配置装配，实例 ID 等于包名、

@@ -49,7 +49,27 @@ Read `references/ref-en.txt` for label rules, retention analysis, and complete e
 - 每项说明必填且 Asset 不重复；Ref2VA 可无图片，但五类媒体槽至少一项；`params` 传 `{}`。
 - 绑定变化后正文要引用新标签时，重读工作集，用新的 `actual_provider_inputs` 标签写正文。
 
-含对白时，Core 提交时会在正文最前面自动加上对白约束：第一句固定为“严格让角色说出参考音频的原始内容，音频完全相等。”，后续每行把显式列表中的实际 Audio 标签映射到对应原始台词（工作集 `core_prepended_dialogue_prompt` 展示当前绑定下的这段文字）。正文不要重复这段文字，也不要改写台词或把手工音频误配成对白。`dialogue_timing` 给出已选 WAV 的真实时长、起点和最晚结束时间，提示词时间设计必须服从这些事实，视频时长不得短于最后一句对白结束时间。
+## StoryRail 对白写法
+
+Core 原样提交已保存正文，不在正文前后追加任何文字。插件按下列规则检查已保存正文，工作集 `prompt_problems`
+列出发现的问题；它只是提示、不阻止生成，保存后应重读并修正到为空。工作集 `prompt_dialogue` 按剧本顺序给出每句对白的
+`speaker`、原台词 `text` 与实际绑定的 `audio_label`（未绑定为 null）；`dialogue_timing` 给出已选 WAV 的真实时长、
+起点和最晚结束时间，时间设计必须服从这些事实，视频时长不得短于最后一句对白结束时间。
+
+- 每句台词在全文只出现一次，位置固定在 `detailed_description` 对应镜头里：`<Subject N> (Sx) 动作与语气……说：<d>[Chinese] 原台词</d>`。
+  `<d>` 内只放语言标签与逐字原台词，中文台词用 `[Chinese]`，英文用 `[English]`；说话者描述、动作、语气写在 `<d>` 外。
+- `subject_definitions`、`summary`、`retention_analysis`、`overall_soundscape`、`non_diegetic_music` 只用 `<Audio N>` 与 `(Sx)`
+  指代这句对白，不写台词原文，也不用引号转述或改写复述；参考音频说明里的“说话内容”只供识别，不抄进正文。
+- 对白音频的固定写法：
+  - `subject_definitions` 单独一行定义：`<Audio N> 是 <Subject M> (Sx) 的对白音频。`
+  - `summary` 的任务类型包含 `audio reuse`（例如 `[keyframe completion + audio reuse]`）。
+  - `retention_analysis` 写 `<Audio N>: partially_copy - …`：已选 TTS WAV 的原信号放进这句对白的时间窗，其余时间和环境声由模型生成。
+    它不是整条成片音轨，不用 `fully_copy`；也不是只借音色重新念台词，不用 `reference`。这一段不写 `(Sx)`。
+  - 用户显式添加的音色参考才写 `reference`，环境声原样复用按实际情况写 `partially_copy`，都不能当成对白音频。
+- 说话者 ID 按目标视频中实际发声顺序分配，一个说话者一个 ID，跨镜头沿用；不同说话者不能共用 ID。
+  没有台词的角色不分配 `(Sx)`：他们的咆哮、斥责、喘息、哭声写成非语言音效（例如“灰狼压低身体发出低沉的咆哮”），
+  不写成带引号的词语，也不写 `<d>`。`<d>` 只承载 `prompt_dialogue` 中的台词，不新增台词。
+- 同一句台词跨段内切镜时用 `<scenetrans>` 拆成前后两个 `<d>`，两侧都带语言标签并沿用同一 `(Sx)`，拼起来仍是原台词。
 
 ## StoryRail 独立旁白隔离
 
@@ -61,7 +81,7 @@ StoryRail 的 Scene 旁白由独立 TTS 音频资产承载，并在 Scene/Final 
 - `<d>` 中的台词逐字照抄 `dialogue[].text`，不改写、不纠错、不增删。
 - 没有明确剧情对白时，必须明确写出人物双唇全程闭合、全片无开口、无对白、无画外音配音；这不等于禁止呼吸、喘息或其它非语言拟音。
 - `overall_soundscape` 只描述环境声、动作拟音和非语言人声（例如呼吸、喘息、喊叫的非词语声）；必须根据画面动作和环境写出具体音效，除非用户明确要求全片完全静音，不得写成 `N/A` 或省略音效。末尾的人声声明按 Segment 区分：
-  - `dialogue` 非空：声明“除 `<d>` 中的台词外无其它人类语音”，不写“全片无人类语音”；
+  - `dialogue` 非空：声明“除上述对白外无其它人类语音”，不写 `<d>` 标签或台词原文，不写“全片无人类语音”；
   - `dialogue` 为空：声明“全片无人类语音，保持纯净环境音”；只有 `scene.driver` 为 `narration` 时再加“预留后期主旁白音频叠加通道”，drama Scene 不写这句。
 - 默认禁止生成非画内背景音乐（BGM、score、audience-only music）：只有 `user_direction` 或 Shot `audio_direction` 明确写出配乐或音乐入点时，才按其写入 `non_diegetic_music`（脚本的 `audio_direction` 来自导演方案或用户的明确要求）；否则 `non_diegetic_music` 必须为 `N/A`，不得从“电影感”、情绪或风格描述推断音乐需求。只有画内角色演奏、收音机、电视或手机播放的音乐才作为画内事件写入 `integrated_multimodal_description`，不等同于 BGM。
 - 不因历史提示词中已有旁白而保留它；历史正文与当前独立旁白架构冲突时，删除视频模型旁白并保留视觉动作和环境声。
@@ -86,8 +106,8 @@ StoryRail 的 Scene 旁白由独立 TTS 音频资产承载，并在 Scene/Final 
 - 用户本轮明确指定的正文语言优先于历史提示词和示例语言；只保留固定字段、标签、关系标记、时间语法及原文对白。不要因示例是英文而把中文要求输出为英文。
 - `actual_provider_inputs.allowed_asset_reference_labels` 只限制实际 Picture/Video/Audio 素材。Ref2VA 的 `<Subject N>` 是从实际素材派生的可见主体，不是新的图片输入；必须在 `subject_definitions` 定义其来源和特征，不能只定义 Picture/Audio 便省略主体。声音映射须指向相应主体/说话者，不能虚构未提供的参考资产。
 - `pictures` 中 `role=described_reference` 的 Picture 是用户显式参考图；按其 `description` 和原标签落实用途，不臆造时间锚点。
-- 无对白时 `audios` 可为空；含对白时，以 `core_prepended_dialogue_prompt` 指明的实际标签识别已选 TTS WAV，不假设它们位于列表开头。其他项按 `description` 区分音色与原声复用，不能默认都是角色音色。
+- 无对白时 `audios` 可为空；含对白时，以 `prompt_dialogue[].audio_label` 识别已选 TTS WAV，不假设它们位于列表开头。其他项按 `description` 区分音色与原声复用，不能默认都是角色音色。
 - `videos` 可为空，不得虚构；按 `description` 引用画面用途，不提交音轨。
 - 首尾 Picture 的精确时间取 `pictures[].time_seconds`；无 Picture 时不写图片标签或对齐句。`context.shots` 只有一项时不要写切镜；多项时 `[Shot 1]` 不带切镜时间，后续切镜才用 `[Shot N] At MM:SS.mmm, ...`，切点是按 Shot 设计与总时长估算的软约束，不要求与生成结果逐帧一致。Base 模式沿用对应 guide 的对齐句。
 - 逐项保留用户明确的排除要求（例如无字幕、无水印、无新增角色、无对白或无背景旁白），在最终正文的相关画面/声音字段写清；不能只写在内部分析、工作集或摘要中，也不能用“不改剧情”等泛化表述代替。未要求的排除项不自动新增。
-- 完成以上核对后才提交；这些规则不授权改写用户已保存的正文，生成仍直接使用当前已保存提示词。
+- 完成以上核对后才提交；保存后重读工作集确认 `prompt_problems` 为空。这些规则不授权改写用户已保存的正文，生成仍直接使用当前已保存提示词。

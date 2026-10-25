@@ -293,7 +293,7 @@
           "media_type": "audio/wav"
         }
       ],
-      "direction": "严格让角色说出参考音频的原始内容，音频完全相等。\n<Audio 1> 对应原始对白：还会来吗？\n\n<Picture 1> 小满抬头看 <Picture 3> 站牌，严格同步 <Audio 1> 的对白。",
+      "direction": "subject_definitions:\n<Subject 1> 是 <Picture 1> 中的小满。\n<Subject 2> 是 <Picture 3> 中的站牌与站名字样。\n<Audio 1> 是 <Subject 1> (S1) 的对白音频。\n<Audio 2> 是站台环境底噪。\n<Video 1> 是缓慢推近的运镜参考。\nsummary:\n[keyframe completion + reference generation + audio reuse] <Subject 1> 抬头看 <Subject 2> 并轻声发问。\nretention_analysis:\n<Subject 1> (appears in [Shot 1]): fully_preserved - 外观与服装保持一致。\n<Subject 2> (appears in [Shot 1]): fully_preserved - 站名字样保持一致。\n<Audio 1>: partially_copy - 原信号放在这句对白的时间窗内。\n<Audio 2>: partially_copy - 底噪贯穿全片。\n<Video 1> (camera movement): weak_reference - 只参考缓慢推近。\ndetailed_description:\n写实电影风格。\n[Shot 1] 镜头从 <Picture 1> 开始，参考 <Video 1> 缓慢推近。<Subject 1> (S1) 抬头看 <Subject 2>，轻声迟疑地说：<d>[Chinese] 还会来吗？</d>\noverall_soundscape:\n<Audio 2> 的站台环境底噪贯穿全片。除上述对白外无其它人类语音。\nnon_diegetic_music:\nN/A",
       "duration_s": 2.25,
       "first_reference": {
         "content": {
@@ -902,7 +902,7 @@
           "media_type": "audio/wav"
         }
       ],
-      "direction": "严格让角色说出参考音频的原始内容，音频完全相等。\n<Audio 1> 对应原始对白：还会来吗？\n\n<Picture 1> 小满抬头看 <Picture 3> 站牌，严格同步 <Audio 1> 的对白。",
+      "direction": "subject_definitions:\n<Subject 1> 是 <Picture 1> 中的小满。\n<Subject 2> 是 <Picture 3> 中的站牌与站名字样。\n<Audio 1> 是 <Subject 1> (S1) 的对白音频。\n<Audio 2> 是站台环境底噪。\n<Video 1> 是缓慢推近的运镜参考。\nsummary:\n[keyframe completion + reference generation + audio reuse] <Subject 1> 抬头看 <Subject 2> 并轻声发问。\nretention_analysis:\n<Subject 1> (appears in [Shot 1]): fully_preserved - 外观与服装保持一致。\n<Subject 2> (appears in [Shot 1]): fully_preserved - 站名字样保持一致。\n<Audio 1>: partially_copy - 原信号放在这句对白的时间窗内。\n<Audio 2>: partially_copy - 底噪贯穿全片。\n<Video 1> (camera movement): weak_reference - 只参考缓慢推近。\ndetailed_description:\n写实电影风格。\n[Shot 1] 镜头从 <Picture 1> 开始，参考 <Video 1> 缓慢推近。<Subject 1> (S1) 抬头看 <Subject 2>，轻声迟疑地说：<d>[Chinese] 还会来吗？</d>\noverall_soundscape:\n<Audio 2> 的站台环境底噪贯穿全片。除上述对白外无其它人类语音。\nnon_diegetic_music:\nN/A",
       "duration_s": 2.25,
       "first_reference": {
         "content": {

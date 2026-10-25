@@ -14,6 +14,7 @@ from video_recipes import (
     SegmentVideoImageReference,
     SegmentVideoVideoReference,
     build_h3_context,
+    h3_dialogue_prompt,
     replace_video,
     replace_video_provider,
     save_video_inputs,
@@ -274,6 +275,13 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
         ]
         assert single["segment"]["continues_from_previous_segment"] is False
         assert single["segment"]["continues_into_next_segment"] is False
+        prompt_text = h3_dialogue_prompt(workset, tail="\n无字幕、无水印。")
+        await save_video_inputs(
+            service,
+            segment_id=segment.id,
+            expected_revision=store.read().revision,
+            prompt_text=prompt_text,
+        )
         provider = RecordingProvider(media_type="video/mp4", content=b"fake")
         replace_video_provider(service, "ref2va", provider)
         # 全局 H3 渲染设置在提交时读取，并决定画布与采样开关。
@@ -315,9 +323,8 @@ def test_manifest_matches_actual_fake_provider_request_and_language(tmp_path):
         replace(generation, input_asset_ids=tuple(f"{i:032x}" for i in range(17)))
         with pytest.raises(ValueError, match="17"):
             replace(generation, input_asset_ids=tuple(f"{i:032x}" for i in range(18)))
-        assert request.prompt.startswith("严格让角色说出参考音频的原始内容，音频完全相等")
-        assert "<Audio 3> 对应原始对白" in request.prompt
-        assert request.prompt.endswith("中文正文；无字幕、无水印。")
+        # 已保存正文原样提交；Core 不再在结构外前置对白映射。
+        assert request.prompt == prompt_text
 
     asyncio.run(run())
 

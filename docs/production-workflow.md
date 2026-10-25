@@ -357,8 +357,10 @@ Segment 当前生效视频（有超分取超分）的一帧。产物只作为该
 视频候选选择与清除选择仍只属于人类。
 
 **H3 提示词**由用户手工编辑，或由 Agent 显式使用 `h3-prompt-writing` Skill 优化。用户指定语言时必须服从；未指定时不额外约束
-自然语言正文，但官方字段、引用标签与时间语法保持 Provider 格式。含对白时，Core 提交 H3 时确定性地在正文前加上同一句强约束
-和逐条 Audio→原台词映射（工作集 `core_prepended_dialogue_prompt` 展示当前绑定下的这段文字）；正文不重复它，已以这段文字开头的正文不再重复前置。
+自然语言正文，但官方字段、引用标签与时间语法保持 Provider 格式。每句对白只在 `detailed_description` 以
+`(Sx) … <d>[Chinese] 原台词</d>` 写一次，其它段只用 `<Audio N>` 与 `(Sx)` 指代；Core 不在正文外追加对白映射。
+插件 linter 检查对白唯一位置、对白标签、说话者 ID、段落顺序、引用标签、对白音频的 `partially_copy` 关系与切镜时间语法，
+结果只在工作集 `prompt_problems` 中软提示，不阻止生成。
 
 **视频生成是纯程序动作**：Core 校验输入后原样提交已保存的正文，不调用 Agent、不重写正文。H3 预设（基础模型与步数）、分辨率、
 SageAttention、SelfLift 读自全局 Provider 设置（见 [媒体 Provider 与部署](providers-and-deployment.md#minimax-h3-设置)），并记录在

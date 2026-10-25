@@ -316,8 +316,7 @@ Scene 保存可选 `location_id` / `state_id`，state 必须属于该 Location�
 
 首尾帧由 Core 从 Keyframe 的启用与选择事实填写，不进入显式 bindings。旁白、对白和 Segment 时长仍是领域事实。
 含对白的 Segment 只能使用带参考音频槽位的 recipe；Core 把已选 DialogueAudio WAV 按剧本顺序放在手工音频绑定之前，
-它们不写入 `recipes.bindings`。H3 提交时 Core 在正文开头确定性加入“严格让角色说出参考音频的原始内容，音频完全相等。”
-及每个 Audio 标签到原始台词的逐句映射。
+它们不写入 `recipes.bindings`。提交时 Core 原样使用已保存正文，不追加对白约束。
 新视频卡按当前绑定插件的 manifest defaults 与 `segment.has_dialogue` 谓词选择 recipe；没有安装视频插件时不指定默认模型。
 切换 recipe 保留每个 recipe 的输入与参数，清除当前视频和超分选择并失效相关装配；同值切换为 noop。
 若当前显式输入的角色或约束不受目标 recipe 支持，必须先移除这些输入。卸载插件后历史输入仍保留，可选择新的可用 recipe。

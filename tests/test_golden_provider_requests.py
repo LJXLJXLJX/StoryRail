@@ -61,6 +61,32 @@ def golden_server(stories_root: Path, tmp_path: Path):
         server.stop()
 
 
+# 官方 Ref2VA 六段结构：台词只在 detailed_description 的 <d> 中出现一次。
+GOLDEN_DIALOGUE_PROMPT = """subject_definitions:
+<Subject 1> 是 <Picture 1> 中的小满。
+<Subject 2> 是 <Picture 3> 中的站牌与站名字样。
+<Audio 1> 是 <Subject 1> (S1) 的对白音频。
+<Audio 2> 是站台环境底噪。
+<Video 1> 是缓慢推近的运镜参考。
+summary:
+[keyframe completion + reference generation + audio reuse] \
+<Subject 1> 抬头看 <Subject 2> 并轻声发问。
+retention_analysis:
+<Subject 1> (appears in [Shot 1]): fully_preserved - 外观与服装保持一致。
+<Subject 2> (appears in [Shot 1]): fully_preserved - 站名字样保持一致。
+<Audio 1>: partially_copy - 原信号放在这句对白的时间窗内。
+<Audio 2>: partially_copy - 底噪贯穿全片。
+<Video 1> (camera movement): weak_reference - 只参考缓慢推近。
+detailed_description:
+写实电影风格。
+[Shot 1] 镜头从 <Picture 1> 开始，参考 <Video 1> 缓慢推近。<Subject 1> (S1) 抬头看 <Subject 2>，\
+轻声迟疑地说：<d>[Chinese] 还会来吗？</d>
+overall_soundscape:
+<Audio 2> 的站台环境底噪贯穿全片。除上述对白外无其它人类语音。
+non_diegetic_music:
+N/A"""
+
+
 def _ok(step: str, response: tuple[int, Any]) -> Any:
     status, body = response
     if status >= 400:
@@ -377,7 +403,7 @@ def test_project_provider_requests(golden_server: GoldenHttpServer) -> None:
         {
             "scope": {"scene_ids": [drama["id"]]},
             "segment_id": first_segment,
-            "prompt_text": ("<Picture 1> 小满抬头看 <Picture 3> 站牌，严格同步 <Audio 1> 的对白。"),
+            "prompt_text": GOLDEN_DIALOGUE_PROMPT,
             "bindings": {
                 "additional_images": [
                     {"asset_id": reference_image, "description": "站牌上的站名字样"}

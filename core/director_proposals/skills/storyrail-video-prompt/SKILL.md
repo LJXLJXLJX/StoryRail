@@ -36,8 +36,9 @@ description: 根据当前视频 recipe 与实际输入优化单个 Segment 的�
 - `params` 只填 `video_recipe.editable_params` 声明的机制参数，只给要改的键，不改时传 `{}`；时长、seed、画幅等带语义角色的参数由 Core 填写。
 - 当前 recipe 没有所需槽位时先说明，经用户同意再用 `video.set_recipe` 切换；切到不支持某些槽位的 recipe 前必须先清空这些槽位。
 - 绑定变化会让 Core 按槽位顺序重新编号 Picture/Audio/Video 标签。正文需要引用新标签时，先带当前正文（`historical_prompt`）保存输入，重读工作集取得新的 `actual_provider_inputs` 标签，再写正文并保存。
-- 对白约束（“严格让角色说出参考音频的原始内容……”及逐条 `<Audio N>` → 原台词映射）由 Core 在提交时按实际标签自动前置，工作集
-  `core_prepended_dialogue_prompt` 只供参考；正文不要重复这段文字，因此只为添加对白 TTS 不需要重读工作集。
+- Core 原样提交已保存正文，不前置任何对白约束。对白写法由插件 Skill 规定（H3 见 `h3-prompt-writing` 的“StoryRail 对白写法”），
+  工作集 `prompt_dialogue` 给出每句台词与实际 `audio_label`；添加或重排对白 TTS 会改变 Audio 标签，之后要重读工作集并按新标签改写正文。
+  保存后重读工作集，`prompt_problems` 列出插件检查出的格式问题；它只是提示，不阻止生成，但应先按提示修正正文再请求生成。
 
 ## 时长提醒
 

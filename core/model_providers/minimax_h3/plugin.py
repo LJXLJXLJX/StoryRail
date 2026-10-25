@@ -9,6 +9,7 @@ from core.model_providers.registry import PluginInstance
 
 from .manifest import MANIFEST
 from .prompt_context import format_prompt_workset, prompt_skills
+from .prompt_lint import lint_h3_prompt
 
 
 def plugin_instance(endpoint: str, transport: HttpTransport | None = None) -> PluginInstance:
@@ -17,6 +18,7 @@ def plugin_instance(endpoint: str, transport: HttpTransport | None = None) -> Pl
         endpoint=endpoint,
         prompt_formatter=format_prompt_workset,
         prompt_skills=prompt_skills,
+        prompt_linter=lint_h3_prompt,
         recipes={
             "minimax_h3.fl2va": MiniMaxH3FL2VAProvider(endpoint, transport),
             "minimax_h3.ref2va": MiniMaxH3Ref2VAProvider(endpoint, transport),

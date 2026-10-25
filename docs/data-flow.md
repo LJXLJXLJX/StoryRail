@@ -202,7 +202,7 @@ flowchart LR
 - Core 按 recipe 的 slots 顺序读取已选边界与显式 bindings，校验 MIME、数量、唯一性、说明和时长；机制参数取当前 recipe 的保存值或默认值。
 - 标签由 Core 的同一编号器按 namespace 计算。H3 的 Picture 顺序是首帧、尾帧、附加图；不存在的输入不占号，Audio 与 Video 各自从 1 编号。
 - 含对白的 Segment 只有在每句对白都选定 WAV、发声起点已保存、Segment 时长覆盖全部音频，且当前 recipe 支持参考音频时才能提交视频。对白 WAV 必须显式保存到 recipe 的参考音频列表，与手动参考共用容量和编号。按钮从 Core 只读投影取得完整对白绑定草稿与可覆盖的本句历史 WAV 集合，覆盖旧条目、去重并保留其他手动输入；缺少任一句已选 TTS 或合计超限时不部分添加。生成与工作集均不隐式追加音频。换选 TTS 只刷新该 Segment 已存在的对应对白引用，不新增输入。
-- H3 Ref2VA 的最终 instruction 由 Core 在人类/Agent 保存正文之前加上强制文本“严格让角色说出参考音频的原始内容，音频完全相等”，并按显式列表中 Asset 的实际编号逐条写明 `<Audio N>` 对应的对白原文；预览、专业工作集与实际 Provider 请求使用同一映射。
+- 提交的 instruction 就是已保存正文，Core 不在前后追加文字。构造视频工作集时 Core 把时长、实际输入标签和本段对白（说话者、原台词、按显式列表实际编号的 `<Audio N>`）交给插件的 `prompt_linter`，结果只写进 `video_prompt` 工作集的 `prompt_problems` 作软提示，不进入依赖原因、不阻止提交。H3 的检查规则见 [MiniMax H3 插件](../core/model_providers/minimax_h3/README.md)。
 - `video_prompt` 专业工作集暴露相同的实际 Asset ID 与标签，H3 插件提供自己的 HTTP 输入映射和提示词 Skill；关键帧辅助图不会自动进入视频输入。
   工作集另给出已保存的 `recipe_inputs`（`video.update_recipe_inputs` 的形状，按槽位、按键合并）与 `bindable_assets`：当前 recipe 显式槽位
   按媒体类型与时长可接受的项目 Asset（ID、名称、媒体类型、时长、可进入的槽位）。列表只含导入素材、引用库与地点库的已选资源，

@@ -6,7 +6,7 @@ from dataclasses import replace
 import pytest
 from structured_director_fixtures import RecordingProvider
 from test_prompt_worksets import fixture
-from video_recipes import replace_video_provider
+from video_recipes import h3_dialogue_prompt, replace_video_provider
 
 from core.director_commands import DirectorCommand, DirectorCommandRegistry
 from core.model_providers.manifest import Field, Widget
@@ -72,6 +72,7 @@ def test_recipe_switch_preserves_each_recipe_mechanism_parameters(tmp_path):
             recipes=plugin.recipes,
             prompt_formatter=plugin.prompt_formatter,
             prompt_skills=plugin.prompt_skills,
+            prompt_linter=plugin.prompt_linter,
         )
         segment_id = document.video_plan.segments[1].segment_id
         document = await service.save_segment_video_recipe(
@@ -292,7 +293,8 @@ def test_generation_never_injects_missing_dialogue_references(tmp_path):
             len([item for item in workset["asset_inputs"] if item["label"].startswith("<Audio")])
             == 2
         )
-        assert workset["core_prepended_dialogue_prompt"] is None
+        # 只剩手工参考音频：对白没有 Audio 标签，Core 也不在正文外补任何对白映射。
+        assert [item["audio_label"] for item in workset["prompt_dialogue"]] == [None] * 3
         state = service.preview_segment_video_inputs(
             video.segment_id, document.video_plan.segments[0].recipe_inputs, document.revision
         )
@@ -329,8 +331,16 @@ def test_dialogue_labels_follow_explicit_order_without_duplicate_submission(tmp_
         workset = video_prompt_workset(
             document, video.segment_id, provider_recipes=service.provider_recipe_views()
         )
-        assert "<Audio 3> 对应原始对白：先听我说。" in workset["core_prepended_dialogue_prompt"]
-        assert "<Audio 1> 对应原始对白：我们开始。" in workset["core_prepended_dialogue_prompt"]
+        labels = {item["text"]: item["audio_label"] for item in workset["prompt_dialogue"]}
+        assert labels["先听我说。"] == "<Audio 3>"
+        assert labels["我们开始。"] == "<Audio 1>"
+        document = await service.save_segment_video_inputs(
+            segment_id=video.segment_id,
+            prompt_text=h3_dialogue_prompt(workset),
+            bindings=inputs["bindings"],
+            params=inputs["params"],
+            expected_revision=document.revision,
+        )
         provider = RecordingProvider(media_type="video/mp4", content=b"fake")
         replace_video_provider(service, "ref2va", provider)
         await service._media.generate_segment_video(
@@ -513,19 +523,29 @@ def test_attach_dialogue_rejects_whole_request_when_tts_missing(tmp_path):
         _prepare_segment_video_plan_update(document, update, "c" * 32)
 
 
-def test_core_prepends_dialogue_prompt_once_even_if_prompt_already_has_it(tmp_path):
+def test_dialogue_prompt_problems_are_soft_hints_and_prompt_is_submitted_verbatim(tmp_path):
     from core.structured_director.prompt_worksets import video_prompt_workset
+    from core.structured_director.reads.dependencies import _dependency
 
     async def run():
         store, service, document, _ = await fixture(tmp_path)
         video = document.video_plan.segments[0]
-        prefix = video_prompt_workset(
-            document, video.segment_id, provider_recipes=service.provider_recipe_views()
-        )["core_prepended_dialogue_prompt"]
+
+        def workset(current):
+            return video_prompt_workset(
+                current,
+                video.segment_id,
+                provider_recipes=service.provider_recipe_views(),
+                provider_catalog=service._registry,
+            )
+
+        valid = h3_dialogue_prompt(workset(document))
+        first = workset(document)["prompt_dialogue"][0]
+        # 旧的“结构外对白映射”让同一句台词在 <d> 之外再出现一次：只提示，不阻止生成。
+        legacy = f"{first['audio_label']} 对应原始对白：{first['text']}\n\n{valid}"
         provider = RecordingProvider(media_type="video/mp4", content=b"fake")
         replace_video_provider(service, "ref2va", provider)
-        # 已按旧约定把约束写在开头的正文，提交时不再重复前置。
-        for prompt_text in (f"{prefix}\n\n正文。",):
+        for prompt_text, has_problems in ((valid, False), (legacy, True)):
             document = await service.save_segment_video_inputs(
                 segment_id=video.segment_id,
                 prompt_text=prompt_text,
@@ -533,9 +553,16 @@ def test_core_prepends_dialogue_prompt_once_even_if_prompt_already_has_it(tmp_pa
                 params={},
                 expected_revision=store.read().revision,
             )
-            document = await service._media.generate_segment_video(
-                segment_id=video.segment_id, expected_revision=document.revision
-            )
-            assert provider.requests[-1].prompt == f"{prefix}\n\n正文。"
+            problems = workset(document)["prompt_problems"]
+            assert bool(problems) is has_problems
+        assert any("在 `<d>` 之外重复出现" in item for item in problems)
+        assert _dependency(document, "video.generate", video.segment_id, catalog=service._registry)[
+            "ready"
+        ]
+        document = await service._media.generate_segment_video(
+            segment_id=video.segment_id, expected_revision=document.revision
+        )
+        assert provider.requests[-1].prompt == legacy
+        assert document.generations[-1].prompt_text == legacy
 
     asyncio.run(run())

@@ -59,6 +59,9 @@ class PluginInstance:
     ``recipes`` 映射 recipe ID 到实现；模型任务提交使用 ``submit_recipe``，
     同步语音转写使用 ``execute_recipe``。``prompt_skills`` 返回随插件发布、供 Agent 写提示词的
     Skill 正文（``[{name, resources: [{name, text}]}]``），由 Core 经专业契约交付。
+    ``prompt_linter(recipe_id, prompt, facts)`` 按插件自己的提示词格式返回中文问题列表；
+    ``facts`` 是 Core 给出的领域事实（``duration_seconds``、``asset_labels``、
+    ``dialogue: [{speaker, text, audio_label}]``）。结果只作为工作集软提示，Core 不据此拒绝提交。
     """
 
     manifest: PluginManifest
@@ -66,6 +69,7 @@ class PluginInstance:
     recipes: Mapping[str, object] = field(default_factory=dict)
     prompt_formatter: Callable[[dict], dict] | None = None
     prompt_skills: Callable[[], list[dict]] | None = None
+    prompt_linter: Callable[[str, str, dict], list[str]] | None = None
 
     def __post_init__(self) -> None:
         if not self.recipes:
@@ -354,6 +358,13 @@ class ProviderRegistry:
         if capability in {Capability.IMAGE_GENERATE, Capability.IMAGE_EDIT}:
             result = {**result, "global_skills": [image_prompt_skill()]}
         return result
+
+    def lint_prompt(self, capability, recipe_id, prompt, facts) -> list[str]:
+        """插件声明的提示词格式软提示；未声明 linter 的插件返回空列表。"""
+        plugin, _recipe = self.recipe_definition(capability, recipe_id)
+        if plugin.prompt_linter is None:
+            return []
+        return plugin.prompt_linter(recipe_id, prompt, facts)
 
     def recipe_definition(
         self, capability: Capability, recipe_id: str

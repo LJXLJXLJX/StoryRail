@@ -178,6 +178,31 @@ def dialogue_audio_inputs(document, segment_id, *, require_ready=True):
     return tuple(result)
 
 
+def video_prompt_facts(document, segment, labels):
+    """交给插件提示词校验器的领域事实；对白按剧本顺序，Audio 标签按实际显式绑定查找。"""
+    audio_labels = {
+        item["asset_id"]: item["label"] for item in labels if item["role"] == "reference_audio"
+    }
+    selected = {
+        line.id: asset.id
+        for line, _, asset in dialogue_audio_inputs(document, segment.id, require_ready=False)
+    }
+    characters = {item.id: item.name for item in document.reference_library.characters}
+    return {
+        "duration_seconds": segment.duration_estimate_seconds,
+        "asset_labels": [item["label"] for item in labels if item["label"] is not None],
+        "dialogue": [
+            {
+                "speaker": line.speaker_label
+                or characters.get(line.character_id, line.character_id),
+                "text": line.text,
+                "audio_label": audio_labels.get(selected.get(line.id)),
+            }
+            for line in segment.dialogue_lines
+        ],
+    }
+
+
 def dialogue_audio_bindings(document, segment_id):
     """一键添加用的显式引用草稿；不要求已校准时序，不写 authority。"""
     _, _, segment, _ = segment_context(document, segment_id)

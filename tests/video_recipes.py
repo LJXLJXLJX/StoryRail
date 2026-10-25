@@ -397,3 +397,44 @@ def set_video_render(service, render):
             "selflift": render.selflift,
         },
     )
+
+
+def h3_dialogue_prompt(workset, *, tail=""):
+    """按官方 Ref2VA 六段结构写出能通过插件校验的对白提示词；台词只出现在 `<d>` 中一次。"""
+    speakers = {}
+    for line in workset["prompt_dialogue"]:
+        speakers.setdefault(line["speaker"], len(speakers) + 1)
+    definitions = [
+        f"<Subject {number}> 是关键帧中的{speaker}，保持外观与服装。"
+        for speaker, number in speakers.items()
+    ]
+    retention = [
+        f"<Subject {number}> (appears in [Shot 1]): fully_preserved - 外观与服装保持一致。"
+        for number in speakers.values()
+    ]
+    spoken = []
+    for line in workset["prompt_dialogue"]:
+        number = speakers[line["speaker"]]
+        label = line["audio_label"]
+        definitions.append(f"{label} 是 <Subject {number}> (S{number}) 的对白音频。")
+        retention.append(f"{label}: partially_copy - 原信号放在这句对白的时间窗内。")
+        spoken.append(
+            f"<Subject {number}> (S{number}) 按 {label} 开口说：<d>[Chinese] {line['text']}</d>"
+        )
+    return "\n".join(
+        [
+            "subject_definitions:",
+            *definitions,
+            "summary:",
+            "[keyframe completion + audio reuse] 角色在室内依次对话。",
+            "retention_analysis:",
+            *retention,
+            "detailed_description:",
+            "写实电影风格。",
+            "[Shot 1] 中景固定机位，" + " ".join(spoken),
+            "overall_soundscape:",
+            "室内空调低鸣，衣料摩擦声。除上述对白外无其它人类语音。",
+            "non_diegetic_music:",
+            "N/A" + tail,
+        ]
+    )

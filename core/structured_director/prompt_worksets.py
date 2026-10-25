@@ -22,7 +22,7 @@ from .script_index import (
     segment_shots,
     segment_visible_character_ids,
 )
-from .video_inputs import dialogue_audio_addition, dialogue_audio_inputs, resolve_video_inputs
+from .video_inputs import dialogue_audio_addition, resolve_video_inputs, video_prompt_facts
 
 
 def video_prompt_workset(
@@ -65,7 +65,6 @@ def video_prompt_workset(
         )
         if slot.role in {Role.FIRST_FRAME, Role.LAST_FRAME}:
             bindings[slot.key] = () if asset_id is None else (SlotBinding(asset_id),)
-    dialogue_inputs = dialogue_audio_inputs(document, segment_id, require_ready=False)
     audio_slot = next((slot for slot in recipe.slots if slot.role is Role.REFERENCE_AUDIO), None)
     if segment.dialogue_lines and audio_slot is None:
         raise ValueError("含对白的 Segment 必须使用支持参考音频的 Ref2VA recipe。")
@@ -87,8 +86,9 @@ def video_prompt_workset(
         )
 
     soft = view["hints"].get("soft_duration_limit_seconds")
+    facts = video_prompt_facts(document, segment, labels)
     result = {
-        "workset_version": 7,
+        "workset_version": 8,
         "video_recipe": view,
         "context": {
             "recipe_id": recipe.id,
@@ -161,8 +161,8 @@ def video_prompt_workset(
         and segment.duration_estimate_seconds > soft,
         "dialogue_timing": actual_dialogue_timing(document, segment),
         "dialogue_audio": dialogue_audio_addition(document, segment_id, recipe),
-        # Core 提交时自动前置的对白约束，正文不要重复。
-        "core_prepended_dialogue_prompt": dialogue_prompt_prefix(labels, dialogue_inputs),
+        # 插件 Skill 规定对白在正文中的写法；Core 原样提交正文，不前置任何文字。
+        "prompt_dialogue": facts["dialogue"],
         "video_inputs": [
             keyframe_video_context(document, segment_id, provider_recipes, provider_catalog)
         ],
@@ -170,6 +170,12 @@ def video_prompt_workset(
 
     if provider_catalog is None:
         return result
+    # 插件格式检查只是软提示：帮助 Agent 自查，不进入依赖原因，也不阻止生成。
+    result["prompt_problems"] = (
+        provider_catalog.lint_prompt(Capability.VIDEO_GENERATE, recipe.id, video.prompt_text, facts)
+        if video.prompt_text.strip()
+        else []
+    )
     return {
         **provider_catalog.format_prompt_workset(Capability.VIDEO_GENERATE, recipe.id, result),
         # 插件 Skill 全文经 read_professional_contract(capability="video_prompt") 读取。
@@ -177,21 +183,6 @@ def video_prompt_workset(
             provider_catalog.prompt_skills(Capability.VIDEO_GENERATE)
         ),
     }
-
-
-def dialogue_prompt_prefix(labels, dialogue_inputs):
-    """按实际显式绑定的 Asset 找标签，不假定对白一定排在手工参考前面。"""
-    audio_labels = {
-        item["asset_id"]: item["label"] for item in labels if item["role"] == "reference_audio"
-    }
-    bound = [(line, asset) for line, _, asset in dialogue_inputs if asset.id in audio_labels]
-    if not bound:
-        return None
-    instructions = ["严格让角色说出参考音频的原始内容，音频完全相等。"]
-    instructions.extend(
-        f"{audio_labels[asset.id]} 对应原始对白：{line.text}" for line, asset in bound
-    )
-    return "\n".join(instructions)
 
 
 def _bindable_assets(document: StructuredDirectorDocument, scene, recipe) -> list[dict]:

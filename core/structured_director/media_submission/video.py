@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from core.model_providers.manifest import Capability, Role
-from core.model_providers.recipe import MediaInput, RecipeParams, binding_labels
+from core.model_providers.recipe import MediaInput, RecipeParams
 
 from ..generation_lifecycle import (
     _next_generation_seed,
@@ -18,7 +18,6 @@ from ..models import (
 from ..production_context import (
     _TERMINAL_PHASES,
 )
-from ..prompt_worksets import dialogue_prompt_prefix
 from ..script_index import find_segment
 from ..video_inputs import resolve_video_inputs, validate_dialogue_video_bindings
 from .support import _commit_submission
@@ -82,15 +81,8 @@ def _segment_video_submission(owner, document, context):
         Capability.VIDEO_GENERATE, recipe_id=plan_item.active_recipe
     )
     bindings = dict(plan_item.recipe_inputs.bindings)
-    dialogue = validate_dialogue_video_bindings(document, segment.id, prepared.recipe, bindings)
-    labels = binding_labels(prepared.recipe, bindings)
-    instruction = dialogue_prompt_prefix(labels, dialogue)
-    # 对白约束由 Core 唯一负责前置；已手工写在开头的正文不再重复。
-    effective_prompt = (
-        plan_item.prompt_text
-        if instruction is None or plan_item.prompt_text.startswith(instruction)
-        else f"{instruction}\n\n{plan_item.prompt_text}"
-    )
+    validate_dialogue_video_bindings(document, segment.id, prepared.recipe, bindings)
+    # 已保存正文原样提交；插件提示词格式问题只在工作集中软提示，不阻止生成。
     inputs_by_slot = {}
     for slot in prepared.recipe.slots:
         automatic = (
@@ -116,7 +108,7 @@ def _segment_video_submission(owner, document, context):
             inputs_by_slot[slot.key] = tuple(values)
     request, submitted = prepared.request(
         roles={
-            Role.PROMPT: effective_prompt,
+            Role.PROMPT: plan_item.prompt_text,
             Role.DURATION: duration,
             Role.SEED: seed,
             Role.ASPECT_RATIO: document.aspect_ratio.value,
@@ -144,7 +136,7 @@ def _segment_video_submission(owner, document, context):
         video_input_snapshot=inputs.snapshot,
         provider_snapshot=prepared.snapshot,
         recipe_params=RecipeParams.from_json({prepared.recipe.id: submitted}),
-        prompt_text=effective_prompt,
+        prompt_text=plan_item.prompt_text,
         input_asset_ids=input_asset_ids,
         sample_text=None,
         seed=seed,

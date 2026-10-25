@@ -105,6 +105,9 @@ skills=..., distinct_slots=...)`
 - `skills` + `PluginInstance(prompt_skills=...)`：为写提示词的 Agent 随插件附带专业 Skill，返回
   `[{name, resources: [{name, text}]}]`；Core 经对应专业契约交付全文，工作集只给目录。`prompt_formatter` 只把工作集
   转换成插件专业格式，不再附带 Skill（参考 `minimax_h3/` 的 `skills/h3-prompt-writing/` 与 `prompt_context.py`）。
+- `PluginInstance(prompt_linter=...)`：`(recipe_id, prompt, facts) -> list[str]`，按插件自己的提示词格式返回中文问题列表；
+  `facts` 含 `duration_seconds`、`asset_labels` 与 `dialogue: [{speaker, text, audio_label}]`。结果只写进 `video_prompt`
+  工作集的 `prompt_problems` 作软提示，不进入依赖原因、不阻止提交（参考 `minimax_h3/prompt_lint.py`）。
 
 **Field**：`Field(key, widget, label, default, options, minimum, maximum, max_length, min_length, dimension,
 component_labels, nullable, role, help, advanced, summary, summary_label)`。

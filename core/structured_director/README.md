@@ -56,7 +56,7 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 - `image_inputs.py`：单次图片调用的实际输入：按名额优先级去重、超过 `MAX_IMAGE_INPUTS`（5）时拒绝并列出被挤掉的输入、编辑底图排第一；Keyframe 与地点生成共用。
 - `image_prompt_style.py`：按当前绑定图片插件的 `image_prompt` 约定解析输入图指代与画幅句；预览、工作集与提交共用。
 - `image_inputs.py`：合并实际输入，工作集暴露 `asset_id`、`label`、`roles`，预览只展示来源信息。校验显式引用段数量、顺序和正文标签，不生成或重排引用说明、不把默认用途拼入提示词；既有纯正文仍可读取与生成。
-- `video_inputs.py`：Segment 视频实际输入、输入签名、候选可选性、首帧抽取来源。
+- `video_inputs.py`：Segment 视频实际输入、输入签名、候选可选性、首帧抽取来源，以及交给视频插件提示词 linter 的领域事实（`video_prompt_facts`）。
 - `keyframe_batches.py`：Keyframe 波次执行（只提交前置帧、角色造型等显式依赖已满足的目标）。
 - `location_batches.py`：地点图片成套生成批次（`location.generate_set`）的单轮执行：固定图片范围，复用单项入口提交；回调不续推进。
 - `external_batches.py`：外部批次（Keyframe 波次与地点成套生成）的 start/continue、稳定 `batch_id` 与执行轮次关联。

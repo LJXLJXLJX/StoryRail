@@ -147,7 +147,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
   - `whisper_asr/`：whisper.cpp 参考音频转写。
   - `qwen_image/`：Qwen Image 2.1（NoctQ V4）备选生图/改图，`skills/qwen-image-prompt-writing/` 随插件发布（含官方提示词模板）。
   - `minimax_h3/`：MiniMax H3 插件；`manifest.py`、`plugin.py`、`requests.py`、`contracts.py`、`render.py`，以及 `fl2va/`、`ref2va/` HTTP 实现。
-    `prompt_contract.py`、`prompt_codec.py`、`prompt_payload.py`、`prompt_context.py` 负责插件专业格式（`context.shots` 按 Segment 覆盖顺序写入段内切镜软约束），`skills/h3-prompt-writing/` 随插件发布，经 `prompt_skills` 由 `video_prompt` 契约交付。
+    `prompt_contract.py`、`prompt_codec.py`、`prompt_payload.py`、`prompt_context.py` 负责插件专业格式（`context.shots` 按 Segment 覆盖顺序写入段内切镜软约束），`skills/h3-prompt-writing/` 随插件发布，经 `prompt_skills` 由 `video_prompt` 契约交付。`prompt_lint.py` 是插件的 `prompt_linter`，按官方结构检查对白唯一位置、对白标签、说话者、段落与引用，结果只作工作集软提示。
   - `seedvr2_7b_sharp_fp8/`：SeedVR2 视频超分。
   - `demucs_audio/`：Demucs 人声/背景分离。
   - `stable_audio_3/`：Stable Audio 3 Medium 文生音频，目前只供 Playground。
@@ -245,7 +245,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `image_inputs.py`：单次图片调用的输入名额（`MAX_IMAGE_INPUTS`）、优先级去重与超额拒绝；Keyframe 与地点生成共用。
 - `image_prompt_style.py`：当前图片插件的输入图指代与画幅句约定。
 - `video_contracts.py`：抽帧请求（帧号）与视频输入快照值对象。
-- `video_inputs.py`：Segment 视频实际输入、显式对白音频引用草稿与生成门禁、候选适用性与首帧“从上一 seg 抽取”来源。
+- `video_inputs.py`：Segment 视频实际输入、显式对白音频引用草稿与生成门禁、提示词校验所需的领域事实、候选适用性与首帧“从上一 seg 抽取”来源。
 - `media_submission/dialogue.py`：逐句对白 TTS 提交；有参考音色强制克隆，无参考音色强制 Voice Design。
 - `assembly_timeline.py`：Animatic、Scene 成片与全片装配时间线纯计算。
 - `dialogue_timing.py`：TTS 前对白时长软提示，以及已选对白 WAV 的真实起点、时长和最晚结束时间投影。
