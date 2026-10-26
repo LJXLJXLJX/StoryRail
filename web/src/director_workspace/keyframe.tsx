@@ -459,9 +459,9 @@ function SegmentOtherImages({
   const keyframeImages = availableImages.filter((asset) =>
     keyframesByAsset.has(asset.id),
   );
+  // 资产库列出全部其余图片，包括手动导入或未被选中的 Keyframe 分类图片。
   const referenceImages = availableImages.filter(
-    (asset) =>
-      !keyframesByAsset.has(asset.id) && asset.image_category !== "keyframe",
+    (asset) => !keyframesByAsset.has(asset.id),
   );
   const updateItems = (next: typeof items) =>
     draft.inputs.setValue((current) => ({

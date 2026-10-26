@@ -97,6 +97,19 @@ it("Ref2VA 其他图片在首尾帧下方分别从关键帧与资产库选择并
       allowed_actions: [],
     },
     {
+      id: "5".repeat(32),
+      display_name: "手动导入未采用关键帧.png",
+      media_type: "image/png",
+      image_category: "keyframe",
+      byte_count: 1024,
+      duration_seconds: null,
+      content_url: "/imported-keyframe.png",
+      is_in_use: false,
+      usage_reasons: [],
+      retains_derived_assets_on_delete: false,
+      allowed_actions: [],
+    },
+    {
       id: referenceAssetId,
       display_name: "控制台参考图.png",
       media_type: "image/png",
@@ -191,6 +204,11 @@ it("Ref2VA 其他图片在首尾帧下方分别从关键帧与资产库选择并
       name: "选择 另一镜头关键帧.png",
     }),
   ).toBeNull();
+  expect(
+    within(dialog).getByRole("button", {
+      name: "选择 手动导入未采用关键帧.png",
+    }),
+  ).toBeInTheDocument();
   fireEvent.click(
     within(dialog).getByRole("button", { name: "选择 控制台参考图.png" }),
   );
