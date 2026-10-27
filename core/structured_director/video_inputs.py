@@ -6,12 +6,12 @@ import hashlib
 import json
 from dataclasses import dataclass
 
-from core.model_providers.manifest import Role
-from core.model_providers.recipe import SlotBinding
+from core.model_providers.manifest import Capability, Role
+from core.model_providers.recipe import SlotBinding, binding_labels
 
 from .models import ReferenceGenerationKind as Kind
 from .models import ReferenceGenerationPhase as Phase
-from .script_index import scene_segments, shot_segments
+from .script_index import find_segment, scene_segments, shot_segments
 from .video_contracts import VideoInputSnapshot
 
 TERMINAL = {Phase.SUCCEEDED, Phase.FAILED, Phase.CANCELLED}
@@ -424,3 +424,61 @@ def start_frame_extraction_source(document, keyframe_id):
         return result
     result.update(state="ready", source_video_asset_id=asset_id, message="可以从上一段视频抽取。")
     return result
+
+
+def video_inputs_digest(document, segment_id: str, *, provider_catalog) -> dict[str, object]:
+    """``video.update_recipe_inputs`` 写入后的紧凑结果，Agent 无需重读整份工作集即可自查。"""
+    video = next(item for item in document.video_plan.segments if item.segment_id == segment_id)
+    _scene, segment = find_segment(document.director_script.scenes, segment_id)
+    result = {
+        "segment_id": segment_id,
+        "recipe_id": video.active_recipe,
+        "prompt_chars": len(video.prompt_text),
+        "recipe_inputs": video.recipe_inputs.to_json(),
+    }
+    if provider_catalog is None or video.active_recipe is None:
+        return result
+    try:
+        _plugin, recipe = provider_catalog.recipe_definition(
+            Capability.VIDEO_GENERATE, video.active_recipe
+        )
+    except ValueError:
+        # 摘要只是自查便利；recipe 暂不可用时不影响已校验的写入。
+        return result
+    labels = actual_video_labels(document, segment_id, recipe, video)
+    facts = video_prompt_facts(document, segment, labels)
+    dialogue = dialogue_audio_addition(
+        document, segment_id, recipe, dict(video.recipe_inputs.bindings)
+    )
+    return result | {
+        "asset_inputs": [{"label": item["label"], "asset_id": item["asset_id"]} for item in labels],
+        # 绑定已在 recipe_inputs 中；这里只回报仍未绑定的对白与错误。
+        "dialogue_audio": (
+            None if dialogue is None else {key: dialogue[key] for key in ("error", "unbound_lines")}
+        ),
+        # 与工作集同一 linter 的软提示，不阻止生成。
+        "prompt_problems": (
+            provider_catalog.lint_prompt(
+                Capability.VIDEO_GENERATE, recipe.id, video.prompt_text, facts
+            )
+            if video.prompt_text.strip()
+            else []
+        ),
+    }
+
+
+def actual_video_labels(document, segment_id, recipe, video) -> list[dict]:
+    """实际提交的输入标签：首尾帧槽位取当前生效关键帧，其余槽位取已保存绑定。"""
+    actual = resolve_video_inputs(document, segment_id)
+    bindings = dict(video.recipe_inputs.bindings)
+    for slot in recipe.slots:
+        asset_id = (
+            actual.start_asset_id
+            if slot.role is Role.FIRST_FRAME
+            else actual.end_asset_id
+            if slot.role is Role.LAST_FRAME
+            else None
+        )
+        if slot.role in {Role.FIRST_FRAME, Role.LAST_FRAME}:
+            bindings[slot.key] = () if asset_id is None else (SlotBinding(asset_id),)
+    return binding_labels(recipe, bindings)

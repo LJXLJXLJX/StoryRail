@@ -177,8 +177,8 @@ Core 分配。不支持单独移动 Shot：重排或跨 Scene 迁移 Shot 时，
 
 | 命令 | 调用方 | 要点 |
 | --- | --- | --- |
-| `video.set_prompt` | A | 保存单 Segment 视频正文（≤ 20,000） |
-| `video.update_recipe_inputs` | A | 原子保存 `prompt_text`、当前 recipe 的 `bindings`（槽位 → 有序 `{asset_id, description}`）与机制 `params`，按槽位、按键合并进当前 recipe 的输入簿（给出的槽位整体替换、空列表清空，未给出的保留）；可选 `attach_dialogue_audio: true` 按“一键添加本段对白 TTS”规则合并已选对白 WAV（缺句或超额整次拒绝）；按 manifest 校验槽位、数量、媒体类型、时长、说明与唯一性，只接受本项目 Asset；人类与 Agent 同一路径。多 Shot Segment 的正文按覆盖顺序读取工作集 `context.shots` |
+| `video.set_prompt` | A | 保存单 Segment 视频正文（≤ 20,000）；回执 `data` 同 `video.update_recipe_inputs` 的写入后摘要 |
+| `video.update_recipe_inputs` | A | 原子保存 `prompt_text`、当前 recipe 的 `bindings`（槽位 → 有序 `{asset_id, description}`）与机制 `params`，按槽位、按键合并进当前 recipe 的输入簿（给出的槽位整体替换、空列表清空，未给出的保留）；可选 `attach_dialogue_audio: true` 按“一键添加本段对白 TTS”规则合并已选对白 WAV（缺句或超额整次拒绝）；按 manifest 校验槽位、数量、媒体类型、时长、说明与唯一性，只接受本项目 Asset；人类与 Agent 同一路径；回执 `data` 是写入后摘要（`prompt_chars`、`recipe_inputs`、`asset_inputs`、`prompt_problems`、`dialogue_audio.error/unbound_lines`）。多 Shot Segment 的正文按覆盖顺序读取工作集 `context.shots` |
 | `video.set_recipe` | A | 保存 `recipe_id`；Core 校验目标可用性及输入兼容性，保留各 recipe 的 book |
 | `video.generate` | A | `segment_id`；纯程序动作，原样提交已保存正文 |
 | `video.select_candidate` | H | 采用候选 |

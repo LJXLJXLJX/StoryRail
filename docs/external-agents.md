@@ -139,7 +139,7 @@ flowchart LR
 | 选择 | `select_keyframe_candidate` | `keyframe.select_candidate`（`keyframe_id` + 该帧成功、未隐藏的 `keyframe_image` 或抽帧 `generation_id`） |
 | 规划 | `submit_proposal` | 统一入口：`capability` + `payload`；schema 按 capability 与 `payload.action` 公开完整字段：request（`raw_user_instruction`；keyframe 另需 `scene_ids` 与 Segment `target_ids`）/ get、cancel（`request_id`）/ submit（`request_id` 加内联 `proposal` 或受限 `proposal_source`）/ reject（`request_id`、`reason`） |
 | 编辑 | `edit_script` / `edit_narration` / `edit_locations` / `edit_keyframes` / `edit_looks` | 各自的 `*.apply_operations` / `narration.update_cue` / `reference.apply_look_operations`（`add_look` / `update_look`，字段形状随 `reference_library` 契约下发）；`edit_narration.fields.clear_selected_audio = "zh"\|"en"` 独占一次调用并翻译为 `narration.clear_selection`；`edit_locations` 的 scope 是 `location_ids` / `scene_ids`，可编辑地点、状态、陈设、独立图片和 Scene 绑定，字段形状随 `location` 契约下发；`edit_script` 的 `insert_shot` 必须给出 `attach_to_segment_id` 或 `new_segment`，Segment 操作以 `scene_id` 为容器 |
-| | `save_video_prompt` / `save_keyframe_prompt` | 不带 `recipe_inputs` 时 `video.set_prompt`；带 `recipe_inputs: {bindings, params}` 或 `attach_dialogue_audio` 时 `video.update_recipe_inputs`（正文整体保存，绑定按槽位、参数按键合并）/ 单项 `update_frame_fields` |
+| | `save_video_prompt` / `save_keyframe_prompt` | 不带 `recipe_inputs` 时 `video.set_prompt`；带 `recipe_inputs: {bindings, params}` 或 `attach_dialogue_audio` 时 `video.update_recipe_inputs`（正文整体保存，绑定按槽位、参数按键合并）；两者回执 `data` 带写入后的输入摘要 / 单项 `update_frame_fields` |
 | | `save_reference_image_plan` | `video.save_reference_image_plan`（Scene scope、Segment ID、0–3 槽位与完整画面计划；可规划任意图片内容，不生成、不选择） |
 | | `set_video_recipe` | `video.set_recipe` |
 | | `unlock_production` | `visual_production.unlock` |
@@ -237,7 +237,7 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
 | `activity_summary` | 全项目非终态 Generation 数量；并行任务看 `task_discovery` |
 | `workspace_capabilities.unlocked` | 累计解锁层 |
 | `allowed_actions` | 人类 UI 能力，**不是**主流程下一步 |
-| `task_discovery`（handoff） | 从 run、ApplicationRequest、Generation 派生的分页活动/最近任务；cursor 绑定 observation revision |
+| `task_discovery`（handoff） | 从 run、ApplicationRequest、Generation 派生的活动/最近任务；未指定 `limit` 时返回全部进行中任务与最近 5 条已结束任务，更早历史经 `next_cursor` 分页，cursor 绑定 observation revision |
 
 关键约束：
 

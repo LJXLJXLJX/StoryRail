@@ -220,6 +220,10 @@ def test_large_project_application_writes_return_compact_receipts_and_stable_rep
             assert "warnings" in payload["receipt"]
             assert payload["workflow"]["semantics"]["current_stage"]
             assert payload["data"] is not None
+            if name == "video.set_prompt":
+                # 只改正文同样带回写入后的输入摘要。
+                assert payload["data"]["segment_id"] == segment.id
+                assert payload["data"]["prompt_chars"] == len(arguments["prompt_text"])
 
             replay_payload = replay.structured_content
             assert not replay.is_error

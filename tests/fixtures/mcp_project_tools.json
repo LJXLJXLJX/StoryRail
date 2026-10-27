@@ -3550,9 +3550,16 @@
           "type": "string"
         },
         "limit": {
-          "maximum": 100,
-          "minimum": 1,
-          "type": "integer"
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "project_id": {
           "pattern": "^[0-9a-f]{32}$",

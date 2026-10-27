@@ -43,6 +43,7 @@ from core.structured_director.store import _generation_timestamp as _generation_
 from core.structured_director.store import _require_generation as _require_generation
 from core.structured_director.store.pipeline import MutationResult as MutationResult
 from core.structured_director.store.pipeline import commit_mutation as commit_mutation
+from core.structured_director.video_inputs import video_inputs_digest
 from core.structured_director.video_mutations import (
     _prepare_segment_video_plan_update as _prepare_segment_video_plan_update,
 )
@@ -184,15 +185,22 @@ class VideoDomain(_DomainBase):
         *,
         expected_revision: int,
         command_id: str,
-    ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
+    ) -> tuple[StructuredDirectorDocument, CommandReceipt, dict[str, object]]:
         def mutate(document: StructuredDirectorDocument) -> MutationResult:
             updated, receipt = _prepare_segment_video_prompt_update(document, update, command_id)
             return MutationResult(updated, receipt, write=updated is not document)
 
-        return commit_mutation(
+        document, receipt = commit_mutation(
             self,
             loader=lambda: self._editable_document(expected_revision),
             mutator=mutate,
+        )
+        return (
+            document,
+            receipt,
+            video_inputs_digest(
+                document, update.segment_id, provider_catalog=self._provider_catalog
+            ),
         )
 
     def set_segment_video_inputs(
@@ -201,7 +209,9 @@ class VideoDomain(_DomainBase):
         *,
         expected_revision: int,
         command_id: str,
-    ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
+    ) -> tuple[StructuredDirectorDocument, CommandReceipt, dict[str, object]]:
+        """原子保存视频正文、绑定与参数；返回写入后的紧凑输入摘要供 Agent 自查。"""
+
         def mutate(document: StructuredDirectorDocument) -> MutationResult:
             caller = current_caller.get()
             if caller is not None and caller.role == "agent":
@@ -237,10 +247,17 @@ class VideoDomain(_DomainBase):
             )
             return MutationResult(updated, receipt, write=updated is not document)
 
-        return commit_mutation(
+        document, receipt = commit_mutation(
             self,
             loader=lambda: self._editable_document(expected_revision),
             mutator=mutate,
+        )
+        return (
+            document,
+            receipt,
+            video_inputs_digest(
+                document, update.segment_id, provider_catalog=self._provider_catalog
+            ),
         )
 
     def set_segment_video_prompt_with_run_progress(

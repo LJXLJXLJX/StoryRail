@@ -498,7 +498,7 @@ class RequestRead(ReadRequest):
 
 class ProjectRead(ReadRequest):
     cursor: str | None = None
-    limit: Annotated[int, Field(ge=1, le=100)] = 30
+    limit: Annotated[int, Field(ge=1, le=100)] | None = None
 
 
 class Candidates(ReadRequest):

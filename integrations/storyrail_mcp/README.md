@@ -55,7 +55,8 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
   `edit_narration.fields.clear_selected_audio = "zh" | "en"` 独占一次调用并翻译为 `narration.clear_selection`。
 - `save_video_prompt` 不带 `recipe_inputs` 与 `attach_dialogue_audio` 时翻译为 `video.set_prompt`；带任一项时翻译为
   `video.update_recipe_inputs`：正文整体保存，`bindings` 按槽位、`params` 按键合并（缺省为 `{}`），`attach_dialogue_audio: true`
-  由 Core 合并本段已选对白 TTS。发布 schema 只把 `recipe_inputs` 声明为 object，形状随
+  由 Core 合并本段已选对白 TTS。两种保存的回执 `data` 都是写入后的紧凑摘要（`prompt_chars`、`recipe_inputs`、
+  `asset_inputs`、`prompt_problems`、`dialogue_audio.error/unbound_lines`），Agent 不必为确认保存重读工作集。发布 schema 只把 `recipe_inputs` 声明为 object，形状随
   `video_prompt` 工作集的 `recipe_inputs` 下发；runtime 模型仍严格校验 `{asset_id, description}` 绑定项并拒绝未知字段。
 
 响应：
@@ -77,7 +78,8 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 ## 断连与恢复
 
 - 断连不表示 Core 没提交。纯读取可省略 `expected_revision` 取得 latest，响应始终给出本次 observation revision。
-- 重连先用 `read_workflow` 的分页 `task_discovery` 发现 active/recent run 与 Generation，再按同一 revision 细查。
+- 重连先用 `read_workflow` 的 `task_discovery` 发现 active/recent run 与 Generation（默认全部 active 加最近 5 条 recent，
+  更早历史经 `next_cursor`），再按同一 revision 细查。
 - 写请求不得换 revision 自动重试；丢响应只用原参数、原 revision、原 key 重放取得 Core 原回执。
 - `manage_generation(action="wait")` 每次都动态观察，不缓存固定回执；Provider 事实未变化时不写回执、不递增 revision。
 - 协议层取消只终止等待；业务取消需要显式调用对应 cancel 工具，不把进程退出当作回滚，也不因恢复观察重新提交生成。

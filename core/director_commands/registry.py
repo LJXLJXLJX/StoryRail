@@ -163,7 +163,7 @@ class DirectorCommandStore(Protocol):
         *,
         expected_revision: int,
         command_id: str,
-    ) -> tuple[StructuredDirectorDocument, CommandReceipt]: ...
+    ) -> tuple[StructuredDirectorDocument, CommandReceipt, dict[str, object]]: ...
 
     def set_segment_video_inputs(
         self,
@@ -171,7 +171,7 @@ class DirectorCommandStore(Protocol):
         *,
         expected_revision: int,
         command_id: str,
-    ) -> tuple[StructuredDirectorDocument, CommandReceipt]: ...
+    ) -> tuple[StructuredDirectorDocument, CommandReceipt, dict[str, object]]: ...
 
     def set_segment_video_prompt_with_run_progress(
         self,
@@ -330,6 +330,30 @@ def _execute_location_operations(
     return CommandExecution(document, receipt, data)
 
 
+def _execute_video_prompt(
+    store: DirectorCommandStore, command: DirectorCommand
+) -> CommandExecution:
+    update = _parse_arguments(parse_video_prompt_update, command.arguments)
+    document, receipt, data = store.set_segment_video_prompt(
+        update,
+        expected_revision=command.expected_revision,
+        command_id=director_command_id(command),
+    )
+    return CommandExecution(document, receipt, data)
+
+
+def _execute_video_inputs(
+    store: DirectorCommandStore, command: DirectorCommand
+) -> CommandExecution:
+    update = _parse_arguments(parse_video_inputs_update, command.arguments)
+    document, receipt, data = store.set_segment_video_inputs(
+        update,
+        expected_revision=command.expected_revision,
+        command_id=director_command_id(command),
+    )
+    return CommandExecution(document, receipt, data)
+
+
 def translate_repair_to_script_operations(patch: RepairPatch) -> dict[str, object] | None:
     """将仅含 Shot/Segment 字段修正的 repair 纯翻译为正式脚本操作。"""
     if not all(operation.entity_type in {"shot", "segment"} for operation in patch.operations):
@@ -404,10 +428,8 @@ _COMMAND_SPECS: dict[str, _CommandSpec] = {
     "video.select_reference_image": _CommandSpec(
         _parse(parse_video_reference_image_selection), "select_video_reference_image"
     ),
-    "video.set_prompt": _CommandSpec(_parse(parse_video_prompt_update), "set_segment_video_prompt"),
-    "video.update_recipe_inputs": _CommandSpec(
-        _parse(parse_video_inputs_update), "set_segment_video_inputs"
-    ),
+    "video.set_prompt": _CommandSpec(None, _execute_video_prompt),
+    "video.update_recipe_inputs": _CommandSpec(None, _execute_video_inputs),
     "video.set_recipe": _CommandSpec(_parse(parse_video_recipe_update), "set_segment_video_recipe"),
     "video.clear_selection": _CommandSpec(
         _parse(parse_video_selection_clear), "clear_segment_video_selection"

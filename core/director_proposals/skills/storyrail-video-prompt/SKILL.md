@@ -25,6 +25,8 @@ description: 根据当前视频 recipe 与实际输入优化单个 Segment 的�
 - 含对白的 Segment：每句对白须已选 TTS 才能生成；未加入参考音频不阻止生成，但视频不会用到这些对白音频，
   工作集 `dialogue_audio.unbound_lines` 列出未加入的台词。通常保存时带 `attach_dialogue_audio: true`，Core 按与 Web“一键添加本段对白 TTS”
   相同的规则把已选 WAV 按剧本顺序放在参考音频最前，覆盖本句旧 WAV 并保留其他手动参考；缺任一句 TTS 或超出名额时整次拒绝。
+- 两种保存的回执 `data` 都是写入后的摘要：`prompt_chars`、合并后的 `recipe_inputs`、实际提交标签 `asset_inputs`、
+  插件 linter 的 `prompt_problems` 与 `dialogue_audio.unbound_lines`。确认保存结果直接读它，不要为确认而重读工作集。
 
 都不生成媒体、不选择候选。用户明确要求生成时，再单独调用 `video.generate`。
 
@@ -36,7 +38,7 @@ description: 根据当前视频 recipe 与实际输入优化单个 Segment 的�
 - `asset_id` 从 `bindable_assets` 选取，其 `slots` 列出它能进入的槽位；用户点名的其它本项目 Asset 也可以，由 Core 校验。不能引用 Playground Asset。
 - `params` 只填 `video_recipe.editable_params` 声明的机制参数，只给要改的键，不改时传 `{}`；时长、seed、画幅等带语义角色的参数由 Core 填写。
 - 当前 recipe 没有所需槽位时先说明，经用户同意再用 `video.set_recipe` 切换；切到不支持某些槽位的 recipe 前必须先清空这些槽位。
-- 绑定变化会让 Core 按槽位顺序重新编号 Picture/Audio/Video 标签。正文需要引用新标签时，先带当前正文（`historical_prompt`）保存输入，重读工作集取得新的 `actual_provider_inputs` 标签，再写正文并保存。
+- 绑定变化会让 Core 按槽位顺序重新编号 Picture/Audio/Video 标签。正文需要引用新标签时，先带当前正文（`historical_prompt`）保存输入，从回执 `data.asset_inputs` 取得新标签，再写正文并保存。
 - Core 原样提交已保存正文，不前置任何对白约束。对白写法由插件 Skill 规定（H3 见 `h3-prompt-writing` 的“StoryRail 对白写法”），
   工作集 `prompt_dialogue` 给出每句台词与实际 `audio_label`；添加或重排对白 TTS 会改变 Audio 标签，之后要重读工作集并按新标签改写正文。
   保存后重读工作集，`prompt_problems` 列出插件检查出的格式问题；它只是提示，不阻止生成，但应先按提示修正正文再请求生成。

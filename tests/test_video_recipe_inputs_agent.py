@@ -204,6 +204,17 @@ def test_agent_binds_ref2va_inputs_and_rejects_invalid_requests(ref2va_journey: 
     }
     reread = _workset(journey, scene, segment)["core_facts"]
     assert reread["recipe_inputs"] == {"bindings": arguments["bindings"], "params": {}}
+    # 写入回执直接带回与工作集一致的输入摘要，Agent 无需重读整份工作集。
+    digest = saved["data"]
+    assert digest["segment_id"] == segment
+    assert digest["recipe_id"] == "minimax_h3.ref2va"
+    assert digest["prompt_chars"] == len(arguments["prompt_text"])
+    assert digest["recipe_inputs"] == reread["recipe_inputs"]
+    assert digest["asset_inputs"] == reread["asset_inputs"]
+    assert digest["prompt_problems"] == reread["prompt_problems"]
+    assert digest["dialogue_audio"] == {
+        key: reread["dialogue_audio"][key] for key in ("error", "unbound_lines")
+    }
     assert reread["context"]["actual_provider_inputs"]["allowed_asset_reference_labels"] == [
         "<Picture 1>",
         "<Picture 2>",

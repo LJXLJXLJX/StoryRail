@@ -3,7 +3,7 @@
 from core.model_providers.image_prompt_skill import image_prompt_guide as image_prompt_guide
 from core.model_providers.image_prompt_skill import prompt_skill_index
 from core.model_providers.manifest import Capability, Role, recipe_from_json
-from core.model_providers.recipe import SlotBinding, binding_labels, explicit_slots
+from core.model_providers.recipe import explicit_slots
 
 from .dialogue_timing import actual_dialogue_timing
 from .image_prompt_style import image_prompt_style
@@ -22,7 +22,7 @@ from .script_index import (
     segment_shots,
     segment_visible_character_ids,
 )
-from .video_inputs import dialogue_audio_addition, resolve_video_inputs, video_prompt_facts
+from .video_inputs import actual_video_labels, dialogue_audio_addition, video_prompt_facts
 
 
 def video_prompt_workset(
@@ -53,22 +53,10 @@ def video_prompt_workset(
     if view is None:
         raise ValueError("当前视频 recipe 不可用，请先配置 Provider 或选择可用 recipe。")
     recipe = recipe_from_json(view["recipe"])
-    actual = resolve_video_inputs(document, segment_id)
-    bindings = dict(video.recipe_inputs.bindings)
-    for slot in recipe.slots:
-        asset_id = (
-            actual.start_asset_id
-            if slot.role is Role.FIRST_FRAME
-            else actual.end_asset_id
-            if slot.role is Role.LAST_FRAME
-            else None
-        )
-        if slot.role in {Role.FIRST_FRAME, Role.LAST_FRAME}:
-            bindings[slot.key] = () if asset_id is None else (SlotBinding(asset_id),)
     audio_slot = next((slot for slot in recipe.slots if slot.role is Role.REFERENCE_AUDIO), None)
     if segment.dialogue_lines and audio_slot is None:
         raise ValueError("含对白的 Segment 必须使用支持参考音频的 Ref2VA recipe。")
-    labels = binding_labels(recipe, bindings)
+    labels = actual_video_labels(document, segment_id, recipe, video)
     assets = {asset.id: asset for asset in document.assets}
     if any(item["asset_id"] not in assets for item in labels):
         raise ValueError("已选视频输入 Asset 不存在。")

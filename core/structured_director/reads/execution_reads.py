@@ -14,6 +14,9 @@ from .proposal_observation import proposal_observation
 from .snapshot_view import human_allowed_actions
 from .workflow_state import workflow_state
 
+# 未指定 limit 时返回全部进行中任务与最近几条已结束任务；更早的历史经 next_cursor 分页。
+_DEFAULT_RECENT_COUNT = 5
+
 
 def handoff_read(document, arguments, *, provider_catalog=None):
     _exact_arguments(arguments, optional={"cursor", "limit"})
@@ -183,8 +186,9 @@ def _task_discovery(document, arguments):
         return item["status"] in active_statuses or batch_active
 
     tasks.sort(key=lambda item: not is_active(item))
+    active_count = sum(is_active(item) for item in tasks)
     offset = _discovery_offset(arguments.get("cursor"), document.revision)
-    limit = arguments.get("limit", 30)
+    limit = arguments.get("limit", min(100, active_count + _DEFAULT_RECENT_COUNT))
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100:
         raise ValueError("handoff limit 必须是 1 到 100 的整数。")
     if offset > len(tasks):
@@ -198,14 +202,14 @@ def _task_discovery(document, arguments):
         "observation_revision": document.revision,
         "semantics": {
             "active": "all_project_active_runs_and_generations",
-            "recent": "all_project_terminal_runs_and_generations",
+            "recent": "latest_terminal_runs_and_generations_older_via_next_cursor",
             "request_association": "current_caller_application_requests_only",
             "request_redaction": "other_caller_links_are_marked_but_ids_and_keys_are_hidden",
             "generation_timestamps": "persisted_generation_lifecycle_not_director_run_time",
             "run_association": "null_run_id_can_be_not_applicable_or_legacy_unavailable",
             "workflow_relation": "parallel_activity_not_primary_workflow",
         },
-        "active_count": sum(is_active(item) for item in tasks),
+        "active_count": active_count,
         "recent_count": sum(not is_active(item) for item in tasks),
         "active": [item for item in page if is_active(item)],
         "recent": [item for item in page if not is_active(item)],
