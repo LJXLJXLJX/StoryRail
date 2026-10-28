@@ -55,6 +55,7 @@ PLAYGROUND_AGENT_OPERATIONS = frozenset(
         "playground.retry_run",
         "playground.dismiss_run",
         "playground.set_note",
+        "playground.ring_alarm",
     }
 )
 
@@ -331,6 +332,9 @@ class AccessPolicy:
                 raise AccessDenied("invalid_request", "命令 JSON 不合法。", 400) from None
             if command.get("name") in READ_OPERATIONS and "project.read" in caller.capabilities:
                 # 投影的显式 scope 仍由 Core 校验，不能跨 project。
+                return
+            if command.get("name") == "alarm.ring" and "project.read" in caller.capabilities:
+                # 主机闹钟只提醒用户，不触碰项目状态。
                 return
             if caller.role == "agent":
                 authorize_command(caller, match[1], command)

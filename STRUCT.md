@@ -119,6 +119,11 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `storyrail-structured-director-script/references/quality-gate.md`：脚本提交前质量门。
 - `storyrail-structured-director-script/references/drama-scene-craft.md`：剧情戏的整场设计、情绪杠杆与对白覆盖。
 
+### core/host_alarm/ — Agent 叫用户回来的主机闹钟
+
+- `README.md`：触发入口、停止方式与边界。
+- `__init__.py`：在 macOS Core 主机上循环播放系统提示音并弹出原生对话框，点“知道了”或 120 秒后停止。
+
 ### core/media_assets/ — 与项目和 Playground 都无关的媒体字节工具
 
 - `README.md`：包的职责、无状态与依赖方向说明。

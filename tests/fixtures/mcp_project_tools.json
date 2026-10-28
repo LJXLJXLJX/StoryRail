@@ -2900,6 +2900,46 @@
     "name": "save_reference_image_plan"
   },
   {
+    "description": "像闹钟一样叫用户回来：在 Core 主机上循环响提示音并弹出带 message 的对话框，用户点“知道了”或 2 分钟后停止；不改项目。长线任务完成、失败或需要用户决定时，在结束本轮回复前调用。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "message"
+      ],
+      "type": "object"
+    },
+    "name": "ring_alarm"
+  },
+  {
     "description": "读取当前项目实际图片/音频Asset，校验SHA-256，最多8 MiB；不接受路径。返回的图片直接用原生视觉能力查看，不要再用 ffmpeg 等命令行工具处理；当前模型无视觉能力时直接拒绝看图任务。",
     "inputSchema": {
       "additionalProperties": false,

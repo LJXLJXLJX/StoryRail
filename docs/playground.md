@@ -199,7 +199,7 @@ Web 复制到项目前先读目标项目 revision；遇到 `revision_conflict` �
 - 锁文件 `<socket 目录>/playground.launch.lock`，同一时刻只允许一个 Playground Agent；卷 `storyrail-<agent>-playground`；
 - gateway 只设置 `STORYRAIL_SCOPE=playground`，只放行 `POST /api/playground/commands`；
 - 工作区写入 `startup.json = {"scope": "playground"}` 与来自 `PLAYGROUND_PROMPT.md` 的 `AGENTS.md`；
-- MCP 以 `--scope playground` 启动，只发布 5 个工具：
+- MCP 以 `--scope playground` 启动，只发布 6 个工具：
 
 | 工具 | 输入 | 翻译为 |
 | --- | --- | --- |
@@ -208,6 +208,7 @@ Web 复制到项目前先读目标项目 revision；遇到 `revision_conflict` �
 | `playground_runs` | 按 `action` 严格 oneOf 的 `list` / `get` / `wait` | `list_runs` / `get_runs` / `wait_runs` |
 | `playground_manage_run` | `action` ∈ `cancel` / `retry` / `dismiss` / `set_note`，`run_id`，`note?`，`idempotency_key` | 对应写命令 |
 | `playground_assets` | `limit?`、`cursor?`、`media_kind?` | `playground.list_assets` |
+| `ring_alarm` | `message`（1–200 字） | `playground.ring_alarm`（[主机闹钟](external-agents.md#主机闹钟)，不读写 Playground） |
 
 - `capability` 不在 MCP 侧枚举，由 Core 校验，新增能力不需要改 MCP。
 - 没有读取 Playground 媒体字节的工具：元数据只用于绑定素材，不能代替看图。带图提示词统一遵守全局生图 Skill；

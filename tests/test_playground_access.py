@@ -178,7 +178,7 @@ def test_policy_parse_accepts_playground_use_for_agent() -> None:
 
 def test_playground_operation_constants_match() -> None:
     assert PLAYGROUND_AGENT_OPERATIONS == ALL_COMMANDS
-    assert len(PLAYGROUND_AGENT_OPERATIONS) == 10
+    assert len(PLAYGROUND_AGENT_OPERATIONS) == 11
 
 
 def test_playground_agent_token_end_to_end(tmp_path: Path) -> None:

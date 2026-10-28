@@ -18,7 +18,7 @@ caller 策略（本机一键接入或 `--access-policy-file`）的既有单写�
 
 - `app.py`：工具模型、发布 schema 与分派；项目 scope 与 Playground scope 两个 server。
 - `production_tools.py`：编辑、生成、批次、装配、Generation 管理等工具的严格嵌套 schema 与固定翻译（不 import Core/Store）。
-- `playground_tools.py`：Playground scope 的 5 个工具。
+- `playground_tools.py`：Playground scope 的 6 个工具。
 - `bridge.py`：到 Core 的 HTTP 传输、错误信封映射与响应序列化。
 
 ## 项目 scope（默认）
@@ -86,6 +86,6 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 
 ## Playground scope
 
-`--scope playground`（由启动器在 Playground 连接下追加）只发布 5 个工具，全部翻译成 `POST /api/playground/commands` 的
+`--scope playground`（由启动器在 Playground 连接下追加）只发布 6 个工具，全部翻译成 `POST /api/playground/commands` 的
 `{"name", "idempotency_key", "arguments"}` 信封，工具表见 [Playground](../../docs/playground.md#agent)。这些工具不接受 `project_id`，
 没有读取媒体字节的工具；项目 scope 的工具表、bridge URL/payload 与错误信封不受影响。

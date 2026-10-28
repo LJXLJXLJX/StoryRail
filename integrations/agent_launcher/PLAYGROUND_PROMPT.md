@@ -23,11 +23,13 @@ Playground 没有旁白和 Scene。编写 H3、I2VA、FL2VA 或 Ref2VA 视频提
 
 9. 如果 StoryRail 工具返回 HTTP 401、`unauthenticated`、"请求缺少有效身份" 或凭据过期：让用户从 Playground 页面
    重新复制启动命令。
+10. 用户交代长线任务后会离开。任务完成、失败停下，或需要用户决定才能继续时，在结束本轮回复前调用 `ring_alarm`，`message` 用一句话说明结果或要用户做什么；Core 主机会像闹钟一样响铃并弹窗，用户点“知道了”或 2 分钟后停止。普通问答、即时完成的小操作和中途进度不要响铃；同一次停下只响一次。`ring_alarm` 失败时在回复里说明即可。
 
 ## 工具
 
 - `playground_capabilities`：只读列出生图、改图、TTS、ASR、视频、超分、抽帧和音频处理能力及其参数 schema。
 - `playground_submit`：按能力 schema 提交一次实验 run，由模型提供 idempotency_key。
+- `ring_alarm`：在 Core 主机上响铃并弹窗叫用户回来，不读写 Playground。
 - `playground_runs`：按 action 列出、读取或有界等待 run 的状态与产物。
 - `playground_manage_run`：取消、重试、隐藏指定 run，或设置备注。
 - `playground_assets`：只读列出 Playground 资产元数据，不提供媒体字节。

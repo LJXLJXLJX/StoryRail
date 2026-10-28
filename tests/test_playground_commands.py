@@ -14,6 +14,7 @@ from core.playground.commands import (
     ALL_COMMANDS,
     OBSERVE_COMMANDS,
     READ_COMMANDS,
+    SIGNAL_COMMANDS,
     WRITE_COMMANDS,
     ReplayedRequest,
     execute_command,
@@ -36,9 +37,10 @@ def envelope(name: str, arguments: dict, key: str) -> dict:
 
 
 def test_command_sets_are_disjoint_and_complete() -> None:
-    assert ALL_COMMANDS == READ_COMMANDS | OBSERVE_COMMANDS | WRITE_COMMANDS
+    assert ALL_COMMANDS == READ_COMMANDS | OBSERVE_COMMANDS | WRITE_COMMANDS | SIGNAL_COMMANDS
     assert not READ_COMMANDS & WRITE_COMMANDS
-    assert len(ALL_COMMANDS) == 10
+    assert not SIGNAL_COMMANDS & (READ_COMMANDS | OBSERVE_COMMANDS | WRITE_COMMANDS)
+    assert len(ALL_COMMANDS) == 11
 
 
 def test_envelope_rejects_unknown_fields_and_names() -> None:

@@ -1,4 +1,4 @@
-"""Playground scope 的 5 个 MCP 工具：只翻译成 playground.* 命令，不导入 Core。"""
+"""Playground scope 的 6 个 MCP 工具：只翻译成 playground.* 命令，不导入 Core。"""
 
 from __future__ import annotations
 
@@ -84,12 +84,27 @@ class PlaygroundAssets(PlaygroundRequest):
     media_kind: Literal["image", "audio", "video"] | None = None
 
 
+class PlaygroundAlarm(PlaygroundRequest):
+    """ring_alarm：只提醒用户，不读写 Playground。"""
+
+    message: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=200,
+            pattern=r"\S",
+            description="对话框里给用户看的一句话：做完了什么、失败在哪或需要用户决定什么。",
+        ),
+    ]
+
+
 PLAYGROUND_MODELS = {
     "playground_capabilities": PlaygroundCapabilitiesRead,
     "playground_submit": PlaygroundSubmit,
     "playground_runs": PlaygroundRuns,
     "playground_manage_run": PlaygroundManageRun,
     "playground_assets": PlaygroundAssets,
+    "ring_alarm": PlaygroundAlarm,
 }
 PLAYGROUND_TOOL_NAMES = tuple(PLAYGROUND_MODELS)
 
@@ -106,6 +121,11 @@ PLAYGROUND_DESCRIPTIONS = {
     ),
     "playground_manage_run": "取消、重试、隐藏 Playground run 或设置备注；不涉及任何项目。",
     "playground_assets": "只读列出 Playground 资产元数据，不返回媒体字节；不涉及任何项目。",
+    "ring_alarm": (
+        "像闹钟一样叫用户回来：在 Core 主机上循环响提示音并弹出带 message 的对话框，"
+        "用户点“知道了”或 2 分钟后停止；长线任务完成、失败或需要用户决定时，"
+        "在结束本轮回复前调用。"
+    ),
 }
 
 
@@ -141,6 +161,9 @@ def translate_playground(name: str, request: PlaygroundRequest):
             {"run_id": request.run_id},
         )
     key = generate_read_key()
+    if name == "ring_alarm":
+        assert isinstance(request, PlaygroundAlarm)
+        return "playground.ring_alarm", key, {"message": request.message}
     if name == "playground_runs":
         assert isinstance(request, PlaygroundRuns)
         if request.action == "list":

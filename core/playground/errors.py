@@ -15,6 +15,11 @@ class ProviderUnavailableError(PlaygroundError):
     recoverable = True
 
 
+class HostAlarmUnavailableError(PlaygroundError):
+    code = "host_alarm_unavailable"
+    status = 409
+
+
 class RunNotFoundError(PlaygroundError):
     code = "run_not_found"
     status = 404

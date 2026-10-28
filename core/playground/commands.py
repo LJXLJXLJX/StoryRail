@@ -16,9 +16,10 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from core.application.caller import Caller
+from core.host_alarm import HOST_ALARM
 from core.model_providers.image_prompt_skill import image_prompt_guide
 
-from .errors import IdempotencyConflictError, RunNotFoundError
+from .errors import HostAlarmUnavailableError, IdempotencyConflictError, RunNotFoundError
 from .lifecycle import utc_timestamp
 from .models import (
     TERMINAL_PHASES,
@@ -48,7 +49,9 @@ WRITE_COMMANDS = frozenset(
         "playground.set_note",
     }
 )
-ALL_COMMANDS = READ_COMMANDS | OBSERVE_COMMANDS | WRITE_COMMANDS
+# 主机闹钟只提醒用户，不读写 Playground 状态、不留回执。
+SIGNAL_COMMANDS = frozenset({"playground.ring_alarm"})
+ALL_COMMANDS = READ_COMMANDS | OBSERVE_COMMANDS | WRITE_COMMANDS | SIGNAL_COMMANDS
 
 _ENVELOPE_FIELDS = {"name", "idempotency_key", "arguments"}
 
@@ -63,6 +66,7 @@ _ARGUMENT_FIELDS: dict[str, frozenset[str]] = {
     "playground.retry_run": frozenset({"run_id"}),
     "playground.dismiss_run": frozenset({"run_id"}),
     "playground.set_note": frozenset({"run_id", "note"}),
+    "playground.ring_alarm": frozenset({"message"}),
 }
 
 _ANONYMOUS = Caller("anonymous", "human", frozenset(), frozenset({"human.write"}), 2**62)
@@ -191,6 +195,11 @@ async def execute_command(service, envelope: object, caller: Caller | None) -> d
     context = request_context(envelope, caller)
     arguments = envelope["arguments"]  # type: ignore[index]
     name = context.operation
+    if name in SIGNAL_COMMANDS:
+        try:
+            return {"data": HOST_ALARM.ring(arguments["message"])}
+        except RuntimeError as exc:
+            raise HostAlarmUnavailableError(str(exc)) from exc
     if name in READ_COMMANDS:
         return _execute_read(service, name, arguments)
     if name in OBSERVE_COMMANDS:

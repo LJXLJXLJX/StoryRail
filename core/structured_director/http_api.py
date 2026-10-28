@@ -20,6 +20,7 @@ from core.director_proposals import (
     StructuredDirectorScriptRevisionProposal,
 )
 from core.director_proposals.wire_fields import NARRATION_CUE_EDIT_FIELDS
+from core.host_alarm import HOST_ALARM
 from core.model_providers.recipe import RecipeInputs, RecipeParams
 from storyrail_contracts.http_edge import query_is_allowed as _query_is_allowed
 
@@ -681,6 +682,8 @@ class StructuredDirectorHttpApi:
         )
         if isinstance(request, JsonResponse):
             return request
+        if request.get("name") == "alarm.ring":
+            return _ring_alarm(request)
         if "expected_revision" not in request:
             # generation.wait 只观察 Provider 状态，与读命令一样可省略 revision。
             if request.get("name") not in READ_OPERATIONS | {"generation.wait"}:
@@ -2431,3 +2434,23 @@ def _narrator_voice(value: object, field: str) -> NarratorVoice | None:
             or None
         ),
     )
+
+
+def _ring_alarm(request: dict[str, Any]) -> JsonResponse:
+    """主机闹钟只是提醒：不读写项目、不校验 revision、不留回执。"""
+    arguments = request["arguments"]
+    if not isinstance(arguments, dict) or set(arguments) != {"message"}:
+        return _error(400, "invalid_request", "alarm.ring 只接受 message。")
+    try:
+        data = HOST_ALARM.ring(arguments["message"])
+    except ValueError as exc:
+        return _error(400, "invalid_request", str(exc))
+    except RuntimeError as exc:
+        return _error(
+            409,
+            "host_alarm_unavailable",
+            str(exc),
+            origin="core_host",
+            retry_policy="tell_user_in_conversation",
+        )
+    return JsonResponse(200, {"data": data})

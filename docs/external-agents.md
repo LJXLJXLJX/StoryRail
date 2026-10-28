@@ -149,6 +149,7 @@ flowchart LR
 | | `assemble_media` | `animatic.generate_scene` / `final.assemble_scene` / `final.assemble` |
 | | `manage_generation` | `generation.wait`（只观察，可省略 `expected_revision` 与 `idempotency_key`）/ `cancel` / `retry` / `dismiss` |
 | | `cancel_run` | `run.cancel` |
+| 提醒 | `ring_alarm` | `alarm.ring`（`message`；见下文主机闹钟，不读写项目） |
 
 另有 6 个**可调用但不在 `tools/list` 中下发 schema** 的旧名：`read_human_handoff`、`read_workflow_state`、`script_proposal`、
 `reference_proposal`、`location_proposal`、`keyframe_proposal`，供尚未更新的客户端使用。
@@ -258,6 +259,28 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
 `read_media_input` 先取 `project.get_asset_manifest`，再从固定可信 Core 的受控 Asset content API 获取字节。只支持 PNG、JPEG、WebP、
 WAV、MP3，单项 ≤ 8 MiB，逐项核对 MIME、长度与 SHA-256；拒绝任意路径、URL、跨项目 Asset、过期 revision，不跟随重定向、不沿用环境代理。
 返回 MCP image/audio 内容与 manifest。
+
+## 主机闹钟
+
+用户交代长线任务后可以离开。Agent 在任务完成、失败停下或需要用户决定时调用 `ring_alarm`（Playground scope 同名，
+翻译为 `playground.ring_alarm`），任何 Agent 都走同一个 MCP 工具，不依赖各 Agent 自己的 hooks 或浏览器。
+
+```mermaid
+sequenceDiagram
+    participant A as 外部 Agent（容器内）
+    participant M as StoryRail MCP
+    participant C as Core（macOS 主机）
+    A->>M: ring_alarm(message)
+    M->>C: POST application/commands {name: "alarm.ring"}
+    C-->>M: 200 {status: ringing | already_ringing}
+    C->>C: 循环 afplay Glass + osascript 对话框
+    Note over C: 点“知道了”或 120 秒后停止
+```
+
+- 只需当前项目的 `project.read`（Playground 为 `playground.use`）；不校验 revision、不写回执，也不改项目或 Playground 状态。
+- 同一时刻只响一个闹钟，响铃期间再次调用返回 `already_ringing`。
+- Core 主机不是 macOS 时返回 `host_alarm_unavailable`，Agent 改为在回复中说明。
+- 何时响铃是提示词约定：普通问答、即时完成的小操作和中途进度不响铃。实现见 `core/host_alarm/`。
 
 ## Agent 行为准则
 

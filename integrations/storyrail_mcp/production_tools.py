@@ -558,6 +558,21 @@ class ReferenceImageSelection(Request):
         return self
 
 
+AlarmMessage = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=200,
+        pattern=r"\S",
+        description="对话框里给用户看的一句话：做完了什么、失败在哪或需要用户决定什么。",
+    ),
+]
+
+
+class Alarm(ReadRequest):
+    message: AlarmMessage
+
+
 class VideoRecipe(Request):
     scene_ids: Targets
     segment_id: ID
@@ -593,6 +608,7 @@ MODELS = {
     "set_video_recipe": VideoRecipe,
     "set_dialogue_timing": DialogueTiming,
     "save_reference_image_plan": ReferenceImagePlan,
+    "ring_alarm": Alarm,
 }
 DESCRIPTIONS = {
     name: description
@@ -627,6 +643,9 @@ DESCRIPTIONS = {
             "新建或编辑一个 Segment 的其他图片规划，slot_index 为 0–3；"
             "可规划任意画面内容，不限角色或地点，无时间位置；不生成、不选择。"
             "用 read_story 的 selection/keyframe 扩展读取 video_inputs 中的规划 ID 和实际绑定。",
+            "像闹钟一样叫用户回来：在 Core 主机上循环响提示音并弹出带 message 的对话框，"
+            "用户点“知道了”或 2 分钟后停止；不改项目。长线任务完成、失败或需要用户决定时，"
+            "在结束本轮回复前调用。",
         ),
         strict=True,
     )
@@ -641,6 +660,8 @@ def translate(name, request):
         args["scope"] = {key: args.pop(key) for key in ("location_ids", "scene_ids")}
     elif "scene_ids" in args:
         args["scope"] = {"scene_ids": args.pop("scene_ids")}
+    if isinstance(request, Alarm):
+        return "alarm.ring", {"message": request.message}
     if isinstance(request, ReferenceImageSelection):
         source = args.pop("source")
         source_id = args.pop("source_id", None)

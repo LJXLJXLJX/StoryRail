@@ -20,7 +20,7 @@ Pi auth.json、models.json、settings.json，之后不覆盖，支持 Pi 原生�
 - gateway 容器只设置 `STORYRAIL_SCOPE=playground`（不传 `PROJECT_ID`），只放行 `POST /api/playground/commands`；
 - 工作区写入 `startup.json = {"scope": "playground"}`（不含 project_id）和来自 `/app/PLAYGROUND_PROMPT.md` 的
   `AGENTS.md`；
-- MCP 启动参数追加 `--scope playground`，只发布 Playground 的 5 个工具，不向项目 Agent 暴露 Playground。
+- MCP 启动参数追加 `--scope playground`，只发布 Playground 的 6 个工具，不向项目 Agent 暴露 Playground。
 
 `prepare_build_context` 定义镜像内 `/app` 的完整布局：`integrations/storyrail_mcp`、`storyrail_contracts`、
 `BUILD_CONTEXT_FILES`（含 `PROMPT.md` 与 `PLAYGROUND_PROMPT.md`），以及 `CORE_TEXT_FILES` 列出的 Core 纯文本

@@ -1113,7 +1113,7 @@ def playground_tool_schema(name: str, model: object) -> dict[str, object]:
 
 
 def create_playground_server(bridge: CoreBridge, *, debug: bool = False):
-    """Playground scope 只发布 5 个工具，全部翻译成 playground.* 命令。"""
+    """Playground scope 只发布 6 个工具，全部翻译成 playground.* 命令。"""
     models = dict(PLAYGROUND_MODELS)
 
     async def list_tools(_context, _params):

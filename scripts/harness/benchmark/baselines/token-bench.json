@@ -11,7 +11,7 @@
   },
   "environment": {
     "date": "2026-10-28",
-    "git_sha": "a613ee3e572d5c5ef890e1fa81f9f53a02980721",
+    "git_sha": "4171276dac5751d76296e82fa5c00054d6c6a0cf",
     "python_version": "3.12.12",
     "platform": "macOS-26.6.2-arm64-arm-64bit",
     "driver": "scripts/harness/benchmark/fake_agent_driver.py"
@@ -20,7 +20,7 @@
     "scenario_total_multiplier": 1.0
   },
   "frozen": {
-    "tools_list_bytes": 48785,
+    "tools_list_bytes": 49448,
     "scenarios": {
       "h3": {
         "total_wire_bytes": 101162
@@ -47,8 +47,8 @@
       "capability": "video_prompt",
       "bootstrap": "keyframes",
       "summary": {
-        "tools_list_bytes": 48785,
-        "tool_count": 29,
+        "tools_list_bytes": 49448,
+        "tool_count": 30,
         "requests": 8,
         "input_bytes": 2005,
         "output_bytes": 99157,
@@ -154,8 +154,8 @@
       "capability": "keyframe",
       "bootstrap": "unlocked",
       "summary": {
-        "tools_list_bytes": 48785,
-        "tool_count": 29,
+        "tools_list_bytes": 49448,
+        "tool_count": 30,
         "requests": 8,
         "input_bytes": 2019,
         "output_bytes": 114304,
@@ -261,8 +261,8 @@
       "capability": "location",
       "bootstrap": "timing",
       "summary": {
-        "tools_list_bytes": 48785,
-        "tool_count": 29,
+        "tools_list_bytes": 49448,
+        "tool_count": 30,
         "requests": 6,
         "input_bytes": 1673,
         "output_bytes": 66135,
@@ -346,8 +346,8 @@
       "capability": "video_prompt",
       "bootstrap": "keyframes",
       "summary": {
-        "tools_list_bytes": 48785,
-        "tool_count": 29,
+        "tools_list_bytes": 49448,
+        "tool_count": 30,
         "requests": 9,
         "input_bytes": 2267,
         "output_bytes": 100577,
@@ -464,8 +464,8 @@
       "capability": "reference_library",
       "bootstrap": "empty",
       "summary": {
-        "tools_list_bytes": 48785,
-        "tool_count": 29,
+        "tools_list_bytes": 49448,
+        "tool_count": 30,
         "requests": 5,
         "input_bytes": 1382,
         "output_bytes": 28691,
@@ -538,8 +538,8 @@
       "capability": "script",
       "bootstrap": "ready",
       "summary": {
-        "tools_list_bytes": 48785,
-        "tool_count": 29,
+        "tools_list_bytes": 49448,
+        "tool_count": 30,
         "requests": 5,
         "input_bytes": 1662,
         "output_bytes": 76751,
