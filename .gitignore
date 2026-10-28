@@ -244,3 +244,5 @@ dist-runtime-exit/
 
 # 本机部署配置（xxx.local.env），不提交
 *.local.env
+
+uv.lock
