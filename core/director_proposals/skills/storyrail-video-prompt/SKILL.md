@@ -32,7 +32,7 @@ description: 根据当前视频 recipe 与实际输入优化单个 Segment 的�
 
 ## 参考素材与参数
 
-- 工作集 `video_inputs[]` 给出当前 Segment 的其他图片计划与实际媒体绑定；图片可以是任意画面内容，不限角色、地点或关键帧。按 `reference_inputs[].asset_id` 用 `read_media_input` 审看已绑定图片；未选中的规划与候选不能冒充实际视频输入。需要单独规划或生成其他图片时，使用 `save_reference_image_plan` 与 `generate_media(kind="reference_image")`，候选仍由人类选用。
+- 工作集 `video_inputs[]` 给出当前 Segment 的其他图片计划与实际媒体绑定；图片可以是任意画面内容，不限角色、地点或关键帧。按 `reference_inputs[].asset_id` 用 `read_media_input` 审看已绑定图片；未选中的规划与候选不能冒充实际视频输入。需要单独规划或生成其他图片时，使用 `save_reference_image_plan` 与 `generate_media(kind="reference_image")`；看图后用 `select_reference_image` 选入对应卡片（来源可为本卡候选、关键帧已选图或任一项目图片），人类可随时改选。
 - 除对白 TTS 外，只在用户本轮明确要求时绑定、替换或移除素材，或修改参数。只提交被要求的槽位或参数；改某个槽位时以工作集 `recipe_inputs` 中该槽位为起点，不擅自增删、重排已有绑定或改写其说明。
 - 槽位以 `video_recipe.recipe.slots` 为准，只填首帧/尾帧以外的槽位；首尾帧由 Core 按已选关键帧填写，不写进 `bindings`。数量、媒体类型、时长与 `describe=required` 的必填说明都按槽位声明，说明写清这项素材的用途。
 - `asset_id` 从 `bindable_assets` 选取，其 `slots` 列出它能进入的槽位；用户点名的其它本项目 Asset 也可以，由 Core 校验。不能引用 Playground Asset。

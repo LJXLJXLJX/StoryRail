@@ -2604,6 +2604,80 @@
     "name": "select_keyframe_candidate"
   },
   {
+    "description": "把一张项目图片选入 Segment 其他图片的 slot_index 卡片（成为实际视频输入），或移除；来源可为生成候选、关键帧已选图或任一项目图片 Asset，选前用 read_media_input 看图；已启用的首尾帧不能重复选入；人类可随时改选。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "segment_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "slot_index": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "enum": [
+            "generation",
+            "keyframe",
+            "asset",
+            "remove"
+          ],
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "scene_ids",
+        "segment_id",
+        "slot_index",
+        "source"
+      ],
+      "type": "object"
+    },
+    "name": "select_reference_image"
+  },
+  {
     "description": "设置单Segment视频模式，不生成。",
     "inputSchema": {
       "additionalProperties": false,

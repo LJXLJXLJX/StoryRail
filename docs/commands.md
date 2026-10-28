@@ -231,7 +231,10 @@ Core 分配。不支持单独移动 Shot：整场并入上一场用 `merge_adjac
 的一张无时间位置参考图规划，包含画面正文、用途说明、可见角色/造型与显式生图参考；Core 分配稳定规划 ID。
 图片内容可为任意画面，不限定来源或题材；MCP 同名 `save_reference_image_plan` 提供单卡规划入口，无角色时角色数组为空。
 `video.generate_reference_image` 只接收该 `image_id`，通过当前图片 Provider 生成独立候选，回调不改视频输入。
-`video.select_reference_image` 是人类操作，以 Scene scope、Segment ID、槽位序号、项目 `asset_id` 和
-实际内容/参考用途说明原子更新当前 recipe 的图片输入；`asset_id=null` 移除该图片。未填的槽位不占提交名额。
+`video.select_reference_image` 由人类与 Agent 共用（MCP `select_reference_image`），以 Scene scope、Segment ID、
+槽位序号、实际内容/参考用途说明和恰好一个来源原子更新当前 recipe 的图片输入：`asset_id`（任一项目图片，`null` 移除该图片）、
+`generation_id`（成功、未隐藏且有产物的 Generation，取其产物）或 `keyframe_id`（取该 Keyframe 当前选中图）。
+说明为空时沿用该槽位已绑定说明，其次是该卡片规划的参考用途，仍为空则拒绝；当前已启用的首尾帧不能重复选入。
+未填的槽位不占提交名额；选入后面的空卡片时，规划随图片移到实际提交位置。
 `read_story` 的 Segment `selection` / `keyframe` / `video_prompt` 扩展返回 `video_inputs`，其中包含规划 ID、正文、选图状态与实际图片绑定；
-Keyframe 与视频专业工作集提供同一 `video_inputs[]`。规划与生成可由 Agent 明确调用，视频参考图候选采用保留给人类；Agent 的通用 recipe 输入写入不能采用尚未经人类选入的参考图候选。
+Keyframe 与视频专业工作集提供同一 `video_inputs[]`。规划、生成与选图都可由 Agent 调用，人类随时可改选；Agent 的通用 recipe 输入写入不能直接绑定参考图候选，须经 `video.select_reference_image` 以同步卡片规划。

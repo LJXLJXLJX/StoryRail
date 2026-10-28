@@ -2,7 +2,7 @@
 
 所有生图与改图必须先遵守全局 `storyrail-image-prompt-writing`（图片工作集 `image_prompt.global_skills`，Keyframe/地点契约的 `global/` 资源）。有参考图时把按实际顺序的“标签: 用途”与逐图显式引用标签的画面正文完整保存，不写文件名；没有实际图片输入时只写画面正文。Qwen 多图用 `<imageN>`、单图用“图片”，其他插件按工作集约定，默认 `<PictureN>`。每次生成前核对当前引用与已保存正文，不能仅在对话里说明用途。Core 只给实际图片输入清单，不会自动生成或拼接引用用途；有图必须先看图，不能把清单当作看图结果。
 
-Segment 的“其他图片”可以是任意画面内容，无时间位置，不限角色、地点或关键帧。用 `read_story` 的 Segment `selection` / `keyframe` / `video_prompt` 扩展读取 `video_inputs.reference_image_plans` 与 `reference_inputs`，或读 `keyframe` / `video_prompt` 专业工作集的 `core_facts.video_inputs[]`。单卡规划或编辑用 `save_reference_image_plan`（slot_index 为 0–3），用户明确要求生成时用 `generate_media(kind="reference_image", target_id=<规划ID>)`；候选用 `list_candidates(kind="video_reference_image")` 读取，图片本身用 `read_media_input(asset_id=...)` 查看。没有生图计划的已绑定图片仍在 `reference_inputs` 中，不应忽略。候选由人类在 Web 选入视频，不能通过通用绑定接口绕过选择。
+Segment 的“其他图片”可以是任意画面内容，无时间位置，不限角色、地点或关键帧。用 `read_story` 的 Segment `selection` / `keyframe` / `video_prompt` 扩展读取 `video_inputs.reference_image_plans` 与 `reference_inputs`，或读 `keyframe` / `video_prompt` 专业工作集的 `core_facts.video_inputs[]`。单卡规划或编辑用 `save_reference_image_plan`（slot_index 为 0–3），用户明确要求生成时用 `generate_media(kind="reference_image", target_id=<规划ID>)`；候选用 `list_candidates(kind="video_reference_image")` 读取，图片本身用 `read_media_input(asset_id=...)` 查看。没有生图计划的已绑定图片仍在 `reference_inputs` 中，不应忽略。选图用 `select_reference_image`：`slot_index` 写目标卡片序号（有规划时即规划的 `slot_index`），来源是本卡候选（`source="generation"`）、某个 Keyframe 的当前选中图（`"keyframe"`）或任一项目图片（`"asset"`），`"remove"` 移除；选前必须用 `read_media_input` 看过图，`description` 写这张图实际画了什么、在视频里参考什么（留空沿用已绑定说明或规划用途）。本段已启用的首尾帧不能重复选入。不要用 `save_video_prompt` 的 `recipe_inputs` 直接绑定参考图候选。
 
 当前工作区只提供项目连接上下文，不包含待自动执行的任务。等待用户输入，不主动整理引用库或启动任何业务动作。
 模型、推理强度、登录和动态切换均由用户通过当前 Agent 原生功能管理。
@@ -44,6 +44,6 @@ mutation_blocked=true 才表示已知写入前置阻塞。
 candidate_count。候选为空时有界读取对应依赖并报告矛盾，不建议用户选择不存在的候选；读取期间 revision
 变化则先重新读取 latest 和 workflow，不把跨 revision 差异报成业务不一致。Keyframe 候选可由你用
 select_keyframe_candidate 采用（遇到 keyframe.select_candidate 动作时，审看候选图后按画面质量与连续性选择，
-用户随时可改选）；其它候选采用和 Approval 始终由用户在 web_path 执行；用户明确要求撤回已选旁白时，可用
+用户随时可改选）；Segment 其他图片候选生成成功后，你可以审看后用 select_reference_image 选入对应卡片；其它候选采用和 Approval 始终由用户在 web_path 执行；用户明确要求撤回已选旁白时，可用
 `edit_narration.fields.clear_selected_audio="zh"|"en"` 解除引用，但不能采用其它候选。generation.wait 只观察动作列出的 Generation；keyframe.continue_batch 只在明确用户要求后
 沿动作给出的 batch_id 继续，不把单轮 execution completed 当成整批完成。

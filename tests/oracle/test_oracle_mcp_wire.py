@@ -104,7 +104,7 @@ def test_oracle_mcp_wire_tools_translation_pagination_and_errors(journey, http_s
             async with Client(create_server(in_process_bridge)) as local:
                 local_tools = {tool.name: tool for tool in (await local.list_tools()).tools}
             assert set(wire_tools) == EXPECTED_TOOLS
-            assert len(wire_tools) == 28
+            assert len(wire_tools) == 29
             assert set(local_tools) == set(wire_tools)
             for name, tool in wire_tools.items():
                 assert tool.input_schema == local_tools[name].input_schema, name

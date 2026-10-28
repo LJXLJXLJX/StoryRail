@@ -529,6 +529,35 @@ class KeyframeSelection(Request):
     generation_id: ID
 
 
+class ReferenceImageSelection(Request):
+    scene_ids: Targets
+    segment_id: ID
+    slot_index: Annotated[int, Field(ge=0, le=3, description="其他图片子卡片，0–3。")]
+    source: Literal["generation", "keyframe", "asset", "remove"] = Field(
+        description=(
+            "generation：成功未隐藏的 Generation 产物（如本卡 video_reference_image 候选）；"
+            "keyframe：该 Keyframe 当前选中图；asset：任一项目图片 Asset；remove：移除该卡图片。"
+        )
+    )
+    source_id: ID | None = Field(
+        default=None,
+        description="generation_id / keyframe_id / asset_id；remove 时省略。",
+    )
+    description: Annotated[
+        str,
+        Field(
+            max_length=2000,
+            description="这张图实际画了什么、在视频中参考什么；留空沿用已绑定说明或本卡规划的参考用途。",
+        ),
+    ] = ""
+
+    @model_validator(mode="after")
+    def exact(self):
+        if (self.source == "remove") != (self.source_id is None):
+            raise ValueError("remove 不带 source_id，其它来源必须给 source_id。")
+        return self
+
+
 class VideoRecipe(Request):
     scene_ids: Targets
     segment_id: ID
@@ -560,6 +589,7 @@ MODELS = {
     "read_workflow_state": ProjectRead,
     "list_candidates": Candidates,
     "select_keyframe_candidate": KeyframeSelection,
+    "select_reference_image": ReferenceImageSelection,
     "set_video_recipe": VideoRecipe,
     "set_dialogue_timing": DialogueTiming,
     "save_reference_image_plan": ReferenceImagePlan,
@@ -589,6 +619,9 @@ DESCRIPTIONS = {
             "分页读取明确目标候选，不选择。",
             "采用一个 Keyframe 的成功候选（keyframe_image 或抽帧），成为后续生成与引用的选中图；"
             "人类可随时改选。",
+            "把一张项目图片选入 Segment 其他图片的 slot_index 卡片（成为实际视频输入），或移除；"
+            "来源可为生成候选、关键帧已选图或任一项目图片 Asset，选前用 read_media_input 看图；"
+            "已启用的首尾帧不能重复选入；人类可随时改选。",
             "设置单Segment视频模式，不生成。",
             "按已选 TTS WAV 的真实时长设置逐句发声起点与 Segment 视频时长。",
             "新建或编辑一个 Segment 的其他图片规划，slot_index 为 0–3；"
@@ -608,6 +641,13 @@ def translate(name, request):
         args["scope"] = {key: args.pop(key) for key in ("location_ids", "scene_ids")}
     elif "scene_ids" in args:
         args["scope"] = {"scene_ids": args.pop("scene_ids")}
+    if isinstance(request, ReferenceImageSelection):
+        source = args.pop("source")
+        source_id = args.pop("source_id", None)
+        key = {"generation": "generation_id", "keyframe": "keyframe_id"}.get(source, "asset_id")
+        args[key] = source_id
+        args.setdefault("description", "")
+        return "video.select_reference_image", args
     if isinstance(request, NarrationEdit):
         if request.fields.clear_selected_audio is not None:
             args.pop("fields")

@@ -117,7 +117,8 @@ Director 本轮采用的连续长镜头方案即使记录在 `director_hypothese
 `core_facts.video_inputs[]`，读取当前 recipe 的 `reference_image_plans` 与实际 `reference_inputs`。
 规划的稳定 `id` 用于 `generate_media(kind="reference_image", target_id=<id>)`；只有用户明确要求生成时才调用。
 候选用 `list_candidates(kind="video_reference_image", target_ids=[<id>])` 查看，取得产物 Asset ID 后用
-`read_media_input` 审看真实图片；已有选图也可以直接使用 `selected_asset_id` 读取。人类在 Web 中选择后才进入视频输入。
+`read_media_input` 审看真实图片；已有选图也可以直接使用 `selected_asset_id` 读取。候选或其他图片经 `select_reference_image` 选入卡片后才进入视频输入，
+你与人类都可调用：`source="generation"|"keyframe"|"asset"` 配 `source_id`，`"remove"` 移除，人类可随时改选。
 从资产库直接绑定的图片可能没有生图计划，仍可按 `reference_inputs` 的 `asset_id`、`slot_index` 和说明读取，
 不能因没有 `reference_image_plans` 就忽略它。
 

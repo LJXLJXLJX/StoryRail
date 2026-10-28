@@ -84,7 +84,7 @@ flowchart TB
 本机 Web Origin；Agent Bearer 与 cookie 人类身份分别验证。它只防御非宿主权限的进程，不防御宿主管理员。
 
 **项目执行委托**（`project.execute`）：替代逐命令 grant，覆盖整个 Agent 操作白名单，但不绕过有效期、项目范围、Core schema、
-状态、revision 与 proposal 归属校验。Keyframe 以外的候选选择、Approval、repair 与旧写路由仍拒绝。Core 不读取外部对话，也不声称能验证指令来源。
+状态、revision 与 proposal 归属校验。Keyframe 候选与 Segment 其他图片选图以外的候选选择、Approval、repair 与旧写路由仍拒绝。Core 不读取外部对话，也不声称能验证指令来源。
 
 **自定义部署**：策略根严格为 `{version: 2, external_mutations: false|true, callers: [...]}`；策略文件由服务用户持有，必须是普通文件、
 0600、无 symlink 祖先，**每次请求重读**——失效、撤销、损坏都直接拒绝。Bearer 只经受保护渠道交付，不进入 URL、日志或业务 JSON。
@@ -124,7 +124,7 @@ flowchart LR
 ## MCP 工具
 
 项目 scope 的 `tools/list` 发布 28 个工具（逐字节基线：`tests/fixtures/mcp_project_tools.json`）。没有任意 command、shell、文件、
-路径、URL、模型目录、Approval 工具，候选采用工具只有 `select_keyframe_candidate`。所有工具顶层与嵌套参数都拒绝未知字段，条件参数用公开 `oneOf` 表达，MCP runtime
+路径、URL、模型目录、Approval 工具，候选采用工具只有 `select_keyframe_candidate` 与 `select_reference_image`。所有工具顶层与嵌套参数都拒绝未知字段，条件参数用公开 `oneOf` 表达，MCP runtime
 与 schema 共用同一参数矩阵。
 
 | 分组 | 工具 | 翻译为 |
@@ -137,6 +137,7 @@ flowchart LR
 | | `read_media_input` | 受控 Asset 内容（见下文） |
 | | `list_candidates` / `read_run` / `read_request` | 对应读取命令 |
 | 选择 | `select_keyframe_candidate` | `keyframe.select_candidate`（`keyframe_id` + 该帧成功、未隐藏的 `keyframe_image` 或抽帧 `generation_id`） |
+| | `select_reference_image` | `video.select_reference_image`（Scene scope、Segment ID、0–3 槽位；`source=generation\|keyframe\|asset` 配 `source_id`，或 `source=remove`；`description` 留空沿用已绑定说明或卡片规划用途） |
 | 规划 | `submit_proposal` | 统一入口：`capability` + `payload`；schema 按 capability 与 `payload.action` 公开完整字段：request（`raw_user_instruction`；keyframe 另需 `scene_ids` 与 Segment `target_ids`）/ get、cancel（`request_id`）/ submit（`request_id` 加内联 `proposal` 或受限 `proposal_source`）/ reject（`request_id`、`reason`） |
 | 编辑 | `edit_script` / `edit_narration` / `edit_locations` / `edit_keyframes` / `edit_looks` | 各自的 `*.apply_operations` / `narration.update_cue` / `reference.apply_look_operations`（`add_look` / `update_look`，字段形状随 `reference_library` 契约下发）；`edit_narration.fields.clear_selected_audio = "zh"\|"en"` 独占一次调用并翻译为 `narration.clear_selection`；`edit_locations` 的 scope 是 `location_ids` / `scene_ids`，可编辑地点、状态、陈设、独立图片和 Scene 绑定，字段形状随 `location` 契约下发；`edit_script` 的 `insert_shot` 必须给出 `attach_to_segment_id` 或 `new_segment`，Segment 操作以 `scene_id` 为容器 |
 | | `save_video_prompt` / `save_keyframe_prompt` | 不带 `recipe_inputs` 时 `video.set_prompt`；带 `recipe_inputs: {bindings, params}` 或 `attach_dialogue_audio` 时 `video.update_recipe_inputs`（正文整体保存，绑定按槽位、参数按键合并）；两者回执 `data` 带写入后的输入摘要 / 单项 `update_frame_fields` |
@@ -205,7 +206,7 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
     关闭端点无需编造正文，Core 保留其历史计划。可选 `segments[].reference_images[]` 按 0–3 的 `slot_index`
     增补无时间位置参考图规划，不生成、不选择、不改变已有视频绑定；已有成功候选和选图受到规划保护。
     其他图片可为任意内容，不限角色、地点或关键帧。`save_reference_image_plan` 可单独新建或编辑其中一张；
-    `generate_media(kind="reference_image", target_id=<规划ID>)` 单独生成候选，人类在对应卡片选择后才进入视频输入。
+    `generate_media(kind="reference_image", target_id=<规划ID>)` 单独生成候选，经 `select_reference_image` 选入对应卡片后才进入视频输入（Agent 或人类均可）。
     `reference_image_plans` 给出稳定 ID、正文与选图状态；没有生成计划的已绑定图片也会出现在 `reference_inputs`，
     每张已保存规划还给出其生图用 `image_inputs`（含角色造型参考），无法解析时给出 `image_inputs_error`；
     其中 `slot_index` 是当前媒体槽位中的位置，`asset_id` 可直接交给 `read_media_input` 查看真实图片。

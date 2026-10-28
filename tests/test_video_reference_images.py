@@ -60,7 +60,7 @@ def test_agent_can_discover_plan_and_generate_arbitrary_other_image_through_mcp(
             tools = {tool.name: tool for tool in (await client.list_tools()).tools}
             assert "save_reference_image_plan" in tools
             assert "reference_image" in tools["generate_media"].description
-            assert "select_reference_image" not in tools
+            assert "select_reference_image" in tools
             args = image_update(doc, 2)
             args.pop("scope")
             args.update(
@@ -151,6 +151,43 @@ def test_agent_can_discover_plan_and_generate_arbitrary_other_image_through_mcp(
             )
             assert not media.is_error, media.structured_content
             assert any(block.type == "image" for block in media.content)
+            select_args = {
+                "project_id": doc.project_id,
+                "expected_revision": store.read().revision,
+                "idempotency_key": "mcp-other-image-select",
+                "scene_ids": [scene.id],
+                "segment_id": segment.id,
+                "slot_index": 2,
+                "source": "generation",
+                "source_id": generation_id,
+            }
+            for invalid in ({"source": "remove"}, {"source_id": None}):
+                rejected = await client.call_tool(
+                    "select_reference_image", {**select_args, **invalid}
+                )
+                assert rejected.is_error
+            selected = await client.call_tool("select_reference_image", select_args)
+            assert not selected.is_error, selected.structured_content
+            video = store.read().video_plan.segments[0]
+            binding = dict(video.recipe_inputs.bindings)["additional_images"][0]
+            # 未写说明时沿用该卡规划的参考用途；规划随实际提交位置左移到 0。
+            assert binding.asset_id == candidate["output_asset"]["id"]
+            assert binding.description == args["description"]
+            assert video.reference_images[0].slot_index == 0
+            removed = await client.call_tool(
+                "select_reference_image",
+                {
+                    **select_args,
+                    "expected_revision": store.read().revision,
+                    "idempotency_key": "mcp-other-image-remove",
+                    "slot_index": 0,
+                    "source": "remove",
+                    "source_id": None,
+                },
+            )
+            assert not removed.is_error, removed.structured_content
+            video = store.read().video_plan.segments[0]
+            assert dict(video.recipe_inputs.bindings).get("additional_images", ()) == ()
 
     with endpoint(tmp_path, store, service, caller, full_api=True) as (server, _):
         asyncio.run(run(server))
@@ -411,7 +448,7 @@ def test_keyframe_proposal_adds_reference_plan_atomically_without_changing_bindi
     asyncio.run(run())
 
 
-def test_agent_cannot_select_reference_image_candidates_or_bypass_via_recipe_inputs(tmp_path):
+def test_agent_selects_reference_image_from_any_source_but_not_via_recipe_inputs(tmp_path):
     from dataclasses import replace
 
     from core.application.caller import _AGENT_OPERATIONS, Caller, current_caller
@@ -424,7 +461,7 @@ def test_agent_cannot_select_reference_image_candidates_or_bypass_via_recipe_inp
         ReferenceGenerationPhase,
     )
 
-    assert "video.select_reference_image" not in _AGENT_OPERATIONS
+    assert "video.select_reference_image" in _AGENT_OPERATIONS
 
     async def run():
         store, service, doc, _ = await fixture(tmp_path)
@@ -435,7 +472,13 @@ def test_agent_cannot_select_reference_image_candidates_or_bypass_via_recipe_inp
                 )
             )
         ).document
-        # 已知的项目图片登记成该规划的历史成功候选，证明 Agent 不能直接采用候选。
+        # 已知的项目图片登记成该规划的历史成功候选；避开本段首尾帧，便于之后真正选入。
+        own_boundary = doc.keyframe_plan.segments[0]
+        boundary_assets = {
+            item.selected_asset_id
+            for item in doc.keyframe_plan.keyframes
+            if item.id in {own_boundary.start_keyframe_id, own_boundary.end_keyframe_id}
+        }
         image = doc.video_plan.segments[0].reference_images[0]
         candidate = ReferenceGeneration(
             id="f" * 32,
@@ -453,7 +496,9 @@ def test_agent_cannot_select_reference_image_candidates_or_bypass_via_recipe_inp
             plugin_version=1,
             external_id="external-candidate",
             output_asset_id=next(
-                asset.id for asset in doc.assets if asset.media_type.startswith("image/")
+                asset.id
+                for asset in doc.assets
+                if asset.media_type.startswith("image/") and asset.id not in boundary_assets
             ),
             error_code=None,
             cancellation_requested=False,
@@ -479,7 +524,7 @@ def test_agent_cannot_select_reference_image_candidates_or_bypass_via_recipe_inp
         caller = Caller("agent", "agent", frozenset({doc.project_id}), frozenset(), 9999999999)
         token = current_caller.set(caller)
         try:
-            with pytest.raises(ValueError, match="人类"):
+            with pytest.raises(ValueError, match="select_reference_image"):
                 store.set_segment_video_inputs(
                     VideoInputsUpdate(
                         (doc.director_script.scenes[0].id,),
@@ -494,4 +539,98 @@ def test_agent_cannot_select_reference_image_candidates_or_bypass_via_recipe_inp
             current_caller.reset(token)
         assert store.path.read_bytes() == before
 
+        scope = image_update(doc)["scope"]
+        caller = Caller(
+            "agent",
+            "agent",
+            frozenset({doc.project_id}),
+            frozenset({"project.read", "project.mutate", "project.execute"}),
+            9999999999,
+            (),
+            True,
+        )
+
+        async def select(source, value, description="", key=None):
+            current = store.read()
+            return (
+                await service.execute_director_command(
+                    DirectorCommand(
+                        "video.select_reference_image",
+                        current.revision,
+                        key or f"agent-select-{source}-{value}",
+                        {
+                            "scope": scope,
+                            "segment_id": video.segment_id,
+                            "slot_index": 0,
+                            "description": description,
+                            source: value,
+                        },
+                    )
+                )
+            ).document
+
+        token = current_caller.set(caller)
+        try:
+            # 候选来源：Core 解析为产物 Asset，说明沿用卡片规划的参考用途。
+            doc = await select("generation_id", candidate.id)
+            binding = dict(doc.video_plan.segments[0].recipe_inputs.bindings)["additional_images"]
+            assert binding[0].asset_id == candidate.output_asset_id
+            assert binding[0].description == image.description
+            # 关键帧来源取其当前选中图；本段已启用的首尾帧仍不能重复选入。
+            boundary = doc.keyframe_plan.segments[0]
+            own = {boundary.start_keyframe_id, boundary.end_keyframe_id}
+            frames = {item.id: item for item in doc.keyframe_plan.keyframes}
+            with pytest.raises(ValueError, match="首尾帧"):
+                await select("keyframe_id", boundary.start_keyframe_id)
+            other = next(
+                item
+                for item in doc.keyframe_plan.keyframes
+                if item.id not in own
+                and item.selected_asset_id
+                not in {frames[frame_id].selected_asset_id for frame_id in own}
+            )
+            doc = await select("keyframe_id", other.id, "另一段的关键帧，参考人物站位。")
+            binding = dict(doc.video_plan.segments[0].recipe_inputs.bindings)["additional_images"]
+            assert binding[0].asset_id == other.selected_asset_id
+            assert binding[0].description == "另一段的关键帧，参考人物站位。"
+            # 不存在、已隐藏或未选图的来源整次拒绝，不改项目。
+            store._atomic_write(
+                replace(
+                    store.read(),
+                    revision=store.read().revision + 1,
+                    generations=tuple(
+                        replace(item, dismissed=True) if item.id == candidate.id else item
+                        for item in store.read().generations
+                    ),
+                )
+            )
+            before = store.path.read_bytes()
+            for source, value, message in (
+                ("generation_id", candidate.id, "未隐藏"),
+                ("generation_id", "e" * 32, "Generation 不存在"),
+                ("keyframe_id", "e" * 32, "Keyframe 不存在"),
+            ):
+                with pytest.raises(ValueError, match=message):
+                    await select(source, value, key=f"rejected-{source}-{value}")
+            assert store.path.read_bytes() == before
+        finally:
+            current_caller.reset(token)
+
     asyncio.run(run())
+
+
+def test_reference_image_selection_requires_exactly_one_source():
+    from core.director_commands.video_commands import parse_video_reference_image_selection
+
+    base = {"scope": {"scene_ids": ["a" * 32]}, "segment_id": "b" * 32, "slot_index": 0}
+    base["description"] = ""
+    for invalid in (
+        base,
+        {**base, "asset_id": "c" * 32, "generation_id": "d" * 32},
+        {**base, "keyframe_id": None},
+    ):
+        with pytest.raises(ValueError):
+            parse_video_reference_image_selection(invalid)
+    parsed = parse_video_reference_image_selection({**base, "generation_id": "d" * 32})
+    assert parsed.asset_id is None and parsed.generation_id == "d" * 32
+    assert parse_video_reference_image_selection({**base, "asset_id": None}).asset_id is None

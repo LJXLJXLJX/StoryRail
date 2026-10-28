@@ -134,6 +134,12 @@ class VideoReferenceImageSelection:
     slot_index: int
     asset_id: str | None
     description: str
+    # 二选一的来源：Core 按当前项目把候选或关键帧已选图解析为 asset_id。
+    generation_id: str | None = None
+    keyframe_id: str | None = None
+
+
+_SELECTION_SOURCES = ("asset_id", "generation_id", "keyframe_id")
 
 
 def _reference_slot(value):
@@ -191,17 +197,31 @@ def parse_video_reference_image_update(value):
 
 
 def parse_video_reference_image_selection(value):
+    """来源恰好一个：asset_id（null 表示移除）、generation_id 或 keyframe_id。"""
+    sources = [key for key in _SELECTION_SOURCES if isinstance(value, dict) and key in value]
+    if len(sources) != 1:
+        raise ValueError(
+            "video.select_reference_image 必须且只能给出 "
+            "asset_id、generation_id、keyframe_id 之一。"
+        )
+    source = sources[0]
     item = _exact(
         value,
-        {"scope", "segment_id", "slot_index", "asset_id", "description"},
+        {"scope", "segment_id", "slot_index", "description", source},
         "video.select_reference_image",
     )
     if not isinstance(item["description"], str):
         raise ValueError("description 必须是字符串。")
+    raw = item[source]
+    if raw is None and source != "asset_id":
+        raise ValueError(f"{source} 不能为 null；移除图片请传 asset_id: null。")
+    resolved = None if raw is None else _id(raw, source)
     return VideoReferenceImageSelection(
         _scope(item["scope"]),
         _id(item["segment_id"], "segment_id"),
         _reference_slot(item["slot_index"]),
-        None if item["asset_id"] is None else _id(item["asset_id"], "asset_id"),
+        resolved if source == "asset_id" else None,
         item["description"],
+        generation_id=resolved if source == "generation_id" else None,
+        keyframe_id=resolved if source == "keyframe_id" else None,
     )

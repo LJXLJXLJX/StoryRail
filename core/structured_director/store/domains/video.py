@@ -225,8 +225,8 @@ class VideoDomain(_DomainBase):
                     for generation in document.generations
                 ):
                     raise ValueError(
-                        "新生成的其他图片候选必须先由人类在卡片选用，"
-                        "Agent 不能通过视频输入绑定绕过选择。"
+                        "其他图片候选请用 select_reference_image（video.select_reference_image）"
+                        "选入对应卡片，它会同步卡片规划位置；不能经视频输入绑定直接写入。"
                     )
 
             dialogue_slot = None

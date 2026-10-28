@@ -110,11 +110,38 @@ def save_reference_image_plan(document, update, slot, *, planning=False):
     )
 
 
+def _resolve_selected_asset_id(document, update):
+    """把候选 Generation 或 Keyframe 已选图解析为 Asset ID；asset_id 来源原样返回。"""
+    if update.generation_id is not None:
+        generation = next(
+            (item for item in document.generations if item.id == update.generation_id), None
+        )
+        if generation is None:
+            raise ValueError("Generation 不存在。")
+        if (
+            generation.phase is not ReferenceGenerationPhase.SUCCEEDED
+            or generation.dismissed
+            or generation.output_asset_id is None
+        ):
+            raise ValueError("只能选用成功、未隐藏且有产物的 Generation。")
+        return generation.output_asset_id
+    if update.keyframe_id is not None:
+        keyframes = () if document.keyframe_plan is None else document.keyframe_plan.keyframes
+        keyframe = next((item for item in keyframes if item.id == update.keyframe_id), None)
+        if keyframe is None:
+            raise ValueError("Keyframe 不存在。")
+        if keyframe.selected_asset_id is None:
+            raise ValueError("该 Keyframe 尚未选定图片。")
+        return keyframe.selected_asset_id
+    return update.asset_id
+
+
 def select_reference_image(document, update, slot):
     plan, _, _, video = _require_video_command_target(
         document, update.scope_scene_ids, update.segment_id
     )
     _reject_active_segment_video_generation(document, video.segment_id)
+    update = replace(update, asset_id=_resolve_selected_asset_id(document, update))
     if update.slot_index >= min(slot.maximum, 4):
         raise ValueError("参考图片超过当前 recipe 上限。")
     bindings = dict(video.recipe_inputs.bindings)
@@ -145,7 +172,25 @@ def select_reference_image(document, update, slot):
         asset = next((item for item in document.assets if item.id == update.asset_id), None)
         if asset is None or asset.media_type not in slot.media_types:
             raise ValueError("参考图片必须是当前项目受支持的图片 Asset。")
-        if not update.description.strip():
+        # 未写说明时沿用该槽位已绑定说明，其次是该卡片图片规划的参考用途。
+        description = (
+            update.description.strip()
+            or (
+                (items[update.slot_index].description or "")
+                if update.slot_index < len(items)
+                else ""
+            )
+            or next(
+                (
+                    image.description
+                    for image in images
+                    if image.recipe_id == video.active_recipe
+                    and image.slot_index == update.slot_index
+                ),
+                "",
+            ).strip()
+        )
+        if not description:
             raise ValueError("请填写该图片实际内容与参考用途的说明。")
         boundary = next(
             item for item in document.keyframe_plan.segments if item.segment_id == video.segment_id
@@ -163,7 +208,7 @@ def select_reference_image(document, update, slot):
             for frame in document.keyframe_plan.keyframes
         ):
             raise ValueError("其他图片不能重复当前已启用的首尾帧。")
-        binding = SlotBinding(update.asset_id, update.description.strip())
+        binding = SlotBinding(update.asset_id, description)
         if update.slot_index < len(items):
             items[index] = binding
         else:
