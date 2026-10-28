@@ -833,7 +833,10 @@ function DialogueProductionPanel({
   ) => void;
 }) {
   const [confirmDismiss, setConfirmDismiss] = useState<string | null>(null);
-  const [panelOpen, setPanelOpen] = useState(true);
+  // 进入视觉生产后对白已定稿，默认收起，避免挤占关键帧与视频输入。
+  const [panelOpen, setPanelOpen] = useState(
+    !snapshot.workspace_layers.keyframes_unlocked,
+  );
   const [lineOpen, setLineOpen] = useState<Record<string, boolean>>({});
   const [candidateOpen, setCandidateOpen] = useState<Record<string, boolean>>({});
   const plan = new Map(

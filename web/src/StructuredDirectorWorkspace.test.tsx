@@ -4039,6 +4039,10 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
  fireEvent.click(within(nav).getByRole('button',{name:/场景 2.*戏剧/}));
  const segmentList=within(nav).getByRole('list',{name:'场景 2 的生成片段'});
  fireEvent.click(within(segmentList).getByRole('button',{name:/片段 1.*小满抬头/}));
+ const collapsedPanel=screen.getByRole('button',{name:/对白 TTS.*已选 0\//});
+ expect(collapsedPanel).toHaveAttribute('aria-expanded','false');
+ expect(within(screen.getByLabelText('对白 TTS')).queryByText(line.text)).not.toBeInTheDocument();
+ fireEvent.click(collapsedPanel);
  const direction=within(screen.getByLabelText('对白 TTS')).getByText(line.text).closest('section');
  expect(direction).toHaveTextContent('基础音色年轻、克制、语速偏慢');
  expect(direction).toHaveTextContent('剧本表演轻声，带一点迟疑');
@@ -4109,6 +4113,17 @@ it('Segment 对白卡展示实时进度、失败原因和可试听的 Mac 产物
  fireEvent.click(panelToggle);
  expect(panelToggle).toHaveAttribute('aria-expanded','false');
  expect(screen.queryByLabelText('对白与表演')).not.toBeInTheDocument();
+});
+it('进入视觉生产前对白 TTS 默认展开',()=>{
+ const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;
+ value.workspace_layers.keyframes_unlocked=false;
+ value.workspace_layers.videos_unlocked=false;
+ value.workspace_layers.final_assembly_unlocked=false;
+ renderWorkspace({},value);
+ const nav=screen.getByRole('navigation',{name:'故事层级'});
+ fireEvent.click(within(nav).getByRole('button',{name:/场景 2.*戏剧/}));
+ fireEvent.click(within(within(nav).getByRole('list',{name:'场景 2 的生成片段'})).getByRole('button',{name:/片段 1.*小满抬头/}));
+ expect(screen.getByRole('button',{name:/对白 TTS.*已选/})).toHaveAttribute('aria-expanded','true');
 });
 it('引用库编辑作为临时弹窗，关闭后保留当前 Segment 和未保存输入',()=>{
  const value=structuredClone(readerFixture.continuity.production_snapshot) as unknown as StructuredDirectorSnapshot;
