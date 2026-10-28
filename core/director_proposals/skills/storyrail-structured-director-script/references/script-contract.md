@@ -86,6 +86,9 @@ Shot；同一 Shot 跨多个 Segment 时是同一连续镜头的生产切片。�
 改稿时保留已有 Segment 划分，只在用户明确要求时拆分或合并（`split_segment`、`merge_adjacent_segments`）。
 在某个 Shot 内部拆分时，两段都包含该 Shot，后一段填写 `boundary_from_previous`；合并后的 `shot_ids` 为两段
 覆盖的并集。每次拆分、合并或插入后都必须重新满足完整连续覆盖。
+用户要求把相邻两场合成一场时用 `merge_adjacent_scenes`（`left_scene_id`、`right_scene_id`，scope 同时包含两场，
+两场都必须是 drama；旁白场只有一条 Cue，不能参与合并，旁白与对白交替的内容保持分场）：所有 Shot、Segment 与生成结果保留原 ID，合并后沿用左侧标题与设定；需要改标题或设定时
+在同一 patch 后续加 `update_scene_fields`，改 setting 会让整场已选视频过期，先向用户说明。不要用删除再插入代替合并。
 
 `duration_estimate_seconds` 只是节奏预估。Segment 的 `action` 写该分段负责的动作区间。角色对白写入
 `dialogue_lines`，每句引用说话角色，`delivery` 写本句的潜台词（嘴上说的与真正想要的）和语气；

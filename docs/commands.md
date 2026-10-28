@@ -80,11 +80,12 @@
 | `update_segment_fields` | 可改 `shot_ids`、时长、`action`、对白与 `boundary_from_previous`；时长不短于 0.2 秒，不设上限；对白数组改写时，显式 ID 优先，未带 ID 但内容完全未变的对白沿用原 ID 与已选 TTS，只有新增或改写的对白失效 |
 | `insert_segment` / `move_segment` / `delete_segment` | 以 `scene_id` 为容器；覆盖用 `shot_ids`，移动用 `after_segment_id` |
 | `split_segment` | 提供完整 `first`、`second` 并指定 `preserve_id`（first / second）；两段各自给 `shot_ids`，在某个 Shot 内部拆分时两段共享该 Shot，第二段必须带 `boundary_from_previous`；其 `reason` 只允许 `model_constraint`、`continuity_anchor`、`control_boundary`、`failure_cost`；内容完全未变的对白跨两段保留原 ID 与已选 TTS |
+| `merge_adjacent_scenes` | `{left_scene_id, right_scene_id}`，两者都须在 scope 内、真实相邻且都是 Drama Scene（Narration Scene 恰好一条 Cue，不能合并）；右侧 Shot/Segment 保留 ID 接到左侧末尾，沿用左侧 Scene 字段与地点绑定（左侧未绑定时沿用右侧），关键帧、视频与候选随 Segment ID 保留 |
 | `merge_adjacent_segments` | 只接受同一 Scene 中真实相邻的左右 Segment，提供完整 `merged` 并指定保留哪一侧 ID；合并后的 `shot_ids` 必须是两段覆盖的并集；内容完全未变的对白保留原 ID 与已选 TTS |
 
 插入与移动用显式 `after_*_id`，`null` 表示移到容器首位；锚点必须存在于合法容器且不能自引用。新增 Shot/Segment 的 ID 由
-Core 分配。不支持单独移动 Shot：重排或跨 Scene 迁移 Shot 时，用脚本 proposal 的 `replace_scene` 整卡替换，或在同一 patch 内
-删除并重新插入、同时补足覆盖。整批操作结束后 Core 做一次完整覆盖校验，并校验角色引用、旁白互斥与生产对象图，失败整批拒绝；成功时同一次写入重建 Keyframe/视频绑定与生产基线。
+Core 分配。不支持单独移动 Shot：整场并入上一场用 `merge_adjacent_scenes`；其余重排或跨 Scene 迁移 Shot 时在同一 patch 内
+删除并重新插入、同时补足覆盖（新节点获得新 ID）。整批操作结束后 Core 做一次完整覆盖校验，并校验角色引用、旁白互斥与生产对象图，失败整批拒绝；成功时同一次写入重建 Keyframe/视频绑定与生产基线。
 
 `project.apply_repair_patch`（H）：缺少正式能力时的安全阀，不是通用写接口。只接受用户已授权、目标唯一、Scene scope 明确的
 白名单字段（`set_fields`），每次真实修改写一条 `CapabilityGapAlert`（含反向 operation）。只涉及 Shot/Segment 字段时，Core 把它

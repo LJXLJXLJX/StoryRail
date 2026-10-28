@@ -10,8 +10,8 @@
     ]
   },
   "environment": {
-    "date": "2026-10-27",
-    "git_sha": "caf4470b6051ccdedf29e87c3f7c6220573c4671",
+    "date": "2026-10-28",
+    "git_sha": "01b823aae553781c6a3ad51bc058014ebd5e4f03",
     "python_version": "3.12.12",
     "platform": "macOS-26.6.2-arm64-arm-64bit",
     "driver": "scripts/harness/benchmark/fake_agent_driver.py"
@@ -20,7 +20,7 @@
     "scenario_total_multiplier": 1.0
   },
   "frozen": {
-    "tools_list_bytes": 47338,
+    "tools_list_bytes": 47678,
     "scenarios": {
       "h3": {
         "total_wire_bytes": 101034
@@ -38,7 +38,7 @@
         "total_wire_bytes": 30073
       },
       "script": {
-        "total_wire_bytes": 77874
+        "total_wire_bytes": 78413
       }
     }
   },
@@ -47,7 +47,7 @@
       "capability": "video_prompt",
       "bootstrap": "keyframes",
       "summary": {
-        "tools_list_bytes": 47338,
+        "tools_list_bytes": 47678,
         "tool_count": 28,
         "requests": 8,
         "input_bytes": 2005,
@@ -154,7 +154,7 @@
       "capability": "keyframe",
       "bootstrap": "unlocked",
       "summary": {
-        "tools_list_bytes": 47338,
+        "tools_list_bytes": 47678,
         "tool_count": 28,
         "requests": 8,
         "input_bytes": 2019,
@@ -261,7 +261,7 @@
       "capability": "location",
       "bootstrap": "timing",
       "summary": {
-        "tools_list_bytes": 47338,
+        "tools_list_bytes": 47678,
         "tool_count": 28,
         "requests": 6,
         "input_bytes": 1673,
@@ -346,7 +346,7 @@
       "capability": "video_prompt",
       "bootstrap": "keyframes",
       "summary": {
-        "tools_list_bytes": 47338,
+        "tools_list_bytes": 47678,
         "tool_count": 28,
         "requests": 9,
         "input_bytes": 2267,
@@ -464,7 +464,7 @@
       "capability": "reference_library",
       "bootstrap": "empty",
       "summary": {
-        "tools_list_bytes": 47338,
+        "tools_list_bytes": 47678,
         "tool_count": 28,
         "requests": 5,
         "input_bytes": 1382,
@@ -538,13 +538,13 @@
       "capability": "script",
       "bootstrap": "ready",
       "summary": {
-        "tools_list_bytes": 47338,
+        "tools_list_bytes": 47678,
         "tool_count": 28,
         "requests": 5,
         "input_bytes": 1662,
-        "output_bytes": 76212,
-        "total_wire_bytes": 77874,
-        "contract_read_bytes": 52805,
+        "output_bytes": 76751,
+        "total_wire_bytes": 78413,
+        "contract_read_bytes": 53344,
         "workset_read_bytes": 9546,
         "pagination_rounds": 5,
         "wait_rounds": 0,
@@ -568,7 +568,7 @@
           "tool": "read_professional_contract",
           "action": "pages",
           "input_bytes": 154,
-          "output_bytes": 52651,
+          "output_bytes": 53190,
           "is_error": false,
           "pagination_rounds": 1,
           "wait_again": null

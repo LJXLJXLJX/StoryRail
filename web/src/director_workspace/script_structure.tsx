@@ -458,6 +458,105 @@ export function SegmentStructureActions({
   );
 }
 
+/** Scene 页“与下一场合并”：只重组归属，Segment 的关键帧、视频与候选随原 ID 保留。 */
+export function SceneMergeAction({
+  snapshot,
+  scene,
+  next,
+  busy,
+  error,
+  disabled,
+  onPreview,
+  onApply,
+}: {
+  snapshot: StructuredDirectorSnapshot;
+  scene: Scene;
+  next: Scene | undefined;
+  busy: boolean;
+  error: string | null;
+  disabled: boolean;
+  onPreview?: (change: ScriptChange, revision: number) => Promise<ScriptImpact>;
+  onApply?: (change: ScriptChange, revision: number) => Promise<boolean>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [impact, setImpact] = useState<ScriptImpact | null>(null);
+  const [working, setWorking] = useState(false);
+  const [localError, setLocalError] = useState("");
+  if (!onPreview || !onApply || !next) return null;
+  // Narration Scene 恰好一条旁白 Cue，只有两个 Drama Scene 能合并。
+  const mergeable = scene.driver === "drama" && next.driver === "drama";
+  const change: ScriptChange = {
+    name: "script.apply_operations",
+    arguments: {
+      scope: { scene_ids: [scene.id, next.id] },
+      operations: [
+        { op: "merge_adjacent_scenes", left_scene_id: scene.id, right_scene_id: next.id },
+      ],
+    },
+  };
+  const close = () => {
+    setOpen(false);
+    setImpact(null);
+    setLocalError("");
+  };
+  const run = async (action: () => Promise<void>, fallback: string) => {
+    setWorking(true);
+    setLocalError("");
+    try {
+      await action();
+    } catch (caught) {
+      setLocalError(caught instanceof Error ? caught.message : fallback);
+    } finally {
+      setWorking(false);
+    }
+  };
+  return (
+    <>
+      <div className="story-reader-tools script-structure-tools">
+        <button
+          className="secondary-button"
+          type="button"
+          disabled={busy || disabled || !mergeable}
+          title={mergeable ? undefined : "只有两个对白（Drama）Scene 能合并；旁白 Scene 只能有一条旁白。"}
+          onClick={() => {
+            setOpen(true);
+            void run(async () => setImpact(await onPreview(change, snapshot.revision)), "无法读取影响预览。");
+          }}
+        >
+          与下一场合并
+        </button>
+      </div>
+      {open ? (
+        <DialogFrame label="合并相邻 Scene" busy={busy} onClose={close}>
+          {error ? <p role="alert">{error}</p> : null}
+          {localError ? <p role="alert">{localError}</p> : null}
+          <p className="muted-copy">
+            把「{next.title}」的全部镜头与片段接到「{scene.title}」末尾。合并后沿用本场的标题、
+            概要、场景设定与地点绑定；片段的关键帧、视频与候选保持不变，本场与下一场的 Scene 成片需要重新生成。
+          </p>
+          {impact ? (
+            <ImpactReview
+              impact={impact}
+              snapshot={snapshot}
+              stale={impact.revision !== snapshot.revision}
+              outdated={false}
+              busy={busy || working}
+              disabled={false}
+              onApply={() =>
+                void run(async () => {
+                  if (await onApply(change, impact.revision)) close();
+                }, "保存失败。")
+              }
+            />
+          ) : working ? (
+            <p className="muted-copy">正在预览影响…</p>
+          ) : null}
+        </DialogFrame>
+      ) : null}
+    </>
+  );
+}
+
 function DialogFrame({
   label,
   busy,

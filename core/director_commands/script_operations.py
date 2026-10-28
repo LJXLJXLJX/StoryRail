@@ -107,6 +107,7 @@ class ScriptOperation:
     second: ScriptSegmentInput | None = None
     preserve_id: Literal["first", "second", "left", "right"] | None = None
     right_segment_id: str | None = None
+    right_scene_id: str | None = None
     scene: ScriptSceneInput | None = None
 
 
@@ -250,6 +251,13 @@ def _parse_operation(value: object) -> ScriptOperation:
             right_segment_id=_id(item["right_segment_id"], "right_segment_id"),
             segment=_segment(item["merged"]),
             preserve_id=preserve_id,
+        )
+    if op == "merge_adjacent_scenes":
+        item = _exact(value, {"op", "left_scene_id", "right_scene_id"}, op)
+        return ScriptOperation(
+            op,
+            scene_id=_id(item["left_scene_id"], "left_scene_id"),
+            right_scene_id=_id(item["right_scene_id"], "right_scene_id"),
         )
     raise ValueError(f"未知的 script operation：{op}。")
 

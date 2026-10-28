@@ -1,4 +1,4 @@
-// 脚本结构修改：只做 Segment 拆分 / 合并的请求形状与服务端影响预览解析。
+// 脚本结构修改：Segment 拆分 / 合并与相邻 Scene 合并的请求形状与服务端影响预览解析。
 // 覆盖是否合法只由 Core 判断；这里不复制 §4.1 规则。
 
 import { isRecord } from "./schema_check";
@@ -27,6 +27,11 @@ export type ScriptOperation =
       right_segment_id: string;
       preserve_id: "left" | "right";
       merged: ScriptSegmentDraft;
+    }
+  | {
+      op: "merge_adjacent_scenes";
+      left_scene_id: string;
+      right_scene_id: string;
     };
 
 export interface ScriptOperationsPatch {

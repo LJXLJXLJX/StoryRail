@@ -4654,6 +4654,50 @@ it("合并相邻片段时 shot_ids 为并集，预览后提交 apply_operations"
   await waitFor(() => expect(onApply).toHaveBeenCalledOnce());
 });
 
+it("与下一场合并只提交左右 Scene ID，预览后由人确认", async () => {
+  const value = scriptSnapshot();
+  const [first, second] = value.director_script!.scenes;
+  first.driver = "drama";
+  second.driver = "drama";
+  const onPreview = vi.fn().mockImplementation(async (_change: unknown, revision: number) =>
+    impactFor(revision),
+  );
+  const onApply = vi.fn().mockResolvedValue(true);
+  renderWorkspace(
+    { onPreviewScriptChange: onPreview, onApplyScriptChange: onApply },
+    value,
+    false,
+  );
+  openScene(1);
+  fireEvent.click(screen.getByRole("button", { name: "与下一场合并" }));
+  await waitFor(() => expect(onPreview).toHaveBeenCalledOnce());
+  const change = onPreview.mock.calls[0][0];
+  expect(change.arguments).toEqual({
+    scope: { scene_ids: [first.id, second.id] },
+    operations: [
+      { op: "merge_adjacent_scenes", left_scene_id: first.id, right_scene_id: second.id },
+    ],
+  });
+  expect(onApply).not.toHaveBeenCalled();
+  fireEvent.click(await screen.findByRole("button", { name: "确认保存" }));
+  await waitFor(() => expect(onApply).toHaveBeenCalledOnce());
+  expect(onApply.mock.calls[0][0]).toEqual(change);
+});
+
+it("旁白 Scene 不提供合并入口", () => {
+  const value = scriptSnapshot();
+  const [first, second] = value.director_script!.scenes;
+  first.driver = "drama";
+  second.driver = "narration";
+  renderWorkspace(
+    { onPreviewScriptChange: vi.fn(), onApplyScriptChange: vi.fn() },
+    value,
+    false,
+  );
+  openScene(1);
+  expect(screen.getByRole("button", { name: "与下一场合并" })).toBeDisabled();
+});
+
 it("Segment 保存被服务端拒绝时保留输入并原样显示错误", () => {
   const value = scriptSnapshot();
   const message = "Scene「沿岸行走」的 Segment 2 覆盖必须恰好覆盖全部 Shot。";

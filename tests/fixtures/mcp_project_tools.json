@@ -626,6 +626,28 @@
           ],
           "type": "object"
         },
+        "merge_adjacent_scenes": {
+          "additionalProperties": false,
+          "properties": {
+            "left_scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "op": {
+              "const": "merge_adjacent_scenes"
+            },
+            "right_scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "left_scene_id",
+            "right_scene_id"
+          ],
+          "type": "object"
+        },
         "merge_adjacent_segments": {
           "additionalProperties": false,
           "properties": {
@@ -848,6 +870,9 @@
               },
               {
                 "$ref": "#/$defs/delete_scene"
+              },
+              {
+                "$ref": "#/$defs/merge_adjacent_scenes"
               },
               {
                 "$ref": "#/$defs/update_shot_fields"

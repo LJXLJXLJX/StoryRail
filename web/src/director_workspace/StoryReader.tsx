@@ -37,7 +37,7 @@ import {
   shotLabel,
   shotSegments,
 } from "./script_index";
-import { InsertShotSection, SegmentStructureActions } from "./script_structure";
+import { InsertShotSection, SceneMergeAction, SegmentStructureActions } from "./script_structure";
 import "./story_reader.css";
 const noop = () => undefined;
 
@@ -413,6 +413,19 @@ export function StoryReader(props: WorkspaceFlatProps) {
                     error={error}
                     disabled={dirty}
                     onSave={props.onSaveScript}
+                  />
+                ) : null}
+                {can("edit_script") ? (
+                  <SceneMergeAction
+                    key={`merge-scene:${scene.id}`}
+                    snapshot={snapshot}
+                    scene={scene}
+                    next={scenes[scenes.findIndex((item) => item.id === scene.id) + 1]}
+                    busy={busy}
+                    error={error}
+                    disabled={dirty}
+                    onPreview={props.onPreviewScriptChange}
+                    onApply={props.onApplyScriptChange}
                   />
                 ) : null}
                 {scene.segments.length ? <h2>生成片段</h2> : null}

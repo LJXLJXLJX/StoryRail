@@ -177,6 +177,7 @@ ScriptOperation = reduce(
             "insert_scene": {"after_scene_id": ID | None, "scene": SceneInsert},
             "move_scene": {"scene_id": ID, "after_scene_id": ID | None},
             "delete_scene": {"scene_id": ID},
+            "merge_adjacent_scenes": {"left_scene_id": ID, "right_scene_id": ID},
             "update_shot_fields": {"shot_id": ID, "fields": ShotFields},
             "delete_shot": {"scene_id": ID, "shot_id": ID},
             "update_segment_fields": {"segment_id": ID, "fields": SegmentFields},

@@ -974,6 +974,30 @@ def _apply_script_operations(
             scene.segments[left_index : left_index + 2] = [merged]
             changed_ids.update((scene.id, left.id, right.id))
             continue
+        if operation.op == "merge_adjacent_scenes":
+            assert operation.scene_id is not None and operation.right_scene_id is not None
+            left_scene = find_scene(operation.scene_id)
+            right_scene = find_scene(operation.right_scene_id)
+            left_index = drafts.index(left_scene)
+            if left_index + 1 >= len(drafts) or drafts[left_index + 1] is not right_scene:
+                raise ValueError("merge_adjacent_scenes 的左右 Scene 不相邻。")
+            if left_scene.driver != right_scene.driver:
+                raise ValueError("只能合并 driver 相同的 Scene；旁白与对白 Scene 不能合并。")
+            if left_scene.driver == "narration":
+                raise ValueError(
+                    "每个 Narration Scene 只能有一条旁白 Cue，两个 Narration Scene 不能合并。"
+                )
+            # 只重组归属：Shot、Segment、对白与旁白 Cue 原样保留 ID，
+            # 关键帧、视频与候选随 ID 留在原卡片。
+            left_scene.shots.extend(right_scene.shots)
+            left_scene.segments.extend(right_scene.segments)
+            left_scene.narration_cues = (*left_scene.narration_cues, *right_scene.narration_cues)
+            if left_scene.location_id is None:
+                left_scene.location_id = right_scene.location_id
+                left_scene.state_id = right_scene.state_id
+            drafts.remove(right_scene)
+            changed_ids.update((left_scene.id, right_scene.id))
+            continue
         raise TypeError("未支持的 Script operation。")
 
     materialized = tuple(_materialize_script_scene_draft(scene) for scene in drafts)
@@ -1335,7 +1359,14 @@ def _rebase_video_plan(
     items = []
     for segment in script_segments(scenes):
         current = old_items.get(segment.id)
-        unchanged = previous_contexts.get(segment.id) == current_contexts[segment.id]
+        previous_context = previous_contexts.get(segment.id)
+        current_context = current_contexts[segment.id]
+        if previous_context is not None and previous_context[0] != current_context[0]:
+            # Scene 合并只改变归属：并入的 Segment 沿用左侧 Scene 的 setting 文本，
+            # 不因此失效已选视频。
+            unchanged = previous_context[2:] == current_context[2:]
+        else:
+            unchanged = previous_context == current_context
         if current is not None and unchanged:
             items.append(current)
         elif current is not None:
@@ -1361,6 +1392,7 @@ def _rebase_video_plan(
 def _segment_visual_contexts(scenes: tuple[Scene, ...]) -> dict[str, tuple[object, ...]]:
     return {
         segment.id: (
+            scene.id,
             scene.setting,
             tuple(
                 (

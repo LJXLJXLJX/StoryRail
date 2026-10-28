@@ -136,8 +136,8 @@ sequenceDiagram
 `script.apply_operations` 在一个显式 `scope.scene_ids` 内按顺序原子执行 1–100 项操作：`update_scene_fields`、
 `insert_scene`、`move_scene`、`delete_scene`、`update_shot_fields`、`insert_shot`、`delete_shot`、
 `update_segment_fields`、`insert_segment`、`move_segment`、`delete_segment`、`split_segment`、
-`merge_adjacent_segments`。不支持单独移动 Shot；需要重排或跨 Scene 迁移 Shot 时走脚本 proposal 的 `replace_scene`
-整卡替换，或在同一 patch 内删除并重新插入、同时补足覆盖。
+`merge_adjacent_segments`、`merge_adjacent_scenes`。不支持单独移动 Shot；把整场接到上一场用 `merge_adjacent_scenes`，
+其余重排或跨 Scene 迁移 Shot 时在同一 patch 内删除并重新插入、同时补足覆盖（新节点获得新 ID）。
 
 - Segment 以 `scene_id` 为容器；已有 Scene 的 Segment 用 `shot_ids` 表达覆盖，新 Scene 的 Segment 用本 Scene
   新 `shots` 数组的 `shot_indexes`。
@@ -146,6 +146,11 @@ sequenceDiagram
 - `split_segment` 的 `first` / `second` 各自给出完整 `shot_ids`；在某个 Shot 内部拆分时两段共享该 Shot，第二段必须带
   `boundary_from_previous`。`merge_adjacent_segments` 只接受同一 Scene 中真实相邻的左右 Segment，合并后的 `shot_ids`
   必须是两段覆盖的并集。
+- `merge_adjacent_scenes` 只接受 scope 内真实相邻的两个 Drama Scene（Narration Scene 恰好一条 Cue，不能合并）：右侧 Scene 的 Shot 与 Segment
+  按原顺序接到左侧末尾并保留全部 ID，右侧 Scene 消失。合并后沿用左侧的 title、summary、setting 与地点绑定（左侧未绑定时
+  沿用右侧）。Keyframe 槽位、视频输入簿、候选与已选视频按 Segment ID 原样保留；视频重基只因归属 Scene 变化时不比较
+  Scene 的 setting 文本，其余内容变化照常让已选视频过期。最终装配计划随脚本写入作废，合并后的 Scene 成片需要按当前
+  Segment 重新生成。
 
 整批操作先应用在内存草稿上，结束后构造完整 `DirectorScript` 做一次覆盖校验：每个 Segment 连续覆盖、按顺序拼接后
 恰好覆盖全部 Shot，不跳过、不倒序、不重复，只允许相邻 Segment 共享边界 Shot；失败则整批拒绝并指出 Scene 与原因。
