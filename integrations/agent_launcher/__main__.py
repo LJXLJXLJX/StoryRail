@@ -252,8 +252,6 @@ def main():
         scope_key = args.project if not args.playground else "playground"
         if not 1 <= args.core_port <= 65535:
             raise ValueError("服务端口不合法。")
-        if not shutil.which(args.agent):
-            raise ValueError(f"尚未安装 {label}。请先安装并登录，再粘贴同一条命令。")
         if not shutil.which("docker"):
             raise ValueError("请先安装并打开 Docker Desktop，再粘贴同一条命令。")
         proxy_port = effective_host_proxy_port(os.environ)
