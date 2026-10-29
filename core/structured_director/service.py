@@ -754,11 +754,12 @@ class StructuredDirectorService:
         reference_asset_ids: tuple[str, ...] | None = None,
     ) -> StructuredDirectorDocument:
         async with self._lock:
+            document = self._store.read()
             return self._command_registry.execute(
                 keyframe_edit_command(
-                    self._store.read(),
+                    document,
                     keyframe,
-                    expected_revision=expected_revision,
+                    expected_revision=self._store.effective_revision(document, expected_revision),
                     segment_id=segment_id,
                     reference_asset_ids=reference_asset_ids,
                 )
@@ -855,59 +856,15 @@ class StructuredDirectorService:
         start_enabled: bool,
         end_enabled: bool,
         expected_revision: int,
-        expected_binding: tuple[str, str, bool, bool, str | None, str | None] | None = None,
     ) -> StructuredDirectorDocument:
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision and expected_binding is not None:
-                plan = document.keyframe_plan
-                binding = (
-                    None
-                    if plan is None
-                    else next(
-                        (item for item in plan.segments if item.segment_id == segment_id),
-                        None,
-                    )
-                )
-                if binding is None or plan is None:
-                    raise RevisionConflictError(
-                        "项目已更新且 Segment 关键帧绑定已变化，请刷新后重试。"
-                    )
-                keyframes = {item.id: item for item in plan.keyframes}
-                start = keyframes.get(binding.start_keyframe_id)
-                end = keyframes.get(binding.end_keyframe_id)
-                if start is None or end is None:
-                    raise RevisionConflictError(
-                        "项目已更新且 Segment 关键帧绑定已变化，请刷新后重试。"
-                    )
-                current_binding = (
-                    binding.start_keyframe_id,
-                    binding.end_keyframe_id,
-                    binding.start_enabled,
-                    binding.end_enabled,
-                    start.selected_asset_id,
-                    end.selected_asset_id,
-                )
-                same_target_facts = (
-                    current_binding[:2] == expected_binding[:2]
-                    and current_binding[4:] == expected_binding[4:]
-                )
-                if same_target_facts and current_binding[2:4] == (
-                    start_enabled,
-                    end_enabled,
-                ):
-                    return document
-                if current_binding != expected_binding:
-                    raise RevisionConflictError(
-                        "项目已更新且该 Segment 的关键帧状态已变化，请刷新后确认。"
-                    )
-                expected_revision = document.revision
             return self._command_registry.execute(
                 keyframe_activation_command(
                     segment_id=segment_id,
                     start_enabled=start_enabled,
                     end_enabled=end_enabled,
-                    expected_revision=expected_revision,
+                    expected_revision=self._store.effective_revision(document, expected_revision),
                 )
             ).document
 

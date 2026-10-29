@@ -43,7 +43,7 @@ class RunDomain(_DomainBase):
 
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再保存 run cursor。")
             return document
 
@@ -71,7 +71,7 @@ class RunDomain(_DomainBase):
 
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再保存 run 进度。")
             return document
 
@@ -98,7 +98,7 @@ class RunDomain(_DomainBase):
     ) -> StructuredDirectorDocument:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再暂停 run。")
             return document
 
@@ -128,7 +128,7 @@ class RunDomain(_DomainBase):
     ) -> StructuredDirectorDocument:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再恢复 run。")
             return document
 
@@ -153,7 +153,7 @@ class RunDomain(_DomainBase):
     ) -> StructuredDirectorDocument:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再取消 run。")
             return document
 
@@ -176,7 +176,7 @@ class RunDomain(_DomainBase):
     ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再取消 run。")
             return document
 
@@ -226,7 +226,7 @@ class RunDomain(_DomainBase):
     ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再恢复 run。")
             return document
 

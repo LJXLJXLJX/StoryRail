@@ -136,7 +136,7 @@ class VideoDomain(_DomainBase):
         self, message: str | None, *, expected_revision: int
     ) -> tuple[StructuredDirectorDocument, bool]:
         document = self.read()
-        if document.revision != expected_revision:
+        if not self.revision_matches(document, expected_revision):
             raise RevisionConflictError("项目已被更新，请重新读取后再请求 Director Agent。")
         active = document.active_director_run
         if active is not None:

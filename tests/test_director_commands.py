@@ -608,12 +608,6 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                 "expected_revision": activated.revision,
                 "start_enabled": False,
                 "end_enabled": False,
-                "expected_start_keyframe_id": binding.start_keyframe_id,
-                "expected_end_keyframe_id": binding.end_keyframe_id,
-                "expected_start_enabled": True,
-                "expected_end_enabled": False,
-                "expected_start_selected_asset_id": None,
-                "expected_end_selected_asset_id": None,
             }
             retargeted = await api.handle(
                 "PUT",
@@ -629,19 +623,21 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                 end_enabled=False,
                 expected_revision=retargeted.body["revision"],
             )
+            # 期间同一 Segment 的关键帧绑定被改过：按实体判定为冲突并给出定位。
             conflict = await api.handle(
                 "PUT",
                 f"/structured-director/segments/{binding.segment_id}/keyframe-activation",
                 json.dumps(
-                    {
-                        **stale_request,
-                        "expected_revision": retargeted.body["revision"],
-                        "expected_start_enabled": False,
-                    }
+                    {**stale_request, "expected_revision": retargeted.body["revision"]}
                 ).encode(),
             )
             self.assertEqual(conflict.status, 409)
             self.assertEqual(conflict.body["error"]["code"], "revision_conflict")
+            self.assertEqual(conflict.body["error"]["conflict_reason"], "entities_changed")
+            self.assertEqual(
+                [item["id"] for item in conflict.body["error"]["conflicts"]],
+                [binding.segment_id],
+            )
             self.assertEqual(changed.revision, retargeted.body["revision"] + 1)
 
     async def test_recent_scene_context_survives_across_director_runs(self) -> None:

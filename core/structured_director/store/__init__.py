@@ -837,6 +837,16 @@ class StructuredDirectorStore:
             _check_changed_recipe_params(self._provider_catalog, previous, document)
             if document.revision != previous.revision + 1:
                 raise RevisionConflictError("提交 revision 已失效，请重新读取项目后重试。")
+        scope = rebase_scope.get()
+        if (
+            scope is not None
+            and previous is not None
+            and not scope.write_checked
+            and scope.accepted_revision != scope.expected_revision
+        ):
+            scope.write_checked = True
+            if self.concurrent_write_conflicts(scope, previous, document):
+                raise RevisionConflictError("项目在你读取之后修改了本次写入会改动的对象。")
         value = _serialize_document(document)
         serialized = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
         temporary = self._project_directory / f".{self.filename}.{uuid4().hex}.tmp"
@@ -870,6 +880,16 @@ class StructuredDirectorStore:
         }:
             return False
         return self.accept_rebase(scope, document)
+
+    def effective_revision(
+        self, document: StructuredDirectorDocument, expected_revision: int
+    ) -> int:
+        """rebase 判定通过时返回当前 revision，供需要把 revision 写进命令的调用方使用。"""
+        return (
+            document.revision
+            if self.revision_matches(document, expected_revision)
+            else (expected_revision)
+        )
 
     def accept_rebase(self, scope: RebaseScope, document: StructuredDirectorDocument) -> bool:
         theirs = self.change_journal.changed_since(scope.expected_revision, document.revision)

@@ -33,7 +33,7 @@ class FinalDomain(_DomainBase):
     ) -> StructuredDirectorDocument:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再进入成片装配。")
             return document
 
@@ -92,7 +92,7 @@ class FinalDomain(_DomainBase):
     ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再批准成片。")
             return document
 
@@ -112,7 +112,7 @@ class FinalDomain(_DomainBase):
     ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再返回视频生产。")
             return document
 

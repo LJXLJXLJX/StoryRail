@@ -115,7 +115,7 @@ class LocationDomain(_DomainBase):
 
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再规划地点。")
             return document
 
@@ -153,7 +153,7 @@ class LocationDomain(_DomainBase):
 
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已变化，请重新读取地点规划请求。")
             if not _active_run_is(document, DirectorRunKind.LOCATION_PLAN):
                 raise ValueError("当前没有等待保存的地点规划。")
@@ -181,7 +181,7 @@ class LocationDomain(_DomainBase):
 
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已更新，请重新确认地点成套批次。")
             return document
 

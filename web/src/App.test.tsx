@@ -846,26 +846,16 @@ describe("StoryRail App", () => {
       }),
     );
   });
-  it("关键帧激活请求携带完整语义前置条件", async () => {
+  it("关键帧激活请求只携带 revision 与目标状态，冲突由 Core 按实体判定", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(response(reviewingSnapshot));
-    const startKeyframeId = "1".repeat(32);
-    const endKeyframeId = "2".repeat(32);
     await structuredDirectorApi.saveSegmentKeyframeActivation(
       projectId,
       7,
       "3".repeat(32),
       true,
       false,
-      {
-        startKeyframeId,
-        endKeyframeId,
-        startEnabled: true,
-        endEnabled: true,
-        startSelectedAssetId: "4".repeat(32),
-        endSelectedAssetId: null,
-      },
     );
     expect(fetchMock).toHaveBeenCalledWith(
       `/api/projects/${projectId}/structured-director/segments/${"3".repeat(32)}` +
@@ -876,12 +866,6 @@ describe("StoryRail App", () => {
           expected_revision: 7,
           start_enabled: true,
           end_enabled: false,
-          expected_start_keyframe_id: startKeyframeId,
-          expected_end_keyframe_id: endKeyframeId,
-          expected_start_enabled: true,
-          expected_end_enabled: true,
-          expected_start_selected_asset_id: "4".repeat(32),
-          expected_end_selected_asset_id: null,
         }),
       }),
     );

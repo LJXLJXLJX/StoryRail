@@ -531,20 +531,6 @@ export function App() {
     endEnabled: boolean,
   ) {
     if (selectedProject === null || structuredSnapshot === null) return;
-    const plan = structuredSnapshot.keyframe_plan;
-    const binding = plan?.segments.find(
-      (item) => item.segment_id === segmentId,
-    );
-    const start = plan?.keyframes.find(
-      (item) => item.id === binding?.start_keyframe_id,
-    );
-    const end = plan?.keyframes.find(
-      (item) => item.id === binding?.end_keyframe_id,
-    );
-    if (binding === undefined || start === undefined || end === undefined) {
-      setError("当前 Segment 的关键帧绑定已更新，请刷新后重试。");
-      return;
-    }
     await mutateStructuredDirector(
       () =>
         structuredDirectorApi.saveSegmentKeyframeActivation(
@@ -553,14 +539,6 @@ export function App() {
           segmentId,
           startEnabled,
           endEnabled,
-          {
-            startKeyframeId: binding.start_keyframe_id,
-            endKeyframeId: binding.end_keyframe_id,
-            startEnabled: binding.start_enabled,
-            endEnabled: binding.end_enabled,
-            startSelectedAssetId: start.selected_asset_id,
-            endSelectedAssetId: end.selected_asset_id,
-          },
         ),
       "edit_keyframe_references",
     );

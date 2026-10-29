@@ -16,6 +16,7 @@ def keyframe_edit_command(
     segment_id: str | None = None,
     reference_asset_ids: tuple[str, ...] | None = None,
 ) -> DirectorCommand:
+    # 调用方已用 Store.effective_revision 完成 rebase 判定；这里只接受当前 revision。
     if document.revision != expected_revision:
         raise RevisionConflictError("项目已更新，请刷新后重试。")
     plan = document.keyframe_plan

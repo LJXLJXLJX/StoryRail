@@ -924,12 +924,15 @@ class StructuredDirectorNarrationTests(unittest.IsolatedAsyncioTestCase):
                 json.dumps({"expected_revision": response.body["revision"]}).encode(),
             )
             self.assertEqual(duplicate.status, 400)
+            # 落后的 revision 期间只新增了 Generation，与该 Scene 不相交：按当前状态判定，
+            # 被“已有进行中的 Animatic”这一业务规则拒绝，而不是笼统的 revision 冲突。
             stale = await api.handle(
                 "POST",
                 f"/structured-director/scenes/{scene_id}/animatic",
                 json.dumps({"expected_revision": response.body["revision"] - 1}).encode(),
             )
-            self.assertEqual(stale.status, 409)
+            self.assertEqual(stale.status, 400)
+            self.assertEqual(stale.body["error"]["message"], duplicate.body["error"]["message"])
 
             animatic_generation_id = next(
                 item["id"]

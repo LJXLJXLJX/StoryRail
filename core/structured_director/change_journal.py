@@ -280,6 +280,8 @@ class RebaseScope:
     dependencies: frozenset[str]
     reason: str | None = None
     conflicts: frozenset[str] = frozenset()
+    # 作用域内第一次落盘时比较实际改动与期间改动；之后的写入（如生成回调）不再比较。
+    write_checked: bool = False
 
 
 rebase_scope: ContextVar[RebaseScope | None] = ContextVar("storyrail_rebase_scope", default=None)

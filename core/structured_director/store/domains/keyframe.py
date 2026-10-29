@@ -314,7 +314,7 @@ class KeyframeDomain(_DomainBase):
 
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再准备关键帧。")
             return document
 
@@ -382,7 +382,7 @@ class KeyframeDomain(_DomainBase):
     ) -> StructuredDirectorDocument:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再解锁视觉生产。")
             return document
 
@@ -467,13 +467,13 @@ class KeyframeDomain(_DomainBase):
         command = keyframe_edit_command(
             document,
             keyframe,
-            expected_revision=expected_revision,
+            expected_revision=document.revision,
             segment_id=segment_id,
             reference_asset_ids=reference_asset_ids,
         )
         return self.apply_keyframe_operations(
             parse_keyframe_operations(command.arguments["operations"]),
-            expected_revision=expected_revision,
+            expected_revision=document.revision,
             command_id=command.idempotency_key,
         )[0]
 
@@ -775,7 +775,7 @@ class KeyframeDomain(_DomainBase):
 
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已更新，请重新确认关键帧批次。")
             return document
 

@@ -549,14 +549,6 @@ export const structuredDirectorApi = {
     segmentId: string,
     startEnabled: boolean,
     endEnabled: boolean,
-    expectedBinding: {
-      startKeyframeId: string;
-      endKeyframeId: string;
-      startEnabled: boolean;
-      endEnabled: boolean;
-      startSelectedAssetId: string | null;
-      endSelectedAssetId: string | null;
-    },
   ) =>
     structuredMutation(
       projectId,
@@ -565,12 +557,6 @@ export const structuredDirectorApi = {
         expected_revision: revision,
         start_enabled: startEnabled,
         end_enabled: endEnabled,
-        expected_start_keyframe_id: expectedBinding.startKeyframeId,
-        expected_end_keyframe_id: expectedBinding.endKeyframeId,
-        expected_start_enabled: expectedBinding.startEnabled,
-        expected_end_enabled: expectedBinding.endEnabled,
-        expected_start_selected_asset_id: expectedBinding.startSelectedAssetId,
-        expected_end_selected_asset_id: expectedBinding.endSelectedAssetId,
       },
       "PUT",
     ),

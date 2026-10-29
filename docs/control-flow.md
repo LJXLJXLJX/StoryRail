@@ -152,6 +152,9 @@ flowchart TB
   导演方案、Scene 顺序……）合成一个项目级键，任何变化都与所有落后的写请求冲突。
 - 生成类命令（Keyframe、视频、地点图片等）在自己的写锁内再判定一次，覆盖入口判定到加锁之间的写入；新建的 Generation
   与 Asset 不与已有实体相交。
+- 人类 Web 写路由走同一判定：HTTP 入口为带 `expected_revision` 的 JSON 写请求建立 rebase 作用域，依赖取路径与请求体中的
+  实体 ID；Store 与 Service 的 revision 检查（`revision_matches`）在作用域内按实体判定，作用域内第一次落盘时再比较实际改动
+  与期间改动。Web 因此不必携带额外的并发前置条件，Agent 在其它对象上的写入也不会让人类操作失败。
 - 日志只在内存、按项目路径进程内共享，保留最近 1024 个 revision；Core 重启或出现断档后无法覆盖更早的 revision，
   这类请求按严格 CAS 拒绝。
 

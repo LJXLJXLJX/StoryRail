@@ -101,7 +101,7 @@ class ScriptDomain(_DomainBase):
 
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再生成脚本。")
             return document
 
@@ -169,7 +169,7 @@ class ScriptDomain(_DomainBase):
 
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再请求 Agent 修改。")
             return document
 
@@ -258,7 +258,7 @@ class ScriptDomain(_DomainBase):
     ) -> StructuredDirectorDocument:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再保存脚本。")
             return document
 
@@ -293,7 +293,7 @@ class ScriptDomain(_DomainBase):
 
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再保存脚本。")
             return document
 
@@ -324,7 +324,7 @@ class ScriptDomain(_DomainBase):
     def confirm_director_script(self, *, expected_revision: int) -> StructuredDirectorDocument:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再确认脚本。")
             return document
 
@@ -408,7 +408,7 @@ class ScriptDomain(_DomainBase):
     ) -> StructuredDirectorDocument:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再保存生产期脚本。")
             return document
 
@@ -537,7 +537,7 @@ class ScriptDomain(_DomainBase):
     ) -> tuple[StructuredDirectorDocument, CommandReceipt, RepairReceipt]:
         """以字段白名单原子修复脚本实体，并持久记录能力缺口。"""
         document = self.read()
-        if document.revision != expected_revision:
+        if not self.revision_matches(document, expected_revision):
             raise RevisionConflictError("项目已被更新，请重新读取后再执行 repair patch。")
         replay = next(
             (alert for alert in document.capability_gap_alerts if command_id in alert.command_ids),

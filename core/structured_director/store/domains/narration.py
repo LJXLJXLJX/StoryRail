@@ -31,7 +31,7 @@ class NarrationDomain(_DomainBase):
     ) -> StructuredDirectorDocument:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再保存旁白。")
             return document
 
@@ -87,7 +87,7 @@ class NarrationDomain(_DomainBase):
     ) -> StructuredDirectorDocument:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再选择旁白。")
             return document
 
@@ -108,7 +108,7 @@ class NarrationDomain(_DomainBase):
     ) -> tuple[StructuredDirectorDocument, bool]:
         def load() -> StructuredDirectorDocument:
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再请求旁白 Agent。")
             return document
 

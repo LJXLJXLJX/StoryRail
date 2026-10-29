@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -7,7 +8,7 @@ from typing import Any
 from urllib.parse import urlsplit
 from uuid import uuid4
 
-from core.application.caller import READ_OPERATIONS, AccessDenied
+from core.application.caller import READ_OPERATIONS, AccessDenied, current_caller
 from core.audio_effects import AudioEffectRequest, AudioTrimRequest
 from core.director_commands import (
     CommandNeedsUserInput,
@@ -24,6 +25,8 @@ from core.host_alarm import HOST_ALARM
 from core.model_providers.recipe import RecipeInputs, RecipeParams
 from storyrail_contracts.http_edge import query_is_allowed as _query_is_allowed
 
+from .application_requests import rebase_conflict
+from .change_journal import RebaseScope, argument_ids, rebase_scope
 from .errors import InvalidArgumentsError
 from .http_requests import (
     JsonResponse as JsonResponse,
@@ -281,8 +284,17 @@ class StructuredDirectorHttpApi:
                 )
         if route is None:
             return _error(404, "not_found", "请求的资源不存在。")
+        scope = _web_rebase_scope(route, method, match, body)
+        token = rebase_scope.set(scope)
         try:
-            return await route.invoke(self, method, match, body, media_type, target.query)
+            try:
+                return await route.invoke(self, method, match, body, media_type, target.query)
+            except ValueError as exc:
+                if scope is not None and scope.reason is not None:
+                    raise rebase_conflict(
+                        self._service.snapshot(), scope.expected_revision, scope
+                    ) from exc
+                raise
         except StagePrerequisiteError as exc:
             return _stage_error(exc)
         except RevisionConflictError as exc:
@@ -300,6 +312,8 @@ class StructuredDirectorHttpApi:
                 route.error_policy.value_code,
                 str(exc),
             )
+        finally:
+            rebase_scope.reset(token)
 
     def _route_suffix(self, path: str) -> str:
         if path == self.resource_path:
@@ -310,7 +324,7 @@ class StructuredDirectorHttpApi:
         return "\x00"
 
     def _translate_revision_error(self, route: _Route, exc: RevisionConflictError) -> JsonResponse:
-        if route.error_policy.revision_details:
+        if route.error_policy.revision_details or exc.conflict_reason is not None:
             current = self._current_revision()
             return _revision_error(
                 exc,
@@ -966,46 +980,16 @@ class StructuredDirectorHttpApi:
         return JsonResponse(200, self._serialize_snapshot(result))
 
     async def _save_segment_keyframe_activation(self, segment_id: str, body: bytes) -> JsonResponse:
-        binding_fields = {
-            "expected_start_keyframe_id",
-            "expected_end_keyframe_id",
-            "expected_start_enabled",
-            "expected_end_enabled",
-            "expected_start_selected_asset_id",
-            "expected_end_selected_asset_id",
-        }
         request = _parse_request(
-            body,
-            required={"expected_revision", "start_enabled", "end_enabled"},
-            optional=binding_fields,
+            body, required={"expected_revision", "start_enabled", "end_enabled"}
         )
         if isinstance(request, JsonResponse):
             return request
-        provided_binding_fields = binding_fields & set(request)
-        if provided_binding_fields and provided_binding_fields != binding_fields:
-            return _error(400, "invalid_request", "关键帧并发前置条件必须完整提供。")
-        expected_binding = None
-        if provided_binding_fields:
-            expected_binding = (
-                _id(request["expected_start_keyframe_id"], "expected_start_keyframe_id"),
-                _id(request["expected_end_keyframe_id"], "expected_end_keyframe_id"),
-                _boolean(request["expected_start_enabled"], "expected_start_enabled"),
-                _boolean(request["expected_end_enabled"], "expected_end_enabled"),
-                _optional_id(
-                    request["expected_start_selected_asset_id"],
-                    "expected_start_selected_asset_id",
-                ),
-                _optional_id(
-                    request["expected_end_selected_asset_id"],
-                    "expected_end_selected_asset_id",
-                ),
-            )
         result = await self._service.save_segment_keyframe_activation(
             segment_id=segment_id,
             start_enabled=_boolean(request["start_enabled"], "start_enabled"),
             end_enabled=_boolean(request["end_enabled"], "end_enabled"),
             expected_revision=_required_revision(request),
-            expected_binding=expected_binding,
         )
         return JsonResponse(200, self._serialize_snapshot(result))
 
@@ -1976,6 +1960,32 @@ class _Route:
     authorization: str
     gate: str = "write"
     error_policy: _ErrorPolicy = _ErrorPolicy()
+
+
+def _web_rebase_scope(
+    route: _Route, method: str, match: re.Match[str] | None, body: bytes
+) -> RebaseScope | None:
+    """人类 Web 写路由：revision 落后时按路径与请求体中的实体 ID 判定冲突。
+
+    命令路由（``/commands``、``/application/commands``）由应用层自行判定，这里不建立作用域；
+    上传等非 JSON 请求体不建立作用域。
+    """
+    if method == "GET" or route.gate == "active_command":
+        return None
+    caller = current_caller.get()
+    if caller is not None and caller.role != "human":
+        return None
+    try:
+        value = json.loads(body) if body else None
+    except (UnicodeDecodeError, ValueError):
+        return None
+    if not isinstance(value, dict):
+        return None
+    revision = value.get("expected_revision")
+    if type(revision) is not int or revision < 1:
+        return None
+    path_ids = argument_ids([] if match is None else list(match.groupdict().values()))
+    return RebaseScope(revision, revision, argument_ids(value) | path_ids)
 
 
 def _match_route(method: str, suffix: str) -> tuple[_Route | None, re.Match[str] | None]:

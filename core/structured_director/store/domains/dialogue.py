@@ -133,7 +133,7 @@ class DialogueDomain(_DomainBase):
     def _commit(self, expected_revision, mutate):
         def load():
             document = self.read()
-            if document.revision != expected_revision:
+            if not self.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已更新，请刷新后重试对白操作。")
             return document
 

@@ -156,13 +156,14 @@ def _rebase_scope(store, caller, command, document):
     )
     if caller.role != "human" and "project.execute" not in caller.capabilities:
         scope.reason = "exact_grant"
-        raise _rebase_conflict(document, command, scope)
+        raise rebase_conflict(document, command.expected_revision, scope)
     if not store.accept_rebase(scope, document):
-        raise _rebase_conflict(document, command, scope)
+        raise rebase_conflict(document, command.expected_revision, scope)
     return scope
 
 
-def _rebase_conflict(document, command, scope):
+def rebase_conflict(document, expected_revision, scope):
+    """把 rebase 判定失败翻译成带原因与冲突定位的 revision_conflict。"""
     messages = {
         "entities_changed": (
             "项目在你读取之后修改了本次请求涉及的对象，请重新读取这些对象后再决定。"
@@ -172,7 +173,7 @@ def _rebase_conflict(document, command, scope):
     }
     return RevisionConflictError(
         messages[scope.reason],
-        expected_revision=command.expected_revision,
+        expected_revision=expected_revision,
         current_revision=document.revision,
         conflict_reason=scope.reason,
         conflicts=describe_entities(document, scope.conflicts),
@@ -201,7 +202,7 @@ def execute_atomic_request(store, command, caller):
     changed = captured[0] if captured else document
     if scope is not None and store.concurrent_write_conflicts(scope, document, changed):
         # 本次写入实际改动（含级联失效）与期间他人的改动相交：不落盘。
-        raise _rebase_conflict(document, command, scope)
+        raise rebase_conflict(document, command.expected_revision, scope)
     revision = document.revision + 1
     receipt = replace(
         result.receipt,
@@ -439,7 +440,9 @@ async def execute_application_command(service, caller, command):
                 result = await service._execute_internal_director_command(effective)
         except Exception as exc:
             if scope is not None and scope.reason is not None:
-                raise _rebase_conflict(service._store.read(), command, scope) from exc
+                raise rebase_conflict(
+                    service._store.read(), command.expected_revision, scope
+                ) from exc
             raise
         finally:
             rebase_scope.reset(scope_token)

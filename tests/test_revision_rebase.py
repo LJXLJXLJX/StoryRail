@@ -232,3 +232,41 @@ def test_argument_ids_collects_nested_ids_only():
             "count": 3,
         }
     ) == {first, second}
+
+
+def test_first_write_in_rebase_scope_rejects_overlapping_changes(tmp_path):
+    """Web 路由与生成类方法不走捕获：作用域内第一次落盘时比较实际改动与期间改动。"""
+    import pytest
+
+    from core.structured_director.change_journal import rebase_scope
+    from core.structured_director.errors import RevisionConflictError
+
+    async def run():
+        store, _provider, document = await setup(tmp_path)
+        mine, other = keyframes(document)
+        stale = document.revision
+        touch_keyframe(store, other.id, "他人改动")
+        scope = RebaseScope(stale, stale, frozenset({mine.id}))
+        token = rebase_scope.set(scope)
+        try:
+            current = store.read()
+            assert store.revision_matches(current, stale)
+            before = store.path.read_bytes()
+            with pytest.raises(RevisionConflictError):
+                touch_keyframe(store, other.id, "本次写入也改到了它")
+            assert store.path.read_bytes() == before
+            assert scope.reason == "entities_changed" and scope.conflicts == {other.id}
+        finally:
+            rebase_scope.reset(token)
+
+        scope = RebaseScope(stale, stale, frozenset({mine.id}))
+        token = rebase_scope.set(scope)
+        try:
+            assert store.revision_matches(store.read(), stale)
+            touch_keyframe(store, mine.id, "只改自己")
+            # 之后的写入（例如生成回调）不再比较。
+            touch_keyframe(store, other.id, "回调写入")
+        finally:
+            rebase_scope.reset(token)
+
+    asyncio.run(run())
