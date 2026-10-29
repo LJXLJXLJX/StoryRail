@@ -298,6 +298,7 @@ from ..video_mutations import (
 from ..video_mutations import (
     _video_command_receipt as _video_command_receipt,
 )
+from .change_journal import ChangeJournal, entity_index, journal_for
 from .pipeline import MutationResult as MutationResult
 from .pipeline import commit_mutation as commit_mutation
 
@@ -819,6 +820,7 @@ class StructuredDirectorStore:
         )
         if pruned_plan is not document.keyframe_plan:
             document = replace(document, keyframe_plan=pruned_plan)
+        previous = None
         if not exclusive and self._path.is_file() and not self._path.is_symlink():
             previous = self.read()
             if document.narration_languages != previous.narration_languages:
@@ -827,7 +829,8 @@ class StructuredDirectorStore:
             _check_changed_recipe_params(self._provider_catalog, previous, document)
             if document.revision != previous.revision + 1:
                 raise RevisionConflictError("提交 revision 已失效，请重新读取项目后重试。")
-        serialized = json.dumps(_serialize_document(document), ensure_ascii=False, indent=2) + "\n"
+        value = _serialize_document(document)
+        serialized = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
         temporary = self._project_directory / f".{self.filename}.{uuid4().hex}.tmp"
         try:
             with temporary.open("x", encoding="utf-8") as target:
@@ -840,6 +843,25 @@ class StructuredDirectorStore:
         finally:
             if temporary.exists():
                 temporary.unlink()
+        self._record_changes(previous, document, value)
+
+    @property
+    def change_journal(self) -> ChangeJournal:
+        return journal_for(self._path)
+
+    def _record_changes(self, previous, document, value) -> None:
+        journal = self.change_journal
+        previous_index = None
+        if previous is not None:
+            previous_index = journal.index_for(previous.revision)
+            if previous_index is None:
+                previous_index = entity_index(_serialize_document(previous))
+        journal.record(
+            None if previous is None else previous.revision,
+            previous_index,
+            document.revision,
+            entity_index(value),
+        )
 
     def __getattr__(self, name: str):
         """P2-D1 facade 路由：public 方法已迁入 store/domains/ collaborator。
