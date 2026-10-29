@@ -251,6 +251,14 @@ def build_semantic_projection(
     }
     if parent_id is not None:
         result["parent_id"] = parent_id
+    # 页超出结果界时从尾部折半收缩，余下节点经 next_cursor 续读；只有单个节点超界才拒绝。
+    while len(items) > 1:
+        try:
+            _validate_result_bounds(result)
+            return result
+        except ReadResultTooLarge:
+            del items[max(1, len(items) // 2) :]
+            result["next_cursor"] = f"{query_digest}:{offset + len(items)}"
     _validate_result_bounds(result)
     return result
 
@@ -356,17 +364,12 @@ def build_semantic_tree(
     scope = {"scene_ids": list(scene_ids)}
     extensions = ["text"] if full_text else []
 
-    def read(level, limit=25):
-        # 页过大时用更小页重新构建该层；cursor绑定limit，不能跨查询沿用。
-        request = {"level": level, "scope": scope, "extensions": extensions, "limit": limit}
+    def read(level):
+        # 过大的页由投影自动收缩，这里只沿 cursor 续读。
+        request = {"level": level, "scope": scope, "extensions": extensions, "limit": 25}
         values = []
         while True:
-            try:
-                page = build_semantic_projection(document, request)
-            except ReadResultTooLarge:
-                if limit == 1:
-                    raise
-                return read(level, max(1, limit // 2))
+            page = build_semantic_projection(document, request)
             values.extend(page["items"])
             if page["next_cursor"] is None:
                 return values

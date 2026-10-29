@@ -20,7 +20,7 @@ from core.director_proposals import (
     ScriptRevisionOperationProposal,
     StructuredDirectorScriptProposal,
 )
-from core.model_providers.recipe import RecipeParams
+from core.model_providers.recipe import RecipeInputs, RecipeParams
 
 from .models import (
     DialogueAudio,
@@ -34,6 +34,7 @@ from .models import (
     KeyframePlan,
     NarrationCue,
     NarrationTrack,
+    ReferenceGenerationKind,
     ReferenceLibrary,
     Scene,
     SegmentBoundary,
@@ -462,6 +463,12 @@ def _invalidate_production_after_script_revision(
         source_script_revision=script.revision,
         previous_scenes=document.director_script.scenes,
         scenes=script.scenes,
+        dialogue_audio_lines={
+            generation.output_asset_id: generation.target_id
+            for generation in document.generations
+            if generation.kind is ReferenceGenerationKind.DIALOGUE_AUDIO
+            and generation.output_asset_id is not None
+        },
     )
     keyframe_plan = _rebase_keyframe_plan(
         document.keyframe_plan,
@@ -1350,15 +1357,25 @@ def _rebase_video_plan(
     source_script_revision: int,
     previous_scenes: tuple[Scene, ...],
     scenes: tuple[Scene, ...],
+    dialogue_audio_lines: dict[str, str] | None = None,
 ) -> VideoPlan | None:
     if plan is None:
         return None
     previous_contexts = _segment_visual_contexts(previous_scenes)
     current_contexts = _segment_visual_contexts(scenes)
+    previous_line_ids = {
+        segment.id: {line.id for line in segment.dialogue_lines}
+        for segment in script_segments(previous_scenes)
+    }
     old_items = {item.segment_id: item for item in plan.segments}
     items = []
     for segment in script_segments(scenes):
         current = old_items.get(segment.id)
+        departed = previous_line_ids.get(segment.id, set()) - {
+            line.id for line in segment.dialogue_lines
+        }
+        if current is not None and departed and dialogue_audio_lines:
+            current = _without_departed_dialogue_audio(current, departed, dialogue_audio_lines)
         previous_context = previous_contexts.get(segment.id)
         current_context = current_contexts[segment.id]
         if previous_context is not None and previous_context[0] != current_context[0]:
@@ -1387,6 +1404,28 @@ def _rebase_video_plan(
                 )
             )
     return VideoPlan(source_script_revision, tuple(items))
+
+
+def _without_departed_dialogue_audio(
+    video: SegmentVideo, departed: set[str], dialogue_audio_lines: dict[str, str]
+) -> SegmentVideo:
+    """拆分或改写后已离开本段的对白，其 TTS 参考随之解绑；其他手动参考原样保留。"""
+    book = video.recipes
+    for recipe_id, inputs in video.recipes.entries:
+        bindings = tuple(
+            (
+                key,
+                tuple(
+                    entry
+                    for entry in entries
+                    if dialogue_audio_lines.get(entry.asset_id) not in departed
+                ),
+            )
+            for key, entries in inputs.bindings
+        )
+        if bindings != inputs.bindings:
+            book = book.with_entry(recipe_id, RecipeInputs(bindings, inputs.params))
+    return replace(video, recipes=book)
 
 
 def _segment_visual_contexts(scenes: tuple[Scene, ...]) -> dict[str, tuple[object, ...]]:

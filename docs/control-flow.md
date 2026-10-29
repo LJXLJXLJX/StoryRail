@@ -368,7 +368,8 @@ stateDiagram-v2
 | `project.get_asset_manifest` + Asset content | 实际媒体字节 | 仅 PNG/JPEG/WebP/WAV/MP3，单项 ≤ 8 MiB，核对 MIME/长度/SHA-256 |
 
 - 只读命令可省略 `expected_revision` 读取最新快照；显式给出时精确读取，不匹配返回 expected/current。
-- 通用读取受 128 KiB / 500 对象信封约束，超限明确报错要求缩页，不静默截断。
+- 通用读取受 128 KiB / 500 对象信封约束，不截断字段内容。`read_story` 的页超限时 Core 从页尾折半收缩条目，
+  余下节点经 `next_cursor` 续读；单个节点本身超限或其它读取超限才返回 `result_too_large`。
 - 所有 cursor 绑定 revision 与完整查询；revision 或查询变化后必须从第一页重读。cursor 不是授权 token。
 
 ## 10. 启动与恢复

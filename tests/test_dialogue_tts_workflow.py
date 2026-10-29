@@ -637,3 +637,101 @@ def test_cancelled_http_request_still_finishes_durable_dialogue_submission(tmp_p
         await scenario(tmp_path / "failed", should_fail=True)
 
     asyncio.run(run())
+
+
+def test_split_segment_unbinds_tts_of_dialogue_moved_to_new_half(tmp_path):
+    """保留原 ID 的一半只解绑迁出对白的 TTS 参考，其余参考原样保留。"""
+    from test_prompt_worksets import fixture
+
+    from core.structured_director.video_inputs import dialogue_audio_bindings
+
+    async def run():
+        store, _service, document, _ = await fixture(tmp_path)
+        document = _bind_dialogue_audio(_service, document)
+        scene = document.director_script.scenes[0]
+        segment = scene.segments[0]
+        original = segment.dialogue_lines
+        dialogue_assets = [item.asset_id for item in dialogue_audio_bindings(document, segment.id)]
+        before = document.video_plan.segments[0].recipe_inputs.to_json()["bindings"]
+        bound = [item["asset_id"] for item in before["reference_audios"]]
+        assert set(dialogue_assets) <= set(bound)
+        moved_asset = dialogue_assets[2]
+
+        def payload(line):
+            return {
+                "character_id": line.character_id,
+                "speaker_label": line.speaker_label,
+                "voice_description": line.voice_description,
+                "text": line.text,
+                "delivery": line.delivery,
+            }
+
+        def half(action, lines, boundary):
+            return {
+                "shot_ids": list(segment.shot_ids),
+                "duration_estimate_seconds": segment.duration_estimate_seconds / 2,
+                "action": action,
+                "dialogue_lines": [payload(line) for line in lines],
+                "boundary_from_previous": boundary,
+            }
+
+        updated = (
+            DirectorCommandRegistry(store)
+            .execute(
+                DirectorCommand(
+                    "script.apply_operations",
+                    document.revision,
+                    "split-segment-unbinds-moved-dialogue",
+                    {
+                        "scope": {"scene_ids": [scene.id]},
+                        "operations": [
+                            {
+                                "op": "split_segment",
+                                "segment_id": segment.id,
+                                "preserve_id": "first",
+                                "first": half("前半。", original[:2], None),
+                                "second": half(
+                                    "后半。",
+                                    original[2:],
+                                    {
+                                        "reason": "continuity_anchor",
+                                        "continuity_instruction": "承接同一镜头。",
+                                    },
+                                ),
+                            }
+                        ],
+                    },
+                )
+            )
+            .document
+        )
+
+        video = next(item for item in updated.video_plan.segments if item.segment_id == segment.id)
+        after = video.recipe_inputs.to_json()["bindings"]
+        assert [item["asset_id"] for item in after["reference_audios"]] == [
+            asset_id for asset_id in bound if asset_id != moved_asset
+        ]
+        assert {k: v for k, v in after.items() if k != "reference_audios"} == {
+            k: v for k, v in before.items() if k != "reference_audios"
+        }
+
+    asyncio.run(run())
+
+
+def _bind_dialogue_audio(service, document):
+    video = document.video_plan.segments[0]
+    return service._command_registry.execute(
+        DirectorCommand(
+            "video.update_recipe_inputs",
+            document.revision,
+            "bind-dialogue-before-split",
+            {
+                "scope": {"scene_ids": [document.director_script.scenes[0].id]},
+                "segment_id": video.segment_id,
+                "prompt_text": "拆分前。",
+                "bindings": {},
+                "params": {},
+                "attach_dialogue_audio": True,
+            },
+        )
+    ).document

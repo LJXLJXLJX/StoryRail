@@ -146,7 +146,8 @@ def lint_h3_prompt(recipe_id: str, prompt: str, facts: dict) -> list[str]:
         ids = tuple(item.strip() for item in speakers[-1].split(",")) if speakers else ()
         if not ids and (dialogue or not _ASSET_LABEL.search(window)):
             problems.append(
-                f"`<d>` 前的同一句中缺少说话者 ID，例如 `角色 (S1) 说：<d>[Chinese] …</d>`："
+                "`<d>` 前的同一句中缺少说话者 ID `(Sx)`；说话方式可自由描述，例如 "
+                f"`角色 (S1) 在画外低声问：<d>[Chinese] …</d>`："
                 f"{_quote(inner)}。"
             )
         previous_end = end

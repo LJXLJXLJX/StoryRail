@@ -170,9 +170,16 @@ async def _bounds(tmp_path):
         "extensions": ["text"],
         "limit": 40,
     }
-    with pytest.raises(ValueError, match="128 KiB"):
-        build(large, request)
-    assert build(large, {**request, "limit": 1})["next_cursor"]
+    first = build(large, request)
+    assert 1 <= len(first["items"]) < 40 and first["next_cursor"]
+    assert len(json.dumps(first, ensure_ascii=False).encode()) <= 128 * 1024
+    ids = [item["id"] for item in first["items"]]
+    cursor = first["next_cursor"]
+    while cursor:
+        page = build(large, {**request, "cursor": cursor})
+        ids.extend(item["id"] for item in page["items"])
+        cursor = page["next_cursor"]
+    assert ids == [scene.id for scene in many]
     assert store.path.read_bytes() == before
 
 

@@ -234,7 +234,8 @@ flowchart LR
 
 Core 按剧本顺序校验 WAV 不重叠，并要求 `Segment.duration_estimate_seconds` 不短于最后一句对白结束时间。对白音频全部选择且
 时序校准后，Core 才允许生成该 Segment 视频。脚本回改会按稳定 DialogueLine ID 重建计划：完整原句即使被分配到新的
-Segment 也保留生成候选与已选音频，只清空发声起点；正文、说话者、音色描述发生变化时才清除该句的选择与时序。
+Segment 也保留生成候选与已选音频，只清空发声起点；正文、说话者、音色描述发生变化时才清除该句的选择与时序。某句对白离开原 Segment（拆分、移句或删除）后，
+该 Segment 视频输入簿各 recipe 中属于这句对白的 TTS 参考音频自动解绑，其它手动参考保持原样。
 历史 Asset 与 Generation 始终保留。
 
 ## 地点库
