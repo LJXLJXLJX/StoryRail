@@ -16,7 +16,9 @@
 ## 共同契约
 
 - `arguments` 由命令专用 parser 严格解析：拒绝缺失字段、未声明字段、错误类型、无效枚举、重复或格式错误的 ID。
-- `expected_revision` 是真正的 CAS 前置条件；`idempotency_key` 与规范化请求一一对应，同键不同请求被拒绝。
+- `expected_revision` 是调用方观察到的项目版本。落后时 Core 按实体判断期间改动是否触及本次请求（参数中的实体、实际改动与
+  项目级字段），不相交就在当前文档上执行并在回执标记 `rebased_from_revision`，相交才返回 `revision_conflict`；精确 grant 调用方
+  保持严格 CAS（见[控制流](control-flow.md)）。`idempotency_key` 与规范化请求一一对应，同键不同请求被拒绝。
 - 目标已处于请求状态时返回 `noop`，不推进 revision。
 - 相互依赖的对象在一次 Store 事务内完成，只对最终对象图校验；失败不留半写状态。
 - 失效只撤销已过期的当前选择、派生计划或 Approval，不删除历史。

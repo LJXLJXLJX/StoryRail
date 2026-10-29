@@ -1042,6 +1042,8 @@ def create_server(
         instructions=_debug_prefix(debug)
         + (
             "有限语义工具连接同一 Core；断连后保留原参数/revision/key 重试。"
+            "读取不校验 revision；写入用最近任意响应里的 revision，期间他人改动与本次请求无关时"
+            "Core 直接按当前项目执行，revision_conflict 时只重读 conflicts 列出的对象。"
             "图片任务必须读取并遵守图片工作集 global_skills 中的 storyrail-image-prompt-writing；"
             "有参考图时逐张写标签与用途，正文明确引用真实标签，不写文件名；无图只写正文。"
             "遇到 HTTP 401、unauthenticated 或凭据过期时，不要让用户去 UI 寻找刷新按钮；"

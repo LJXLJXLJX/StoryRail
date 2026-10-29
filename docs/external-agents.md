@@ -89,7 +89,7 @@ flowchart TB
 **自定义部署**：策略根严格为 `{version: 2, external_mutations: false|true, callers: [...]}`；策略文件由服务用户持有，必须是普通文件、
 0600、无 symlink 祖先，**每次请求重读**——失效、撤销、损坏都直接拒绝。Bearer 只经受保护渠道交付，不进入 URL、日志或业务 JSON。
 没有 `project.execute` 时，每条写命令都需要一条精确 grant：`{id, project_id, command_digest, expires_at}`，摘要绑定命令名、全部参数与
-原 revision。
+原 revision；这类请求保持严格 revision CAS，不做按实体的 rebase。
 
 **未配置任何策略的开发服务**是匿名模式，**不得交给外部 Agent**。
 
@@ -286,7 +286,8 @@ sequenceDiagram
 
 1. 先 `read_workflow`，再按 `required_next_actions` 与用户指令行动；用户以自然语言或 `@功能名` 请求某功能时，直接映射为对应类型化动作，
    不要求用户再输入功能标签。功能提示本身不授予权限、不自动执行。
-2. 写入始终携带当前 revision 与新的幂等键；冲突时重读，只有用户意图仍适用才发起新的写请求。
+2. 写入携带最近一次响应中的 revision 与新的幂等键。revision 落后但期间改动与本次请求无关时，Core 直接按当前项目执行
+   （回执 `rebased_from_revision`）；返回 `revision_conflict` 时只重读 `conflicts` 列出的对象，用户意图仍适用才发起新的写请求。
 3. 断连后先 `read_workflow` / `task_discovery` 发现任务，再 `read_request` / `read_run` 细查；丢响应只用原参数、原 revision、原 key 重放。
 4. 不对 `submission_uncertain` 自动重试；不靠新生成绕过未确认的取消。核查后按用户意图显式 retry，或用 `manage_generation(action="dismiss")` 放弃，
    二者都会让它退出活动任务。
