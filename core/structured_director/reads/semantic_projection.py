@@ -98,7 +98,8 @@ def build_semantic_projection(
         json.dumps(
             {
                 "project_id": document.project_id,
-                "revision": document.revision,
+                # cursor 只绑定查询与有序节点列表：无关写入推进 revision 不让续读失效。
+                "node_ids": [node.id for _, node in nodes],
                 "version": PROJECTION_VERSION,
                 "request": {key: value for key, value in request.items() if key != "cursor"},
             },
@@ -118,7 +119,7 @@ def build_semantic_projection(
             or not parts[1].isascii()
             or (not parts[1].isdigit())
         ):
-            raise ValueError("cursor 不属于当前查询或 revision，请重新读取。")
+            raise ValueError("cursor 不属于当前查询，或节点列表已变化，请重新读取。")
         offset = int(parts[1])
         if offset >= len(nodes):
             raise ValueError("cursor 超出结果范围。")
@@ -389,7 +390,6 @@ def build_semantic_tree(
     return {
         "projection_version": PROJECTION_VERSION,
         "project_id": document.project_id,
-        "project_revision": document.revision,
         "scope": scope,
         "text_mode": "full" if full_text else "preview",
         "scenes": scenes,

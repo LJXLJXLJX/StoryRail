@@ -529,17 +529,13 @@ class StructuredDirectorStore:
         name: str,
         arguments: dict[str, object],
         *,
-        expected_revision: int,
         command_id: str,
     ) -> tuple[StructuredDirectorDocument, CommandReceipt, dict[str, object]]:
-        """在指定 revision 上返回裁剪事实，不写项目或推进 revision。"""
+        """在当前 revision 上返回裁剪事实，不写项目或推进 revision。
+
+        读取不做 revision CAS：结果自带 revision，调用方据此决定后续写入的 expected_revision。
+        """
         document = self.read()
-        if document.revision != expected_revision:
-            raise RevisionConflictError(
-                "项目已被更新，请重新读取后再查询。",
-                expected_revision=expected_revision,
-                current_revision=document.revision,
-            )
         data = execute_project_read(
             document,
             name,

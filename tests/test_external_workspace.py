@@ -71,20 +71,24 @@ def test_mcp_image_audio_read_uses_controlled_assets_and_no_writes(tmp_path):
             for extra in (
                 {"asset_id": "f" * 32},
                 {"project_id": "f" * 32},
-                {"expected_revision": 1},
                 {"path": "../../secret"},
             ):
                 result = await client.call_tool(
                     "read_media_input", {**base, "asset_id": assets[0].id, **extra}
                 )
                 assert result.is_error
+            # 读取不做 revision CAS：过期 revision 照常读当前内容。
+            stale = await client.call_tool(
+                "read_media_input", {**base, "asset_id": assets[0].id, "expected_revision": 1}
+            )
+            assert not stale.is_error, stale
 
     with endpoint(tmp_path, store, service, caller, full_api=True) as (params, _):
         asyncio.run(run(params))
     assert store.path.read_bytes() == before
 
 
-def test_latest_read_recovers_tasks_and_exact_cursor_is_revision_bound(tmp_path):
+def test_latest_read_ignores_stale_revision_and_handoff_cursor_is_revision_bound(tmp_path):
     from test_external_production import call, service, setup
 
     from core.director_commands import DirectorCommand
@@ -123,6 +127,7 @@ def test_latest_read_recovers_tasks_and_exact_cursor_is_revision_bound(tmp_path)
                 task = (discovery["active"] + discovery["recent"])[0]
                 assert task["id"] and task["kind"] and task["status"]
 
+                # 读取不做 revision CAS：过期 revision 照常返回当前观察。
                 stale = await client.call_tool(
                     "read_human_handoff",
                     {
@@ -130,18 +135,9 @@ def test_latest_read_recovers_tasks_and_exact_cursor_is_revision_bound(tmp_path)
                         "expected_revision": original.revision,
                     },
                 )
-                assert stale.is_error
-                assert stale.structured_content["error"] == {
-                    "code": "revision_conflict",
-                    "message": "项目已被更新，请重新读取后再查询。",
-                    "recoverable": True,
-                    "origin": "core_revision",
-                    "state_changed": False,
-                    "retry_policy": "reread_then_reissue_if_still_intended",
-                    "automatic_retry_allowed": False,
-                    "expected_revision": original.revision,
-                    "current_revision": current.revision,
-                }
+                assert not stale.is_error, stale
+                stale_discovery = stale.structured_content["data"]["task_discovery"]
+                assert stale_discovery["observation_revision"] == current.revision
 
                 same_snapshot = await client.call_tool(
                     "read_human_handoff",

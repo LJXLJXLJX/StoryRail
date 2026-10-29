@@ -43,6 +43,15 @@ _AGENT_PAGE_BYTES = 60 * 1024
 _AGENT_MIN_PAGE_BYTES = 4 * 1024
 
 
+# revision 字段只说明观察时点，不属于内容：if_hash 与分页 cursor 只绑定内容，
+# 无关写入推进 revision 时内容不变就仍然命中 / 可续读。
+_REVISION_KEYS = frozenset({"observation_revision", "source_revision"})
+
+
+def _without_revision(value: dict) -> dict:
+    return {key: item for key, item in value.items() if key not in _REVISION_KEYS}
+
+
 def _content_hash(value: object) -> str:
     return hashlib.sha256(
         json.dumps(
@@ -415,7 +424,7 @@ def workset_read(
     }
     if_hash = _validate_if_hash(arguments.get("if_hash"))
     if if_hash is not None:
-        digest = _content_hash(result)
+        digest = _content_hash(_without_revision(result))
         if if_hash == digest:
             return {
                 "unchanged": True,
@@ -439,7 +448,7 @@ def workset_page_read(
         workset_read(
             document, query, provider_recipes=provider_recipes, provider_catalog=provider_catalog
         ),
-        query={"project_id": document.project_id, "revision": document.revision, **query},
+        query={"project_id": document.project_id, **query},
         cursor=arguments.get("cursor"),
         page_bytes=arguments.get("page_bytes", _AGENT_PAGE_BYTES),
     )
@@ -454,9 +463,15 @@ def _agent_page(result, *, query, cursor, page_bytes):
         raise ValueError(
             f"page_bytes 必须是 {_AGENT_MIN_PAGE_BYTES} 到 {_AGENT_PAGE_BYTES} 的整数。"
         )
-    encoded = json.dumps(result, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    if cursor is None and len(encoded) <= _AGENT_RESULT_MAX_BYTES:
+    if cursor is None and (
+        len(json.dumps(result, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+        <= _AGENT_RESULT_MAX_BYTES
+    ):
         return result
+    # 分页正文不含 revision 字段（由页头 observation_revision 给出），cursor 只绑定内容。
+    encoded = json.dumps(
+        _without_revision(result), ensure_ascii=False, separators=(",", ":")
+    ).encode("utf-8")
     content_sha256 = hashlib.sha256(encoded).hexdigest()
     query_digest = hashlib.sha256(
         json.dumps(
@@ -477,7 +492,7 @@ def _agent_page(result, *, query, cursor, page_bytes):
             or not parts[1].isascii()
             or not parts[1].isdigit()
         ):
-            raise ValueError("cursor 不属于当前项目、revision 或专业查询。")
+            raise ValueError("cursor 不属于当前专业查询，或查询内容已变化，请重新读取。")
         offset = int(parts[1])
         if offset <= 0 or offset >= len(encoded):
             raise ValueError("cursor 超出专业读取结果范围。")
@@ -498,7 +513,7 @@ def _agent_page(result, *, query, cursor, page_bytes):
     }
     return {
         "project_id": result["project_id"],
-        "observation_revision": result.get("source_revision", query.get("revision")),
+        "observation_revision": result.get("source_revision"),
         **header,
         "pagination": {
             "mode": "json_utf8_chunks",

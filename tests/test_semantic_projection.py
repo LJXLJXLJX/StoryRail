@@ -77,9 +77,10 @@ async def _mixed(tmp_path):
         assert cue[language.value]["duration_seconds"] == 16
         assert cue[language.value]["selected_audio_asset_id"] == track.selected_audio_asset_id
         assert cue[language.value]["duration_source"] == "selected_audio_asset"
-    with pytest.raises(ValueError, match="revision"):
-        build(selected, {**request, "cursor": first["next_cursor"]})
-    with pytest.raises(ValueError, match="revision"):
+    # cursor 只绑定查询与有序节点：选择音频推进 revision 但节点不变，仍可续读。
+    resumed = build(selected, {**request, "cursor": first["next_cursor"]})
+    assert resumed["items"]
+    with pytest.raises(ValueError, match="cursor"):
         build(document, {**request, "limit": 2, "cursor": first["next_cursor"]})
     with pytest.raises(ValueError, match="范围"):
         build(document, {**request, "cursor": first["next_cursor"].split(":")[0] + ":99"})
@@ -256,9 +257,34 @@ async def _parent_scope(tmp_path):
     ):
         with pytest.raises(ValueError):
             build(document, {**request, **patch})
-    with pytest.raises(ValueError, match="revision"):
+    # 无关 revision 推进不影响续读；节点列表变化才让 cursor 失效。
+    assert (
         build(
             replace(document, revision=document.revision + 1),
+            {**request, "cursor": first["next_cursor"]},
+        )["items"][0]["id"]
+        == segments[1].id
+    )
+    with pytest.raises(ValueError, match="cursor"):
+        build(
+            replace(
+                document,
+                director_script=replace(
+                    document.director_script,
+                    scenes=tuple(
+                        replace(
+                            item,
+                            segments=(
+                                *item.segments[:-1],
+                                replace(item.segments[-1], id="e" * 31 + "1"),
+                            ),
+                        )
+                        if item.id == scene.id
+                        else item
+                        for item in document.director_script.scenes
+                    ),
+                ),
+            ),
             {**request, "cursor": first["next_cursor"]},
         )
     # 同一合成快照下测量实际 JSON，不推断模型 token 或时延。

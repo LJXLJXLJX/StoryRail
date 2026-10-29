@@ -72,7 +72,8 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 - 随当前绑定插件发布的提示词 Skill 全文只在 `read_professional_contract` 中（`plugin/` 资源，可用 `if_hash` 缓存）；工作集的
   `plugin_skills` 只是目录，单个 Segment 的视频工作集因此通常不分页。
 - `read_professional_contract` / `read_professional_workset` 在完整 JSON 超过 64 KiB 时进入 `json_utf8_chunks` 模式，单页 ≤ 24 KiB；续读必须
-  沿用同一 project/revision/capability/scope/target_ids/page_bytes 并携带 `next_cursor`，拼接后校验 `content_sha256` 再解析。
+  沿用同一 project/capability/scope/target_ids/page_bytes 并携带 `next_cursor`，拼接后校验 `content_sha256` 再解析；cursor 只绑定内容，
+  无关写入推进 revision 不影响续读。
 - `read_request` 查询 proposal request 时只返回紧凑状态与 `workset_recovery`；原始工作集用对应 proposal 的 get 恢复，最新事实用
   `read_professional_workset` 读取。
 - `read_workflow` 返回的 `workflow.recommended_next_actions` 是不阻塞主流程的可选建议（如规划地点、继续地点成套批次）；
@@ -80,7 +81,7 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 
 ## 断连与恢复
 
-- 断连不表示 Core 没提交。纯读取可省略 `expected_revision` 取得 latest，响应始终给出本次 observation revision。
+- 断连不表示 Core 没提交。读取不做 revision CAS，总是取得 latest，响应始终给出本次 observation revision。
 - 重连先用 `read_workflow` 的 `task_discovery` 发现 active/recent run 与 Generation（默认全部 active 加最近 5 条 recent，
   更早历史经 `next_cursor`），再按同一 revision 细查。
 - 写请求不得换 revision 自动重试；丢响应只用原参数、原 revision、原 key 重放取得 Core 原回执。

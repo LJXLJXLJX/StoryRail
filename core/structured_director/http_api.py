@@ -689,7 +689,7 @@ class StructuredDirectorHttpApi:
         if request.get("name") == "alarm.ring":
             return _ring_alarm(request)
         if "expected_revision" not in request:
-            # generation.wait 只观察 Provider 状态，与读命令一样可省略 revision。
+            # 读命令与 generation.wait 不做 revision CAS，这里只为命令信封补一个占位值。
             if request.get("name") not in READ_OPERATIONS | {"generation.wait"}:
                 return _error(400, "invalid_request", "写命令必须提供 expected_revision。")
             request["expected_revision"] = self._require_current_revision()

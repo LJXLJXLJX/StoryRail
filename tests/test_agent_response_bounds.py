@@ -238,7 +238,7 @@ def test_large_project_application_writes_return_compact_receipts_and_stable_rep
     asyncio.run(run())
 
 
-def test_large_professional_workset_pages_are_revision_bound_complete_json(tmp_path):
+def test_large_professional_workset_pages_are_content_bound_complete_json(tmp_path):
     async def run(params, document):
         query = {
             "project_id": document.project_id,
@@ -268,7 +268,8 @@ def test_large_professional_workset_pages_are_revision_bound_complete_json(tmp_p
         encoded = "".join(chunks).encode()
         assert hashlib.sha256(encoded).hexdigest() == final_page["pagination"]["content_sha256"]
         full = json.loads(encoded)
-        assert full["source_revision"] == document.revision
+        # revision 只在页头给出，分页正文与 cursor 只绑定内容。
+        assert "source_revision" not in full and "observation_revision" not in full
         assert full["scope"] == {"project_id": document.project_id}
         assert full["core_facts"]["director_plan_markdown"].endswith("文" * 100)
 

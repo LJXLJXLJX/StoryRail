@@ -28,7 +28,11 @@ def execute(store, command):
     if current_caller.get() is None:
         raise AccessDenied("caller_required", "外部 proposal 入口需要受信 caller。")
     document = store.read()
-    if document.revision != command.expected_revision:
+    # get 是只读观察，与其它读命令一样不做 revision CAS。
+    if (
+        not command.name.endswith(".get_proposal")
+        and document.revision != command.expected_revision
+    ):
         raise RevisionConflictError("项目已变化，请重新读取。")
     args = command.arguments
     op = command.name

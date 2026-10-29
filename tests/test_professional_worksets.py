@@ -145,7 +145,8 @@ def test_worksets_current_facts_schema_scope_and_no_writes(tmp_path):
     )
     read = DirectorCommand("project.get_workset", document.revision, "read", scoped)
     assert asyncio.run(http(service, caller, read)).status == 200
-    assert asyncio.run(http(service, caller, replace(read, expected_revision=1))).status == 409
+    # 读取不做 revision CAS：过期 revision 照常读当前事实。
+    assert asyncio.run(http(service, caller, replace(read, expected_revision=1))).status == 200
     assert asyncio.run(http(service, replace(caller, project_ids=frozenset()), read)).status == 403
     assert store.path.read_bytes() == before
 
@@ -181,7 +182,12 @@ def test_narration_before_shot_planning_and_result_size(tmp_path):
             break
     encoded = "".join(chunks).encode()
     assert hashlib.sha256(encoded).hexdigest() == digest
-    assert json.loads(encoded) == workset_read(huge, query)
+    full = workset_read(huge, query)
+    assert json.loads(encoded) == {
+        key: value
+        for key, value in full.items()
+        if key not in {"observation_revision", "source_revision"}
+    }
 
     with pytest.raises(ValueError, match="cursor"):
         execute_project_read(
@@ -189,12 +195,23 @@ def test_narration_before_shot_planning_and_result_size(tmp_path):
             "project.get_workset",
             {**query, "cursor": "0" * 64 + ":1"},
         )
+    # cursor 只绑定内容：无关写入推进 revision 时仍可续读，内容变化才失效。
+    bumped = replace(huge, revision=huge.revision + 1)
+    resumed = execute_project_read(bumped, "project.get_workset", {**query, "cursor": first_cursor})
+    assert resumed["observation_revision"] == bumped.revision
+    assert resumed["pagination"]["content_sha256"] == digest
     with pytest.raises(ValueError, match="cursor"):
         execute_project_read(
-            replace(huge, revision=huge.revision + 1),
+            replace(bumped, director_plan_markdown="改" * 50000),
             "project.get_workset",
             {**query, "cursor": first_cursor},
         )
+    # if_hash 同样只比较内容。
+    hashed = workset_read(doc, {**request, "if_hash": "0" * 64})
+    unchanged = workset_read(
+        replace(doc, revision=doc.revision + 5), {**request, "if_hash": hashed["hash"]}
+    )
+    assert unchanged["unchanged"] is True
 
 
 def test_large_contract_resource_bundle_uses_same_complete_paging(tmp_path, monkeypatch):
@@ -451,7 +468,6 @@ def test_mcp_professional_reads_need_no_mutation_grant(tmp_path):
                 {"path": "../secret"},
                 {"capability": "../secret"},
                 {"scene_ids": ["f" * 32]},
-                {"expected_revision": 1},
                 {"project_id": "f" * 32},
             ):
                 result = await client.call_tool(

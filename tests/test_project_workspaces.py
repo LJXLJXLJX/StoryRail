@@ -242,7 +242,6 @@ class ProjectWorkspaceStoreTests(unittest.TestCase):
             _, read_receipt, run_status = store.execute_director_read(
                 "run.get_status",
                 {"run_id": run_id},
-                expected_revision=restored.revision,
                 command_id="read-run-status",
             )
 

@@ -312,7 +312,6 @@ def _execute_read(store: DirectorCommandStore, command: DirectorCommand) -> Comm
     document, receipt, data = store.execute_director_read(
         command.name,
         command.arguments,
-        expected_revision=command.expected_revision,
         command_id=director_command_id(command),
     )
     return CommandExecution(document, receipt, data)

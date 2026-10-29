@@ -15,7 +15,7 @@ def details_page_read(document, arguments):
     query = {key: value for key, value in arguments.items() if key != "cursor"}
     return _agent_page(
         details_read(document, query),
-        query={"project_id": document.project_id, "revision": document.revision, **query},
+        query={"project_id": document.project_id, **query},
         cursor=arguments.get("cursor"),
         page_bytes=_AGENT_PAGE_BYTES,
     )

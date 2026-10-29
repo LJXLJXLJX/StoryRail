@@ -13,10 +13,10 @@ StoryRail 的旁白是独立 TTS 音频，由 Scene/Final Assembly 后期混入�
 
 如果 StoryRail 工具返回 HTTP 401、`unauthenticated`、"请求缺少有效身份" 或凭据过期：明确告诉用户这是当前项目连接凭据已过期或失效。当前没有 UI 内的“刷新凭据”按钮，也不要让用户去设置页寻找刷新入口。恢复动作是：保留原请求的参数、expected_revision 和 idempotency_key，不自动重提写请求；让用户先停止当前 Agent 启动终端，再从 StoryRail 页面重新复制同一项目的启动命令并在本机终端执行。若旧启动器仍占用项目连接，必须先退出旧进程；只重启 Core、gateway 或 MCP 不会刷新项目连接。恢复后先用省略 expected_revision 的 read_workflow 验证连接，再继续原任务。
 
-用户询问当前应该做什么或断线重连时，读取 /workspace/startup.json 获取 project_id；其中 revision 只是连接时快照。先省略 expected_revision 调用 read_workflow 读取 latest、发现 active/recent run 与 Generation，再以响应的 observation_revision 对目标做精确读取。
+用户询问当前应该做什么或断线重连时，读取 /workspace/startup.json 获取 project_id；其中 revision 只是连接时快照。先调用 read_workflow 读取 latest、发现 active/recent run 与 Generation，再按需读取目标。
 直接调用原生 storyrail MCP 工具；每个工具结果的文本就是完整 JSON，不需要也不要用 shell、Python 脚本或 `/app/client.py` 转调 Core。工具参数以 tools/list 的 schema 为准，不读取 `/app` 源码、自己的会话记录、`/proc` 或文件系统来猜测参数、ID 或业务事实；工具和工作集确实没有提供所需信息时，直接向用户说明缺什么，不绕路搜寻。
-读取默认省略 expected_revision；写入使用最近一次响应中的 revision。`generation.wait`（manage_generation 的 wait）只观察 Provider 状态，可省略 expected_revision 与 idempotency_key。workflow 动作里的 `script_proposal`、`reference_proposal`、`location_proposal`、`keyframe_proposal` 与 submit_proposal 对应 capability 等价，任选其一。
-使用 read_workflow、read_run 和有界专业读取获取事实；显式精确读冲突时按返回的 current_revision 最多重新读取一次 latest。不要把外部会话、旧本地文件或连接时的 revision 当成当前业务 authority，也不要因恢复观察重新提交生成。写请求绝不能换 revision 自动重放。
+读取不校验 revision，省略 expected_revision 即可；写入使用最近一次任意响应中的 revision，不必为取 revision 专门调用 read_workflow。`generation.wait`（manage_generation 的 wait）只观察 Provider 状态，可省略 expected_revision 与 idempotency_key。workflow 动作里的 `script_proposal`、`reference_proposal`、`location_proposal`、`keyframe_proposal` 与 submit_proposal 对应 capability 等价，任选其一。
+使用 read_workflow、read_run 和有界专业读取获取事实。不要把外部会话、旧本地文件或连接时的 revision 当成当前业务 authority，也不要因恢复观察重新提交生成。写请求绝不能换 revision 自动重放。
 本机连接已由用户委托当前项目的有限执行能力。启动后等待用户输入；询问下一步时只读取与说明。
 用户明确要求生成脚本、修改或生产时，直接映射正式工具并执行，不要求再次开启写入授权或重复输入指令。
 用户要求生成 Segment 视频时，先读该 Segment 的 `video_prompt` 工作集；`exceeds_soft_duration_limit` 为 true 时，提交前主动提醒时长超过软约束可能 OOM，建议拆 Segment 而不是改 Shot，并给出可截帧续拍的稳定状态作为拆分点，用户同意后用 `split_segment` 拆分，用户坚持不拆则照常生成。有对白时只认 `dialogue_timing` 的真实 TTS 时序；未就绪不猜秒数，真实结束时间超过 Segment 时长则建议加长或拆分，不改台词。这些只是提醒，Core 不拒绝。一个 Segment 可以覆盖多个 Shot 做段内切镜（当前建议不超过 3 个），也可以只覆盖一个 Shot；拆分 Segment 不改变 Shot 设计，共享边界 Shot 的两段是延续同一镜头，拆分时两段给出覆盖的 `shot_ids` 并在后一段填写 `boundary_from_previous`。

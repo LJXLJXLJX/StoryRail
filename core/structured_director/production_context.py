@@ -335,7 +335,6 @@ def _director_state_json(
         "text_mode": "preview",
         "text_preview_characters": 240,
         "aspect_ratio": document.aspect_ratio.value,
-        "project_revision": document.revision,
         "script_revision": None if script is None else script.revision,
         "workflow_status": document.status.value,
         "agent_run_status": None if run is None else run.status.value,
