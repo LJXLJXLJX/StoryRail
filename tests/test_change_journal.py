@@ -8,13 +8,13 @@ from dataclasses import replace
 
 from test_director_commands import _location_project, _visual_project
 
-from core.structured_director.codec import serialize_document
-from core.structured_director.store.change_journal import (
+from core.structured_director.change_journal import (
     PROJECT_KEY,
     ChangeJournal,
     changed_keys,
     entity_index,
 )
+from core.structured_director.codec import serialize_document
 
 # 簿记与派生字段：改动它们不应产生任何变化键。
 _EXCLUDED_PATHS = (

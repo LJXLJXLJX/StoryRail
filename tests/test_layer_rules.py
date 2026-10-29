@@ -12,7 +12,7 @@
 层归属表：
 
 - L0 models/ 包（纯领域数据，按域拆分，__init__ 再导出）
-- L1 codec/ / schema / errors / video_contracts / video_inputs /
+- L1 codec/ / schema / errors / change_journal / video_contracts / video_inputs /
   video_continuation / candidate_eligibility / script_index / project_settings /
   project_workspaces / audio_effects / director_proposals（声明与契约）
 - L2 *_mutations.py / generation_lifecycle / assembly_timeline /
@@ -51,6 +51,7 @@ LAYER_MAP = {
     "core.structured_director.video_continuation": 1,
     "core.structured_director.candidate_eligibility": 1,
     "core.structured_director.script_index": 1,
+    "core.structured_director.change_journal": 1,
     "core.media_assets": 1,
     "core.playground.capabilities": 2,
     "core.playground.codec": 1,

@@ -40,5 +40,7 @@
   `_owned_batch`/`owned_batch_id_for_run`），Keyframe 波次与地点成套生成共用回执/run 骨架；
   批次执行上下文（`BatchExecutionContext`/`current_batch_execution`）
   由 external_batches 设置、application_requests 读取，避免两者互相 import。
+- `entity_locator.py`：把写入冲突涉及的实体 ID 翻译成 `{id, kind, locator}`（如“场景 1－片段 2 首帧”），
+  供 `revision_conflict.conflicts` 使用。
 - `proposal_observation.py`：proposal 生命周期的纯读观察（run.get_status / request_read
   内联观察），供 workflow_state、execution_reads、read_tools 与 proposal_requests 复用。

@@ -143,7 +143,7 @@ class ImageSubmission:
         """
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise ValueError("项目已被更新，请重新读取后再生成。")
             plan = look_sheet_plan(document, look_id, identity_asset_ids)
             kind = ReferenceGenerationKind.CHARACTER_LOOK_SHEET
@@ -294,7 +294,7 @@ class ImageSubmission:
         """提交独立地点图片候选；成功只保存候选，由人类选择。"""
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise ValueError("项目已被更新，请重新读取后再生成。")
             return await self._submit_location_image(
                 document, image_id=image_id, retry_of=_retry_of

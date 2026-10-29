@@ -24,7 +24,7 @@ from .support import _commit_submission
 
 
 def _segment_video_context(owner, document, segment_id: str, expected_revision: int, seed):
-    if document.revision != expected_revision:
+    if not owner._store.revision_matches(document, expected_revision):
         raise ValueError("项目已被更新，请重新读取后再生成视频。")
     if not document.is_reviewing or not document.workspace_layers.videos_unlocked:
         raise ValueError("当前不在视频生产阶段。")

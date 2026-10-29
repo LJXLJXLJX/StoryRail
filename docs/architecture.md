@@ -180,7 +180,9 @@ flowchart LR
 2. **项目级**：同一项目的写入在 Service 的 asyncio 锁内串行执行；Provider 网络调用与等待不持有业务写锁。
 3. **提交级**：Store 每次写入都重新读取磁盘版本，要求新 revision 恰好是旧值 + 1、`workspace_layers`
    不回退、对象图整体合法，然后写临时文件、`fsync`、`os.replace` 原子替换。失败不留半写状态。
-4. **请求级**：每个命令带 `expected_revision`；不等于当前 revision 即返回 `revision_conflict`，调用方必须重读。
+4. **请求级**：每个写命令带 `expected_revision`。落后于当前 revision 时，Core 用内存变更日志判断期间的改动是否触及本次请求
+   依据或实际改动的实体：不相交就在当前文档上执行（回执标记 `rebased_from_revision`），相交才返回 `revision_conflict`
+   并列出冲突对象（见[控制流](control-flow.md)）。读命令不做 revision 检查。
 
 当前只支持单进程、单 Store authority；不提供多进程文件事务。
 

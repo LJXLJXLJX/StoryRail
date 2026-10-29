@@ -121,6 +121,15 @@ from ..asset_metadata import (
 from ..asset_metadata import (
     _wav_duration as _wav_duration,
 )
+from ..change_journal import (
+    PROJECT_KEY,
+    ChangeJournal,
+    RebaseScope,
+    changed_keys,
+    entity_index,
+    journal_for,
+    rebase_scope,
+)
 from ..codec import (
     _parse_document as _parse_document,
 )
@@ -298,7 +307,6 @@ from ..video_mutations import (
 from ..video_mutations import (
     _video_command_receipt as _video_command_receipt,
 )
-from .change_journal import ChangeJournal, entity_index, journal_for
 from .pipeline import MutationResult as MutationResult
 from .pipeline import commit_mutation as commit_mutation
 
@@ -517,7 +525,7 @@ class StructuredDirectorStore:
     def _unlocked_document(self, expected_revision: int) -> StructuredDirectorDocument:
         """项目未批准且没有 Director Agent 工作时可写；不限定审核阶段。"""
         document = self.read()
-        if document.revision != expected_revision:
+        if not self.revision_matches(document, expected_revision):
             raise RevisionConflictError("项目已更新，请重新读取后再保存。")
         if document.status is StructuredDirectorStatus.APPROVED:
             raise ValueError("请先显式重新开放生产。")
@@ -626,7 +634,7 @@ class StructuredDirectorStore:
 
     def _editable_document(self, expected_revision: int) -> StructuredDirectorDocument:
         document = self.read()
-        if document.revision != expected_revision:
+        if not self.revision_matches(document, expected_revision):
             raise RevisionConflictError("项目已被更新，请重新读取后再保存。")
         if document.status not in {
             StructuredDirectorStatus.REVIEWING,
@@ -848,6 +856,54 @@ class StructuredDirectorStore:
     @property
     def change_journal(self) -> ChangeJournal:
         return journal_for(self._path)
+
+    def revision_matches(
+        self, document: StructuredDirectorDocument, expected_revision: int
+    ) -> bool:
+        """revision 相等，或处于 rebase 作用域且期间的变化不与本次请求依赖的实体相交。"""
+        if document.revision == expected_revision:
+            return True
+        scope = rebase_scope.get()
+        if scope is None or expected_revision not in {
+            scope.expected_revision,
+            scope.accepted_revision,
+        }:
+            return False
+        return self.accept_rebase(scope, document)
+
+    def accept_rebase(self, scope: RebaseScope, document: StructuredDirectorDocument) -> bool:
+        theirs = self.change_journal.changed_since(scope.expected_revision, document.revision)
+        if theirs is None:
+            scope.reason = "journal_unavailable"
+            return False
+        overlap = theirs & (scope.dependencies | {PROJECT_KEY})
+        if overlap:
+            scope.reason = "entities_changed"
+            scope.conflicts = overlap
+            return False
+        scope.accepted_revision = document.revision
+        return True
+
+    def concurrent_write_conflicts(
+        self,
+        scope: RebaseScope,
+        current: StructuredDirectorDocument,
+        updated: StructuredDirectorDocument,
+    ) -> frozenset[str]:
+        """本次写入实际改动的实体与期间他人改动的实体之交。"""
+        theirs = self.change_journal.changed_since(scope.expected_revision, current.revision)
+        if theirs is None:
+            scope.reason = "journal_unavailable"
+            return frozenset({PROJECT_KEY})
+        before = self.change_journal.index_for(current.revision)
+        if before is None:
+            before = entity_index(_serialize_document(current))
+        ours = changed_keys(before, entity_index(_serialize_document(updated)))
+        overlap = theirs & ours
+        if overlap:
+            scope.reason = "entities_changed"
+            scope.conflicts = overlap
+        return overlap
 
     def _record_changes(self, previous, document, value) -> None:
         journal = self.change_journal

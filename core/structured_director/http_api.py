@@ -788,6 +788,9 @@ class StructuredDirectorHttpApi:
                 "warnings": list(receipt.warnings),
             },
         }
+        if receipt.rebased_from_revision is not None:
+            # 请求 revision 落后但期间变化与本次请求不相交，Core 已按当前文档执行。
+            payload["receipt"]["rebased_from_revision"] = receipt.rebased_from_revision
         if execution.application_request_id is not None:
             payload["application_request_id"] = execution.application_request_id
             payload["replay"] = execution.replay

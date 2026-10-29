@@ -47,7 +47,7 @@ class FrameSubmission:
             raise RuntimeError("FFmpeg 视频抽帧服务尚未配置。")
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise ValueError("项目已被更新，请刷新后再抽帧。")
             if not document.is_reviewing or not document.workspace_layers.keyframes_unlocked:
                 raise ValueError("当前不在关键帧生产阶段。")
@@ -81,7 +81,7 @@ class FrameSubmission:
             raise RuntimeError("FFmpeg 视频抽帧服务尚未配置。")
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise ValueError("项目已被更新，请刷新后再抽帧。")
             asset, content = self._store.read_asset(asset_id)
             if asset.media_type != "video/mp4":
@@ -130,7 +130,7 @@ class FrameSubmission:
         prepared = self._registry.prepare_recipe(Capability.VIDEO_UPSCALE)
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise ValueError("项目已被更新，请重新读取后再提交超分。")
             if not document.is_reviewing or not document.workspace_layers.videos_unlocked:
                 raise ValueError("当前不在视频生产阶段。")

@@ -15,9 +15,11 @@ from core.director_commands.models import (
     RepairReceipt,
 )
 
+from .change_journal import RebaseScope, argument_ids, rebase_scope
 from .errors import RevisionConflictError
 from .proposal_request_guard import owned_request
 from .reads.batch_observation import current_batch_execution
+from .reads.entity_locator import describe_entities
 from .reads.workflow_state import require_workflow_action
 
 
@@ -139,32 +141,73 @@ def execution_from(document, record, *, replay):
     )
 
 
+def _rebase_scope(store, caller, command, document):
+    """请求 revision 落后时判定能否按当前文档执行；不能则抛出带冲突明细的 revision_conflict。
+
+    只有人类与持项目执行委托的调用方可以 rebase；
+    精确 grant 绑定的是原 revision 下的命令，保持严格 CAS。
+    """
+    if document.revision == command.expected_revision:
+        return None
+    scope = RebaseScope(
+        command.expected_revision,
+        command.expected_revision,
+        argument_ids(command.arguments),
+    )
+    if caller.role != "human" and "project.execute" not in caller.capabilities:
+        scope.reason = "exact_grant"
+        raise _rebase_conflict(document, command, scope)
+    if not store.accept_rebase(scope, document):
+        raise _rebase_conflict(document, command, scope)
+    return scope
+
+
+def _rebase_conflict(document, command, scope):
+    messages = {
+        "entities_changed": (
+            "项目在你读取之后修改了本次请求涉及的对象，请重新读取这些对象后再决定。"
+        ),
+        "journal_unavailable": "项目已被更新且无法判断变化范围，请重新读取。",
+        "exact_grant": "项目已被更新，精确授权的请求必须在原 revision 上执行，请重新读取。",
+    }
+    return RevisionConflictError(
+        messages[scope.reason],
+        expected_revision=command.expected_revision,
+        current_revision=document.revision,
+        conflict_reason=scope.reason,
+        conflicts=describe_entities(document, scope.conflicts),
+    )
+
+
 def execute_atomic_request(store, command, caller):
     document = store.read()
     request = request_for(caller, command, document.project_id)
     previous = existing_request(document, request)
     if previous is not None:
         return execution_from(document, previous, replay=True)
-    if document.revision != command.expected_revision:
-        raise RevisionConflictError(
-            "项目已被更新，请重新读取。",
-            expected_revision=command.expected_revision,
-            current_revision=document.revision,
-        )
+    scope = _rebase_scope(store, caller, command, document)
+    effective = command if scope is None else replace(command, expected_revision=document.revision)
     if store._application_capture is not None:
         raise RuntimeError("不允许嵌套应用事务。")
     require_workflow_action(document, command.name)
     captured = []
     store._application_capture = captured
     try:
-        result = DirectorCommandRegistry(store).execute(command)
+        result = DirectorCommandRegistry(store).execute(effective)
     finally:
         store._application_capture = None
     if len(captured) > 1:
         raise RuntimeError("同步命令必须只有一个 Store 提交。")
     changed = captured[0] if captured else document
+    if scope is not None and store.concurrent_write_conflicts(scope, document, changed):
+        # 本次写入实际改动（含级联失效）与期间他人的改动相交：不落盘。
+        raise _rebase_conflict(document, command, scope)
     revision = document.revision + 1
-    receipt = replace(result.receipt, new_revision=revision)
+    receipt = replace(
+        result.receipt,
+        new_revision=revision,
+        rebased_from_revision=None if scope is None else command.expected_revision,
+    )
     record = replace(
         request,
         phase="committed",
@@ -220,12 +263,14 @@ def attach_submission_request(store, document):
         request, generation_ids=ids, phase="pending" if phase == "committed" else phase
     )
     if phase == "committed":
+        scope = rebase_scope.get()
         receipt = CommandReceipt(
             request.request_id[:32],
             "succeeded",
             request.expected_revision,
             document.revision,
             changed_ids=ids,
+            rebased_from_revision=None if scope is None else scope.expected_revision,
         )
         record = replace(
             record,
@@ -369,14 +414,14 @@ async def execute_application_command(service, caller, command):
                 )
                 service._store._atomic_write(document)
             return execution_from(document, previous, replay=True)
-        if document.revision != command.expected_revision:
-            raise RevisionConflictError(
-                "项目已被更新，请重新读取。",
-                expected_revision=command.expected_revision,
-                current_revision=document.revision,
-            )
+        scope = _rebase_scope(service._store, caller, command, document)
+        effective = (
+            command if scope is None else replace(command, expected_revision=document.revision)
+        )
         require_workflow_action(document, command.name)
         context = current_request.set(request)
+        # 生成类方法在自己的写锁内再做一次判定（revision_matches），覆盖判定到加锁之间的写入。
+        scope_token = rebase_scope.set(scope)
         try:
             if command.name in generation_methods:
                 method, fields = generation_methods[command.name]
@@ -388,11 +433,16 @@ async def execute_application_command(service, caller, command):
                     raise InvalidArgumentsError("生成命令只接受明确目标 ID。")
                 else:
                     arguments = command.arguments
-                await method(**arguments, expected_revision=command.expected_revision)
+                await method(**arguments, expected_revision=effective.expected_revision)
                 result = None
             else:
-                result = await service._execute_internal_director_command(command)
+                result = await service._execute_internal_director_command(effective)
+        except Exception as exc:
+            if scope is not None and scope.reason is not None:
+                raise _rebase_conflict(service._store.read(), command, scope) from exc
+            raise
         finally:
+            rebase_scope.reset(scope_token)
             current_request.reset(context)
         document = service._store.read()
         record = existing_request(document, request)
@@ -411,6 +461,8 @@ async def execute_application_command(service, caller, command):
                     request.request_id[:32], "noop", command.expected_revision, revision
                 )
             )
+            if scope is not None:
+                receipt = replace(receipt, rebased_from_revision=command.expected_revision)
             record = replace(
                 request,
                 generation_ids=() if record is None else record.generation_ids,

@@ -445,6 +445,10 @@ def _revision_error(
         if expected is not None and current is not None
         else None
     )
+    reason = getattr(exc, "conflict_reason", None)
+    if details is not None and reason is not None:
+        details["conflict_reason"] = reason
+        details["conflicts"] = list(getattr(exc, "conflicts", ()))
     return _error(
         409,
         "revision_conflict",

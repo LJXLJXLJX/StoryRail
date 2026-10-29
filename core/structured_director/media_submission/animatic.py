@@ -44,7 +44,7 @@ class AnimaticSubmission:
             raise RuntimeError("FFmpeg Animatic 服务尚未配置。")
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再合成 Animatic 预览。")
             if not document.is_reviewing or not document.workspace_layers.keyframes_unlocked:
                 raise ValueError("当前不能合成 Scene Animatic 预览。")

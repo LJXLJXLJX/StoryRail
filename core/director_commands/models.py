@@ -49,6 +49,8 @@ class CommandReceipt:
     assumptions: tuple[str, ...] = ()
     next_allowed_actions: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
+    # 请求 revision 已落后、但期间变化与本次请求不相交而按当前文档执行时，记录原 revision。
+    rebased_from_revision: int | None = None
 
 
 class CommandNeedsUserInput(ValueError):

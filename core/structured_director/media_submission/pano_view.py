@@ -28,7 +28,7 @@ class PanoViewSubmission:
     ) -> StructuredDirectorDocument:
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise ValueError("项目已被更新，请重新读取后再截取全景视角。")
             capture = panorama_capture_request(document, image_id)
             return await self._submit_location_capture(

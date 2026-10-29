@@ -213,6 +213,8 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `production_commands.py`：确定性生产命令分发。
 - `manual_commands.py`：UI 手工 Keyframe 值对象转为正式命令。
 - `candidate_eligibility.py`：候选可审核性的只读判定。
+- `change_journal.py`：实体索引、按项目路径进程内共享的内存变更日志、参数实体 ID 收集与 rebase 作用域；
+  Store 每次落盘记录改动的实体，应用层据此判断落后的写请求是否真的冲突。
 - `script_index.py`：脚本访问层：Scene 的 Segment 序列与 Segment↔Shot 覆盖关系的只读遍历。
 
 外部 Agent 规划与 run：
@@ -304,10 +306,9 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 #### store/ — L3 唯一持久化入口
 
 - `README.md`：Store 说明。
-- `__init__.py`：`StructuredDirectorStore` facade：读写、原子替换、revision CAS 与域路由。
+- `__init__.py`：`StructuredDirectorStore` facade：读写、原子替换、revision CAS（含按实体的 rebase 判定）、落盘后记录变更日志与域路由。
 - `_domains.py`：域 collaborator 装配。
 - `pipeline.py`：统一 mutation commit pipeline。
-- `change_journal.py`：按实体记录每次提交改动的对象（内存、按项目路径进程内共享），供写入冲突判定。
 - `domains/README.md`：域 collaborator 约定。
 - `domains/project.py`、`asset.py`、`final.py`、`generation.py`、`keyframe.py`、`location.py`、`narration.py`、
   `reference.py`、`run.py`、`script.py`、`video.py`：对应域的 Store 写入方法。
@@ -327,6 +328,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `impact.py`：命令影响预览（试算不落盘）。
 - `dependencies.py`：生产依赖就绪评估。
 - `batch_observation.py`：外部批次观察（Keyframe 波次与地点成套生成共用回执/run 骨架）。
+- `entity_locator.py`：把写入冲突涉及的实体 ID 翻译成“场景 N－片段 M 首帧”这类定位描述。
 - `proposal_observation.py`：外部 proposal 请求观察。
 - `common.py`：只读层共享的参数校验与 JSON 投影工具。
 

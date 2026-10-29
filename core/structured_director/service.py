@@ -307,7 +307,7 @@ class StructuredDirectorService:
         if set(args) != {"image_id"} or not isinstance(args["image_id"], str):
             raise InvalidArgumentsError("生成其他图片必须且只提供 image_id。")
         before = self._store.read()
-        if before.revision != command.expected_revision:
+        if not self._store.revision_matches(before, command.expected_revision):
             raise RevisionConflictError("项目已变化，请刷新后生成。")
         updated = await self._media.generate_video_reference_image(
             image_id=args["image_id"], expected_revision=command.expected_revision
@@ -327,7 +327,7 @@ class StructuredDirectorService:
     async def execute_media_command(self, command: DirectorCommand) -> CommandExecution:
         """执行明确授权且会创建 Generation 的装配命令。"""
         before = self._store.read()
-        if before.revision != command.expected_revision:
+        if not self._store.revision_matches(before, command.expected_revision):
             raise RevisionConflictError("项目已更新，请刷新后重试装配操作。")
         if command.name == "animatic.generate_scene":
             target = _parse_application_arguments(parse_animatic_scene_target, command.arguments)
@@ -376,7 +376,7 @@ class StructuredDirectorService:
     ) -> StructuredDirectorDocument:
         """让参数完整的 UI 动作复用 Director 的生产 command handlers。"""
         document = self._store.read()
-        if document.revision != command.expected_revision:
+        if not self._store.revision_matches(document, command.expected_revision):
             raise RevisionConflictError("项目已更新，请刷新后重试。")
         outcome = await self._execute_production_command_handler(
             document,
@@ -575,7 +575,7 @@ class StructuredDirectorService:
         language = NarrationLanguage(language)
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise ValueError("项目已被更新，请重新读取后再生成旁白。")
             cue = _find_narration_cue(document, cue_id)
             return await self._submit_narration_generation(
@@ -587,7 +587,7 @@ class StructuredDirectorService:
     ) -> StructuredDirectorDocument:
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise ValueError("项目已被更新，请重新读取后再批量生成旁白。")
             if document.director_script is None:
                 raise ValueError("结构化导演脚本不存在。")
@@ -629,7 +629,7 @@ class StructuredDirectorService:
     ) -> StructuredDirectorDocument:
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise ValueError("项目已被更新，请重新读取后再生成对白。")
             return await self._media._submit_dialogue_generation(
                 document,
@@ -656,7 +656,7 @@ class StructuredDirectorService:
     ) -> StructuredDirectorDocument:
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise ValueError("项目已被更新，请重新读取后再批量生成对白。")
             if document.director_script is None or document.dialogue_plan is None:
                 raise ValueError("对白 TTS 计划不存在。")
@@ -777,7 +777,7 @@ class StructuredDirectorService:
     ) -> KeyframeSubmissionPreview:
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已更新，请刷新后重新读取关键帧预览。")
             preview_document = _keyframe_preview_document(
                 document,
@@ -917,7 +917,7 @@ class StructuredDirectorService:
         """首帧卡的“与上一段尾帧共享”开关；共享时保留上一段尾帧，拆开时复制为独立首帧。"""
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已更新，请刷新后重试。")
             script = document.director_script
             if script is None or document.keyframe_plan is None:
@@ -967,7 +967,7 @@ class StructuredDirectorService:
     ) -> StructuredDirectorDocument:
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise ValueError("项目已被更新，请重新读取后再批量生成。")
             return await self._submit_ready_keyframe_generations(document, report_blocked=True)
 
@@ -980,7 +980,7 @@ class StructuredDirectorService:
     ) -> StructuredDirectorDocument:
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise ValueError("项目已被更新，请重新读取后再生成。")
             _find_keyframe(document, keyframe_id)
             if keyframe_id not in _active_keyframe_ids(document.keyframe_plan):
@@ -1097,7 +1097,7 @@ class StructuredDirectorService:
         expected_revision: int,
     ) -> StructuredDirectorDocument:
         before = self._store.read()
-        if before.revision != expected_revision:
+        if not self._store.revision_matches(before, expected_revision):
             raise RevisionConflictError("项目已被更新，请重新读取后再处理音频。")
         source, content = self._store.read_asset(source_asset_id)
         if source.media_type != "audio/wav":
@@ -1123,7 +1123,7 @@ class StructuredDirectorService:
         expected_revision: int,
     ) -> StructuredDirectorDocument:
         before = self._store.read()
-        if before.revision != expected_revision:
+        if not self._store.revision_matches(before, expected_revision):
             raise RevisionConflictError("项目已被更新，请重新读取后再截取音频。")
         source, content = self._store.read_asset(source_asset_id)
         if source.media_type != "audio/wav":
@@ -1152,7 +1152,7 @@ class StructuredDirectorService:
         prepared = self._registry.prepare_recipe(Capability.AUDIO_SEPARATE)
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再分离音轨。")
             source, content = self._store.read_asset(source_asset_id)
             if source.media_type != "video/mp4":
@@ -1289,7 +1289,7 @@ class StructuredDirectorService:
             raise RuntimeError("视频音轨混音服务尚未配置。")
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再混合音轨。")
             source, video = self._store.read_asset(source_asset_id)
             voice_asset, voice = self._store.read_asset(voice_asset_id)
@@ -1504,7 +1504,9 @@ class StructuredDirectorService:
     ) -> CommandExecution:
         """执行可能观察或调用 Provider 的跨媒体 Generation command。"""
         before = self._store.read()
-        if command.name != "generation.wait" and before.revision != command.expected_revision:
+        if command.name != "generation.wait" and not self._store.revision_matches(
+            before, command.expected_revision
+        ):
             raise RevisionConflictError("项目已更新，请刷新后重试 Generation 操作。")
         if command.name == "generation.dismiss":
             async with self._lock:
@@ -1598,7 +1600,7 @@ class StructuredDirectorService:
 
     def preview_segment_video_inputs(self, segment_id, inputs, expected_revision):
         document = self._store.read()
-        if document.revision != expected_revision:
+        if not self._store.revision_matches(document, expected_revision):
             raise RevisionConflictError("项目已被更新，请重新读取视频输入。")
         video = next(
             (item for item in document.video_plan.segments if item.segment_id == segment_id), None
@@ -1619,7 +1621,7 @@ class StructuredDirectorService:
     ) -> StructuredDirectorDocument:
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再保存视频输入。")
             if document.director_script is None:
                 raise ValueError("结构化脚本尚未建立。")
@@ -1647,7 +1649,7 @@ class StructuredDirectorService:
     ) -> StructuredDirectorDocument:
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再保存视频 recipe。")
             if document.director_script is None:
                 raise ValueError("结构化脚本尚未建立。")
@@ -1693,7 +1695,7 @@ class StructuredDirectorService:
     ) -> StructuredDirectorDocument:
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再清除视频选择。")
             found = find_segment(
                 document.director_script.scenes if document.director_script else (), segment_id
@@ -1716,7 +1718,7 @@ class StructuredDirectorService:
     async def enter_final_stage(self, *, expected_revision: int) -> StructuredDirectorDocument:
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再进入成片装配。")
             if not document.is_reviewing or not document.workspace_layers.videos_unlocked:
                 raise ValueError("当前视频生产输入不完整。")
@@ -1738,7 +1740,7 @@ class StructuredDirectorService:
             raise RuntimeError("FFmpeg 成片装配服务尚未配置。")
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再装配成片。")
             if document.is_reviewing and document.workspace_layers.videos_unlocked:
                 document = self._store.enter_final_stage(
@@ -1784,7 +1786,7 @@ class StructuredDirectorService:
             raise RuntimeError("FFmpeg 成片装配服务尚未配置。")
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已被更新，请重新读取后再装配 Scene 成片。")
             if not document.is_reviewing or not document.workspace_layers.videos_unlocked:
                 raise ValueError("当前不能装配 Scene 成片。")
@@ -1831,7 +1833,7 @@ class StructuredDirectorService:
                 raise ValueError("选择成片必须且只能指定 Generation ID 或旧 Asset ID。")
             if generation_id is None:
                 document = self._store.read()
-                if document.revision != expected_revision:
+                if not self._store.revision_matches(document, expected_revision):
                     raise RevisionConflictError("项目已被更新，请重新读取后再选择成片。")
                 generation = next(
                     (
@@ -1878,7 +1880,7 @@ class StructuredDirectorService:
         async with self._lock:
             if zh_asset_id is None or en_asset_id is None:
                 document = self._store.read()
-                if document.revision != expected_revision:
+                if not self._store.revision_matches(document, expected_revision):
                     raise RevisionConflictError("项目已被更新，请重新读取后再批准成片。")
                 plan = document.final_assembly
                 zh_asset_id = zh_asset_id or (None if plan is None else plan.selected_zh_asset_id)
@@ -1923,7 +1925,7 @@ class StructuredDirectorService:
     ) -> StructuredDirectorDocument:
         """校验后按 kind 查表分派到 media use cases 重新提交。"""
         document = self._store.read()
-        if document.revision != expected_revision:
+        if not self._store.revision_matches(document, expected_revision):
             raise RevisionConflictError("项目已更新，请刷新后重新提交 Generation。")
         generation = _find_generation(document, generation_id)
         if generation.dismissed:

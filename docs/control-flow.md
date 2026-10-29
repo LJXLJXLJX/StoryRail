@@ -111,14 +111,49 @@ sequenceDiagram
         S->>S: digest 不同 → 拒绝（幂等键已用于不同请求）
         S-->>A: digest 相同 → 返回原回执，replay = true
     else 新请求
-        S->>S: revision ≠ expected → revision_conflict（expected/current）
+        opt revision ≠ expected
+            S->>St: change_journal：(expected, current] 期间改动的实体
+            S->>S: 与参数中的实体 ID 或项目级字段相交 → revision_conflict（附 conflicts）
+            S->>S: 否则改用当前 revision 执行，回执标记 rebased_from_revision
+        end
         S->>S: require_workflow_action（主流程门禁）
         S->>R: execute(command)，Store 写入被“捕获”而非落盘
         R->>St: 领域变换 → 捕获最终 document
+        S->>S: 已 rebase 时比较本次实际改动（含级联失效）与期间改动 → 相交则 revision_conflict，不落盘
         S->>St: 一次 _atomic_write：业务变化 + ApplicationRequest(committed, 回执)
         S-->>A: receipt + 紧凑 data + workflow
     end
 ```
+
+**按实体判定写入冲突**：项目只有一个 revision，但冲突按实体判断。Store 每次落盘都把文档拆成实体索引，
+把本次改动的实体 ID 记入内存变更日志（`core/structured_director/change_journal.py`）。请求带的 revision 落后时：
+
+```mermaid
+flowchart TB
+    start["写命令：expected = E，当前 = C"] --> eq{"E == C ?"}
+    eq -->|是| run["照常执行"]
+    eq -->|否| who{"调用方是人类或持项目执行委托？"}
+    who -->|否：精确 grant| strict["409 · conflict_reason = exact_grant"]
+    who -->|是| cov{"日志连续覆盖 (E, C] ？"}
+    cov -->|否| na["409 · conflict_reason = journal_unavailable"]
+    cov -->|是| deps{"期间改动 ∩（参数中的实体 ID ∪ 项目级字段）"}
+    deps -->|非空| hit["409 · conflict_reason = entities_changed<br/>conflicts = 相交对象及定位"]
+    deps -->|空| exec["在当前文档上执行"]
+    exec --> ws{"同步命令：本次实际改动 ∩ 期间改动"}
+    ws -->|非空| hit
+    ws -->|空| ok["提交 · 回执 rebased_from_revision = E"]
+```
+
+- 判定只决定能否在当前文档上执行；所有领域校验、失效传播与派生状态（生产基线、自动校准、prune）都按当前文档重新计算，
+  不做字段合并或 diff 重放。
+- 实体是 Scene、Shot、Segment（含其关键帧绑定与视频计划）、Keyframe、旁白 Cue、对白行、角色与造型、地点及其陈设/状态/图片、
+  Asset、Generation、Director run 等；容器的有序子实体 ID 列表计入容器，按下标的参数因此在顺序变化时冲突。
+  revision、请求回执、生产基线与 `source_script_revision` 等簿记/派生字段不参与；其余未登记字段（阶段、内容层、标题、
+  导演方案、Scene 顺序……）合成一个项目级键，任何变化都与所有落后的写请求冲突。
+- 生成类命令（Keyframe、视频、地点图片等）在自己的写锁内再判定一次，覆盖入口判定到加锁之间的写入；新建的 Generation
+  与 Asset 不与已有实体相交。
+- 日志只在内存、按项目路径进程内共享，保留最近 1024 个 revision；Core 重启或出现断档后无法覆盖更早的 revision，
+  这类请求按严格 CAS 拒绝。
 
 - 业务变化与回执在**同一次**原子替换中落盘：要么都在，要么都不在。
 - 同步命令只允许一次 Store 提交；嵌套应用事务被拒绝。

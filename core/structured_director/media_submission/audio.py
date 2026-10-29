@@ -150,7 +150,7 @@ class AudioSubmission:
         prepared = prepare_tts_recipe(self._registry, capability, _retry_of)
         async with self._lock:
             document = self._store.read()
-            if document.revision != expected_revision:
+            if not self._store.revision_matches(document, expected_revision):
                 raise RevisionConflictError("项目已更新，请刷新后重新生成音频。")
             generation_id = uuid4().hex
             request, generation = _asset_audio_request(

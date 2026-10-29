@@ -10,12 +10,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import threading
 from collections import OrderedDict
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from pathlib import Path
 
 PROJECT_KEY = "__project__"
+_ID = re.compile(r"[0-9a-f]{32}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,3 +247,39 @@ def journal_for(path: Path) -> ChangeJournal:
         else:
             _JOURNALS.move_to_end(path)
         return journal
+
+
+def argument_ids(value: object) -> frozenset[str]:
+    """命令参数里出现的全部实体 ID：调用方据以决策的对象。"""
+    found: set[str] = set()
+
+    def walk(item: object) -> None:
+        if isinstance(item, str):
+            if _ID.fullmatch(item):
+                found.add(item)
+        elif isinstance(item, dict):
+            for nested in item.values():
+                walk(nested)
+        elif isinstance(item, list | tuple):
+            for nested in item:
+                walk(nested)
+
+    walk(value)
+    return frozenset(found)
+
+
+@dataclass(slots=True)
+class RebaseScope:
+    """一次落后于当前 revision 的写请求：原 revision、判定时的 revision 与依赖的实体。
+
+    判定失败时记录 ``reason``（``entities_changed`` / ``journal_unavailable``）与相交的实体键。
+    """
+
+    expected_revision: int
+    accepted_revision: int
+    dependencies: frozenset[str]
+    reason: str | None = None
+    conflicts: frozenset[str] = frozenset()
+
+
+rebase_scope: ContextVar[RebaseScope | None] = ContextVar("storyrail_rebase_scope", default=None)

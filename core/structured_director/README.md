@@ -13,7 +13,7 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 | 层 | 位置 | 职责 |
 | --- | --- | --- |
 | L0 | `models/` | 不可变值对象与不变量 |
-| L1 | `codec/`、`schema.py`、`errors.py`、`video_contracts.py`、`video_inputs.py`、`candidate_eligibility.py`、`script_index.py` | 严格 JSON 编解码、schema 版本、共享错误、视频输入与候选可选性判定、脚本访问层 |
+| L1 | `codec/`、`schema.py`、`errors.py`、`change_journal.py`、`video_contracts.py`、`video_inputs.py`、`candidate_eligibility.py`、`script_index.py` | 严格 JSON 编解码、schema 版本、共享错误、按实体的变更日志、视频输入与候选可选性判定、脚本访问层 |
 | L2 | `mutations/`、`*_mutations.py`、`generation_lifecycle.py`、`assembly_timeline.py`、`narration_timing.py`、`dialogue_timing.py`、`production_context.py`、`run_state.py`、`asset_metadata.py`、`planning_inputs.py` | 纯函数领域变换、失效传播、时序与装配时间线 |
 | L3 | `store/` | 唯一持久化入口：CAS、完整校验、fsync、原子替换 |
 | L4 | `reads/`、`prompt_worksets.py`、`keyframe_requests.py`、`location_requests.py`、`director_steps.py`、`manual_commands.py` | 只读投影与输入编译 |
@@ -29,7 +29,8 @@ HTTP contract。`project.json` 的创建、读取、校验、revision compare-an
 
 - `service.py`：`StructuredDirectorService`，持有项目 Store、`ProviderRegistry` 与两把 asyncio 锁（领域写入 / 外部应用请求），
   组合下列协作者；不内联持久化细节。
-- `application_requests.py`：外部命令的原子回执、同 key 回放、生成请求 pending/uncertain 恢复。
+- `application_requests.py`：外部命令的原子回执、同 key 回放、生成请求 pending/uncertain 恢复；请求 revision 落后时按实体
+  判定冲突（参数实体、实际改动与期间改动不相交才按当前文档执行，回执 `rebased_from_revision`），精确 grant 保持严格 CAS。
 - `media_submission/dialogue.py`：逐句对白 TTS 提交；角色已有参考音色时使用同语言克隆，否则使用角色卡或临时说话者的音色描述做 Voice Design。
 - `mutations/dialogue.py`：保存逐句克隆表演参数、由人类选择对白 WAV、保存 Segment 内发声起点，并以 WAV 真实时长校准 Segment 时长和失效下游视频。
 - `production_commands.py`：生成、选择、装配等生产命令到 Service 用例的分发。

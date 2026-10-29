@@ -85,6 +85,8 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 - 重连先用 `read_workflow` 的 `task_discovery` 发现 active/recent run 与 Generation（默认全部 active 加最近 5 条 recent，
   更早历史经 `next_cursor`），再按同一 revision 细查。
 - 写请求不得换 revision 自动重试；丢响应只用原参数、原 revision、原 key 重放取得 Core 原回执。
+- revision 落后不等于冲突：Core 按实体判断期间改动是否触及本次请求，不相交就按当前项目执行（回执 `rebased_from_revision`）；
+  `revision_conflict` 的 `conflicts` 列出需要重读的对象。
 - `manage_generation(action="wait")` 每次都动态观察，不缓存固定回执；Provider 事实未变化时不写回执、不递增 revision。
 - 协议层取消只终止等待；业务取消需要显式调用对应 cancel 工具，不把进程退出当作回滚，也不因恢复观察重新提交生成。
 
