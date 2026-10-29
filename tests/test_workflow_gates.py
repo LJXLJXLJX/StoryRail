@@ -17,7 +17,10 @@ from video_recipes import (
 from core.director_commands import DirectorCommand
 from core.director_proposals.reference_library_codec import parse_reference_library_proposal
 from core.structured_director.reads.read_tools import execute_project_read
-from core.structured_director.reads.workflow_state import references_reviewed
+from core.structured_director.reads.workflow_state import (
+    agent_workflow_summary,
+    references_reviewed,
+)
 from core.structured_director.video_inputs import dialogue_audio_bindings
 
 
@@ -952,3 +955,42 @@ def test_unlock_impact_preview_lists_unbound_scenes(tmp_path):
     )
     assert again.receipt.status == "noop"
     assert again.data["location_advisory"]["scenes_without_location"] == []
+
+
+def test_agent_workflow_summary_truncates_long_targets_and_drops_constant_sections():
+    ids = [f"{index:032x}" for index in range(23)]
+    action = {"action": "candidate_selection", "tool": None, "target_ids": ids, "human_only": True}
+    short = {"action": "video.generate", "tool": "generate_media", "target_ids": ids[:2]}
+    workflow = {
+        "current_stage": "video",
+        "stage_status": "awaiting_human_review",
+        "semantics": {"current_stage": "primary_workflow_focus_not_capability_lock"},
+        "required_next_actions": [action, short],
+        "recommended_next_actions": [],
+        "blocking_prerequisites": [],
+        "blocked_actions": {},
+        "workspace_capabilities": {"unlocked": ["narration"]},
+        "activity_summary": {"active_generation_count": 0},
+        "requires_explicit_user_request": True,
+        "active_task": {
+            "task_type": "keyframe_batch",
+            "actions": [action],
+            "targets": [{"target_id": ids[0], "status": "running"}]
+            + [{"target_id": item, "status": "already_selected"} for item in ids[1:3]],
+            "executions": [{"execution_run_id": ids[0]}],
+        },
+    }
+    summary = agent_workflow_summary(workflow)
+    assert "semantics" not in summary and "workspace_capabilities" not in summary
+    compact = summary["required_next_actions"][0]
+    assert compact["target_ids"] == ids[:8]
+    assert compact["target_count"] == 23 and compact["target_ids_truncated"] is True
+    assert compact["action"] == "candidate_selection" and compact["human_only"] is True
+    assert summary["required_next_actions"][1] == short
+    assert summary["active_task"]["actions"][0]["target_count"] == 23
+    assert "targets" not in summary["active_task"]
+    assert summary["active_task"]["target_status_counts"] == {"running": 1, "already_selected": 2}
+    assert summary["active_task"]["execution_count"] == 1
+    assert summary["full_workflow_tool"] == "read_workflow"
+    # 原 workflow 不被改写。
+    assert workflow["required_next_actions"][0]["target_ids"] == ids

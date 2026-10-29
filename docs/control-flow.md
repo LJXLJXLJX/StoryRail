@@ -123,13 +123,15 @@ sequenceDiagram
 - 业务变化与回执在**同一次**原子替换中落盘：要么都在，要么都不在。
 - 同步命令只允许一次 Store 提交；嵌套应用事务被拒绝。
 - 目标已处于请求状态时返回 `noop`，不推进业务内容。
-- Agent 专用 `/application/commands` 的写响应只返回 workflow、完整回执、ApplicationRequest/replay 与紧凑目标 data，
-  不附带全项目快照；人类 `/commands` 可在需要时附带 Web 快照。两者共用同一执行与回执。
+- Agent 专用 `/application/commands` 的写响应只返回紧凑 workflow 摘要（当前阶段、状态、阻塞与活动摘要、`active_task`，批次观察的逐目标/逐执行明细只给 `target_status_counts` 与 `execution_count`；动作的 `target_ids` 超过 8 个时只留前 8 个并给出 `target_count` 与 `target_ids_truncated`；不含固定语义说明与能力层，完整主流程由 `read_workflow` 读取）、完整回执、
+  ApplicationRequest/replay 与紧凑目标 data，不附带全项目快照；只读命令不附 workflow，只返回回执与 data。
+  人类 `/commands` 返回完整 workflow，可在需要时附带 Web 快照。两者共用同一执行与回执。
+  这样 Agent 的常规回执能留在客户端直接内联的体积内，不必每次落盘再读。
 
 ### 回执（`CommandReceipt`）
 
 `command_id`、`status`（succeeded / noop）、`old_revision`、`new_revision`、`changed_ids`、`invalidated`、`preserved`、
-`decision_summary`、`applied_summary`、`assumptions`、`warnings`。最新主流程建议在响应顶层 `workflow`，而不是回执里。
+`decision_summary`、`applied_summary`、`assumptions`、`warnings`。最新主流程建议在写响应顶层 `workflow`，而不是回执里。
 
 ### 脚本原子操作与覆盖校验
 

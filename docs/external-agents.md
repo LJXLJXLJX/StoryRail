@@ -129,7 +129,7 @@ flowchart LR
 
 | 分组 | 工具 | 翻译为 |
 | --- | --- | --- |
-| 读取 | `read_story` | `project.get_projection`（outline 用项目 scope；scene/shot/segment 必须给 `scene_ids`；`parent_id` 只用于 segment 且是 Scene ID；Shot 与 Segment 都直接属于 Scene，shot 层给出 `segment_ids`、segment 层给出 `shot_ids`；Segment 的 `dialogue_lines` 给出稳定 `id` 与完整写回字段，脚本编辑前应带 `text` 扩展读取完整正文；`video_prompt` / `keyframe` 扩展只用于 segment；Segment 的 `selection` / `keyframe` / `video_prompt` 扩展同时给出 `video_inputs`，含其他图片规划与实际绑定） |
+| 读取 | `read_story` | `project.get_projection`（outline 用项目 scope；scene/shot/segment 必须给 `scene_ids`；`parent_id` 只用于 segment 且是 Scene ID；Shot 与 Segment 都直接属于 Scene，shot 层给出 `segment_ids`、segment 层给出 `shot_ids`；Segment 的 `dialogue_lines` 给出稳定 `id` 与完整写回字段，脚本编辑前应带 `text` 扩展读取完整正文；`video_prompt` / `keyframe` 扩展只用于 segment；Segment 的 `selection` / `keyframe` / `video_prompt` 扩展同时给出 `video_inputs`，含其他图片规划与实际绑定；`video_prompt` 扩展不重复 `video_inputs`、不内联 `bindable_assets`（绑定素材时读 `read_professional_workset`）；`keyframe` / `video_prompt` 前置未满足时该扩展为 `{available: false, reason}`，其余内容照常返回） |
 | | `locate_story` | `project.locate_story` |
 | | `read_details` | `project.get_details`（`kind` 为 `keyframe` / `location` / `location_image` / `character` 时给 1–20 个 `ids`，`director_plan` 不带 ids；只读，超长时与工作集同样分块续读） |
 | | `read_professional_contract` / `read_professional_workset` | `project.get_contract` / `get_workset`（支持 `if_hash` 内容协商与分块续读） |

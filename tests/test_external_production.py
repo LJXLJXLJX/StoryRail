@@ -149,7 +149,15 @@ def test_external_batch_three_waves_replay_and_exact_scope(tmp_path):
                 observed.body["data"]["result"]["batch_observation"]["phase"]
                 == "awaiting_explicit_continue"
             )
-            workflow = observed.body["workflow"]
+            # Agent 只读命令不附主流程；完整 workflow 由 handoff/read_workflow 返回。
+            assert "workflow" not in observed.body
+            wave_handoff = DirectorCommand(
+                "project.get_handoff", store.read().revision, f"handoff-wave-{wave}", {}
+            )
+            handed = await http(
+                service(store, provider), agent(store.read(), wave_handoff), wave_handoff
+            )
+            workflow = handed.body["data"]["workflow"]
             assert workflow["active_task"]["batch_id"] == batch_id
             assert workflow["active_task"]["batch_kind"] == "keyframe"
             assert workflow["stage_status"] == "awaiting_explicit_continue"

@@ -120,7 +120,11 @@ from .reads.read_tools import ReadResultTooLarge
 from .reads.snapshot_view import (
     serialize_snapshot,
 )
-from .reads.workflow_state import StagePrerequisiteError, workflow_state
+from .reads.workflow_state import (
+    StagePrerequisiteError,
+    agent_workflow_summary,
+    workflow_state,
+)
 from .service import (
     StructuredDirectorService,
 )
@@ -760,10 +764,15 @@ class StructuredDirectorHttpApi:
                 retry_policy="change_business_state_or_request",
             )
         receipt = execution.receipt
-        payload = {
-            "workflow": workflow_state(
+        payload = {}
+        # Agent 通道：只读不附主流程（read_workflow 自带完整 workflow），写命令附紧凑摘要，
+        # 使常规回执保持在 Agent 客户端直接内联的体积内。
+        if include_snapshot or command.name not in READ_OPERATIONS:
+            workflow = workflow_state(
                 execution.document, provider_catalog=self._service.provider_catalog
-            ),
+            )
+            payload["workflow"] = workflow if include_snapshot else agent_workflow_summary(workflow)
+        payload |= {
             "receipt": {
                 "command_id": receipt.command_id,
                 "status": receipt.status,

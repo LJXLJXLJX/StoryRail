@@ -831,7 +831,10 @@ def test_mcp_prompt_commit_lost_response_replay_and_invalidated_boundary(tmp_pat
                     "extensions": ["video_prompt"],
                 },
             )
-            assert invalidated.is_error
+            # 前置失效只让 video_prompt 扩展标记未就绪，读取本身仍成功。
+            assert not invalidated.is_error
+            projected = invalidated.structured_content["data"]["items"][0]
+            assert projected["video_prompt"]["available"] is False
         current = store.read()
         assert current.assets == document.assets and current.generations == document.generations
         unrelated = {

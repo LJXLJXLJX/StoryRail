@@ -381,3 +381,47 @@ async def _multi_shot(tmp_path):
     assert [item["id"] for item in tree["scenes"][0]["segments"]] == [s.id for s in segments]
     located = execute_project_read(document, "project.locate_story", {"location": "场景 1－片段 1"})
     assert located["segment"]["shot_ids"] == [shots[0].id, shots[1].id]
+
+
+def test_segment_workset_extensions_are_compact_and_degrade_instead_of_failing(tmp_path):
+    asyncio.run(_workset_extensions(tmp_path))
+
+
+async def _workset_extensions(tmp_path):
+    _, service, document, _ = await _visual_project(str(tmp_path))
+    scene = document.director_script.scenes[0]
+    request = {
+        "level": "segment",
+        "scope": {"scene_ids": [scene.id]},
+        "extensions": ["video_prompt", "keyframe"],
+        "limit": 1,
+    }
+    options = {
+        "provider_recipes": service.provider_recipe_views(),
+        "provider_catalog": service.provider_catalog,
+    }
+    item = build(document, request, **options)["items"][0]
+    # 投影不重复 Segment 级 video_inputs，也不内联可绑定 Asset；完整清单在专业工作集。
+    assert "bindable_assets" not in item["video_prompt"]
+    assert "video_inputs" not in item["video_prompt"]
+    assert item["video_prompt"]["bindable_assets_tool"] == "read_professional_workset"
+    assert item["video_inputs"]
+
+    unselected = replace(
+        document,
+        keyframe_plan=replace(
+            document.keyframe_plan,
+            segments=(
+                replace(document.keyframe_plan.segments[0], start_enabled=True),
+                *document.keyframe_plan.segments[1:],
+            ),
+            keyframes=tuple(
+                replace(frame, selected_asset_id=None) for frame in document.keyframe_plan.keyframes
+            ),
+        ),
+    )
+    degraded = build(unselected, request, **options)["items"][0]
+    # 生产前置未满足只让该扩展标记未就绪，其余内容照常返回。
+    assert degraded["video_prompt"]["available"] is False
+    assert "关键帧尚未选择" in degraded["video_prompt"]["reason"]
+    assert degraded["id"] == item["id"] and degraded["action"] == item["action"]

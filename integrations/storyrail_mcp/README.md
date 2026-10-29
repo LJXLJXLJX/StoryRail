@@ -36,7 +36,9 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 组成 scope；不提供地点图片候选选择。`select_keyframe_candidate` 翻译为 `keyframe.select_candidate`（只限该 Keyframe 的成功、未隐藏图片候选）；`select_reference_image` 翻译为 `video.select_reference_image`，按 `source=generation|keyframe|asset` 把 `source_id` 改写为 `generation_id` / `keyframe_id` / `asset_id`，`source=remove` 改写为 `asset_id: null`。二者是仅有的候选采用工具。`generate_media` 的 `look_sheet` 翻译为 `reference.generate_look_sheet`（`identity_asset_ids` 为 0–4 张身份参考）；
 `reference_image` 翻译为 `video.generate_reference_image`（`target_id` 为图片规划 ID）；`save_reference_image_plan`
 以 Scene scope、Segment ID 和 0–3 槽位保存一张任意内容的其他图片规划，完整字段在 tools/list 下发，不生成、不选择。
-`read_story` 的 Segment `selection` / `keyframe` / `video_prompt` 扩展返回 `video_inputs`，Keyframe 与视频专业工作集也给出
+`read_story` 的 Segment `selection` / `keyframe` / `video_prompt` 扩展返回 `video_inputs`；其中 `video_prompt` 扩展不重复 `video_inputs`、
+不内联 `bindable_assets`（绑定素材时读视频专业工作集），`keyframe` / `video_prompt` 生产前置未满足时返回 `{available: false, reason}`
+而不让整次读取失败。Keyframe 与视频专业工作集也给出
 `video_inputs[]`：包含规划 ID、画面正文、选图状态与实际绑定；已绑定图片即使没有规划也可按 Asset ID 读取。
 `location_image` / `panorama_capture` 分别翻译为 `location.generate_image` / `location.capture_panorama`。`media_batch` 的 `kind` 选择批次类型：`keyframe` 翻译为
 `keyframe.generate_batch` / `keyframe.continue_batch`，`location` 翻译为 `location.generate_set`
@@ -61,8 +63,9 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 
 响应：
 
-- Agent 写工具走 `/application/commands`，成功时返回 workflow、receipt、new revision、warnings、ApplicationRequest/replay 与紧凑目标 data，
-  不夹带 Web 全项目快照。
+- Agent 写工具走 `/application/commands`，成功时返回紧凑 workflow 摘要、receipt、new revision、warnings、ApplicationRequest/replay 与紧凑目标 data，
+  不夹带 Web 全项目快照；摘要中动作的 `target_ids` 超过 8 个时截断并给出 `target_count`，批次 `active_task` 的逐目标明细只给按状态计数，完整主流程只由 `read_workflow` 返回。
+  只读工具不附 workflow。
 - `/application/commands` 接受至多 2 MiB 的 JSON，以容纳 adapter 已验证、重组后的 ≤1 MiB proposal 与命令信封；其它普通 JSON 路由仍保持 64 KiB 上限。
 - text content 始终是完整 JSON，`structured_content` 携带同一份数据；只读 text 的客户端（如 AGY）也能直接拿到结果。
 - `read_media_input` 校验受控 Asset 后同时返回原生 image/audio 内容块，供模型实际看图或听音；JSON 保存媒体清单与校验信息，图片字节不混入正文。读取失败时只返回错误。

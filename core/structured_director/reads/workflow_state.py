@@ -194,6 +194,69 @@ def _workflow_result(document, stage, phase, required, *, active_task=None):
     }
 
 
+# Agent 命令回执里每个动作最多内联的目标 ID 数；完整列表经 read_workflow 读取。
+_AGENT_SUMMARY_TARGET_LIMIT = 8
+
+
+def agent_workflow_summary(workflow):
+    """Agent 写命令回执附带的紧凑主流程：去掉固定语义说明与能力层，长目标列表只留前几个。
+
+    完整主流程只由 read_workflow 返回；这里不改变动作语义，只截断 target_ids 并给出总数。
+    """
+    summary = {
+        key: workflow[key]
+        for key in (
+            "current_stage",
+            "stage_status",
+            "blocking_prerequisites",
+            "blocked_actions",
+            "activity_summary",
+            "requires_explicit_user_request",
+        )
+    }
+    summary["required_next_actions"] = [
+        _compact_action(item) for item in workflow["required_next_actions"]
+    ]
+    summary["recommended_next_actions"] = [
+        _compact_action(item) for item in workflow["recommended_next_actions"]
+    ]
+    active_task = workflow["active_task"]
+    summary["active_task"] = (
+        _compact_active_task(active_task) if isinstance(active_task, dict) else active_task
+    )
+    summary["full_workflow_tool"] = "read_workflow"
+    return summary
+
+
+def _compact_active_task(task):
+    """批次观察的逐目标与逐执行明细只给计数；proposal 观察本身很小，原样保留。"""
+    compact = _compact_action(task)
+    if isinstance(task.get("actions"), list):
+        compact["actions"] = [_compact_action(item) for item in task["actions"]]
+    targets = compact.pop("targets", None)
+    if isinstance(targets, list):
+        counts = {}
+        for item in targets:
+            counts[item.get("status")] = counts.get(item.get("status"), 0) + 1
+        compact["target_status_counts"] = counts
+    executions = compact.pop("executions", None)
+    if isinstance(executions, list):
+        compact["execution_count"] = len(executions)
+    return compact
+
+
+def _compact_action(action):
+    target_ids = action.get("target_ids")
+    if not isinstance(target_ids, list) or len(target_ids) <= _AGENT_SUMMARY_TARGET_LIMIT:
+        return action
+    return {
+        **action,
+        "target_ids": target_ids[:_AGENT_SUMMARY_TARGET_LIMIT],
+        "target_count": len(target_ids),
+        "target_ids_truncated": True,
+    }
+
+
 def location_binding_gaps(document):
     """返回尚未建立语义地点关系的 Scene IDs；Shot 不持有地点事实。"""
     script = document.director_script

@@ -218,7 +218,8 @@ def test_large_project_application_writes_return_compact_receipts_and_stable_rep
             assert len(response.content[0].text.encode()) < _APPLICATION_RESPONSE_BUDGET
             assert payload["receipt"]["new_revision"] == store.read().revision
             assert "warnings" in payload["receipt"]
-            assert payload["workflow"]["semantics"]["current_stage"]
+            assert payload["workflow"]["current_stage"]
+            assert "semantics" not in payload["workflow"]
             assert payload["data"] is not None
             if name == "video.set_prompt":
                 # 只改正文同样带回写入后的输入摘要。

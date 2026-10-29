@@ -216,15 +216,16 @@ def build_semantic_projection(
         if "dependencies" in extensions:
             item["dependencies"] = _dependencies(document, kind, node.id, catalog=provider_catalog)
         if "video_prompt" in extensions:
-            item["video_prompt"] = video_prompt_workset(
+            item["video_prompt"] = _optional_workset(
+                _projected_video_prompt,
                 document,
                 node.id,
                 provider_recipes=provider_recipes,
                 provider_catalog=provider_catalog,
             )
         if "keyframe" in extensions:
-            item["keyframe"] = keyframe_workset(
-                document, node.id, provider_catalog=provider_catalog
+            item["keyframe"] = _optional_workset(
+                keyframe_workset, document, node.id, provider_catalog=provider_catalog
             )
         if kind == "segment" and set(extensions) & {"selection", "keyframe", "video_prompt"}:
             item["video_inputs"] = keyframe_video_context(
@@ -252,6 +253,29 @@ def build_semantic_projection(
         result["parent_id"] = parent_id
     _validate_result_bounds(result)
     return result
+
+
+def _optional_workset(build, *args, **kwargs):
+    """扩展只是读取：生产前置未满足时标记未就绪并给出原因，不让整次读取失败。"""
+    try:
+        return build(*args, **kwargs)
+    except ValueError as exc:
+        return {"available": False, "reason": str(exc)}
+
+
+def _projected_video_prompt(document, segment_id, **options):
+    """故事投影里的视频工作集不重复 Segment 级 video_inputs，也不内联可绑定 Asset 清单。
+
+    绑定素材时读取 read_professional_workset(capability="video_prompt") 的完整 bindable_assets。
+    """
+    workset = video_prompt_workset(document, segment_id, **options)
+    projected = {
+        key: value
+        for key, value in workset.items()
+        if key not in {"bindable_assets", "video_inputs"}
+    }
+    projected["bindable_assets_tool"] = "read_professional_workset"
+    return projected
 
 
 def _selection(document, kind, node_id):
