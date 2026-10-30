@@ -654,7 +654,7 @@ def test_dsh_web_prints_host_port_url_and_saves_token(monkeypatch, capsys):
     assert capsys.readouterr().out == (
         "warning\ndsh web: http://127.0.0.1:43210/?token=abc_DEF-1\n"
     )
-    assert written == [("/workspace/dsh-browser-token", "abc_DEF-1")]
+    assert written == [("/tmp/dsh-browser-token", "abc_DEF-1")]
 
 
 def test_local_session_204_sends_no_body_or_content_length():

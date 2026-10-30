@@ -22,6 +22,15 @@ def _render_tool_listing(listed, tool_name=None):
     return listed.model_copy(update={"tools": matches}).model_dump_json()
 
 
+def write_workspace_file(path, text, mode=None):
+    """同一项目可同时启动多个 Agent 并共用工作区卷；原子替换，其它实例不会读到半截内容。"""
+    temporary = Path(f"{path}.{os.urandom(6).hex()}.tmp")
+    temporary.write_text(text, encoding="utf-8")
+    if mode is not None:
+        temporary.chmod(mode)
+    temporary.replace(Path(path))
+
+
 def connection_scope(config):
     """连接配置没有 scope 键时视为项目连接；只接受两种已知范围。"""
     scope = config.get("scope", "project")
@@ -184,7 +193,8 @@ def run_dsh_web():
         print(line, end="", flush=True)
         match = re.search(r"dsh web: http://127\.0\.0\.1:\d+/\?token=([A-Za-z0-9_-]+)", line)
         if match:
-            Path("/workspace/dsh-browser-token").write_text(match.group(1), encoding="utf-8")
+            # 令牌只属于本容器的 dsh 实例，写在容器私有 /tmp，避免同项目多开时互相覆盖。
+            Path("/tmp/dsh-browser-token").write_text(match.group(1), encoding="utf-8")
     return process.wait()
 
 
@@ -217,8 +227,8 @@ async def main():
             prompt = "/app/PROMPT.md"
         if debug:
             startup["debug"] = True
-        Path("/workspace/startup.json").write_text(json.dumps(startup, ensure_ascii=False))
-        Path("/workspace/AGENTS.md").write_text(agents_prompt(prompt, debug))
+        write_workspace_file("/workspace/startup.json", json.dumps(startup, ensure_ascii=False))
+        write_workspace_file("/workspace/AGENTS.md", agents_prompt(prompt, debug))
         agent = sys.argv[2] if len(sys.argv) > 2 else "pi"
         if agent == "codex":
             os.execvp("codex", codex_command())
@@ -234,8 +244,7 @@ async def main():
             raise ValueError("不支持的 Agent。")
         os.execvp("pi", ["pi", "--session-dir", "/workspace/sessions"])
     token = Path("/workspace/core-token")
-    token.write_text(config["token"])
-    token.chmod(0o600)
+    write_workspace_file(token, config["token"], 0o600)
     arguments = mcp_arguments(config, token, scope, debug_mode())
     if sys.argv[1] == "mcp":
         os.execv(sys.executable, [sys.executable, *arguments])

@@ -44,6 +44,11 @@ def container(monkeypatch):
         def chmod(self, mode):
             modes[self.value] = mode
 
+        def replace(self, target):
+            files[str(target)] = files.pop(self.value)
+            if self.value in modes:
+                modes[str(target)] = modes.pop(self.value)
+
         def exists(self):
             return self.value in files
 

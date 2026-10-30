@@ -232,7 +232,6 @@ def main():
         help="调试模式：要求 Agent 以第一优先级主动汇报 Core 的错误与不合理设计",
     )
     args = parser.parse_args()
-    lease = None
     label = {
         "pi": "Pi",
         "codex": "Codex CLI",
@@ -256,20 +255,6 @@ def main():
             raise ValueError("请先安装并打开 Docker Desktop，再粘贴同一条命令。")
         proxy_port = effective_host_proxy_port(os.environ)
         checked(["docker", "info"])
-        # 终端持有连接租约，避免第二次启动覆盖运行中的工作区。
-        lease = os.open(
-            args.socket.parent / (scope_key + ".launch.lock"),
-            os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW,
-            0o600,
-        )
-        try:
-            fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            os.close(lease)
-            lease = None
-            if args.playground:
-                raise ValueError("Playground 已有 Agent 正在运行，请使用已打开的终端。") from None
-            raise ValueError("此项目已有 Agent 正在运行，请使用已打开的终端。") from None
         root = Path(__file__).resolve().parents[2]
         image = prepare_agent_image(root, args.socket.parent, update=args.update_agents)
         connection = control(
@@ -297,9 +282,13 @@ def main():
                 image,
                 "python",
                 "-c",
+                # 同一范围可同时运行多个 Agent；原子替换，正在运行的实例不会读到半截连接。
                 "import os,sys; from pathlib import Path; "
-                "p=Path('/workspace/connection.json'); p.write_bytes(sys.stdin.buffer.read()); "
-                "os.chmod(p,0o600); os.chown(p,10002,10002); os.chown('/workspace',10002,10002)",
+                "p=Path('/workspace/connection.json'); "
+                "t=p.with_name(p.name+'.'+os.urandom(6).hex()); "
+                "t.write_bytes(sys.stdin.buffer.read()); "
+                "os.chmod(t,0o600); os.chown(t,10002,10002); "
+                "os.replace(t,p); os.chown('/workspace',10002,10002)",
             ],
             input=json.dumps(connection).encode(),
         )
@@ -501,9 +490,6 @@ def main():
     except (OSError, ValueError) as exc:
         print(str(exc))
         raise SystemExit(1) from None
-    finally:
-        if lease is not None:
-            os.close(lease)
 
 
 if __name__ == "__main__":

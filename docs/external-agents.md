@@ -118,6 +118,9 @@ flowchart LR
   继承宿主的域名分流；此分支由宿主代理再次解析厂商域名。其它目标仍连接已校验 IP，拒绝 DNS 重绑定。
   宿主代理失败返回 502，不回退直连；Agent 不获得宿主代理地址或直接宿主网络权限。
 - 工作区是每项目一个 Docker 卷 `storyrail-<agent>-<project_id>`；Agent 的会话与文件不是项目事实，Core 不读取。
+- 同一项目（或 Playground）可以用同一条命令同时启动多个终端，同一种或不同 Agent 都行。每次启动有自己的容器、内部网络与 gateway，
+  同种 Agent 共用工作区卷和 profile 卷，委托凭据也相同。工作区文件一律原子替换，实例之间不会读到半截内容。
+  调试标记写在共享的 `startup.json`，以最近一次启动为准。并行实例的写入仍由 Core 串行化并校验 revision 与工作锁。
 - npm 缓存使用可写的 `/tmp/npm-cache`；Pi 扩展持久化在 profile 卷。
 - 这一边界缩小绕过面，但应用层校验仍然完整保留，部署隔离不复制领域规则。
 
@@ -319,6 +322,6 @@ Core 为每条外部 Agent 命令（项目与 Playground）追加一行 `.storie
 ## Playground Agent
 
 从 Playground 页面复制的命令使用 `--playground`（与 `--project` 互斥）。它获得只有 `playground.use`、`project_ids = []` 的 30 天 caller，
-独立的 `storyrail-<agent>-playground` 卷与 `playground.launch.lock`（同一时刻只允许一个），工作区提示词为 `PLAYGROUND_PROMPT.md`，
+独立的 `storyrail-<agent>-playground` 卷（可同时运行多个），工作区提示词为 `PLAYGROUND_PROMPT.md`，
 MCP 以 `--scope playground` 启动、只发布 5 个工具。项目 Agent 拿不到 Playground，Playground Agent 拿不到任何项目，双方都不能跨域复制
 资产。详见 [Playground](playground.md#agent)。

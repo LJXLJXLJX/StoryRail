@@ -1,4 +1,4 @@
-"""PG5-T2：启动器的 Playground scope、锁、volume 与 gateway 环境变量。"""
+"""启动器的 Playground scope、同范围多开、volume 与 gateway 环境变量。"""
 
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ def test_project_and_playground_flags_are_exclusive(tmp_path, monkeypatch, capsy
         assert "请从项目页面或 Playground 页面重新复制启动命令。" in capsys.readouterr().out
 
 
-def test_playground_scope_key_used_for_lock_and_volume(tmp_path, monkeypatch, capsys):
+def test_playground_scope_key_used_for_volume(tmp_path, monkeypatch, capsys):
     calls: list[tuple] = []
     requests: list[dict] = []
     _prepare(monkeypatch, tmp_path, calls, requests)
@@ -85,8 +85,6 @@ def test_playground_scope_key_used_for_lock_and_volume(tmp_path, monkeypatch, ca
 
     assert stopped.value.code == 0
     assert requests == [{"action": "connect_playground"}]
-    assert (tmp_path / "playground.launch.lock").is_file()
-    assert not (tmp_path / (PROJECT_ID + ".launch.lock")).exists()
     assert any(
         "type=volume,source=storyrail-pi-playground,target=/workspace" in str(args)
         for args, _ in calls
@@ -211,6 +209,39 @@ def test_shared_image_is_reused_and_only_explicit_update_refreshes_dependencies(
     assert "--no-cache" in builds[-1]
     launcher.prepare_agent_image(tmp_path, tmp_path)
     assert len(builds) == 3
+
+
+def test_same_project_and_agent_can_run_concurrently(tmp_path, monkeypatch, capsys):
+    calls: list[tuple] = []
+    requests: list[dict] = []
+    _prepare(monkeypatch, tmp_path, calls, requests)
+    monkeypatch.setattr(launcher.shutil, "copytree", lambda *args, **kwargs: None)
+    argv = ["launcher", "--socket", str(tmp_path / "control.sock"), "--project", PROJECT_ID]
+    monkeypatch.setattr(sys, "argv", [*argv, "--agent", "agy"])
+    agent_containers: list[str] = []
+    agent_commands: list[list[str]] = []
+
+    def run_interactive(args, *, container, **kwargs):
+        agent_containers.append(container)
+        agent_commands.append(args)
+        if len(agent_containers) == 1:
+            # 第一个终端仍在运行时，同一项目、同一 Agent 再次启动。
+            with pytest.raises(SystemExit) as nested:
+                launcher.main()
+            assert nested.value.code == 0
+        return 0
+
+    monkeypatch.setattr(launcher, "run_interactive", run_interactive)
+
+    with pytest.raises(SystemExit) as stopped:
+        launcher.main()
+
+    assert stopped.value.code == 0
+    assert len(agent_containers) == 2 and agent_containers[0] != agent_containers[1]
+    assert requests == [{"action": "connect", "project_id": PROJECT_ID}] * 2
+    workspace = f"type=volume,source=storyrail-agy-{PROJECT_ID},target=/workspace"
+    assert all(workspace in command for command in agent_commands)
+    assert "正在运行" not in capsys.readouterr().out
 
 
 def test_shared_image_build_lock_prevents_duplicate_concurrent_builds(

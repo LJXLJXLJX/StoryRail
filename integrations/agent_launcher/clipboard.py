@@ -55,7 +55,7 @@ def _open_when_ready(url, process, container):
         if process.poll() is not None:
             return
         token = subprocess.run(
-            ["docker", "exec", container, "cat", "/workspace/dsh-browser-token"],
+            ["docker", "exec", container, "cat", "/tmp/dsh-browser-token"],
             capture_output=True,
         )
         if token.returncode == 0 and token.stdout.strip():

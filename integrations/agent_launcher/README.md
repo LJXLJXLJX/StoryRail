@@ -9,12 +9,16 @@ Pi auth.json、models.json、settings.json，之后不覆盖，支持 Pi 原生�
 不再导出短期 Bearer，不设置 provider/model/thinking，不生成私有模型 catalog，不改写 retry 设置。
 外部 profile 与宿主 profile 独立，不将容器刷新后的凭据覆盖回宿主；新增登录可以在外部 Pi 中完成。
 
+同一项目或 Playground 不设启动锁，可以在多个终端重复粘贴同一条命令。每次启动使用随机名称的网络、gateway 和 Agent 容器，
+同种 Agent 共用 `storyrail-<agent>-<scope>` 工作区卷，会话历史与工作区文件因此保留。`connection.json`、`startup.json`、
+`AGENTS.md` 与 `core-token` 都先写临时文件再原子替换，运行中的实例只会读到完整旧值或完整新值。
+DeepSeek Harness 的浏览器令牌写在各容器私有的 `/tmp`。调试标记以最近一次启动为准。
+
 ## Playground scope（`--playground`）
 
 从 Playground 页面复制的命令使用 `--playground`，与 `--project` 互斥，两者必须二选一；同时给出或都不给出时
 启动器直接报错并要求重新复制启动命令。Playground 模式：
 
-- 锁文件为 `<socket 目录>/playground.launch.lock`，同一时刻只允许一个 Playground Agent；
 - 控制请求发送 `{"action": "connect_playground"}`，凭据只有 `playground.use`、`project_ids=[]`，有效期 30 天；
 - Docker volume 为 `storyrail-<agent>-playground`，与任何项目工作区隔离；
 - gateway 容器只设置 `STORYRAIL_SCOPE=playground`（不传 `PROJECT_ID`），只放行 `POST /api/playground/commands`；
