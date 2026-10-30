@@ -150,7 +150,29 @@ SegmentFields = object_model(
 
 
 # 新 Shot 必须同时说明它如何进入覆盖：并入已有 Segment，或新建一个只覆盖它的 Segment。
-class InsertShot(Strict):
+# 公开 schema 用 oneOf 发布二选一；定义名与其它 operation 一样取 wire name。
+class _InsertShot(Strict):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "oneOf": [
+                {
+                    "required": ["attach_to_segment_id"],
+                    "properties": {
+                        "attach_to_segment_id": {"type": "string"},
+                        "new_segment": {"type": "null"},
+                    },
+                },
+                {
+                    "required": ["new_segment"],
+                    "properties": {
+                        "new_segment": {"type": "object"},
+                        "attach_to_segment_id": {"type": "null"},
+                    },
+                },
+            ]
+        },
+    )
+
     op: Literal["insert_shot"]
     scene_id: ID
     after_shot_id: ID | None
@@ -166,6 +188,8 @@ class InsertShot(Strict):
             )
         return self
 
+
+InsertShot = create_model("insert_shot", __base__=_InsertShot)
 
 ScriptOperation = reduce(
     or_,

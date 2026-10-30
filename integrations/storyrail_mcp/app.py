@@ -639,6 +639,8 @@ def _compact_operation_schema(schema: dict[str, object]) -> dict[str, object]:
             "additionalProperties": False,
             "properties": operation_properties,
             "required": definition.get("required", ["op"]),
+            # 跨字段条件（例如 insert_shot 二选一）与运行时同源，必须随定义发布。
+            **{key: definition[key] for key in ("oneOf", "anyOf", "allOf") if key in definition},
         }
     if not operations:
         return schema

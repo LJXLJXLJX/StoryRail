@@ -93,60 +93,6 @@
           ],
           "type": "object"
         },
-        "InsertShot": {
-          "additionalProperties": false,
-          "properties": {
-            "after_shot_id": {
-              "anyOf": [
-                {
-                  "pattern": "^[0-9a-f]{32}$",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "attach_to_segment_id": {
-              "anyOf": [
-                {
-                  "pattern": "^[0-9a-f]{32}$",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "new_segment": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/NewSegment"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "op": {
-              "const": "insert_shot"
-            },
-            "scene_id": {
-              "pattern": "^[0-9a-f]{32}$",
-              "type": "string"
-            },
-            "shot": {
-              "$ref": "#/$defs/Shot"
-            }
-          },
-          "required": [
-            "op",
-            "scene_id",
-            "after_shot_id",
-            "shot"
-          ],
-          "type": "object"
-        },
         "NarrationTrackInput": {
           "additionalProperties": false,
           "properties": {
@@ -626,6 +572,88 @@
           ],
           "type": "object"
         },
+        "insert_shot": {
+          "additionalProperties": false,
+          "oneOf": [
+            {
+              "properties": {
+                "attach_to_segment_id": {
+                  "type": "string"
+                },
+                "new_segment": {
+                  "type": "null"
+                }
+              },
+              "required": [
+                "attach_to_segment_id"
+              ]
+            },
+            {
+              "properties": {
+                "attach_to_segment_id": {
+                  "type": "null"
+                },
+                "new_segment": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "new_segment"
+              ]
+            }
+          ],
+          "properties": {
+            "after_shot_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "attach_to_segment_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "new_segment": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NewSegment"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "op": {
+              "const": "insert_shot"
+            },
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "shot": {
+              "$ref": "#/$defs/Shot"
+            }
+          },
+          "required": [
+            "op",
+            "scene_id",
+            "after_shot_id",
+            "shot"
+          ],
+          "type": "object"
+        },
         "merge_adjacent_scenes": {
           "additionalProperties": false,
           "properties": {
@@ -857,7 +885,7 @@
           "items": {
             "oneOf": [
               {
-                "$ref": "#/$defs/InsertShot"
+                "$ref": "#/$defs/insert_shot"
               },
               {
                 "$ref": "#/$defs/update_scene_fields"

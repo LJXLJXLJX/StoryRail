@@ -362,3 +362,52 @@ def test_read_details_translates_to_core_get_details():
         ]
 
     asyncio.run(run())
+
+
+INSERT_SHOT = {
+    "op": "insert_shot",
+    "scene_id": SCENE_ID,
+    "after_shot_id": None,
+    "shot": {
+        "visible_character_ids": [],
+        "composition": "近景",
+        "camera_movement": "固定",
+        "action": "回头",
+        "audio_direction": "环境声",
+        "transition_in": None,
+    },
+}
+NEW_SEGMENT = {
+    "shot_indexes": [0],
+    "duration_estimate_seconds": 3.0,
+    "action": "回头",
+    "dialogue_lines": [],
+    "boundary_from_previous": None,
+}
+
+
+@pytest.mark.parametrize(
+    "coverage,valid",
+    [
+        ({"attach_to_segment_id": SEGMENT_ID}, True),
+        ({"new_segment": NEW_SEGMENT}, True),
+        ({"attach_to_segment_id": SEGMENT_ID, "new_segment": NEW_SEGMENT}, False),
+        ({"attach_to_segment_id": SEGMENT_ID, "new_segment": None}, True),
+        ({}, False),
+        ({"attach_to_segment_id": None, "new_segment": None}, False),
+    ],
+)
+def test_insert_shot_exactly_one_coverage_is_published_and_matches_runtime(coverage, valid):
+    """公开 schema 以 wire name `insert_shot` 发布二选一条件，与运行时同判。"""
+    from integrations.storyrail_mcp.app import published_tool_schema
+    from integrations.storyrail_mcp.production_tools import ScriptEdit
+
+    schema = published_tool_schema("edit_script", ScriptEdit)
+    assert "insert_shot" in schema["$defs"] and "InsertShot" not in schema["$defs"]
+    value = {**WRITE_BASE, "scene_ids": [SCENE_ID], "operations": [{**INSERT_SHOT, **coverage}]}
+    assert Draft202012Validator(schema).is_valid(value) is valid
+    if valid:
+        ScriptEdit.model_validate(value)
+    else:
+        with pytest.raises(ValidationError):
+            ScriptEdit.model_validate(value)
