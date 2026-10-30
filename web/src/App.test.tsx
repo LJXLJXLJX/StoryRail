@@ -316,6 +316,80 @@ describe("StoryRail App", () => {
     fireEvent.click(screen.getByRole("button", { name: "关闭提醒" }));
     expect(screen.queryByText(/请同步手动修改/)).not.toBeInTheDocument();
   });
+  it("点开进行中的生成任务列表后可直接导航到对应 Segment", async () => {
+    const segmentId = "3".repeat(32);
+    const scene = {
+      id: "1".repeat(32),
+      title: "场景",
+      summary: "摘要",
+      setting: "室内",
+      driver: "drama",
+      location_id: null,
+      state_id: null,
+      narration_cues: [],
+      shots: [
+        {
+          id: "2".repeat(32),
+          visible_character_ids: [],
+          composition: "中景",
+          camera_movement: "固定",
+          action: "人物停下",
+          audio_direction: "环境声",
+          transition_in: null,
+        },
+      ],
+      segments: [
+        {
+          shot_ids: ["2".repeat(32)],
+          id: segmentId,
+          duration_estimate_seconds: 4,
+          action: "人物回答",
+          dialogue_lines: [],
+          boundary_from_previous: null,
+        },
+      ],
+    };
+    const current = {
+      ...reviewingSnapshot,
+      status: "reviewing_videos",
+      revision: 8,
+      workspace_layers: {
+        ...reviewingSnapshot.workspace_layers,
+        narration_unlocked: true,
+        keyframes_unlocked: true,
+        videos_unlocked: true,
+      },
+      director_script: {
+        revision: 4,
+        source_reference_revision: 1,
+        production_baseline_revision: 4,
+        production_baseline_scenes: [scene],
+        scenes: [scene],
+      },
+      video_plan: {
+        source_script_revision: 4,
+        segments: [
+          videoFixture({ segment_id: segmentId, prompt_text: "视频提示词", selected_asset_id: null, upscaled_asset_id: null, active_recipe: "minimax_h3.ref2va", recipes: { ["minimax_h3.ref2va"]: { bindings: { additional_images: [], reference_audios: [], reference_videos: [] }, params: {} } } }),
+        ],
+      },
+      generations: [
+        { ...generation("segment_video", "running"), target_id: segmentId, progress: 0.4, duration_seconds: 4 },
+        { ...generation("final_video", "queued"), id: "e".repeat(32), operation: "assemble", duration_seconds: null },
+      ],
+    };
+    vi.spyOn(globalThis, "fetch")
+      .mockImplementation(async () => response(current))
+      .mockResolvedValueOnce(response({ projects: [project] }));
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "打开" }));
+    const progress = await screen.findByLabelText("生成任务进度");
+    fireEvent.click(within(progress).getByRole("button", { name: /视频.*进行 2/ }));
+    const list = within(progress).getByRole("list", { name: "进行中的视频任务" });
+    expect(within(list).getByRole("button", { name: /项目.*最终成片 · zh · 排队中/ })).toBeDisabled();
+    fireEvent.click(within(list).getByRole("button", { name: /场景 1 · 片段 1.*视频 · 生成中 40%/ }));
+    expect(screen.queryByRole("list", { name: "进行中的视频任务" })).not.toBeInTheDocument();
+    expect(await screen.findByLabelText("当前 视频提示词")).toHaveValue("视频提示词");
+  });
   it("按 TTS、图片和视频汇总未隐藏 Generation 进度", () => {
     const progress = summarizeGenerationProgress([
       generation("narration_audio", "succeeded"),

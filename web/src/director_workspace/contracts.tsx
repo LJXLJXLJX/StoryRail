@@ -18,6 +18,11 @@ import type {
 } from "../api";
 import type { VideoFrameInfo } from "./shared";
 export type CardKind = "characters";
+/** 顶栏生成进度列表请求打开的故事位置；nonce 区分重复点击同一位置。 */
+export interface StoryNavigationRequest {
+  target: import("../api/projection").StoryTarget;
+  nonce: number;
+}
 export interface StructuredDirectorWorkspaceProps {
   project: ProjectSummary;
   snapshot: StructuredDirectorSnapshot;
@@ -26,6 +31,7 @@ export interface StructuredDirectorWorkspaceProps {
   pendingSegmentVideoId?: string | null;
   error: string | null;
   globalReferencesOpen?: boolean;
+  storyNavigationRequest?: StoryNavigationRequest | null;
   toolbarTarget?: HTMLElement | null;
   actions?: WorkspaceActions;
 }

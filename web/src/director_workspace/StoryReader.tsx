@@ -110,6 +110,20 @@ export function StoryReader(props: WorkspaceFlatProps) {
     setTarget(next);
     setNotice("");
   };
+  const navigationRequest = props.storyNavigationRequest ?? null;
+  // 挂载前已存在的请求属于上一次导航，不重放。
+  const handledNavigationNonce = useRef(navigationRequest?.nonce ?? 0);
+  useEffect(() => {
+    if (
+      navigationRequest === null ||
+      navigationRequest.nonce === handledNavigationNonce.current
+    )
+      return;
+    handledNavigationNonce.current = navigationRequest.nonce;
+    choose(navigationRequest.target);
+    // choose 每次渲染重建；只在新请求到达时导航。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigationRequest]);
   useEffect(() => {
     if (target) sessionStorage.setItem(key, JSON.stringify(target));
     else sessionStorage.removeItem(key);

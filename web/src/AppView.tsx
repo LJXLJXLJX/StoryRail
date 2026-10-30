@@ -24,6 +24,9 @@ const ExternalAgentEntry = lazy(() => import("./ExternalAgentConnect").then((mod
 import { ConsistencyNotice } from "./director_workspace/ConsistencyNotice";
 import { captureContentSave, savedContentChanges, mergeContentChanges, type ContentChange, type ContentSave } from "./director_workspace/consistency";
 import { useSnapshotScheduler } from "./director_workspace/useSnapshotScheduler";
+import { generationKindLabel, locateGeneration } from "./director_workspace/generation_location";
+import type { StoryTarget } from "./api/projection";
+import type { StoryNavigationRequest } from "./director_workspace/contracts";
 type PendingAction =
   | "edit_director_plan"
   | "edit_location"
@@ -94,6 +97,8 @@ export function App() {
     null,
   );
   const [globalReferencesOpen, setGlobalReferencesOpen] = useState(false);
+  const [storyNavigationRequest, setStoryNavigationRequest] =
+    useState<StoryNavigationRequest | null>(null);
   const [playgroundOpen, setPlaygroundOpen] = useState(playgroundFromLocation);
   const [workspaceToolbar, setWorkspaceToolbar] =
     useState<HTMLDivElement | null>(null);
@@ -980,7 +985,15 @@ export function App() {
             </>
           ) : null}
           {structuredSnapshot !== null ? (
-            <GenerationProgress generations={structuredSnapshot.generations} />
+            <GenerationProgress
+              snapshot={structuredSnapshot}
+              onNavigate={(target) =>
+                setStoryNavigationRequest((current) => ({
+                  target,
+                  nonce: (current?.nonce ?? 0) + 1,
+                }))
+              }
+            />
           ) : null}
           <div className="status-chip">
             <span className={isBusy ? "status-dot is-working" : "status-dot"} />
@@ -1057,6 +1070,7 @@ export function App() {
             pending={pending}
             error={error}
             globalReferencesOpen={globalReferencesOpen}
+            storyNavigationRequest={storyNavigationRequest}
             onCloseGlobalReferences={() => setGlobalReferencesOpen(false)}
             onUpdateDirectorPlan={updateDirectorPlan}
             onRefreshProjectSnapshot={() => void reloadStructuredSnapshot()}
@@ -1402,31 +1416,149 @@ export function App() {
     </div>
   );
 }
+type GenerationCategory = "tts" | "image" | "video";
+const generationCategoryLabels: Record<GenerationCategory, string> = {
+  tts: "TTS",
+  image: "图片",
+  video: "视频",
+};
 function GenerationProgress({
-  generations,
+  snapshot,
+  onNavigate,
 }: {
-  generations: ReferenceGeneration[];
+  snapshot: StructuredDirectorSnapshot;
+  onNavigate: (target: StoryTarget) => void;
 }) {
-  const progress = summarizeGenerationProgress(generations);
+  const [openCategory, setOpenCategory] = useState<GenerationCategory | null>(
+    null,
+  );
+  const container = useRef<HTMLDivElement>(null);
+  useEscapeDismiss(container, () => setOpenCategory(null), openCategory !== null);
+  useEffect(() => {
+    if (openCategory === null) return;
+    function closeOutside(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !container.current?.contains(event.target)
+      )
+        setOpenCategory(null);
+    }
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, [openCategory]);
+  const progress = summarizeGenerationProgress(snapshot.generations);
+  const activeItems =
+    openCategory === null
+      ? []
+      : snapshot.generations.filter(
+          (generation) =>
+            !generation.dismissed &&
+            generationStatus(generation) === "active" &&
+            generationCategory(generation) === openCategory,
+        );
   return (
-    <div className="generation-progress" aria-label="生成任务进度">
+    <div
+      className="generation-progress"
+      aria-label="生成任务进度"
+      ref={container}
+    >
       {(["tts", "image", "video"] as const).map((category) => {
         const item = progress[category];
-        const label =
-          category === "tts" ? "TTS" : category === "image" ? "图片" : "视频";
-        return (
-          <span
-            key={category}
-            title={`${label}：共 ${item.total} 次尝试`}
-          >
+        const label = generationCategoryLabels[category];
+        const content = (
+          <>
             {label} <b>成功 {item.succeeded}</b>
             {item.active > 0 ? ` · 进行 ${item.active}` : ""}
             {item.failed > 0 ? ` · 失败 ${item.failed}` : ""}
+          </>
+        );
+        return item.active > 0 ? (
+          <button
+            key={category}
+            type="button"
+            title={`${label}：共 ${item.total} 次尝试，点击查看进行中的任务`}
+            aria-expanded={openCategory === category}
+            aria-controls="generation-progress-list"
+            onClick={() =>
+              setOpenCategory(openCategory === category ? null : category)
+            }
+          >
+            {content}
+          </button>
+        ) : (
+          <span key={category} title={`${label}：共 ${item.total} 次尝试`}>
+            {content}
           </span>
         );
       })}
+      {openCategory !== null && activeItems.length > 0 ? (
+        <ul
+          id="generation-progress-list"
+          className="generation-progress-list"
+          aria-label={`进行中的${generationCategoryLabels[openCategory]}任务`}
+        >
+          {activeItems.map((generation) => {
+            const location = locateGeneration(snapshot, generation);
+            const target = location.target;
+            return (
+              <li key={generation.id}>
+                <button
+                  type="button"
+                  disabled={target === null}
+                  title={target === null ? "该任务不属于具体 Scene 或 Segment" : undefined}
+                  onClick={() => {
+                    if (target === null) return;
+                    setOpenCategory(null);
+                    onNavigate(target);
+                  }}
+                >
+                  <span>{location.place}</span>
+                  <small>
+                    {generationKindLabel(generation.kind)}
+                    {generation.language ? ` · ${generation.language}` : ""}
+                    {" · "}
+                    {generationPhaseLabel(generation)}
+                  </small>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
     </div>
   );
+}
+function generationPhaseLabel(generation: ReferenceGeneration) {
+  if (generation.phase === "running")
+    return generation.progress > 0
+      ? `生成中 ${Math.round(generation.progress * 100)}%`
+      : "生成中";
+  return generation.phase === "queued" ? "排队中" : "正在提交";
+}
+function generationCategory(generation: ReferenceGeneration): GenerationCategory {
+  return generation.kind === "character_voice" ||
+    generation.kind === "narrator_voice" ||
+    generation.kind === "narration_audio" ||
+    generation.kind === "dialogue_audio" ||
+    generation.kind === "generated_audio"
+    ? "tts"
+    : generation.kind === "character_look_sheet" ||
+        generation.kind === "location_image" ||
+        generation.kind === "panorama_capture" ||
+        generation.kind === "keyframe_image" ||
+        generation.kind === "video_reference_image"
+      ? "image"
+      : "video";
+}
+function generationStatus(generation: ReferenceGeneration) {
+  if (generation.phase === "succeeded") return "succeeded";
+  if (
+    generation.phase === "failed" ||
+    generation.phase === "cancelled" ||
+    generation.phase === "submission_uncertain"
+  )
+    return "failed";
+  return "active";
 }
 export function summarizeGenerationProgress(
   generations: ReferenceGeneration[],
@@ -1438,32 +1570,9 @@ export function summarizeGenerationProgress(
   };
   for (const generation of generations) {
     if (generation.dismissed) continue;
-    const category =
-      generation.kind === "character_voice" ||
-      generation.kind === "narrator_voice" ||
-      generation.kind === "narration_audio" ||
-      generation.kind === "dialogue_audio" ||
-      generation.kind === "generated_audio"
-        ? "tts"
-        : generation.kind === "character_look_sheet" ||
-            generation.kind === "location_image" ||
-            generation.kind === "panorama_capture" ||
-            (generation.kind === "keyframe_image" || generation.kind === "video_reference_image")
-          ? "image"
-          : "video";
-    const item = result[category];
+    const item = result[generationCategory(generation)];
     item.total += 1;
-    if (generation.phase === "succeeded") {
-      item.succeeded += 1;
-    } else if (
-      generation.phase === "failed" ||
-      generation.phase === "cancelled" ||
-      generation.phase === "submission_uncertain"
-    ) {
-      item.failed += 1;
-    } else {
-      item.active += 1;
-    }
+    item[generationStatus(generation)] += 1;
   }
   return result;
 }
