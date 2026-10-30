@@ -526,7 +526,13 @@ class Candidates(ReadRequest):
 
 class KeyframeSelection(Request):
     keyframe_id: ID
-    generation_id: ID
+    source: Literal["generation", "keyframe", "asset"] = Field(
+        description=(
+            "generation：本帧成功未隐藏的 keyframe_image 或抽帧候选；"
+            "keyframe：另一 Keyframe 当前选中图，原样复用；asset：任一项目图片 Asset。"
+        )
+    )
+    source_id: ID = Field(description="generation_id / 来源 keyframe_id / asset_id。")
 
 
 class ReferenceImageSelection(Request):
@@ -633,8 +639,9 @@ DESCRIPTIONS = {
             "读取人类审核入口与Core允许动作，不授予人类权限。",
             "读取主流程阶段、必需下一步、可选准备和阻塞原因；推进请求只按必需下一步处理。",
             "分页读取明确目标候选，不选择。",
-            "采用一个 Keyframe 的成功候选（keyframe_image 或抽帧），成为后续生成与引用的选中图；"
-            "人类可随时改选。",
+            "为一个 Keyframe 选定图片，成为后续生成与引用的选中图："
+            "本帧候选（keyframe_image 或抽帧）、另一 Keyframe 当前选中图（原样复用）"
+            "或任一项目图片 Asset；选前用 read_media_input 看图；人类可随时改选。",
             "把一张项目图片选入 Segment 其他图片的 slot_index 卡片（成为实际视频输入），或移除；"
             "来源可为生成候选、关键帧已选图或任一项目图片 Asset，选前用 read_media_input 看图；"
             "已启用的首尾帧不能重复选入；人类可随时改选。",
@@ -662,6 +669,13 @@ def translate(name, request):
         args["scope"] = {"scene_ids": args.pop("scene_ids")}
     if isinstance(request, Alarm):
         return "alarm.ring", {"message": request.message}
+    if isinstance(request, KeyframeSelection):
+        source = args.pop("source")
+        key = {"generation": "generation_id", "keyframe": "source_keyframe_id"}.get(
+            source, "asset_id"
+        )
+        args[key] = args.pop("source_id")
+        return "keyframe.select_candidate", args
     if isinstance(request, ReferenceImageSelection):
         source = args.pop("source")
         source_id = args.pop("source_id", None)
@@ -687,7 +701,6 @@ def translate(name, request):
         "read_human_handoff": "project.get_handoff",
         "read_workflow_state": "project.get_workflow_state",
         "list_candidates": "project.list_candidates",
-        "select_keyframe_candidate": "keyframe.select_candidate",
         "set_video_recipe": "video.set_recipe",
         "set_dialogue_timing": "dialogue.set_timing",
         "save_reference_image_plan": "video.save_reference_image_plan",

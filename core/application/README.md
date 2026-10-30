@@ -6,7 +6,7 @@ HTTP 每次请求重读受保护策略；`ContextVar` 只在受信调度期间�
 - Agent 写入需要部署开关、`project.mutate`，并且命令在 Agent 操作白名单内；再满足其一：受信 `project.execute`
   项目委托（本机启动签发，单项目、30 天），或绑定命令名、参数与原 revision 的精确 grant。
 - `project.propose` 只允许提交、拒绝、取消**自己的** proposal 任务；Core 每次提交与重放都重新验证原请求的 grant 或委托。
-- Agent 可经 `keyframe.select_candidate` 采用 Keyframe 候选，经 `video.select_reference_image` 为 Segment 其他图片
+- Agent 可经 `keyframe.select_candidate` 为 Keyframe 选定本帧候选、另一 Keyframe 已选图或任一项目图片，经 `video.select_reference_image` 为 Segment 其他图片
   选入任一项目图片（候选、关键帧已选图或资产库图片）或移除，人类随时可改选；其它候选采用、审核确认、Approval、
   重新开放、repair 与旧写路由不在白名单内，Agent 永远拒绝。
   用户明确要求撤回旁白音频时，Agent 可调用 `narration.clear_selection` 解除当前引用，这不选择新候选。

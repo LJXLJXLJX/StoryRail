@@ -147,10 +147,16 @@ class ClearKeyframeSelection:
 
 @dataclass(frozen=True, slots=True)
 class KeyframeCandidateSelection:
-    """采用某个 Keyframe 的一条成功候选；Agent 与人类都可改选。"""
+    """为 Keyframe 选定图片；Agent 与人类都可改选。
+
+    来源恰好一个：本帧的成功候选 `generation_id`、另一 Keyframe 当前选中图
+    `source_keyframe_id`（原样复用），或任一项目图片 `asset_id`。
+    """
 
     keyframe_id: str
-    generation_id: str
+    generation_id: str | None = None
+    source_keyframe_id: str | None = None
+    asset_id: str | None = None
 
 
 KeyframeOperation: TypeAlias = (
@@ -181,10 +187,22 @@ def parse_director_command(value: object) -> DirectorCommand:
     )
 
 
+_KEYFRAME_SELECTION_SOURCES = ("generation_id", "source_keyframe_id", "asset_id")
+
+
 def parse_keyframe_candidate_selection(value: object) -> KeyframeCandidateSelection:
-    item = _exact_object(value, {"keyframe_id", "generation_id"}, "keyframe.select_candidate")
+    sources = [
+        key for key in _KEYFRAME_SELECTION_SOURCES if isinstance(value, dict) and key in value
+    ]
+    if len(sources) != 1:
+        raise ValueError(
+            "keyframe.select_candidate 必须且只能给出 "
+            "generation_id、source_keyframe_id、asset_id 之一。"
+        )
+    source = sources[0]
+    item = _exact_object(value, {"keyframe_id", source}, "keyframe.select_candidate")
     return KeyframeCandidateSelection(
-        _id(item["keyframe_id"], "keyframe_id"), _id(item["generation_id"], "generation_id")
+        _id(item["keyframe_id"], "keyframe_id"), **{source: _id(item[source], source)}
     )
 
 

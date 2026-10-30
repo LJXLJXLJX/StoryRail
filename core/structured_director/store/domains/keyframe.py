@@ -302,6 +302,43 @@ def _finish_keyframe_operation_plan(
     return updated
 
 
+def _selection_asset_id(
+    document: StructuredDirectorDocument,
+    keyframe_id: str,
+    selection: KeyframeCandidateSelection,
+) -> str:
+    """把 Agent 给出的来源解析为 Asset ID：本帧候选、另一帧当前选中图或项目图片。"""
+    if selection.generation_id is not None:
+        generation = next(
+            (item for item in document.generations if item.id == selection.generation_id),
+            None,
+        )
+        if (
+            generation is None
+            or generation.kind
+            not in {ReferenceGenerationKind.KEYFRAME_IMAGE, ReferenceGenerationKind.VIDEO_FRAME}
+            or generation.target_id != keyframe_id
+        ):
+            raise ValueError("该 Generation 不是这个 Keyframe 的候选。")
+        if (
+            generation.phase is not ReferenceGenerationPhase.SUCCEEDED
+            or generation.dismissed
+            or generation.output_asset_id is None
+        ):
+            raise ValueError("只能采用成功、未隐藏且产出图片的 Keyframe 候选。")
+        return generation.output_asset_id
+    if selection.source_keyframe_id is not None:
+        keyframes = () if document.keyframe_plan is None else document.keyframe_plan.keyframes
+        source = next((item for item in keyframes if item.id == selection.source_keyframe_id), None)
+        if source is None:
+            raise ValueError("来源 Keyframe 不存在。")
+        if source.selected_asset_id is None:
+            raise ValueError("来源 Keyframe 尚未选定图片。")
+        return source.selected_asset_id
+    assert selection.asset_id is not None
+    return selection.asset_id
+
+
 class KeyframeDomain(_DomainBase):
     def begin_keyframe_plan(
         self,
@@ -685,7 +722,10 @@ class KeyframeDomain(_DomainBase):
         expected_revision: int,
         command_id: str,
     ) -> tuple[StructuredDirectorDocument, CommandReceipt]:
-        """Agent 采用一条 Keyframe 候选；与人类选择同一字段，任一方随时可以改选。"""
+        """Agent 为 Keyframe 选定图片；与人类选择同一字段，任一方随时可以改选。
+
+        来源可以是本帧候选、另一 Keyframe 当前选中图（原样复用）或任一项目图片。
+        """
 
         def mutate(document: StructuredDirectorDocument) -> MutationResult:
             plan = document.keyframe_plan
@@ -698,26 +738,10 @@ class KeyframeDomain(_DomainBase):
                 raise ValueError("Keyframe 不存在。")
             if not _keyframe_is_enabled(plan, keyframe.id):
                 raise ValueError("该 Keyframe 未激活，不能选择候选。")
-            generation = next(
-                (item for item in document.generations if item.id == selection.generation_id),
-                None,
-            )
-            if (
-                generation is None
-                or generation.kind
-                not in {ReferenceGenerationKind.KEYFRAME_IMAGE, ReferenceGenerationKind.VIDEO_FRAME}
-                or generation.target_id != keyframe.id
-            ):
-                raise ValueError("该 Generation 不是这个 Keyframe 的候选。")
-            asset_id = generation.output_asset_id
+            asset_id = _selection_asset_id(document, keyframe.id, selection)
             asset = next((item for item in document.assets if item.id == asset_id), None)
-            if (
-                generation.phase is not ReferenceGenerationPhase.SUCCEEDED
-                or generation.dismissed
-                or asset is None
-                or not asset.media_type.startswith("image/")
-            ):
-                raise ValueError("只能采用成功、未隐藏且产出图片的 Keyframe 候选。")
+            if asset is None or not asset.media_type.startswith("image/"):
+                raise ValueError("关键帧只能选择项目内的图片 Asset。")
             if keyframe.selected_asset_id == asset.id:
                 return MutationResult(
                     document,
@@ -727,7 +751,7 @@ class KeyframeDomain(_DomainBase):
                         old_revision=document.revision,
                         new_revision=document.revision,
                         preserved=("keyframe_selection",),
-                        decision_summary="该候选已经是当前选择。",
+                        decision_summary="该图片已经是当前选择。",
                     ),
                     write=False,
                 )
@@ -753,7 +777,7 @@ class KeyframeDomain(_DomainBase):
                     new_revision=updated.revision,
                     changed_ids=(keyframe.id,),
                     preserved=("asset_history", "generation_history"),
-                    decision_summary="已采用该 Keyframe 候选；人类可随时改选。",
+                    decision_summary="已为该 Keyframe 选定图片；人类可随时改选。",
                     next_allowed_actions=(
                         "keyframe.generate",
                         "keyframe.continue_batch",

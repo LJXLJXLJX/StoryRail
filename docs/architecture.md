@@ -133,7 +133,7 @@ flowchart TB
 | Asset/Generation 血缘、Provider 提交与状态迁移 | Core |
 | 领域长任务（proposal 请求、Keyframe 批次、地点成套批次）的 run/cursor | Core |
 | 意图理解、专业创作、正文撰写 | 外部 Agent（只能以 proposal 或类型化命令提交） |
-| Keyframe 候选采用 | 外部 Agent 或人类（任一方随时可改选） |
+| Keyframe 选图（本帧候选、另一帧已选图或项目图片） | 外部 Agent 或人类（任一方随时可改选） |
 | 其它候选采用、审核确认、Approval | 人类（Web） |
 | 媒体推理 | 外部媒体服务，经 Provider 插件 |
 

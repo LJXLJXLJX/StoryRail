@@ -745,6 +745,99 @@ def test_agent_edits_looks_and_generates_sheet_idempotently(tmp_path):
     asyncio.run(run())
 
 
+def test_agent_reuses_selected_keyframe_or_project_image_for_another_keyframe(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("STORYRAIL_GENERATION_WAIT_MAX_SECONDS", "0")
+
+    async def run():
+        store, provider, doc = await setup(tmp_path)
+        plan = doc.keyframe_plan
+        source_id = plan.segments[0].start_keyframe_id
+        target_id = next(
+            boundary.start_keyframe_id
+            for boundary in plan.segments[1:]
+            if boundary.start_enabled and boundary.start_keyframe_id != source_id
+        )
+        started, _ = await call(
+            store, provider, "keyframe.generate", "kf-source", {"keyframe_id": source_id}
+        )
+        generation_id = started.body["data"]["generation_ids"][0]
+        provider.observations = [GenerationPhase.SUCCEEDED]
+        await call(
+            store, provider, "generation.wait", "wait-source", {"generation_ids": [generation_id]}
+        )
+
+        def selected(keyframe_id):
+            return next(
+                k for k in store.read().keyframe_plan.keyframes if k.id == keyframe_id
+            ).selected_asset_id
+
+        async def attempt(key, arguments):
+            command = DirectorCommand(
+                "keyframe.select_candidate", store.read().revision, key, arguments
+            )
+            return await http(service(store, provider), agent(store.read(), command), command)
+
+        # 来源帧未选定图片时不能复用；来源必须恰好一个。
+        before = store.path.read_bytes()
+        unselected = await attempt(
+            "reuse-unselected", {"keyframe_id": target_id, "source_keyframe_id": source_id}
+        )
+        assert unselected.status != 200
+        both = await attempt(
+            "both",
+            {
+                "keyframe_id": target_id,
+                "generation_id": generation_id,
+                "source_keyframe_id": source_id,
+            },
+        )
+        assert both.status != 200
+        assert store.path.read_bytes() == before
+
+        await call(
+            store,
+            provider,
+            "keyframe.select_candidate",
+            "select-source",
+            {"keyframe_id": source_id, "generation_id": generation_id},
+        )
+        image_id = selected(source_id)
+        reused, _ = await call(
+            store,
+            provider,
+            "keyframe.select_candidate",
+            "reuse",
+            {"keyframe_id": target_id, "source_keyframe_id": source_id},
+        )
+        assert reused.body["receipt"]["changed_ids"] == [target_id]
+        assert selected(target_id) == image_id
+
+        # 项目图片 Asset 也可直接选入；项目外的 Asset 被拒绝。
+        await call(
+            store,
+            provider,
+            "keyframe.apply_operations",
+            "clear-target",
+            {"operations": [{"op": "clear_selection", "keyframe_id": target_id}]},
+        )
+        await call(
+            store,
+            provider,
+            "keyframe.select_candidate",
+            "by-asset",
+            {"keyframe_id": target_id, "asset_id": image_id},
+        )
+        assert selected(target_id) == image_id
+        before = store.path.read_bytes()
+        rejected = await attempt("by-missing", {"keyframe_id": target_id, "asset_id": "f" * 32})
+        assert rejected.status != 200
+        assert store.path.read_bytes() == before
+
+    asyncio.run(run())
+
+
 def test_agent_selects_keyframe_candidate_and_human_can_reselect(tmp_path, monkeypatch):
     monkeypatch.setenv("STORYRAIL_GENERATION_WAIT_MAX_SECONDS", "0")
 

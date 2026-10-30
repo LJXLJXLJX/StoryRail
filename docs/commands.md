@@ -171,7 +171,7 @@ Core 分配。不支持单独移动 Shot：整场并入上一场用 `merge_adjac
 | `keyframe.generate` | A | 单个 `keyframe_id`；只提交该帧 |
 | `keyframe.generate_batch` | A | `target_ids` 为显式、不重复、已启用的 Keyframe 集合；本轮只提交依赖已满足的帧 |
 | `keyframe.continue_batch` | A | `batch_id` 或任一关联 `run_id`；不能带新范围 |
-| `keyframe.select_candidate` | A/H | Agent 以 `keyframe_id` + `generation_id` 采用该帧成功、未隐藏且产出图片的 `keyframe_image` 或抽帧候选；人类也可直接采用项目图片。双方写同一字段，任一方随时可改选 |
+| `keyframe.select_candidate` | A/H | Agent 以 `keyframe_id` 加恰好一个来源选定图片：`generation_id`（该帧成功、未隐藏且产出图片的 `keyframe_image` 或抽帧候选）、`source_keyframe_id`（另一 Keyframe 当前选中图，原样复用同一 Asset）或 `asset_id`（任一项目图片）；人类直接选项目图片。双方写同一字段，任一方随时可改选 |
 
 人类 HTTP 另有：保存首帧卡共享开关（`PUT segments/{id}/keyframe-boundary`）与“从上一 seg 抽取”（`POST keyframes/{id}/extract-frame`，
 必须给 `frame_index`）。

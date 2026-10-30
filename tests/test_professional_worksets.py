@@ -16,7 +16,11 @@ from test_storyrail_mcp import endpoint
 
 import core.director_proposals
 from core.director_commands import DirectorCommand, DirectorCommandRegistry
-from core.director_proposals.professional_contracts import CONTRACTS, read_contract
+from core.director_proposals.professional_contracts import (
+    CONTRACTS,
+    PRODUCTION_SKILLS,
+    read_contract,
+)
 from core.structured_director.models import (
     ImageAssetCategory,
     SegmentBoundary,
@@ -38,11 +42,17 @@ def test_all_contract_resources_are_the_published_sources():
             if capability in {"keyframe", "location"}
             else set()
         )
-        assert len(default["resources"]) == len(references) + 1 + len(global_names)
+        production_names = {
+            f"production/{name}/SKILL.md" for name in PRODUCTION_SKILLS.get(capability, ())
+        }
+        assert len(default["resources"]) == (
+            len(references) + 1 + len(global_names) + len(production_names)
+        )
         assert {r["name"] for r in default["resources"]} == {
             "SKILL.md",
             *("references/" + name for name in references),
             *global_names,
+            *production_names,
         }
         included = read_contract(capability, include=("consistency-review",))
         assert {r["name"] for r in included["resources"]} == {
@@ -50,12 +60,15 @@ def test_all_contract_resources_are_the_published_sources():
             *("references/" + name for name in references),
             "shared/storyrail-consistency-review/SKILL.md",
             *global_names,
+            *production_names,
         }
         for resource in included["resources"]:
             name = resource["name"]
             source = (
                 directory.parent / "storyrail-consistency-review" / "SKILL.md"
                 if name == "shared/storyrail-consistency-review/SKILL.md"
+                else directory.parent / name.removeprefix("production/")
+                if name in production_names
                 else directory / name
             )
             if name in global_names:

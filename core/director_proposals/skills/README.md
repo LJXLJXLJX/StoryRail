@@ -16,6 +16,10 @@ Agent 启动提示、MCP instructions 和 Web 校对任务里的一致性说明�
 `global/storyrail-image-prompt-writing/SKILL.md`，其唯一源文件位于 `core/model_providers/skills/`，是跨图片插件的强制写作规范；
 需要共享校对原则时必须显式传 `include=["consistency-review"]`。
 
+`storyrail-keyframe-sequence` 是 Keyframe 契约附带的生产执行 Skill（资源名 `production/storyrail-keyframe-sequence/SKILL.md`）：
+用户要求连续生成多个 Segment 的关键帧时，按依赖与锚点帧排序、逐帧看图审核、诊断重试、选图或原样复用已选帧后再推进批次。
+它不产生 proposal、不新增 Core 门禁，画面决定仍以 planner 为准。
+
 Keyframe 入口 `storyrail-keyframe-planner` 读取 Scene 地点、状态与地点图片说明来理解空间，但不输出地点图片绑定；只有人类显式加入
 Segment 辅助参考的 Asset 才进入生图。`references/cinematic-keyframe-design.md` 讲从 Shot 自行推导空间与正反打背景，
 `references/cinematic-frame-prompting.md` 讲如何把地点事实写进静态画面正文。

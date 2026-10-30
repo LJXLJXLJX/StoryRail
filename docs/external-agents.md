@@ -136,7 +136,7 @@ flowchart LR
 | | `read_workflow` | 主流程 + handoff + contract hashes |
 | | `read_media_input` | 受控 Asset 内容（见下文） |
 | | `list_candidates` / `read_run` / `read_request` | 对应读取命令 |
-| 选择 | `select_keyframe_candidate` | `keyframe.select_candidate`（`keyframe_id` + 该帧成功、未隐藏的 `keyframe_image` 或抽帧 `generation_id`） |
+| 选择 | `select_keyframe_candidate` | `keyframe.select_candidate`（`keyframe_id` + `source=generation\|keyframe\|asset` 与 `source_id`，分别改写为该帧成功、未隐藏的 `keyframe_image` 或抽帧 `generation_id`、另一 Keyframe 当前选中图 `source_keyframe_id`、任一项目图片 `asset_id`） |
 | | `select_reference_image` | `video.select_reference_image`（Scene scope、Segment ID、0–3 槽位；`source=generation\|keyframe\|asset` 配 `source_id`，或 `source=remove`；`description` 留空沿用已绑定说明或卡片规划用途） |
 | 规划 | `submit_proposal` | 统一入口：`capability` + `payload`；schema 按 capability 与 `payload.action` 公开完整字段：request（`raw_user_instruction`；keyframe 另需 `scene_ids` 与 Segment `target_ids`）/ get、cancel（`request_id`）/ submit（`request_id` 加内联 `proposal` 或受限 `proposal_source`）/ reject（`request_id`、`reason`） |
 | 编辑 | `edit_script` / `edit_narration` / `edit_locations` / `edit_keyframes` / `edit_looks` | 各自的 `*.apply_operations` / `narration.update_cue` / `reference.apply_look_operations`（`add_look` / `update_look`，字段形状随 `reference_library` 契约下发）；`edit_narration.fields.clear_selected_audio = "zh"\|"en"` 独占一次调用并翻译为 `narration.clear_selection`；`edit_locations` 的 scope 是 `location_ids` / `scene_ids`，可编辑地点、状态、陈设、独立图片和 Scene 绑定，字段形状随 `location` 契约下发；`edit_script` 的 `insert_shot` 必须给出 `attach_to_segment_id` 或 `new_segment`，Segment 操作以 `scene_id` 为容器 |
@@ -179,9 +179,12 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
 | `script` | `storyrail-structured-director-script` | 项目 | 结构化脚本 proposal：先设计 Shot 列表再打包 Segment；含模型无关的 cinematic director intent 契约 |
 | `narration` | `storyrail-narration-review` | `scene_ids`，可指定 Cue | 中英旁白正文、seed 与 recipe_params（经 `edit_narration` 保存） |
 | `location` | `storyrail-location-planner`（参考 `location-bible.md`、`view-coverage.md`） | 项目（要求已有脚本） | 地点、陈设、主光、状态、可选独立图片与 Scene 绑定的增补 proposal |
-| `keyframe` | `storyrail-keyframe-planner` | `scene_ids` + 可写 Segment `target_ids` | Keyframe 计划 proposal：`segments[]` 首尾计划、角色造型与承接关系；地点只作语义上下文 |
+| `keyframe` | `storyrail-keyframe-planner` + `storyrail-keyframe-sequence` | `scene_ids` + 可写 Segment `target_ids` | Keyframe 计划 proposal：`segments[]` 首尾计划、角色造型与承接关系；地点只作语义上下文 |
 | `video_prompt` | `storyrail-video-prompt` + 当前插件的专业 Skill | 恰好一个 Segment | 视频正文，以及用户要求时的 recipe 参考素材与机制参数（经 `save_video_prompt` 保存） |
 
+- Keyframe 契约另附 `production/storyrail-keyframe-sequence/SKILL.md`：用户要求连续生成多个 Segment 的关键帧时，
+  按依赖与锚点帧排序，逐帧看图审核、按原因重试（每帧有预算）、选图或原样复用已选帧后再推进批次。它只是 Skill
+  层的软约束，不产生 proposal，也不新增 Core 门禁。
 - 六个契约共同附带 `storyrail-consistency-review`：修改前预检授权范围内的上下层联动，提交后重读核对；只读校对不修改；
   需要越出授权范围时先说明。它是共享工作原则，不是第七个生产阶段。
 - 工作集返回当前 revision 的事实、输出 schema 与 provenance：

@@ -33,7 +33,7 @@ adapter 解析为对象后仍走同一 Core proposal 命令、revision CAS 和�
 只有 `raw_user_instruction`，翻译为 `location.*_proposal`。`edit_script`、`edit_keyframes`、`edit_locations`、`edit_looks` 发布严格的操作 schema：
 每个 `op` 分支同时公开嵌套字段形状、枚举和必填项，并由同一 runtime 模型校验；`edit_looks` 翻译为 `reference.apply_look_operations`，字段形状随 reference_library 契约
 （`references/look-sheets.md`）下发；`edit_locations` 各操作的字段形状随 location 专业契约（`references/location-bible.md` 附录）下发。`edit_locations` 翻译为 `location.apply_operations`，顶层 `location_ids`、`scene_ids`
-组成 scope；不提供地点图片候选选择。`select_keyframe_candidate` 翻译为 `keyframe.select_candidate`（只限该 Keyframe 的成功、未隐藏图片候选）；`select_reference_image` 翻译为 `video.select_reference_image`，按 `source=generation|keyframe|asset` 把 `source_id` 改写为 `generation_id` / `keyframe_id` / `asset_id`，`source=remove` 改写为 `asset_id: null`。二者是仅有的候选采用工具。`generate_media` 的 `look_sheet` 翻译为 `reference.generate_look_sheet`（`identity_asset_ids` 为 0–4 张身份参考）；
+组成 scope；不提供地点图片候选选择。`select_keyframe_candidate` 翻译为 `keyframe.select_candidate`，按 `source=generation|keyframe|asset` 把 `source_id` 改写为 `generation_id`（只限该 Keyframe 的成功、未隐藏图片候选）/ `source_keyframe_id`（另一 Keyframe 当前选中图）/ `asset_id`（任一项目图片）；`select_reference_image` 翻译为 `video.select_reference_image`，按 `source=generation|keyframe|asset` 把 `source_id` 改写为 `generation_id` / `keyframe_id` / `asset_id`，`source=remove` 改写为 `asset_id: null`。二者是仅有的候选采用工具。`generate_media` 的 `look_sheet` 翻译为 `reference.generate_look_sheet`（`identity_asset_ids` 为 0–4 张身份参考）；
 `reference_image` 翻译为 `video.generate_reference_image`（`target_id` 为图片规划 ID）；`save_reference_image_plan`
 以 Scene scope、Segment ID 和 0–3 槽位保存一张任意内容的其他图片规划，完整字段在 tools/list 下发，不生成、不选择。
 `read_story` 的 Segment `selection` / `keyframe` / `video_prompt` 扩展返回 `video_inputs`；其中 `video_prompt` 扩展不重复 `video_inputs`、

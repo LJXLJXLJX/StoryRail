@@ -51,6 +51,10 @@ CONTRACTS = {
 }
 
 
+# 专业能力 → 随契约附带的生产执行 Skill（资源名带 ``production/`` 前缀）。
+PRODUCTION_SKILLS = {"keyframe": ("storyrail-keyframe-sequence",)}
+
+
 # 专业能力 → 随当前绑定插件发布的提示词 Skill 所属媒体能力。
 _PLUGIN_SKILL_CAPABILITIES = {
     "keyframe": (Capability.IMAGE_GENERATE, Capability.IMAGE_EDIT),
@@ -96,6 +100,15 @@ def read_contract(capability, *, include: tuple[str, ...] = (), provider_catalog
         resources.extend(
             {**resource, "name": f"global/{skill_resource['name']}/{resource['name']}"}
             for resource in skill_resource["resources"]
+        )
+    for production_skill in PRODUCTION_SKILLS.get(capability, ()):
+        content = (_SKILLS / production_skill / "SKILL.md").read_text(encoding="utf-8")
+        resources.append(
+            {
+                "name": f"production/{production_skill}/SKILL.md",
+                "text": content,
+                "sha256": hashlib.sha256(content.encode()).hexdigest(),
+            }
         )
     resources.extend(_plugin_skill_resources(capability, provider_catalog))
     if "consistency-review" in include:

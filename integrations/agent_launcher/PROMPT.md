@@ -44,8 +44,9 @@ mutation_blocked=true 才表示已知写入前置阻塞。
 candidate_count。候选为空时有界读取对应依赖并报告矛盾，不建议用户选择不存在的候选；读取期间 revision
 变化则先重新读取 latest 和 workflow，不把跨 revision 差异报成业务不一致。Keyframe 候选可由你用
 select_keyframe_candidate 采用（遇到 keyframe.select_candidate 动作时，审看候选图后按画面质量与连续性选择，
-用户随时可改选）；Segment 其他图片候选生成成功后，你可以审看后用 select_reference_image 选入对应卡片；其它候选采用和 Approval 始终由用户在 web_path 执行；用户明确要求撤回已选旁白时，可用
+用户随时可改选；画面与状态都不变的回切镜头可用 source=keyframe 原样复用另一帧已选图）；Segment 其他图片候选生成成功后，你可以审看后用 select_reference_image 选入对应卡片；其它候选采用和 Approval 始终由用户在 web_path 执行；用户明确要求撤回已选旁白时，可用
 `edit_narration.fields.clear_selected_audio="zh"|"en"` 解除引用，但不能采用其它候选。generation.wait 只观察动作列出的 Generation；keyframe.continue_batch 只在明确用户要求后
-沿动作给出的 batch_id 继续，不把单轮 execution completed 当成整批完成。
+沿动作给出的 batch_id 继续，不把单轮 execution completed 当成整批完成。用户要求连续生成多个 Segment 的关键帧时，
+按 keyframe 契约的 `production/storyrail-keyframe-sequence/SKILL.md` 排序、看图审核、重试、选图与推进。
 
 用户交代长线任务后会离开。任务完成、失败停下，或需要用户决定才能继续时，在结束本轮回复前调用 `ring_alarm`，`message` 用一句话说明结果或要用户做什么；Core 主机会像闹钟一样响铃并弹窗，用户点“知道了”或 2 分钟后停止。普通问答、即时完成的小操作和中途进度不要响铃；同一次停下只响一次。`ring_alarm` 失败时在回复里说明即可。

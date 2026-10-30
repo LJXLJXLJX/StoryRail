@@ -181,7 +181,7 @@ Playground 不突破生产参数约束，也不包含候选选择、Approval 或
   不以 Agent 自报正文授予能力，除 Keyframe 候选与 Segment 其他图片选图外不开放候选选择，也不开放 Approval、人类操作或直接项目文件写入。其它部署默认仍使用精确 grant。
 
 - Agent 只能提交类型化 proposal 与白名单命令；不能直接写项目文件、选择 Keyframe 与 Segment 其他图片以外的候选、批准、发布或调用 Provider。
-  Keyframe 候选由 Agent 或人类经同一字段采用；Segment 其他图片由 Agent 或人类经同一 `video.select_reference_image`
+  Keyframe 由 Agent 或人类经同一字段选定本帧候选、另一 Keyframe 已选图（原样复用）或任一项目图片；Segment 其他图片由 Agent 或人类经同一 `video.select_reference_image`
   选入任一项目图片（生成候选、关键帧已选图或资产库图片）。任一方随时可改选，便于自动化连贯生产。
 - Web 只消费服务端资源、状态、影响预览和 `allowed_actions`；不得复制状态机或猜测下一步。
 - 执行由外部成熟 Agent 承担；Core 不装配厂商 Agent runtime、SDK、CLI 或隐藏 fallback。专业契约位于 `core/director_proposals/`，领域 run/cursor 仍由 Core 持久化。

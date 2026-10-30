@@ -165,6 +165,29 @@ def test_production_tool_schema_and_fixed_mapping(name, args, command):
             assert definition["additionalProperties"] is False
 
 
+@pytest.mark.parametrize(
+    "source,key",
+    [
+        ("generation", "generation_id"),
+        ("keyframe", "source_keyframe_id"),
+        ("asset", "asset_id"),
+    ],
+)
+def test_select_keyframe_candidate_translates_each_source(source, key):
+    model = MODELS["select_keyframe_candidate"]
+    parsed = model.model_validate(
+        {**BASE, "keyframe_id": TARGET, "source": source, "source_id": "b" * 32}
+    )
+    assert translate("select_keyframe_candidate", parsed) == (
+        "keyframe.select_candidate",
+        {"keyframe_id": TARGET, key: "b" * 32},
+    )
+    with pytest.raises(ValueError):
+        model.model_validate({**BASE, "keyframe_id": TARGET, "source": source})
+    with pytest.raises(ValueError):
+        model.model_validate({**BASE, "keyframe_id": TARGET, "generation_id": "b" * 32})
+
+
 def test_edit_script_segment_duration_has_no_mcp_upper_limit():
     # 15 秒只是 Agent 侧软约束；MCP 适配层与 Core 一样不设上限，只拒绝短于 0.2 秒或非有限值。
     def data(duration):
