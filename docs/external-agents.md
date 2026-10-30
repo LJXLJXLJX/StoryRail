@@ -221,7 +221,7 @@ Skill 是 Agent 的唯一规则来源，不依赖任何 Agent 品牌。
   - 视频工作集给出当前 `video_recipe`（槽位与参数声明、`editable_params`）、`context`（含 `scene.driver`，决定无对白时是否声明预留旁白通道；
     `context.shots` 按覆盖顺序列出 Segment 的每个 Shot（构图、运镜、动作、声音、可见角色名与视图建议名）；
     `segment.continues_from_previous_segment` / `continues_into_next_segment` 表示相邻 Segment 共享边界 Shot 的延续关系；
-    `segment.dialogue[]` 的 `on_screen` 为 null 表示引用库外的临时说话者）、`dialogue_timing`（已选 WAV 的真实起点、时长与最晚结束时间；未完成 TTS 时明确标记未就绪）、`prompt_dialogue`（按剧本顺序的说话者、原台词与实际 `audio_label`；台词只能按插件 Skill 写进正文一次）、`prompt_problems`（插件检查已保存正文得到的格式问题，只是软提示、不阻止生成）、`asset_inputs`、`plugin_skills`（插件 Skill 目录，
+    `segment.dialogue[]` 的 `on_screen` 为 null 表示引用库外的临时说话者）、`dialogue_timing`（已选 WAV 的真实起点、时长与最晚结束时间；未完成 TTS 时明确标记未就绪）、插件可在 `context` 中给出实际输出时长（H3 为 `output_duration_seconds`：请求时长向上取到模型帧网格后的成片长度）、`prompt_dialogue`（按剧本顺序的说话者、原台词与实际 `audio_label`；台词只能按插件 Skill 写进正文一次）、`prompt_problems`（插件检查已保存正文得到的格式问题，只是软提示、不阻止生成）、`asset_inputs`、`plugin_skills`（插件 Skill 目录，
     全文在 `video_prompt` 契约中），以及 `recipe_inputs`（已保存的 `{bindings, params}`；`save_video_prompt.recipe_inputs` 只需给出要改的槽位与参数）与
     `bindable_assets`（当前 recipe 显式槽位可接受的项目 Asset：`asset_id`、`name`、`media_type`、`duration_seconds`、`slots`；
     只列导入素材、引用库与地点库已选资源、本 Scene 已选的关键帧/旁白/视频与显式媒体参考）。标签按 manifest namespace 由 Core 计算，绑定变化后重读

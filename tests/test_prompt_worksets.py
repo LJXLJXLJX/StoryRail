@@ -854,7 +854,8 @@ def test_single_boundary_labels_follow_actual_enabled_slot(tmp_path):
     binding = document.keyframe_plan.segments[1]
     for start, end, mode, provider_input, time in [
         (True, False, "i2va", "first_frame", 0),
-        (False, True, "l2va", "last_frame", 3),
+        # 3 秒请求实际输出 73 帧，尾帧锚在实际结束时间。
+        (False, True, "l2va", "last_frame", 3.042),
     ]:
         changed = replace(
             document,
@@ -898,6 +899,8 @@ def test_fl2va_workset_without_boundary_frames_reads_as_t2va(tmp_path):
     )
     workset = video_prompt_workset(changed, binding.segment_id)
     assert workset["context"]["mode"] == "t2va"
+    assert workset["context"]["duration_seconds"] == 3
+    assert workset["context"]["output_duration_seconds"] == 3.042
     assert workset["context"]["segment"]["start_frame_description"] is None
     assert workset["context"]["segment"]["end_frame_description"] is None
     assert workset["context"]["actual_provider_inputs"]["pictures"] == []

@@ -3,6 +3,7 @@
 from core.director_proposals.compiler_intent import context_value
 from core.model_providers.recipe import SlotBinding, binding_labels
 
+from .contracts import h3_output_seconds
 from .manifest import MANIFEST
 from .prompt_contract import H3PromptContext, H3PromptMode
 
@@ -44,6 +45,8 @@ def h3_prompt_payload(context: H3PromptContext, input_labels=None) -> dict[str, 
     return {
         "mode": context.mode.value,
         "duration_seconds": context.duration_seconds,
+        # 实际输出时长：请求时长向上取到 H3 帧网格，尾部多出的时间也要写进时间轴。
+        "output_duration_seconds": h3_output_seconds(context.duration_seconds),
         "aspect_ratio": context.aspect_ratio,
         "scene": {
             "title": context.scene_title,
@@ -100,7 +103,9 @@ def _actual_provider_inputs(context: H3PromptContext, input_labels=None) -> dict
             value.update(
                 provider_input=role,
                 role="exact_first_frame" if role == "first_frame" else "exact_last_frame",
-                time_seconds=0.0 if role == "first_frame" else context.duration_seconds,
+                time_seconds=0.0
+                if role == "first_frame"
+                else h3_output_seconds(context.duration_seconds),
             )
             result["pictures"].append(value)
         elif role == "reference_image":

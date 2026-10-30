@@ -14,6 +14,8 @@
 `requests.py` 把通用 RecipeRequest 翻译为包内 `contracts.py` 的 DTO；`render.py` 只在插件内解释画布与采样设置。
 `prompt_context.py` 将 Core 视频领域事实与输入标签转换成 H3 专业格式，`prompt_skills` 提供 `skills/h3-prompt-writing/` 的正文和参考资料，由 Core 经 `video_prompt` 专业契约交付。标签由 Core 统一编号。`context.shots` 按 Segment 覆盖顺序给出每个 Shot；Skill 据此写 `[Shot N] At MM:SS.mmm` 段内切镜软约束，首尾 Picture 只锚定首个 Shot 的开头与最后一个 Shot 的结尾。
 工作集 `mode` 按实际启用的边界帧推断：FL2VA recipe 下首尾帧都有为 `fl2va`、只有首帧为 `i2va`、只有尾帧为 `l2va`、都没有为 `t2va`（草稿状态，只读照常返回，生成仍由 recipe 的 `require_any` 拒绝）；Ref2VA recipe 恒为 `ref2va`。参考音频上限 3 条，跟随官方 `MiniMaxH3ReferenceToVideo` 的 `ref_audios` 上限。
+H3 服务只输出 24fps 下 17k+5 帧，请求时长向上取到这个网格且成片不裁回；`contracts.h3_output_seconds` 计算实际输出时长，
+工作集以 `output_duration_seconds` 给出，尾帧 Picture 的 `time_seconds` 与 lint 的切镜上限都用它，让提示词时间轴覆盖多出的尾部。
 
 含对白的 Ref2VA 提交由 Core 把已选 DialogueAudio WAV 按剧本顺序放在手工音频参考之前，提示词原样使用已保存正文。
 插件只接收编译后的 RecipeRequest，不读取角色卡或自行生成对白。

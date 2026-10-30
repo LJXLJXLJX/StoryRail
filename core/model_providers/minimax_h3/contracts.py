@@ -1,13 +1,24 @@
 """H3 HTTP 请求 DTO 与插件内约束；共享领域只提交 RecipeRequest。"""
 
 from dataclasses import dataclass
-from math import isfinite
+from math import ceil, isfinite
 
 H3_STEPS = (20, 8)
+H3_FPS = 24
 _IMAGE_TYPES = frozenset({"image/png", "image/jpeg", "image/webp"})
 _32_MIB = 32 * 1024 * 1024
 _64_MIB = 64 * 1024 * 1024
 _512_MIB = 512 * 1024 * 1024
+
+
+def h3_output_seconds(duration_seconds: float) -> float:
+    """H3 服务只输出 17k+5 帧（24fps）：请求时长向上取到这个网格，最多多出 16 帧。
+
+    成片按实际帧数交付、不裁回请求时长；提示词时间轴须写满到这里给出的结束时间。
+    """
+    frames = max(5, ceil(duration_seconds * H3_FPS))
+    frames += (5 - frames) % 17
+    return round(frames / H3_FPS, 3)
 
 
 def _image_content(

@@ -7,7 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from default_model_providers_implement.h3_request import parse_request
+from core.model_providers.minimax_h3.contracts import h3_output_seconds
+from default_model_providers_implement.h3_request import FPS, parse_request
 from default_model_providers_implement.request_builders import (
     prepare_h3_fl2va,
     prepare_h3_ref2va,
@@ -96,6 +97,13 @@ class H3RequestSchemaTests(unittest.TestCase):
         request = self._request(first=True, last=False)
         self.assertEqual((request.frame_count - 5) % 17, 0)
         self.assertGreaterEqual(request.frame_count, 72)
+
+    def test_plugin_output_duration_matches_runtime_frame_count(self) -> None:
+        # 工作集的 output_duration_seconds 必须与运行时实际帧数一致，提示词才能写满尾部。
+        for duration in (0.2, 2.0, 3.0, 8.0, 9.0, 9.4, 12.345, 15.0):
+            request = self._request(first=True, last=False, duration=duration)
+            self.assertEqual(h3_output_seconds(duration), round(request.frame_count / FPS, 3))
+        self.assertEqual(h3_output_seconds(9.0), 9.417)
 
     def test_duration_has_no_upper_limit(self) -> None:
         # 超过 15 秒可能 OOM，但这是 Agent 侧软约束；运行时请求不拒绝。

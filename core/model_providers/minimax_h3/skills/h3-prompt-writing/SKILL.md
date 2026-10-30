@@ -56,8 +56,11 @@ Core 原样提交已保存正文，不在正文前后追加任何文字。插件
 `speaker`、原台词 `text` 与实际绑定的 `audio_label`（未绑定为 null）；`dialogue_timing` 给出已选 WAV 的真实时长、
 起点和最晚结束时间，时间设计必须服从这些事实，视频时长不得短于最后一句对白结束时间。
 
-- 每句台词在全文只出现一次，位置固定在 `detailed_description` 对应镜头里：`<Subject N> (Sx) 动作与语气……说：<d>[Chinese] 原台词</d>`。
-  `<d>` 内只放语言标签与逐字原台词，中文台词用 `[Chinese]`，英文用 `[English]`；说话者描述、动作、语气写在 `<d>` 外。
+- 每句台词在全文只出现一次，位置固定在 `detailed_description` 对应镜头里：`<Subject N> (Sx) 动作……说：<d>[Chinese] 原台词</d>`。
+  `<d>` 内只放语言标签与逐字原台词，中文台词用 `[Chinese]`，英文用 `[English]`；说话者描述、动作写在 `<d>` 外。
+- 已绑定对白音频（`audio_label` 非 null）的台词，语气、情绪、语速、咬字、音色和性别都由该 WAV 决定：正文只写可见动作与口型，
+  并说明读音、语速、停顿和重音跟随对应 `<Audio N>` 原声回放一次；不写 `delivery` 的表演描述、播报腔或音色形容，
+  否则 H3 会把它当作表演要求重新念一遍，造成错读或整句重复。未绑定音频的台词才按 `delivery` 描写语气。
 - `subject_definitions`、`summary`、`retention_analysis`、`overall_soundscape`、`non_diegetic_music` 只用 `<Audio N>` 与 `(Sx)`
   指代这句对白，不写台词原文，也不用引号转述或改写复述；参考音频说明里的“说话内容”只供识别，不抄进正文。
 - 对白音频的固定写法：
@@ -85,6 +88,13 @@ StoryRail 的 Scene 旁白由独立 TTS 音频资产承载，并在 Scene/Final 
   - `dialogue` 为空：声明“全片无人类语音，保持纯净环境音”；只有 `scene.driver` 为 `narration` 时再加“预留后期主旁白音频叠加通道”，drama Scene 不写这句。
 - 默认禁止生成非画内背景音乐（BGM、score、audience-only music）：只有 `user_direction` 或 Shot `audio_direction` 明确写出配乐或音乐入点时，才按其写入 `non_diegetic_music`（脚本的 `audio_direction` 来自导演方案或用户的明确要求）；否则 `non_diegetic_music` 必须为 `N/A`，不得从“电影感”、情绪或风格描述推断音乐需求。只有画内角色演奏、收音机、电视或手机播放的音乐才作为画内事件写入 `integrated_multimodal_description`，不等同于 BGM。
 - 不因历史提示词中已有旁白而保留它；历史正文与当前独立旁白架构冲突时，删除视频模型旁白并保留视觉动作和环境声。
+
+## StoryRail 时长
+
+H3 只能输出 24fps 下 17k+5 帧，请求时长会向上取整（例如请求 9 秒实际输出 226 帧、9.417 秒），成片不裁回请求时长。
+工作集 `output_duration_seconds` 给出实际输出时长，尾帧 Picture 的 `time_seconds` 也取这个值。时间轴写满到它：
+最后一句对白或最后一个动作结束后的尾部要写具体的持续可见动作和环境声，不留空档；空档会被模型自行补成重复对白或转场溶解。
+单一连续镜头不用 cut、切到等剪辑措辞。
 
 ## StoryRail 画面与调度规范
 

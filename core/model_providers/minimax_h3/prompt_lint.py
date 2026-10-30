@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from collections import Counter
 
+from .contracts import h3_output_seconds
+
 REF2VA_SECTIONS = (
     "subject_definitions",
     "summary",
@@ -60,7 +62,8 @@ def _quote(text: str, limit: int = 40) -> str:
 def lint_h3_prompt(recipe_id: str, prompt: str, facts: dict) -> list[str]:
     """返回中文问题列表；空列表表示通过。
 
-    ``facts``：``duration_seconds``、``asset_labels``（实际 Picture/Audio/Video 标签）与
+    ``facts``：``duration_seconds``（请求时长；切镜时间按实际输出时长检查）、
+    ``asset_labels``（实际 Picture/Audio/Video 标签）与
     ``dialogue``（``[{speaker, text, audio_label}]``，按剧本顺序；无对白为空列表）。
     """
     ref2va = recipe_id.endswith(".ref2va")
@@ -330,7 +333,7 @@ def _shot_problems(text, description, facts):
     if numbers != list(range(1, len(numbers) + 1)):
         problems.append(f"{description} 的镜头编号必须从 [Shot 1] 起连续递增。")
     previous = 0.0
-    duration = facts["duration_seconds"]
+    duration = h3_output_seconds(facts["duration_seconds"])
     for number, end in first_seen:
         cut = _CUT_TIME.match(text, end)
         if number == 1:

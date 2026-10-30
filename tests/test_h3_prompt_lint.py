@@ -126,6 +126,9 @@ def test_sections_labels_and_shot_timing_follow_official_format():
     assert any("早于视频结束" in item for item in problems(late))
     timed = VALID.replace("镜头缓慢推近", "[Shot 2] At 00:03.000, 镜头缓慢推近")
     assert problems(timed) == []
+    # 5 秒请求实际输出 124 帧（5.167 秒），切镜可以落在多出的尾部。
+    tail = VALID.replace("镜头缓慢推近", "[Shot 2] At 00:05.100, 镜头缓慢推近")
+    assert problems(tail) == []
 
 
 def test_line_split_across_cut_with_scenetrans_counts_once():
