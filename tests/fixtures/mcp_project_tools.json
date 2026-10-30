@@ -855,7 +855,7 @@
         },
         "operations": {
           "items": {
-            "anyOf": [
+            "oneOf": [
               {
                 "$ref": "#/$defs/InsertShot"
               },
@@ -1318,7 +1318,7 @@
         },
         "operations": {
           "items": {
-            "anyOf": [
+            "oneOf": [
               {
                 "$ref": "#/$defs/update_frame_fields"
               },
@@ -1789,7 +1789,7 @@
         },
         "operations": {
           "items": {
-            "anyOf": [
+            "oneOf": [
               {
                 "$ref": "#/$defs/create_location"
               },
@@ -1952,7 +1952,7 @@
         },
         "operations": {
           "items": {
-            "anyOf": [
+            "oneOf": [
               {
                 "$ref": "#/$defs/add_look"
               },

@@ -389,6 +389,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `storyrail_mcp/debug_prompt.md`：调试模式提示词（`--debug`），同时注入工作区 AGENTS.md 与 MCP instructions 最前面。
 - `storyrail_mcp/playground_tools.py`：Playground scope 的 5 个工具输入模型与命令翻译。
 - `storyrail_mcp/bridge.py`：固定地址的无状态 HTTP 翻译。
+- `storyrail_mcp/argument_errors.py`：参数校验失败 → 逐项 `issues`（字段路径、原因与期望约束），不回显参数值。
 - `storyrail_mcp/production_tools.py`：生产工具输入 schema 与固定命令翻译，含 Segment 任意内容图片的单卡规划与生成入口。
 
 ## web/ — React + TypeScript + Vite 单页应用

@@ -20,6 +20,7 @@ caller 策略（本机一键接入或 `--access-policy-file`）的既有单写�
 - `production_tools.py`：编辑、生成、批次、装配、Generation 管理等工具的严格嵌套 schema 与固定翻译（不 import Core/Store）。
 - `playground_tools.py`：Playground scope 的 6 个工具。
 - `bridge.py`：到 Core 的 HTTP 传输、错误信封映射与响应序列化。
+- `argument_errors.py`：把参数校验失败翻译成 `issues`（JSON 路径、原因短码、中文说明、期望约束），不回显参数值。
 
 ## 项目 scope（默认）
 

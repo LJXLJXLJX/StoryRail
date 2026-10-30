@@ -316,11 +316,17 @@ LocationOperation = reduce(
 
 class ScriptEdit(Request):
     scene_ids: Targets
-    operations: Annotated[list[ScriptOperation], Field(min_length=1, max_length=100)]
+    operations: Annotated[
+        list[Annotated[ScriptOperation, Field(discriminator="op")]],
+        Field(min_length=1, max_length=100),
+    ]
 
 
 class FrameEdit(Request):
-    operations: Annotated[list[FrameOperation], Field(min_length=1, max_length=100)]
+    operations: Annotated[
+        list[Annotated[FrameOperation, Field(discriminator="op")]],
+        Field(min_length=1, max_length=100),
+    ]
 
 
 class ReferenceImagePlan(Request):
@@ -337,7 +343,10 @@ class ReferenceImagePlan(Request):
 class LocationEdit(Request):
     location_ids: IDs
     scene_ids: IDs
-    operations: Annotated[list[LocationOperation], Field(min_length=1, max_length=100)]
+    operations: Annotated[
+        list[Annotated[LocationOperation, Field(discriminator="op")]],
+        Field(min_length=1, max_length=100),
+    ]
 
 
 # 角色造型：Core 分配造型 ID；删除只由人类在卡片编辑中完成。
@@ -353,7 +362,10 @@ LookOperation = operation("add_look", {"character_id": ID, **look_fields}) | ope
 
 
 class LookEdit(Request):
-    operations: Annotated[list[LookOperation], Field(min_length=1, max_length=32)]
+    operations: Annotated[
+        list[Annotated[LookOperation, Field(discriminator="op")]],
+        Field(min_length=1, max_length=32),
+    ]
 
 
 narration_track_fields = {

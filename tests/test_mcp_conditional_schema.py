@@ -304,7 +304,10 @@ def test_action_conditionals_match_schema_and_runtime(name, model, valid, invali
 def test_typed_operation_unions_are_already_exact_discriminated_branches(name):
     schema = tool_schema(name, MODELS[name])
     Draft202012Validator.check_schema(schema)
-    alternatives = schema["properties"]["operations"]["items"]["anyOf"]
+    items = schema["properties"]["operations"]["items"]
+    # 按 op 判别：一个字段错只落在对应分支，不对每个分支各报一遍。
+    assert items["discriminator"]["propertyName"] == "op"
+    alternatives = items["oneOf"]
     assert alternatives
     for alternative in alternatives:
         definition = schema["$defs"][alternative["$ref"].removeprefix("#/$defs/")]

@@ -11,8 +11,9 @@ from typing import Annotated, Literal
 
 from mcp.server import Server
 from mcp.types import AudioContent, CallToolResult, ImageContent, ListToolsResult, TextContent, Tool
-from pydantic import Field, model_validator
+from pydantic import Field, ValidationError, model_validator
 
+from .argument_errors import rule_issue, summary, validation_issues
 from .bridge import CoreBridge
 from .playground_tools import (
     PLAYGROUND_DESCRIPTIONS,
@@ -553,22 +554,32 @@ def _response_text_blocks(result: dict[str, object]) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False))]
 
 
-def _arguments_error(message: str) -> tuple[int, dict[str, object]]:
-    """把 MCP 侧严格 schema 拒绝翻译成与工具调用一致的错误信封。"""
+def _arguments_error(
+    issues: list[dict[str, object]], *, hint: str | None = None
+) -> tuple[int, dict[str, object]]:
+    """把 MCP 侧严格 schema 拒绝翻译成与工具调用一致的错误信封，逐项列出字段路径与原因。"""
     return (
         400,
         {
             "error": {
                 "code": "invalid_arguments",
-                "message": message,
+                "message": summary(issues) if hint is None else f"{summary(issues)} {hint}",
                 "recoverable": True,
                 "origin": "mcp_schema",
                 "state_changed": False,
                 "retry_policy": "fix_arguments_and_retry",
                 "automatic_retry_allowed": False,
+                "issues": issues,
+                **({} if hint is None else {"hint": hint}),
             }
         },
     )
+
+
+def _argument_issues(exc: ValueError, arguments: object) -> list[dict[str, object]]:
+    if isinstance(exc, ValidationError):
+        return validation_issues(exc, arguments)
+    return [rule_issue(str(exc))]
 
 
 _COMPACT_OPERATION_TOOLS = frozenset(
@@ -588,12 +599,16 @@ _PROPOSAL_TOOL_PREFIX = {
 
 
 def _prune_schema(value: object, *, property_names: bool = False) -> object:
-    """去掉注解关键字；`properties` 下的键是字段名，即使叫 description 也必须保留。"""
+    """去掉注解关键字；`properties` 下的键是字段名，即使叫 description 也必须保留。
+
+    `discriminator` 是 OpenAPI 关键字，部分模型的函数调用 schema 不认识；
+    `oneOf` 与各分支的 `op.const` 已足以表达判别，运行时仍按 `op` 判别。
+    """
     if isinstance(value, dict):
         return {
             key: _prune_schema(item, property_names=key == "properties" and not property_names)
             for key, item in value.items()
-            if property_names or key not in {"title", "description", "default"}
+            if property_names or key not in {"title", "description", "default", "discriminator"}
         }
     if isinstance(value, list):
         return [_prune_schema(item) for item in value]
@@ -1004,11 +1019,11 @@ def create_server(
                 request.idempotency_key,
                 arguments,
             )
-        except ValueError:
-            # 不回显任意工具参数或本机异常路径。
-            message = "参数不符合此工具的严格契约。请读取 tools/list 中的完整 schema。"
+        except ValueError as exc:
+            # 只透出字段路径、原因与本模块写好的规则说明；不回显参数值或本机异常路径。
+            hint = None
             if params.name == "submit_proposal":
-                message = (
+                hint = (
                     "submit_proposal 的 capability 必须是 script、reference_library、"
                     "location 或 keyframe；payload 除 action 外只能提供："
                     "request→raw_user_instruction（keyframe 另需 scene_ids、target_ids），"
@@ -1025,8 +1040,10 @@ def create_server(
                     "cancel",
                 }:
                     fields = "、".join(sorted(proposal_fields(dispatch_name, action)))
-                    message = f"{action} 除通用字段外必须且仅能提供：{fields}。"
-            status, value = _arguments_error(message)
+                    hint = f"{action} 除通用字段外必须且仅能提供：{fields}。"
+            status, value = _arguments_error(
+                _argument_issues(exc, params.arguments or {}), hint=hint
+            )
         result = {"http_status": status, **value}
         return CallToolResult(
             content=_response_text_blocks(result),
@@ -1137,10 +1154,8 @@ def create_playground_server(bridge: CoreBridge, *, debug: bool = False):
             request = models[params.name].model_validate(params.arguments or {})
             name, key, arguments = translate_playground(params.name, request)
             status, value = await bridge.call_playground(name, key, arguments)
-        except ValueError:
-            status, value = _arguments_error(
-                "参数不符合此工具的严格契约。请读取 tools/list 中的完整 schema。"
-            )
+        except ValueError as exc:
+            status, value = _arguments_error(_argument_issues(exc, params.arguments or {}))
         result = {"http_status": status, **value}
         return CallToolResult(
             content=_response_text_blocks(result),
