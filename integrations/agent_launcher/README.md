@@ -93,7 +93,7 @@ Docker 回归：`STORYRAIL_DOCKER_TESTS=1 .venv/bin/python -m pytest tests/test_
 网页选择 DeepSeek Harness，复制 `--agent dsh` 命令到终端。镜像构建时安装官方 `@deepseek-ai/dsh@latest`，工作区为
 `storyrail-dsh-<project_id>`，原生配置保存在独立的 `storyrail-native-dsh-profile`（`DSH_HOME=/dsh`）。
 官方 Harness 的交互入口是 Web profile；启动后仅向宿主 `127.0.0.1` 发布随机端口并自动打开浏览器，容器内 Web 服务仍绑定
-回环地址。StoryRail MCP 通过固定的 `@deepseek-ai/dsh-mcp-client` stdio patch 注入，不读取宿主配置、凭据或其它 MCP。
+回环地址。终端里的 `dsh web:` 链接已改写为宿主发布端口，可直接打开。StoryRail MCP 通过固定的 `@deepseek-ai/dsh-mcp-client` stdio patch 注入，不读取宿主配置、凭据或其它 MCP。
 启动时设置官方 `NARB_DISABLE_NATIVE_CACHE=1`，直接加载只读镜像内的原生模块，避免复制到禁止执行的 `/tmp`。
 
 默认环境变量为 `DSH_PERMISSION_MODE=danger-full-access`，对应 Harness 的 `danger-full-access` 沙箱和 `never` 审批；

@@ -632,6 +632,31 @@ def test_dsh_command_uses_fixed_patch_and_full_permission_mode(monkeypatch):
     assert os.environ["NARB_DISABLE_NATIVE_CACHE"] == "1"
 
 
+def test_dsh_web_prints_host_port_url_and_saves_token(monkeypatch, capsys):
+    from integrations.agent_launcher import client
+
+    class Process:
+        stdout = iter(["warning\n", "dsh web: http://127.0.0.1:3080/?token=abc_DEF-1\n"])
+
+        def wait(self):
+            return 0
+
+    monkeypatch.setenv("STORYRAIL_DSH_HOST_PORT", "43210")
+    monkeypatch.setattr(client, "dsh_command", lambda: ["dsh"])
+    monkeypatch.setattr(client.subprocess, "Popen", lambda *args, **kwargs: Process())
+    written = []
+    monkeypatch.setattr(
+        client.Path,
+        "write_text",
+        lambda path, content, **kwargs: written.append((str(path), content)),
+    )
+    assert client.run_dsh_web() == 0
+    assert capsys.readouterr().out == (
+        "warning\ndsh web: http://127.0.0.1:43210/?token=abc_DEF-1\n"
+    )
+    assert written == [("/workspace/dsh-browser-token", "abc_DEF-1")]
+
+
 def test_local_session_204_sends_no_body_or_content_length():
     """回归：204 若带 body/Content-Length，严格代理（Vite/Node）会报解析错误。
 

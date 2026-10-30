@@ -177,7 +177,10 @@ def run_dsh_web():
         bufsize=1,
     )
     assert process.stdout is not None
+    host_port = os.environ["STORYRAIL_DSH_HOST_PORT"]
     for line in process.stdout:
+        # dsh 打印的是容器内回环端口；改写成宿主发布端口，终端里的链接才能直接打开。
+        line = re.sub(r"(dsh web: http://127\.0\.0\.1:)\d+/", rf"\g<1>{host_port}/", line)
         print(line, end="", flush=True)
         match = re.search(r"dsh web: http://127\.0\.0\.1:\d+/\?token=([A-Za-z0-9_-]+)", line)
         if match:
