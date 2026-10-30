@@ -4,6 +4,8 @@ import re
 from dataclasses import dataclass
 from math import isfinite
 
+from storyrail_contracts.fields import require_fields
+
 from .models import InvalidArgumentsError
 
 _ID = re.compile(r"[0-9a-f]{32}")
@@ -18,13 +20,12 @@ class DialogueTimingUpdate:
 
 
 def parse_dialogue_timing_update(value: object) -> DialogueTimingUpdate:
-    if not isinstance(value, dict) or set(value) != {
-        "scope",
-        "segment_id",
-        "starts",
-        "duration_seconds",
-    }:
-        raise InvalidArgumentsError("dialogue.set_timing arguments 包含缺失或未声明字段。")
+    require_fields(
+        "dialogue.set_timing.arguments",
+        value,
+        {"scope", "segment_id", "starts", "duration_seconds"},
+        error=InvalidArgumentsError,
+    )
     scope = value["scope"]
     if not isinstance(scope, dict) or set(scope) != {"scene_ids"}:
         raise InvalidArgumentsError("dialogue.set_timing scope 字段不合法。")

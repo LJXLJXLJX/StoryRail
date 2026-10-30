@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from math import isfinite
 from typing import TypeAlias
 
+from storyrail_contracts.fields import require_fields
+
 _ID = re.compile(r"[0-9a-f]{32}")
 _KEY = re.compile(r"[a-z][a-z0-9_-]{0,63}")
 _MAX_OPERATIONS = 100
@@ -287,8 +289,7 @@ def _image_fields(value: dict[str, object]) -> dict[str, object]:
 
 
 def _exact(value: object, keys: set[str], label: str) -> dict[str, object]:
-    if not isinstance(value, dict) or set(value) != keys:
-        raise ValueError(f"{label} 包含缺失或未声明字段。")
+    require_fields(label, value, keys)
     return value
 
 

@@ -51,7 +51,7 @@ def test_details_read_full_objects_by_id_and_report_missing(tmp_path):
         ({"kind": "keyframe"}, "必须给出 ids"),
         ({"kind": "keyframe", "ids": [f"{index:032x}" for index in range(21)]}, "1 到 20"),
         ({"kind": "asset", "ids": ["a" * 32]}, "kind 只允许"),
-        ({"kind": "keyframe", "ids": ["a" * 32], "extra": 1}, "未声明字段"),
+        ({"kind": "keyframe", "ids": ["a" * 32], "extra": 1}, "缺少字段|不接受字段|未声明字段"),
     ],
 )
 def test_details_reject_invalid_arguments(tmp_path, arguments, message):

@@ -182,7 +182,7 @@ class StructuredDirectorWorkflowTests(unittest.IsolatedAsyncioTestCase):
             value["database_id"] = "not-allowed"
             store.path.write_text(json.dumps(value), encoding="utf-8")
 
-            with self.assertRaisesRegex(ValueError, "未声明"):
+            with self.assertRaisesRegex(ValueError, "不接受字段|未声明"):
                 store.read()
 
     async def test_old_project_json_schema_is_rejected_without_migration(self) -> None:

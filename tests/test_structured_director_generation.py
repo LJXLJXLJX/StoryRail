@@ -1221,7 +1221,7 @@ class StructuredDirectorGenerationTests(unittest.IsolatedAsyncioTestCase):
             service = StructuredDirectorService(store, RecordingProposer())
             created = create_project(store)
 
-            with self.assertRaisesRegex(ValueError, "未声明字段"):
+            with self.assertRaisesRegex(ValueError, "缺少字段|不接受字段|未声明字段"):
                 await service.execute_generation_command(
                     DirectorCommand(
                         "generation.dismiss",

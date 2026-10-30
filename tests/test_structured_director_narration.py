@@ -269,7 +269,7 @@ class StructuredDirectorNarrationTests(unittest.IsolatedAsyncioTestCase):
                 updated.receipt.invalidated,
             )
             before = store.path.read_bytes()
-            with self.assertRaisesRegex(ValueError, "未声明字段"):
+            with self.assertRaisesRegex(ValueError, "缺少字段|不接受字段|未声明字段"):
                 registry.execute(
                     DirectorCommand(
                         "narration.update_cue",

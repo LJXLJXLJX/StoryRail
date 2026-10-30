@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from core.director_commands import (
     DirectorCommand,
 )
+from storyrail_contracts.fields import require_fields
 
 from .models import (
     Scene,
@@ -97,11 +98,12 @@ def _validate_required_keyframe_boundary_scope(
 
 
 def _production_command_target_ids(command: DirectorCommand) -> tuple[str, ...]:
-    required = {"target_ids", "user_instruction"}
-    if not required <= set(command.arguments) or not set(command.arguments) <= (
-        required | {"options"}
-    ):
-        raise ValueError("生产 command arguments 包含缺失或未声明字段。")
+    require_fields(
+        f"{command.name}.arguments",
+        command.arguments,
+        {"target_ids", "user_instruction"},
+        {"options"},
+    )
     value = command.arguments["target_ids"]
     if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
         raise ValueError("生产 command target_ids 必须是字符串数组。")

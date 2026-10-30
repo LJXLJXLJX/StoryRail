@@ -717,7 +717,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(replay.receipt.status, "noop")
             self.assertEqual(replay.document.revision, resumed_document.revision)
-            with self.assertRaisesRegex(ValueError, "缺失或未声明"):
+            with self.assertRaisesRegex(ValueError, "缺少字段|不接受字段"):
                 registry.execute(
                     DirectorCommand(
                         "run.resume",
@@ -913,7 +913,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                         },
                     )
                 )
-            with self.assertRaisesRegex(ValueError, "未声明字段"):
+            with self.assertRaisesRegex(ValueError, "缺少字段|不接受字段|未声明字段"):
                 registry.execute(
                     DirectorCommand(
                         "video.set_recipe",
@@ -1099,7 +1099,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                     "audio_references": [],
                 }
             )
-            with self.assertRaisesRegex(ValueError, "未声明字段"):
+            with self.assertRaisesRegex(ValueError, "缺少字段|不接受字段|未声明字段"):
                 registry.execute(
                     DirectorCommand(
                         "video.update_recipe_inputs",
@@ -1216,7 +1216,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
             shot = scene.shots[0]
             registry = DirectorCommandRegistry(store)
             before = store.path.read_bytes()
-            with self.assertRaisesRegex(ValueError, "未声明字段"):
+            with self.assertRaisesRegex(ValueError, "缺少字段|不接受字段|未声明字段"):
                 registry.execute(
                     DirectorCommand(
                         "script.apply_operations",
@@ -1614,7 +1614,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                         ],
                     }
                 )
-            with self.assertRaisesRegex(ValueError, "未声明字段"):
+            with self.assertRaisesRegex(ValueError, "缺少字段|不接受字段|未声明字段"):
                 parse_script_operations_patch(
                     {
                         "scope": {"scene_ids": [scene.id]},
@@ -2189,7 +2189,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
                 )
             self.assertEqual(store.path.read_bytes(), before)
 
-            with self.assertRaisesRegex(ValueError, "未声明字段"):
+            with self.assertRaisesRegex(ValueError, "缺少字段|不接受字段|未声明字段"):
                 registry.execute(
                     DirectorCommand(
                         "project.apply_repair_patch",
@@ -2456,7 +2456,7 @@ class DirectorCommandTests(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual(store.path.read_bytes(), before)
 
-            with self.assertRaisesRegex(ValueError, "未声明字段"):
+            with self.assertRaisesRegex(ValueError, "缺少字段|不接受字段|未声明字段"):
                 await service.execute_director_command(
                     DirectorCommand(
                         "project.preview_impact",

@@ -8,6 +8,7 @@ from core.director_commands.video_commands import (
     parse_video_reference_image_selection,
     parse_video_reference_image_update,
 )
+from storyrail_contracts.fields import require_fields
 
 if TYPE_CHECKING:
     from core.structured_director.models import DirectorRunCursor, StructuredDirectorDocument
@@ -295,8 +296,12 @@ def _parse_empty(arguments: dict[str, object], name: str) -> object:
 
 
 def _parse_keyframe_command(arguments: dict[str, object], _name: str) -> object:
-    if set(arguments) != {"operations"}:
-        raise InvalidArgumentsError("keyframe.apply_operations.arguments 包含缺失或未声明字段。")
+    require_fields(
+        "keyframe.apply_operations.arguments",
+        arguments,
+        {"operations"},
+        error=InvalidArgumentsError,
+    )
     return _parse_arguments(parse_keyframe_operations, arguments["operations"])
 
 

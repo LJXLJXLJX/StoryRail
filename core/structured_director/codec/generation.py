@@ -7,6 +7,7 @@ from typing import Any
 
 from core.model_providers.manifest import ProviderSnapshot
 from core.model_providers.recipe import RecipeParams
+from storyrail_contracts.fields import require_fields
 
 from ..models import (
     GenerationOperation,
@@ -164,10 +165,11 @@ def _parse_generation(value: object) -> ReferenceGeneration:
 def _parse_capture_request(value: object) -> PanoramaCaptureRequest | None:
     if value is None:
         return None
-    if not isinstance(value, dict) or set(value) != set(
-        PanoramaCaptureRequest.__dataclass_fields__
-    ):
-        raise ValueError("generation.panorama_capture_request 包含缺失或未声明字段。")
+    require_fields(
+        "generation.panorama_capture_request",
+        value,
+        set(PanoramaCaptureRequest.__dataclass_fields__),
+    )
     return PanoramaCaptureRequest(
         panorama_asset_id=_string(
             value["panorama_asset_id"], "panorama_capture_request.panorama_asset_id"

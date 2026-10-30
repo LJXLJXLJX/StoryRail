@@ -8,6 +8,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from storyrail_contracts.fields import require_fields
+
 _ID = re.compile(r"[0-9a-f]{32}")
 LOOK_TEXT_FIELDS = frozenset({"name", "appearance", "usage"})
 
@@ -66,8 +68,7 @@ def parse_look_operations_patch(value: object) -> LookOperationsPatch:
 
 
 def _exact(value: object, fields: set[str], label: str) -> dict:
-    if not isinstance(value, dict) or set(value) != fields:
-        raise ValueError(f"{label} 包含缺失或未声明字段。")
+    require_fields(label, value, fields)
     return value
 
 

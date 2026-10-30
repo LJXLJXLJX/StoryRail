@@ -140,16 +140,16 @@ def test_parse_rejects_unknown_and_missing_fields() -> None:
     document = PlaygroundDocument(schema_version=PLAYGROUND_SCHEMA_VERSION, revision=1)
     root = serialize_document(document)
 
-    with pytest.raises(ValueError, match="缺失或未声明"):
+    with pytest.raises(ValueError, match="缺少字段|不接受字段"):
         parse_document({**root, "extra": 1})
-    with pytest.raises(ValueError, match="缺失或未声明"):
+    with pytest.raises(ValueError, match="缺少字段|不接受字段"):
         parse_document({key: value for key, value in root.items() if key != "runs"})
 
     asset_document = serialize_document(replace(document, assets=(make_asset(),)))
     stored_asset = asset_document["assets"][0]
-    with pytest.raises(ValueError, match="缺失或未声明"):
+    with pytest.raises(ValueError, match="缺少字段|不接受字段"):
         parse_document({**root, "assets": [{**stored_asset, "x": 1}]})
-    with pytest.raises(ValueError, match="缺失或未声明"):
+    with pytest.raises(ValueError, match="缺少字段|不接受字段"):
         parse_document(
             {
                 **root,
@@ -158,9 +158,9 @@ def test_parse_rejects_unknown_and_missing_fields() -> None:
         )
 
     run_document = serialize_document(replace(document, runs=(make_run(),)))
-    with pytest.raises(ValueError, match="缺失或未声明"):
+    with pytest.raises(ValueError, match="缺少字段|不接受字段"):
         parse_document({**root, "runs": [{**run_document["runs"][0], "unexpected": None}]})
-    with pytest.raises(ValueError, match="缺失或未声明"):
+    with pytest.raises(ValueError, match="缺少字段|不接受字段"):
         parse_document(
             {
                 **root,

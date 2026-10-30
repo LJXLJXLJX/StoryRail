@@ -13,6 +13,7 @@ from core.director_proposals.wire_fields import (
     SHOT_FIELDS,
 )
 from core.model_providers.recipe import RecipeParams
+from storyrail_contracts.fields import require_fields
 
 _ID = re.compile(r"[0-9a-f]{32}")
 
@@ -273,9 +274,7 @@ def _scene_fields(value: object) -> dict[str, object]:
 def _scene(value: object) -> ScriptSceneInput:
     if not isinstance(value, dict):
         raise ValueError("insert_scene.scene 必须是 object。")
-    required = set(_SCENE_TEXT_LIMITS)
-    if not required <= set(value) <= required | _SCENE_OPTIONAL_FIELDS:
-        raise ValueError("insert_scene.scene 包含缺失或未声明字段。")
+    require_fields("insert_scene.scene", value, set(_SCENE_TEXT_LIMITS), _SCENE_OPTIONAL_FIELDS)
     driver = value.get("driver", "drama")
     if driver not in {"drama", "narration"}:
         raise ValueError("insert_scene.scene.driver 只允许 drama 或 narration。")
@@ -324,12 +323,7 @@ def _narration_cue(value: object) -> ScriptNarrationCueInput:
 
 
 def _narration_track(value: object, label: str) -> ScriptNarrationTrackInput:
-    if not isinstance(value, dict) or not {"text", "seed"} <= set(value) <= {
-        "text",
-        "seed",
-        "recipe_params",
-    }:
-        raise ValueError(f"{label} 包含缺失或未声明字段。")
+    require_fields(label, value, {"text", "seed"}, {"recipe_params"})
     recipe_params = RecipeParams.from_json(value.get("recipe_params", {}), f"{label}.recipe_params")
     seed = value["seed"]
     if isinstance(seed, bool) or not isinstance(seed, int) or not 0 <= seed <= 2**63 - 1:
@@ -491,8 +485,7 @@ def _duration(value: object) -> float:
 
 
 def _exact(value: object, keys: set[str], label: str) -> dict[str, object]:
-    if not isinstance(value, dict) or set(value) != keys:
-        raise ValueError(f"{label} 包含缺失或未声明字段。")
+    require_fields(label, value, keys)
     return value
 
 

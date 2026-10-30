@@ -9,6 +9,7 @@ from core.director_commands.models import (
     director_command_id,
 )
 from core.director_proposals.schema_gen import ProposalError
+from storyrail_contracts.fields import require_fields
 
 from . import location_proposals, reference_proposals, script_proposals
 from .errors import InvalidArgumentsError, RevisionConflictError
@@ -54,8 +55,7 @@ def execute(store, command):
         required.add("proposal")
     if op == f"{prefix}.reject_proposal":
         required.add("reason")
-    if set(args) != required:
-        raise InvalidArgumentsError("proposal 命令包含缺失或未声明字段。")
+    require_fields(f"{op}.arguments", args, required, error=InvalidArgumentsError)
     if any(
         not isinstance(args[k], str) or not args[k].strip() or len(args[k]) > 20000
         for k in required & {"raw_user_instruction", "request_id", "reason"}

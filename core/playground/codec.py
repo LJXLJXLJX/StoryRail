@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from core.model_providers.manifest import ProviderSnapshot, recipe_from_json
+from storyrail_contracts.fields import require_fields
 
 from .models import (
     PLAYGROUND_SCHEMA_VERSION,
@@ -72,8 +73,7 @@ _REQUEST_FIELDS = {
 
 
 def _exact_object(value: object, expected: set[str]) -> dict[str, Any]:
-    if not isinstance(value, dict) or set(value) != expected:
-        raise ValueError("playground.json 包含缺失或未声明的字段。")
+    require_fields("playground.json 对象", value, expected)
     return value
 
 

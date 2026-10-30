@@ -12,6 +12,8 @@ from dataclasses import fields, is_dataclass
 from enum import Enum
 from typing import Any
 
+from storyrail_contracts.fields import require_fields
+
 from ..errors import InvalidArgumentsError
 from ..models import Asset
 
@@ -45,8 +47,7 @@ def _exact_arguments(
     required: set[str] = frozenset(),
     optional: set[str] = frozenset(),
 ) -> None:
-    if not required <= set(arguments) or not set(arguments) <= required | optional:
-        raise InvalidArgumentsError("Director read tool arguments 包含缺失或未声明字段。")
+    require_fields("读取参数", arguments, required, optional, error=InvalidArgumentsError)
 
 
 def _ids(value: object, label: str) -> tuple[str, ...]:

@@ -24,6 +24,7 @@ from core.director_commands import (
     parse_video_recipe_update,
     parse_video_selection_clear,
 )
+from storyrail_contracts.fields import require_fields
 
 from ..keyframe_mutations import _apply_keyframe_operations
 from ..location_mutations import (
@@ -110,8 +111,7 @@ def preview_command_impact(
             invalidated.update(result.receipt.invalidated)
         preserved.update(result.receipt.preserved)
     elif name == "keyframe.apply_operations":
-        if set(command.arguments) != {"operations"}:
-            raise ValueError("keyframe.apply_operations.arguments 包含缺失或未声明字段。")
+        require_fields("keyframe.apply_operations.arguments", command.arguments, {"operations"})
         operations = parse_keyframe_operations(command.arguments["operations"])
 
         result = _apply_keyframe_operations(document, operations)

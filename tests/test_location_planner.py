@@ -154,7 +154,7 @@ def test_json_parser_rejects_old_master_and_views_shape():
         },
         ensure_ascii=False,
     )
-    with pytest.raises(ValueError, match="未声明字段"):
+    with pytest.raises(ValueError, match="缺少字段|不接受字段|未声明字段"):
         parse_location_plan(raw)
 
 

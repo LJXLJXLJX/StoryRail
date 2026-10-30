@@ -23,6 +23,7 @@ from core.director_proposals import (
 from core.director_proposals.wire_fields import NARRATION_CUE_EDIT_FIELDS
 from core.host_alarm import HOST_ALARM
 from core.model_providers.recipe import RecipeInputs, RecipeParams
+from storyrail_contracts.fields import require_fields
 from storyrail_contracts.http_edge import query_is_allowed as _query_is_allowed
 
 from .application_requests import rebase_conflict
@@ -2438,12 +2439,11 @@ _ROUTES: tuple[_Route, ...] = (
 def _narrator_voice(value: object, field: str) -> NarratorVoice | None:
     if value is None:
         return None
-    if not isinstance(value, dict) or set(value) != {
-        "voice_description",
-        "voice_reference_asset_id",
-        "voice_reference_transcript",
-    }:
-        raise ValueError(f"{field} 旁白音色字段不完整或包含未知字段。")
+    require_fields(
+        field,
+        value,
+        {"voice_description", "voice_reference_asset_id", "voice_reference_transcript"},
+    )
     return NarratorVoice(
         voice_description=_string(value, "voice_description"),
         voice_reference_asset_id=_optional_id(

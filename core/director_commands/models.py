@@ -6,6 +6,8 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
+from storyrail_contracts.fields import require_fields
+
 if TYPE_CHECKING:
     from core.structured_director.models import StructuredDirectorDocument
 
@@ -435,12 +437,7 @@ def _exact_object(
     *,
     optional: set[str] = frozenset(),
 ) -> dict[str, Any]:
-    if (
-        not isinstance(value, dict)
-        or not required <= set(value)
-        or not set(value) <= (required | optional)
-    ):
-        raise ValueError(f"{label} 包含缺失或未声明字段。")
+    require_fields(label, value, required, optional)
     return value
 
 

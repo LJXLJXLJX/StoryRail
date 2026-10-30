@@ -352,6 +352,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `README.md`：约束说明。
 - `errors.py`：Agent-facing HTTP/MCP 错误信封的唯一构造入口。
 - `http_edge.py`：媒体上传路径与查询字段的边缘判定。
+- `fields.py`：严格对象字段集合报错（点名缺失、多余与允许的字段，不回显字段值）。
 
 ## server/ — HTTP 装配
 

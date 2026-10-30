@@ -7,6 +7,8 @@ import re
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 
+from storyrail_contracts.fields import require_fields
+
 from .caller import strict_json
 
 
@@ -69,8 +71,7 @@ class ApplicationRequest:
 
     @classmethod
     def parse(cls, value):
-        if not isinstance(value, dict) or set(value) != set(cls.__dataclass_fields__):
-            raise ValueError("application request 含未知或缺少字段。")
+        require_fields("application request", value, set(cls.__dataclass_fields__))
         if not isinstance(value["generation_ids"], list):
             raise ValueError("application request generation_ids 必须是列表。")
         return cls(**{**value, "generation_ids": tuple(value["generation_ids"])})

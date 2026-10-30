@@ -5,11 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from storyrail_contracts.fields import require_fields
+
 
 def _exact_object(value: object, expected: set[str]) -> dict[str, Any]:
-    if not isinstance(value, dict) or set(value) != expected:
-        raise ValueError("project.json 包含缺失或未声明的字段。")
-    return value
+    return require_fields("project.json 对象", value, expected)
 
 
 def _object_list(value: object, parser: Callable[[object], Any]) -> tuple[Any, ...]:

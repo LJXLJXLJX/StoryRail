@@ -4,6 +4,8 @@ import re
 from dataclasses import dataclass
 from math import isfinite
 
+from storyrail_contracts.fields import require_fields
+
 _ID = re.compile(r"[0-9a-f]{32}")
 
 
@@ -42,12 +44,12 @@ def parse_animatic_scene_target(value: object) -> AnimaticSceneTarget:
 
 
 def parse_final_scene_target(value: object) -> FinalSceneTarget:
-    if (
-        not isinstance(value, dict)
-        or not {"scene_id"} <= set(value)
-        or not set(value) <= {"scene_id", "video_audio_volume", "narration_audio_volume"}
-    ):
-        raise ValueError("final.assemble_scene.arguments 包含缺失或未声明字段。")
+    require_fields(
+        "final.assemble_scene.arguments",
+        value,
+        {"scene_id"},
+        {"video_audio_volume", "narration_audio_volume"},
+    )
     return FinalSceneTarget(
         _id(value["scene_id"], "scene_id"),
         _volume(value.get("video_audio_volume", 1.0), "video_audio_volume"),
@@ -69,8 +71,7 @@ def parse_final_approval(value: object) -> FinalApprovalRequest:
 
 
 def _exact(value: object, keys: set[str], label: str) -> dict[str, object]:
-    if not isinstance(value, dict) or set(value) != keys:
-        raise ValueError(f"{label}.arguments 包含缺失或未声明字段。")
+    require_fields(f"{label}.arguments", value, keys)
     return value
 
 

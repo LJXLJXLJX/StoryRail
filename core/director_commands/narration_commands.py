@@ -9,6 +9,7 @@ from core.director_proposals.wire_fields import (
     NARRATION_TRACK_EDIT_FIELDS,
 )
 from core.model_providers.recipe import RecipeParams
+from storyrail_contracts.fields import require_fields
 
 _ID = re.compile(r"[0-9a-f]{32}")
 
@@ -97,8 +98,7 @@ def _seed(value: object) -> int:
 
 
 def _exact(value: object, keys: set[str], label: str) -> dict[str, object]:
-    if not isinstance(value, dict) or set(value) != keys:
-        raise ValueError(f"{label} 包含缺失或未声明字段。")
+    require_fields(label, value, keys)
     return value
 
 

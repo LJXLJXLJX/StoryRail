@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from storyrail_contracts.fields import require_fields
+
 _ID = re.compile(r"[0-9a-f]{32}")
 
 
@@ -33,8 +35,7 @@ def parse_generation_wait(value: object) -> GenerationWait:
 
 
 def _exact(value: object, keys: set[str], label: str) -> dict[str, object]:
-    if not isinstance(value, dict) or set(value) != keys:
-        raise ValueError(f"{label}.arguments 包含缺失或未声明字段。")
+    require_fields(f"{label}.arguments", value, keys)
     return value
 
 

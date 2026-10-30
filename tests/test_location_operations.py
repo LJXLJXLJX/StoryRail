@@ -21,7 +21,7 @@ def patch(operations, *, locations=(), scenes=()):
 
 
 def test_wire_rejects_unknown_fields_and_old_view_operations():
-    with pytest.raises(ValueError, match="缺失或未声明字段"):
+    with pytest.raises(ValueError, match="缺少字段|不接受字段"):
         parse_location_operations_patch(
             {**patch([{"op": "delete_location", "location_id": "1" * 32}]), "extra": 1}
         )

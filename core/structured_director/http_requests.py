@@ -28,6 +28,7 @@ from core.director_proposals.wire_fields import (
 )
 from core.model_providers.recipe import RecipeParams
 from storyrail_contracts.errors import error_payload
+from storyrail_contracts.fields import field_mismatch, require_fields
 
 from .models import (
     CharacterLook,
@@ -205,8 +206,7 @@ def _parse_boundary(value: object) -> SegmentBoundaryProposal:
 
 
 def _exact_object(value: object, fields: set[str], label: str) -> dict[str, Any]:
-    if not isinstance(value, dict) or set(value) != fields:
-        raise ValueError(f"{label} 包含缺失或未声明字段。")
+    require_fields(label, value, fields)
     return value
 
 
@@ -279,12 +279,9 @@ def _parse_request(
         value = json.loads(body)
     except (UnicodeDecodeError, json.JSONDecodeError):
         return _error(400, "invalid_json", "请求体必须是合法 JSON。")
-    if (
-        not isinstance(value, dict)
-        or not required <= set(value)
-        or set(value) - required - (optional or set())
-    ):
-        return _error(400, "invalid_request", "请求包含缺失或未声明的字段。")
+    problem = field_mismatch("请求", value, required, optional or ())
+    if problem is not None:
+        return _error(400, "invalid_request", problem)
     return value
 
 

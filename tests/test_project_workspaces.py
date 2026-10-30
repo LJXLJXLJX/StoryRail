@@ -199,7 +199,7 @@ class ProjectWorkspaceStoreTests(unittest.TestCase):
                 changed = json.loads(json.dumps(original))
                 changed["structured_director"]["director_runs"] = [run]
                 store.path.write_text(json.dumps(changed), encoding="utf-8")
-                with self.assertRaisesRegex(ValueError, "缺失或未声明"):
+                with self.assertRaisesRegex(ValueError, "缺少字段|不接受字段"):
                     store.read()
 
     def test_director_run_progress_and_receipt_survive_restart_idempotently(self) -> None:

@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, fields
 
+from storyrail_contracts.fields import require_fields
+
 
 def _id(value: object, label: str, *, optional: bool = False) -> None:
     if optional and value is None:
@@ -79,6 +81,5 @@ class VideoInputSnapshot:
 def parse_video_value(cls, value):
     if value is None:
         return None
-    if not isinstance(value, dict) or set(value) != {f.name for f in fields(cls)}:
-        raise ValueError("视频快照包含缺失或未声明字段。")
+    require_fields("视频快照", value, {f.name for f in fields(cls)})
     return cls(**value)

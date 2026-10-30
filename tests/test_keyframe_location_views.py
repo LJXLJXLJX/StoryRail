@@ -42,7 +42,7 @@ def test_keyframe_update_wire_rejects_removed_environment_fields(tmp_path: Path)
     store, _service, document, _route = asyncio.run(_visual_project(str(tmp_path)))
     binding = document.keyframe_plan.segments[0]
     registry = DirectorCommandRegistry(store)
-    with pytest.raises(ValueError, match="未声明字段"):
+    with pytest.raises(ValueError, match="缺少字段|不接受字段|未声明字段"):
         registry.execute(
             DirectorCommand(
                 "keyframe.apply_operations",
@@ -104,7 +104,7 @@ def test_script_shot_wire_rejects_view_id(tmp_path: Path):
     scene = document.director_script.scenes[0]
     shot = scene.shots[0]
     registry = DirectorCommandRegistry(store)
-    with pytest.raises(ValueError, match="未声明字段"):
+    with pytest.raises(ValueError, match="缺少字段|不接受字段|未声明字段"):
         registry.execute(
             DirectorCommand(
                 "script.apply_operations",
