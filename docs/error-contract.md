@@ -16,6 +16,23 @@ StoryRail 面向 Agent 的 HTTP/MCP 错误必须同时回答四件事：**失败
 | `retry_policy` | Agent 应采用的恢复策略；`automatic_retry_allowed` 恒为 `false` |
 | `details` | 边界特有的补充，例如 revision 冲突的 `expected` / `current`、门禁的 `required_next_actions` |
 
+## 参数错误的定位信息
+
+参数校验失败必须让调用方一次读懂“哪个字段、错在哪、应该是什么”，不允许只返回笼统的“不符合契约”：
+
+- **MCP 侧**（`invalid_arguments / mcp_schema`）：`message` 形如“参数错误：缺少必填字段 project_id。（另有 2 处问题见 issues）”，
+  `issues` 为数组，每项 `{path, reason, message, expected?}`：
+  - `path` 是 JSON 路径（如 `operations[0].new_segment.shot_indexes`），不含校验库的联合分支标签；跨字段规则为空串。
+  - `reason` 为稳定短码：`missing`、`unknown_field`、`wrong_type`、`invalid_id`、`pattern`、`too_short`、`too_long`、
+    `out_of_range`、`invalid_value`、`invalid_combination`。
+  - `expected` 给出约束（类型、正则、上下限或合法取值），不含调用方传入的值。
+  - operation 数组按 `op` 判别，一个字段错只在对应分支报告一次；`op` 非法时 `expected` 列出合法取值。
+  - 至多 20 项，按出现顺序去重；proposal 工具另附 `hint` 说明当前 action 允许的字段。
+- **Core 侧**（`invalid_request / core_parser`）：严格对象的字段集合错误由 `storyrail_contracts/fields.py` 统一生成，
+  点名缺失字段、多余字段与允许的字段，例如“video.set_prompt.arguments 缺少字段 scope；不接受字段 scene_id（允许的字段：…）”。
+
+两侧都不回显字段值、创作正文、凭据或异常堆栈。
+
 ## 分类
 
 ```mermaid
@@ -43,7 +60,7 @@ flowchart LR
 
 | 失败 | code / origin | 状态与下一步 |
 | --- | --- | --- |
-| MCP 缺字段、额外字段、错误类型、非法 action/level 组合 | `invalid_arguments` / `mcp_schema` | 未调用 Core；按公开 schema 修正参数 |
+| MCP 缺字段、额外字段、错误类型、非法 action/level 组合 | `invalid_arguments` / `mcp_schema` | 未调用 Core；`message` 直接写出第一处问题，`issues` 逐项给出字段路径与原因，按其修正参数 |
 | 连接器无法生成合法 wire JSON | `connector_serialization_error` / `connector_serialization` | 未发送；修正参数 |
 | HTTP/Core 顶层命令格式错误 | `invalid_json` 或 `invalid_request` / `core_parser` | 未进入领域写入；修正参数 |
 | 合法命令被目标或领域不变量拒绝 | `business_rule_rejected` / `core_domain` | 未写入；先改变业务事实或用户请求，不能盲重试 |

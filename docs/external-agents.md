@@ -125,7 +125,9 @@ flowchart LR
 
 项目 scope 的 `tools/list` 发布 28 个工具（逐字节基线：`tests/fixtures/mcp_project_tools.json`）。没有任意 command、shell、文件、
 路径、URL、模型目录、Approval 工具，候选采用工具只有 `select_keyframe_candidate` 与 `select_reference_image`。所有工具顶层与嵌套参数都拒绝未知字段，条件参数用公开 `oneOf` 表达，MCP runtime
-与 schema 共用同一参数矩阵。
+与 schema 共用同一参数矩阵。参数不合法时返回 `invalid_arguments`，`message` 写出第一处问题，`issues` 逐项给出字段路径、原因与期望约束
+（见[错误契约](error-contract.md#参数错误的定位信息)）；operation 数组按 `op` 判别，`edit_script` 的 `insert_shot` 以同名定义发布，
+`attach_to_segment_id` 与 `new_segment` 二选一也写在公开 schema 中。
 
 | 分组 | 工具 | 翻译为 |
 | --- | --- | --- |
