@@ -41,6 +41,7 @@ Codex/AGY 图片 Provider 及私有图片服务是媒体插件，不是 Agent ru
 - `.gitignore`：忽略构建产物、本机状态、`*.local.env` 与 `.stories/` 作品目录。
 - `.github/workflows/ci.yml`：与 `scripts/ci_local.sh` 等价的远端门禁。
 - `.github/readme/`：README 引用的图片（导演台 GIF）。
+- `examples/agent-sessions/`：制作样片时与外部 Agent 的真实对话节选（README 的“Agent 干活实录”）。
 - `.agents/skills/`：面向开发者 coding Agent 的仓库 Skill；`.claude/skills` 是指向它的软链接。
   `slatehand-provider-plugin/` 指导开发新的媒体 Provider 插件（云端 API 或本地模型服务），含契约导读与经测试的代码骨架。
 

@@ -14,6 +14,8 @@ Agent 负责拆脚本、规划关键帧、写提示词和提交生成；Slatehan
 视频、配音与超分全部由本地部署的开源模型生成。
 这是一部非官方科幻寓言，取材于 Anthropic 公开的研究，人物为虚构演绎，与 Anthropic 无关。
 
+**Agent 干活实录：**制作样片时与 AGY 的 [4 段真实对话](examples/agent-sessions/README.md)，看 Agent 怎样查证、提方案、通过 Core 修改项目和提交生成，而采纳与审核留给人。
+
 **不用显卡试用：**下载[示例项目](https://github.com/Slatehand/slatehand/releases/tag/demo-project)（约 230MB），在仓库根目录解压到 `.stories/` 后运行 `./start.sh`，
 就能在导演台里逐层查看这部样片的方案、镜头设计、关键帧候选、配音和视频；成片装配、抽帧等本机 ffmpeg 操作也可以直接试。
 
