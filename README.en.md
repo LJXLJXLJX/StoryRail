@@ -22,6 +22,20 @@ on Anthropic's published research; the characters are fictional portrayals, and 
 the sample film, showing how it checks facts, proposes options, and edits the project and submits generations through the
 Core, while picking takes and approval stay with you.
 
+**One instruction, and the agent finishes the job:**
+
+![After one instruction, AGY worked on its own for 1 h 52 min and produced all 22 videos for scene 14](.github/readme/agent-run.png)
+
+<sub>Rendered from a real session log (AGY, 2026-10-29; in Chinese). Splitting over-long segments, writing prompts, binding
+dialogue audio, and submitting and tracking generations all went through Slatehand's MCP tools; when the Core rejected
+an action, the agent fixed the cause and retried. Choosing which video to keep is still up to you.</sub>
+
+| Your one instruction (translated) | Agent worked alone | Tool calls | Generations submitted |
+| --- | --- | --- | --- |
+| Generate all of scene 14's videos. Keep going until done. Use your own judgment. | 1 h 52 min | 203 | 24 |
+| Carry on, I'm off to do something else. Ring me with ring_alarm when you're done. | 1 h 29 min | 134 | 26 |
+| Plan and generate keyframes for act three, then generate the videos. | 57 min | 143 | 24 |
+
 **Try it without a GPU:** download the [demo project](https://github.com/Slatehand/slatehand/releases/tag/demo-project) (about 230 MB), extract it into `.stories/` at the
 repository root and run `./start.sh`. You can browse the sample film's plan, shot design, keyframe candidates,
 voices and videos in the director desk, and try local ffmpeg actions such as assembly and frame extraction.
