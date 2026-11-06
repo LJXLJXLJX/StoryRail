@@ -7,7 +7,7 @@ Location 只保存跨 Scene 共享的语义事实与独立图片条目。图片�
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 from core.model_providers.contracts import validate_pano_view_geometry
@@ -181,6 +181,14 @@ class Location:
 @dataclass(frozen=True, slots=True)
 class LocationLibrary:
     locations: tuple[Location, ...] = ()
+    # 图片 ID → (所属地点, 图片) 的只读索引：投影会对每张图片查所属地点，线性查找会退化成平方级。
+    _images: dict[str, tuple[Location, LocationImage]] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
+    # 已选 Asset ID → 选中它的地点图片；同一 Asset 被多张图片选中时取最后一张。
+    _selected: dict[str, tuple[Location, LocationImage]] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
 
     def __post_init__(self) -> None:
         if len(self.locations) > MAX_LOCATIONS:
@@ -197,16 +205,27 @@ class LocationLibrary:
         ]
         if len(ids) != len(set(ids)):
             raise ValueError("地点、陈设、状态和图片 ID 在项目内不能重复。")
+        owners = [(location, image) for location in self.locations for image in location.images]
+        object.__setattr__(self, "_images", {image.id: (loc, image) for loc, image in owners})
+        object.__setattr__(
+            self,
+            "_selected",
+            {
+                image.selected_asset_id: (loc, image)
+                for loc, image in owners
+                if image.selected_asset_id is not None
+            },
+        )
 
     def location(self, location_id: str) -> Location | None:
         return next((item for item in self.locations if item.id == location_id), None)
 
     def image_owner(self, image_id: str) -> tuple[Location, LocationImage] | None:
-        for location in self.locations:
-            image = location.image(image_id)
-            if image is not None:
-                return location, image
-        return None
+        return self._images.get(image_id)
+
+    def image_selecting(self, asset_id: str) -> tuple[Location, LocationImage] | None:
+        """哪张地点图片选中了这个 Asset。"""
+        return self._selected.get(asset_id)
 
     def selected_image_asset(self, image_id: str) -> str | None:
         owner = self.image_owner(image_id)

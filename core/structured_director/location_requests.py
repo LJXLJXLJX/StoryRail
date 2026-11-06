@@ -51,19 +51,17 @@ def location_image_plan(document: StructuredDirectorDocument, image_id: str) -> 
         raise ValueError("全景取景图片请使用确定性的取景入口，不能提交图片模型。")
     if not image.prompt_text.strip():
         raise ValueError(f"请先填写地点图片「{image.name}」的生成提示词。")
-    assets = {item.id: item for item in document.assets}
-    descriptions = {
-        item.selected_asset_id: (owner.name, item.name, item.description)
-        for owner in document.location_library.locations
-        for item in owner.images
-        if item.selected_asset_id is not None
-    }
     entries: list[ImageInput] = []
     for asset_id in image.reference_asset_ids:
-        asset = assets.get(asset_id)
+        asset = next((item for item in document.assets if item.id == asset_id), None)
         if asset is None or not asset.media_type.startswith("image/"):
             raise ValueError("地点图片参考必须是项目内图片 Asset。")
-        described = descriptions.get(asset_id)
+        selecting = document.location_library.image_selecting(asset_id)
+        described = (
+            None
+            if selecting is None
+            else (selecting[0].name, selecting[1].name, selecting[1].description)
+        )
         entries.append(
             ImageInput(
                 asset_id,
