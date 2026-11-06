@@ -1,0 +1,10 @@
+- insert:
+    - id: mcp-slatehand
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: slatehand
+        transport: stdio
+        command: python
+        args: ['/app/client.py', 'mcp']
+        cwd: /app
+        env: {}

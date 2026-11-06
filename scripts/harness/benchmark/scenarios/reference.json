@@ -1,0 +1,99 @@
+{
+  "scenario": "reference",
+  "capability": "reference_library",
+  "bootstrap": "empty",
+  "summary": "冷启动引用库：读 workflow → 读契约 → 读 reference 工作集 → request/submit proposal。",
+  "steps": [
+    {
+      "id": "tools",
+      "action": "list_tools"
+    },
+    {
+      "id": "workflow",
+      "action": "call",
+      "tool": "read_workflow",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-reference-workflow"
+      }
+    },
+    {
+      "id": "contract",
+      "action": "pages",
+      "tool": "read_professional_contract",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-reference-contract",
+        "capability": "reference_library",
+        "page_bytes": 24576
+      }
+    },
+    {
+      "id": "workset",
+      "action": "pages",
+      "tool": "read_professional_workset",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-reference-workset",
+        "capability": "reference_library",
+        "page_bytes": 24576
+      },
+      "assert": {"no_error": true}
+    },
+    {
+      "id": "request",
+      "action": "call",
+      "tool": "submit_proposal",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-reference-request",
+        "capability": "reference_library",
+        "payload": {
+          "action": "request",
+          "raw_user_instruction": "严格按完整导演方案整理引用库"
+        }
+      }
+    },
+    {
+      "id": "submit",
+      "action": "call",
+      "tool": "submit_proposal",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision + 1",
+        "idempotency_key": "bench-reference-submit",
+        "capability": "reference_library",
+        "payload": {
+          "action": "submit",
+          "request_id": "$request.data.request_id",
+          "proposal": {
+            "characters": [
+              {
+                "name": "小满",
+                "visual_description": "短发，蓝色外套，一直带着红色行李箱",
+                "voice_description": "年轻、克制、语速偏慢",
+                "looks": [
+                  {
+                    "name": "日常",
+                    "appearance": "蓝色外套，牛仔裤，白色球鞋，拖着红色行李箱",
+                    "usage": "全片日常场景"
+                  }
+                ]
+              }
+            ],
+            "narrator": {
+              "name": "旁白",
+              "zh_voice_description": "克制、温和、纪录片式表达",
+              "en_voice_description": "Calm, warm documentary narrator."
+            }
+          }
+        }
+      },
+      "assert": {"no_error": true}
+    }
+  ]
+}

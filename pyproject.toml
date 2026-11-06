@@ -1,0 +1,45 @@
+[project]
+name = "slatehand"
+version = "0.1.0"
+description = "Slatehand（场记）开源 Core：领域、契约与 Provider SDK"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = []
+
+[project.optional-dependencies]
+mcp = ["mcp==2.2.0", "pydantic>=2,<3"]
+dev = [
+    "mcp==2.2.0",
+    "pydantic>=2,<3",
+    "pillow>=10,<13",
+    "jsonschema>=4,<5",
+    "debugpy>=1.8,<2",
+    "pytest>=8,<10",
+    "pytest-xdist>=3,<4",
+    "ruff>=0.12,<1",
+    "build>=1,<2",
+]
+
+[tool.setuptools.packages.find]
+include = ["core*", "server*", "integrations*", "slatehand_contracts*"]
+
+[tool.setuptools.package-data]
+"integrations.agent_launcher" = ["Dockerfile", "PROMPT.md"]
+"core.director_proposals" = ["skills/*/SKILL.md", "skills/*/references/*.md", "skills/*/references/*.txt", "skills/*/agents/*.yaml", "skills/consistency_instruction.md"]
+"core.model_providers" = ["skills/*/SKILL.md"]
+
+[tool.pytest.ini_options]
+addopts = "-q -m 'not slow'"
+testpaths = ["tests"]
+markers = [
+    "oracle: 真实驱动系统、断言可达状态的 oracle 场景（见 tests/README.md）",
+    "slow: 默认跳过的重测试；ci_local.sh --full 或 -m 'not slow or slow' 全跑（见 tests/README.md）",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["wip"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

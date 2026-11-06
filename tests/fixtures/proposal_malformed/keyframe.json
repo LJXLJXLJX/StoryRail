@@ -1,0 +1,6 @@
+{
+  "fence": "```json\n{}",
+  "extra": "{\"shots\":[],\"extra\":true}",
+  "missing": "{}",
+  "type": "{\"shots\":{}}"
+}

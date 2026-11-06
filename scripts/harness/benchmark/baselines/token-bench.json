@@ -1,0 +1,568 @@
+{
+  "schema": {
+    "name": "slatehand-token-bench",
+    "version": 1,
+    "description": "确定性 fake Agent driver 的 MCP 线上字节计量；不调用真实模型。字节口径见 scripts/harness/benchmark/meter.py。",
+    "volatile_fields": [
+      "environment.date",
+      "environment.git_sha",
+      "environment.python_version"
+    ]
+  },
+  "environment": {
+    "date": "2026-11-06",
+    "git_sha": "8f4a3085b0f4677e8210d33a63b25f0534696140",
+    "python_version": "3.12.12",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "driver": "scripts/harness/benchmark/fake_agent_driver.py"
+  },
+  "gate": {
+    "scenario_total_multiplier": 1.0
+  },
+  "frozen": {
+    "tools_list_bytes": 51134,
+    "scenarios": {
+      "h3": {
+        "total_wire_bytes": 31932
+      },
+      "keyframe": {
+        "total_wire_bytes": 130755
+      },
+      "location": {
+        "total_wire_bytes": 62352
+      },
+      "ref2va": {
+        "total_wire_bytes": 33300
+      },
+      "reference": {
+        "total_wire_bytes": 25482
+      },
+      "script": {
+        "total_wire_bytes": 77229
+      }
+    }
+  },
+  "runs": {
+    "h3": {
+      "capability": "video_prompt",
+      "bootstrap": "keyframes",
+      "summary": {
+        "tools_list_bytes": 51134,
+        "tool_count": 31,
+        "requests": 6,
+        "input_bytes": 1527,
+        "output_bytes": 30405,
+        "total_wire_bytes": 31932,
+        "contract_read_bytes": 9156,
+        "workset_read_bytes": 10110,
+        "pagination_rounds": 6,
+        "wait_rounds": 1,
+        "error_responses": 0
+      },
+      "requests": [
+        {
+          "index": 1,
+          "step": "workflow",
+          "tool": "read_workflow",
+          "action": "call",
+          "input_bytes": 110,
+          "output_bytes": 6765,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 2,
+          "step": "contract",
+          "tool": "read_professional_contract",
+          "action": "pages",
+          "input_bytes": 157,
+          "output_bytes": 8999,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 3,
+          "step": "workset",
+          "tool": "read_professional_workset",
+          "action": "pages",
+          "input_bytes": 255,
+          "output_bytes": 9855,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 4,
+          "step": "prompt",
+          "tool": "save_video_prompt",
+          "action": "call",
+          "input_bytes": 657,
+          "output_bytes": 1944,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 5,
+          "step": "generate",
+          "tool": "generate_media",
+          "action": "call",
+          "input_bytes": 172,
+          "output_bytes": 1194,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 6,
+          "step": "wait",
+          "tool": "manage_generation",
+          "action": "wait",
+          "input_bytes": 176,
+          "output_bytes": 1648,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": false
+        }
+      ]
+    },
+    "keyframe": {
+      "capability": "keyframe",
+      "bootstrap": "unlocked",
+      "summary": {
+        "tools_list_bytes": 51134,
+        "tool_count": 31,
+        "requests": 8,
+        "input_bytes": 2019,
+        "output_bytes": 128736,
+        "total_wire_bytes": 130755,
+        "contract_read_bytes": 62335,
+        "workset_read_bytes": 33465,
+        "pagination_rounds": 8,
+        "wait_rounds": 1,
+        "error_responses": 0
+      },
+      "requests": [
+        {
+          "index": 1,
+          "step": "workflow",
+          "tool": "read_workflow",
+          "action": "call",
+          "input_bytes": 116,
+          "output_bytes": 5521,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 2,
+          "step": "contract",
+          "tool": "read_professional_contract",
+          "action": "pages",
+          "input_bytes": 159,
+          "output_bytes": 62176,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 3,
+          "step": "workset",
+          "tool": "read_professional_workset",
+          "action": "pages",
+          "input_bytes": 207,
+          "output_bytes": 16303,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 4,
+          "step": "request",
+          "tool": "keyframe_proposal",
+          "action": "request",
+          "input_bytes": 313,
+          "output_bytes": 19750,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 5,
+          "step": "submit",
+          "tool": "keyframe_proposal",
+          "action": "submit",
+          "input_bytes": 604,
+          "output_bytes": 1475,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 6,
+          "step": "saved",
+          "tool": "read_professional_workset",
+          "action": "pages",
+          "input_bytes": 205,
+          "output_bytes": 16750,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 7,
+          "step": "batch",
+          "tool": "media_batch",
+          "action": "start",
+          "input_bytes": 233,
+          "output_bytes": 4340,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 8,
+          "step": "wait",
+          "tool": "manage_generation",
+          "action": "wait",
+          "input_bytes": 182,
+          "output_bytes": 2421,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": false
+        }
+      ]
+    },
+    "location": {
+      "capability": "location",
+      "bootstrap": "timing",
+      "summary": {
+        "tools_list_bytes": 51134,
+        "tool_count": 31,
+        "requests": 6,
+        "input_bytes": 1673,
+        "output_bytes": 60679,
+        "total_wire_bytes": 62352,
+        "contract_read_bytes": 19442,
+        "workset_read_bytes": 26260,
+        "pagination_rounds": 6,
+        "wait_rounds": 0,
+        "error_responses": 0
+      },
+      "requests": [
+        {
+          "index": 1,
+          "step": "workflow",
+          "tool": "read_workflow",
+          "action": "call",
+          "input_bytes": 116,
+          "output_bytes": 5686,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 2,
+          "step": "contract",
+          "tool": "read_professional_contract",
+          "action": "pages",
+          "input_bytes": 159,
+          "output_bytes": 19283,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 3,
+          "step": "workset",
+          "tool": "read_professional_workset",
+          "action": "pages",
+          "input_bytes": 158,
+          "output_bytes": 12789,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 4,
+          "step": "request",
+          "tool": "submit_proposal",
+          "action": "call",
+          "input_bytes": 243,
+          "output_bytes": 8240,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 5,
+          "step": "submit",
+          "tool": "submit_proposal",
+          "action": "submit",
+          "input_bytes": 841,
+          "output_bytes": 1524,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 6,
+          "step": "saved",
+          "tool": "read_professional_workset",
+          "action": "pages",
+          "input_bytes": 156,
+          "output_bytes": 13157,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        }
+      ]
+    },
+    "ref2va": {
+      "capability": "video_prompt",
+      "bootstrap": "keyframes",
+      "summary": {
+        "tools_list_bytes": 51134,
+        "tool_count": 31,
+        "requests": 7,
+        "input_bytes": 1783,
+        "output_bytes": 31517,
+        "total_wire_bytes": 33300,
+        "contract_read_bytes": 9160,
+        "workset_read_bytes": 10114,
+        "pagination_rounds": 7,
+        "wait_rounds": 1,
+        "error_responses": 0
+      },
+      "requests": [
+        {
+          "index": 1,
+          "step": "workflow",
+          "tool": "read_workflow",
+          "action": "call",
+          "input_bytes": 114,
+          "output_bytes": 6765,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 2,
+          "step": "contract",
+          "tool": "read_professional_contract",
+          "action": "pages",
+          "input_bytes": 161,
+          "output_bytes": 8999,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 3,
+          "step": "workset",
+          "tool": "read_professional_workset",
+          "action": "pages",
+          "input_bytes": 259,
+          "output_bytes": 9855,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 4,
+          "step": "mode",
+          "tool": "set_video_recipe",
+          "action": "call",
+          "input_bytes": 241,
+          "output_bytes": 1112,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 5,
+          "step": "prompt",
+          "tool": "save_video_prompt",
+          "action": "call",
+          "input_bytes": 652,
+          "output_bytes": 1944,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 6,
+          "step": "generate",
+          "tool": "generate_media",
+          "action": "call",
+          "input_bytes": 176,
+          "output_bytes": 1194,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 7,
+          "step": "wait",
+          "tool": "manage_generation",
+          "action": "wait",
+          "input_bytes": 180,
+          "output_bytes": 1648,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": false
+        }
+      ]
+    },
+    "reference": {
+      "capability": "reference_library",
+      "bootstrap": "empty",
+      "summary": {
+        "tools_list_bytes": 51134,
+        "tool_count": 31,
+        "requests": 5,
+        "input_bytes": 1382,
+        "output_bytes": 24100,
+        "total_wire_bytes": 25482,
+        "contract_read_bytes": 8662,
+        "workset_read_bytes": 4279,
+        "pagination_rounds": 5,
+        "wait_rounds": 0,
+        "error_responses": 0
+      },
+      "requests": [
+        {
+          "index": 1,
+          "step": "workflow",
+          "tool": "read_workflow",
+          "action": "call",
+          "input_bytes": 116,
+          "output_bytes": 3732,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 2,
+          "step": "contract",
+          "tool": "read_professional_contract",
+          "action": "pages",
+          "input_bytes": 168,
+          "output_bytes": 8494,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 3,
+          "step": "workset",
+          "tool": "read_professional_workset",
+          "action": "pages",
+          "input_bytes": 167,
+          "output_bytes": 4112,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 4,
+          "step": "request",
+          "tool": "submit_proposal",
+          "action": "call",
+          "input_bytes": 247,
+          "output_bytes": 6107,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 5,
+          "step": "submit",
+          "tool": "submit_proposal",
+          "action": "call",
+          "input_bytes": 684,
+          "output_bytes": 1655,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        }
+      ]
+    },
+    "script": {
+      "capability": "script",
+      "bootstrap": "ready",
+      "summary": {
+        "tools_list_bytes": 51134,
+        "tool_count": 31,
+        "requests": 5,
+        "input_bytes": 1662,
+        "output_bytes": 75567,
+        "total_wire_bytes": 77229,
+        "contract_read_bytes": 55081,
+        "workset_read_bytes": 8377,
+        "pagination_rounds": 5,
+        "wait_rounds": 0,
+        "error_responses": 0
+      },
+      "requests": [
+        {
+          "index": 1,
+          "step": "workflow",
+          "tool": "read_workflow",
+          "action": "call",
+          "input_bytes": 113,
+          "output_bytes": 4252,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 2,
+          "step": "contract",
+          "tool": "read_professional_contract",
+          "action": "pages",
+          "input_bytes": 154,
+          "output_bytes": 54927,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 3,
+          "step": "workset",
+          "tool": "read_professional_workset",
+          "action": "pages",
+          "input_bytes": 153,
+          "output_bytes": 8224,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 4,
+          "step": "request",
+          "tool": "submit_proposal",
+          "action": "call",
+          "input_bytes": 260,
+          "output_bytes": 6997,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        },
+        {
+          "index": 5,
+          "step": "submit",
+          "tool": "submit_proposal",
+          "action": "call",
+          "input_bytes": 982,
+          "output_bytes": 1167,
+          "is_error": false,
+          "pagination_rounds": 1,
+          "wait_again": null
+        }
+      ]
+    }
+  }
+}

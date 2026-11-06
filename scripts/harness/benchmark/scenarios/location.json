@@ -1,0 +1,103 @@
+{
+  "scenario": "location",
+  "capability": "location",
+  "bootstrap": "timing",
+  "summary": "脚本已确认：读契约 → 读地点工作集（分页）→ 请求规划 → 提交地点库与绑定 → 重读工作集核对。",
+  "steps": [
+    {
+      "id": "tools",
+      "action": "list_tools"
+    },
+    {
+      "id": "workflow",
+      "action": "call",
+      "tool": "read_workflow",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-location-workflow"
+      }
+    },
+    {
+      "id": "contract",
+      "action": "pages",
+      "tool": "read_professional_contract",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-location-contract",
+        "capability": "location",
+        "page_bytes": 24576
+      }
+    },
+    {
+      "id": "workset",
+      "action": "pages",
+      "tool": "read_professional_workset",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-location-workset",
+        "capability": "location",
+        "page_bytes": 24576
+      },
+      "assert": {
+        "no_error": true
+      }
+    },
+    {
+      "id": "request",
+      "action": "call",
+      "tool": "submit_proposal",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision",
+        "idempotency_key": "bench-location-request",
+        "capability": "location",
+        "payload": {
+          "action": "request",
+          "raw_user_instruction": "按完整脚本规划地点并绑定 Scene/Shot"
+        }
+      },
+      "assert": {
+        "no_error": true
+      }
+    },
+    {
+      "id": "submit",
+      "action": "location_submit",
+      "tool": "submit_proposal",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision + 1",
+        "idempotency_key": "bench-location-submit",
+        "capability": "location",
+        "payload": {
+          "action": "submit",
+          "request_id": "$request.data.request_id"
+        }
+      },
+      "assert": {
+        "no_error": true
+      }
+    },
+    {
+      "id": "saved",
+      "action": "pages",
+      "tool": "read_professional_workset",
+      "arguments": {
+        "project_id": "$base.project_id",
+        "expected_revision": "$base.expected_revision + 2",
+        "idempotency_key": "bench-location-saved",
+        "capability": "location",
+        "page_bytes": 24576
+      },
+      "assert": {
+        "no_error": true
+      },
+      "capture_ids": {
+        "bound_views": "core_facts.scenes[*].shots[*].view_id"
+      }
+    }
+  ]
+}

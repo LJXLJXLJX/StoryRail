@@ -1,0 +1,344 @@
+# 数据流
+
+本文描述数据在生产链路中如何被编译、组合与失效：旁白时序、对白 TTS、地点图片、Keyframe 与视频 recipe 的输入编译、Scene 成片与最终装配、
+失效传播、资产使用与删除，以及资产中心的处理链。流程顺序见 [生产工作流](production-workflow.md)。
+
+## 生产数据总览
+
+```mermaid
+flowchart LR
+    plan[(director_plan_markdown)] --> refs[引用库<br/>角色卡 · 旁白身份]
+    plan --> script[结构化脚本]
+    refs --> script
+    script --> cue[Cue zh/en 正文]
+    refs -->|同语言旁白参考音色| tts[speech.synthesize recipe]
+    cue --> tts --> naudio[(旁白 WAV × 所选语言)]
+    naudio -->|中英较长者的真实时长| baseline[生产基线<br/>校准后脚本]
+    script --> dialogue[DialogueLine<br/>稳定 ID · 正文 · 说话者]
+    refs -->|角色参考音色或音色描述| dtts[逐句对白 TTS]
+    dialogue --> dtts --> daudio[(已选对白 WAV)]
+    daudio -->|真实时长 + 发声起点| baseline
+    script -.->|Scene 地点/状态| loclib[地点库<br/>独立普通图 / 全景图]
+    loclib -->|语义与图片说明，不自动传图| kfplan[Keyframe 计划<br/>按 Segment 建帧]
+    loclib -->|人类显式加入辅助参考时| kfgen[生图 Provider]
+    baseline --> kfplan
+    refs -->|可见角色本帧所选造型的造型图| kfgen
+    kfplan --> kfgen --> kfimg[(Keyframe 图)]
+    kfimg --> h3[video.generate recipe]
+    vplan[视频计划<br/>提示词 · recipe 输入簿] --> h3
+    daudio -->|显式加入 recipe 音频列表 + 原文硬约束| h3
+    h3 --> segvid[(Segment MP4)] --> up[video.upscale 插件] --> upvid[(超分 MP4)]
+    segvid & upvid -->|生效视频| scenefinal[Scene 成片 zh/en]
+    naudio --> scenefinal
+    scenefinal --> final[最终成片 zh/en]
+    kfimg & naudio --> animatic[Scene Animatic]
+```
+
+## 旁白时序
+
+### 时间基准
+
+每条 Cue 只包含项目所选语言的音频。单语言的时间基准是该音频真实时长；双语言的**时间基准 = 两者真实时长中较长的一条**（等长取中文）。双语言从同一起点开始，
+短的一条提前结束。Scene 成片的中、英两版画面完全一致，只换旁白音轨；因此一版成片的输入血缘同时包含两种语言的
+已选旁白，任一语言改选都会让两版 Scene 成片一起过期。
+
+### Narration Scene 的画面长度
+
+```mermaid
+flowchart LR
+    a[zh 真实时长] --> m[max]
+    b[en 真实时长] --> m
+    m --> t{下一个 Scene 也是<br/>有旁白的 Narration Scene?}
+    t -- 是 --> plus[+ 0.4 秒尾部画面缓冲]
+    t -- 否 --> zero[+ 0]
+    plus & zero --> minimum[最短画面时长]
+    minimum --> cmp{Segment 时长之和 ≥ 最短?}
+    cmp -- 是 --> keep[保留脚本时长<br/>旁白居中：前后各留 多出部分/2]
+    cmp -- 否 --> stretch[等比拉长 Segment 到最短画面时长]
+```
+
+- 0.4 秒缓冲只加在前一个 Scene 最后一个 Segment 的结尾，不按 Segment 重复累加；它让下一段旁白开始前形成确定性的呼吸间隔。
+- 规划 Shot/Segment 时，Core 把真实时长、缓冲值与最短画面时长（`minimum_duration_seconds`）一起提供给 Agent。
+- Scene 画面时长 = max(Segment 时长之和, 最短画面时长)。人或 Agent 可以把 Segment 调得比旁白长，让画面停留；
+  旁白起点 = 首个 Segment 起点 + (画面时长 − 最短画面时长) / 2，即多出的时间在旁白前后平分。
+- 旁白层解锁后的每次脚本/旁白写入，Core 只在 Segment 时长之和短于最短画面时长时把它们等比拉长（余数落在最后一个
+  Segment），并在同一次写入里写入生产基线；已经足够长的时长逐位保留，重算不改写。
+- 同一组确定性函数（`narration_timing.py`）被脚本规划、生产基线、Animatic 与成片装配共用。
+
+### 装配时的精确对轨
+
+装配时 Core 用**已选视频的真实时长**（不是脚本预估）重新计算时间轴：
+
+- **Narration Scene**：Cue 覆盖整个 Scene 的全部 Segment。从第一个 Segment 的起始 clip 到最后一个 Segment 的结尾 clip，
+  考虑接缝重叠后，画面区间必须精确等于 Scene 画面时长。Core 迭代调整该区间**最后一个 clip** 的时长（裁切或补足，最多 24 轮
+  收敛）；需要的调整使该 clip 短于 0.05 秒时拒绝，提示缩短前序视频或合并过短的 Segment。
+- 旁白居中的前置偏移由 Core 在 WAV 数据前补等长静音实现，FFmpeg 仍从首个 clip 起点混入旁白。
+- **Drama Scene** 没有旁白，不参与对轨，按已选视频真实时长拼接。
+- 不用延长整部成片来掩盖局部时长不足。
+
+## 对白 TTS 与视频时长
+
+对白与旁白互斥，只存在于 Drama Scene。脚本中的每条 `DialogueLine` 有稳定 ID；Core 据此维护一条对应的对白音频计划，
+并在生成视频前完成以下闭环：
+
+```mermaid
+flowchart LR
+    line[DialogueLine 正文] --> route{角色已有参考音色?}
+    route -- 是 --> clone[speech.synthesize<br/>参考 WAV + 完整文字稿]
+    route -- 否 --> design[voice.design<br/>角色卡或临时说话者音色描述]
+    clone & design --> candidates[对白 WAV 候选]
+    candidates --> select[人类选择]
+    select --> timing[按剧本顺序设置发声起点]
+    timing --> min[最晚结束时间<br/>start + WAV 真实时长]
+    min --> duration[Segment 时长 ≥ 最晚结束时间<br/>余量由镜头与情感节奏决定]
+    duration --> ref2va[对白 WAV 进入多参考视频 recipe]
+```
+
+- 角色卡已经选择参考音色时只能走语音克隆，并要求该参考 WAV 有完整同语言文字稿；不会退回 Voice Design。
+- 没有参考音色的角色，以及用 `speaker_label` 表示的临时说话者/龙套，必须提供音色描述并走 Voice Design。
+- 选中任一句新的对白 WAV 或取消某句已选 WAV，都会清除该 Segment 全部对白的旧发声起点，并失效该 Segment 已选视频、超分与装配；随后必须按新的真实时长重新校准。
+- 发声起点必须按剧本顺序排列且音频不可重叠。Core 拒绝短于最后一句对白结束时间的 Segment；Agent 可在此下限之外增加停顿、表演和镜头余量。首句前、末句后各 0.5 秒的呼吸余量只是视频工作集里的软提示（`breathing_hints`），不拒绝写入或生成。
+
+## Keyframe 输入编译
+
+单个 Keyframe 生成时，Core 从当前项目事实编译有序输入图与 instruction（`keyframe_requests.py`），
+顺序就是 Provider 输入顺序，并原样记入 `Generation.input_asset_ids`。
+
+```mermaid
+flowchart TB
+    start[Keyframe] --> chars{每个可见角色}
+    chars -- 有本帧选择 --> c1[角色参考 = 所选造型的造型图<br/>用途带该造型说明；look_id 为 null 表示不提交]
+    chars -- 未选择且角色仅一套造型 --> c2[角色参考 = 该造型的造型图]
+    chars -- 未选择且角色多套造型 --> creject[拒绝：要求为本帧选择造型]
+    c1 & c2 --> pred{有前置帧且本 Segment 首帧启用?}
+    pred -- 前置帧无可用图 --> wait[返回“前置未就绪”，本轮不提交]
+    pred -- 有图 --> p1[前置帧图；编辑底图]
+    pred -- 否 --> refs
+    p1 --> refs{参考关键帧 reference_keyframe_ids}
+    refs -- 任一未选定图片 --> rwait[拒绝单帧生成；批次中等待该帧被采用候选]
+    refs -- 全部已选 --> r1[各参考帧当前选中图]
+    r1 --> locs{参考地点图片 reference_location_image_ids}
+    locs -- 任一未选定图片 --> rwait
+    locs -- 全部已选 --> l1[各地点图片当前选中图 + 强制说明]
+    l1 --> aux[绑定该 Keyframe 的 Segment 手工辅助图]
+    aux --> dedupe[名额顺序：角色 → 前置帧 → 参考关键帧 → 参考地点图片 → 辅助图<br/>按 Asset 去重，合并来源角色]
+    dedupe --> limit{总数 ≤ 5?}
+    limit -- 否 --> reject[拒绝，按名额顺序列出被挤掉的输入]
+    limit -- 是 --> op[编辑底图移到第 1 位<br/>有底图 → operation = edit，否则 generate]
+```
+
+前置帧图取其已选 Asset；未选择时取最近一个成功、未隐藏的候选。参考关键帧与参考地点图片只取当前选中图，不回退到候选；
+被参考项被改选后，按旧图生成的本帧候选在快照中带 `inputs_outdated` 软提示，仍可选择。Core 只向人和 Agent 提供实际图片输入清单，
+不将该清单或自动用途说明拼接到提示词。Agent 必须看图后编写完整提示词；没有多模态能力或无法读图时，请用户说明各图内容与用途。
+最终提交给图片 Provider 的 instruction 保留已保存提示词，再附加领域硬约束：
+
+```text
+<Picture1>: <人或看图后的 Agent 编写的用途与保留边界>
+<Picture2>: <人或看图后的 Agent 编写的用途与保留边界>
+…
+
+<正文逐图使用真实标签，明确保留与调整的属性>
+
+项目固定画幅：16:9。关键帧硬约束：只生成一张单一静态画面……（Core 固定文本，画幅只在这里出现一次）
+```
+
+输入图的指代与画幅句跟随当前绑定图片插件 manifest 的 `image_prompt` 约定，预览、工作集与提交共用
+`image_prompt_style.py`：
+
+| 约定 | 未声明（默认部署的 Codex / AGY） | 声明 `<imageN>`（默认部署的 `qwen_image`） |
+| --- | --- | --- |
+| 输入图指代 | `<PictureN>` | 按 `label_namespaces` 写 `<imageN>`；只有一张输入图时写 `图片` |
+| 画幅句 | 写 `项目固定画幅：…` 与保持画幅要求 | 不写；画幅由插件画布保证 |
+
+- 人或 Agent 编写的图片用途说明位于 instruction 顶部且不含文件名；画幅最多由 Core 编译一次，Agent 不重复画幅句，图片标签使用实际输入映射。
+- 全局 `slatehand-image-prompt-writing` 要求 Agent 有图时把逐图用途与正文完整保存到 `prompt_text`，正文明确引用每张实际标签；无图时只写正文。
+  Core 只校验显式引用段的标签数量、顺序与正文引用，不生成、替换或重排引用说明；历史纯正文原样使用，不补写默认用途。
+  文字不能改变类型化引用关系；只有明确启用的图片才会提交。
+- 角色的多套造型对应不同时期、服装或身体状态；Core 只提交本帧 `character_references` 所选造型的造型图，
+  每个角色每帧至多一张，不同造型不会同时进入同一帧，避免特征被平均。
+- Keyframe 辅助图与角色卡**只用于关键帧生图**，不会自动进入视频 recipe 输入。地点库图片只有被人显式加入辅助参考时才进入这里。
+- Keyframe Skill 与手工弹窗读写同一份计划；弹窗展示的实际提交映射与上面的编译结果同源。
+
+## 地点图片输入编译
+
+每个独立地点图片条目的输入、instruction 与提交由 `location_requests.py` 编译，名额与 Keyframe 共用 `image_inputs.py`
+（合计 ≤ 5 张，超额按顺序列出被挤掉的输入）；指代与画幅句同样跟随图片插件的 `image_prompt` 约定。
+
+```mermaid
+flowchart TB
+    gen[location image generate] --> refs[显式 reference_asset_ids<br/>0–5 张任意项目图片]
+    refs --> kind{kind}
+    kind -- image --> normal[image.generate / edit<br/>项目画幅]
+    kind -- panorama --> pano[image.generate / edit<br/>固定 2:1 等距柱状、左右无缝]
+    pano --> choose[人类选择候选]
+    choose --> viewer[3D 查看器调整 yaw / pitch / hfov]
+    viewer --> capture[创建普通子图并提交 PANO_VIEW<br/>panorama_capture_request]
+    capture --> selected[成功回调直接选中确定性产物]
+```
+
+- **普通图**：图片自己的完整 `prompt_text` → 画幅句（插件约定需要时）→ 地点与状态语义；不附加引用清单或默认用途。有参考图时 operation 为 edit，
+  无参考图时为 generate；参考图不需要来自同一地点。
+- **全景图**：在相同结构上增加固定 2:1 等距柱状投影、完整水平 360°、左右边缘无缝和无人物等约束。它仍只产生自己的候选，
+  不自动建立子图。
+- **全景取景**：输入是全景条目当前已选 Asset 与查看器提交的 yaw、pitch、hfov、项目画幅；没有 seed、没有
+  `provider_snapshot`。Core 同时创建带强制说明的普通图片条目，成功时直接选择产物。`source` 与 request 都是冻结 provenance，
+  不跟随父图变化。
+
+## 视频 recipe 输入编译
+
+```mermaid
+flowchart LR
+    frames[Keyframe 启用与已选 Asset] --> roles[Core 首尾帧语义角色]
+    facts[正文 · Segment 时长 · seed · 画幅] --> roles
+    book[active_recipe 与 recipe book] --> request[RecipeRequest]
+    manifest[当前绑定插件 manifest] --> labels[Core 槽位约束与 namespace 编号]
+    roles --> request
+    labels --> request
+    request --> plugin[插件 HTTP 请求翻译]
+    labels --> workset[视频专业工作集与 Web 输入预览]
+    settings[插件实例设置] --> plugin
+```
+
+- Core 按 recipe 的 slots 顺序读取已选边界与显式 bindings，校验 MIME、数量、唯一性、说明和时长；机制参数取当前 recipe 的保存值或默认值。
+- 标签由 Core 的同一编号器按 namespace 计算，顺序跟随 manifest 的槽位顺序（默认部署：首帧、尾帧、附加图）；不存在的输入不占号，Audio 与 Video 各自从 1 编号。
+- 含对白的 Segment 只有在每句对白都选定 WAV、发声起点已保存、Segment 时长覆盖全部音频，且当前 recipe 支持参考音频时才能提交视频。对白 WAV 需显式保存到 recipe 的参考音频列表，与手动参考共用容量和编号；未保存时只在视频卡与工作集 `dialogue_audio.unbound_lines` 软提示，不阻止提交。按钮从 Core 只读投影取得完整对白绑定草稿与可覆盖的本句历史 WAV 集合，覆盖旧条目、去重并保留其他手动输入；缺少任一句已选 TTS 或合计超限时不部分添加。生成与工作集均不隐式追加音频。换选 TTS 只刷新该 Segment 已存在的对应对白引用，不新增输入。
+- 提交的 instruction 就是已保存正文，Core 不在前后追加文字。构造视频工作集时 Core 把时长、实际输入标签和本段对白（说话者、原台词、按显式列表实际编号的 `<Audio N>`）交给插件的 `prompt_linter`，结果只写进 `video_prompt` 工作集的 `prompt_problems` 作软提示，不进入依赖原因、不阻止提交。检查规则由各插件自己说明（默认部署见 slatehand-providers-example 的视频插件 README）。
+- `video_prompt` 专业工作集暴露相同的实际 Asset ID 与标签，视频插件提供自己的 HTTP 输入映射和提示词 Skill；关键帧辅助图不会自动进入视频输入。
+  工作集另给出已保存的 `recipe_inputs`（`video.update_recipe_inputs` 的形状，按槽位、按键合并）与 `bindable_assets`：当前 recipe 显式槽位
+  按媒体类型与时长可接受的项目 Asset（ID、名称、媒体类型、时长、可进入的槽位）。列表只含导入素材、引用库与地点库的已选资源，
+  以及本 Scene 已选的关键帧、旁白与视频；未被选择的生成候选不列出，Core 校验仍接受任意本项目 Asset。FL2VA 没有显式槽位时为空。
+- 视频工作集的 `context.shots` 按覆盖顺序给出 Segment 的每个 Shot（构图、运镜、动作、声音、可见角色名与视图建议名）；
+  `continues_from_previous_segment` / `continues_into_next_segment` 标出与相邻 Segment 共享边界 Shot 的延续关系，
+  段内切镜写成软约束。
+- 视频卡通过只读 `inputs-preview` 请求预览未保存输入。Core 返回切换选项与原因，Web 不推导厂商模式规则或标签。
+- Generation 保存有序去重输入 Asset ID、recipe 机制参数和 `provider_snapshot`。完整引用数量由插件槽位决定（默认部署最多 12 个 Asset：2 张边界图、4 张附加图、3 条音频、3 条视频）。
+- 插件自行将分辨率设置与画幅换算成模型画布；Core 不解释插件的采样参数。
+
+### 输入签名与软提示
+
+提交时 Core 对“启用的首尾帧 Asset、视频正文、active_recipe、该 recipe 的 bindings/params、Segment 时长、画幅”计算 SHA-256 输入签名，
+存入 `video_input_snapshot`。之后若签名变化，候选显示 `inputs_outdated` 软提示——**只是提示**，不阻止选择、超分或装配。
+
+## Scene 成片与最终装配
+
+### Scene 成片（每种语言一版）
+
+```mermaid
+flowchart TB
+    segs[按脚本顺序遍历 Scene 内全部 Segment] --> eff[生效视频 = 超分版本 ?? 已选原视频]
+    eff --> trans{上一段尾帧启用 且 本段首帧启用<br/>且二者是同一个 Keyframe?}
+    trans -- 是 --> blend[transition = seam_blend（0.1 秒接缝融合）]
+    trans -- 否 --> cut[硬切]
+    blend & cut --> clips[SceneAssemblyPlan.clips]
+    cue[该语言已选旁白 + 时间基准（所选语言最长音频）] --> place[Cue 覆盖 Scene 全部 Segment<br/>旁白在 Scene 画面中居中]
+    clips & place --> align[按真实时长精确对轨（见上）]
+    align --> render[FFmpeg 渲染该语言 Scene 成片]
+```
+
+- `seam_blend` 只由“边界 Keyframe identity 相同且两侧都启用”触发，不是导演 dissolve；角色、环境、辅助图的复用不参与判断。
+- 输入血缘 = 全部生效视频 + 该语言旁白；双语言时另包含决定画面时长的另一语言旁白。
+- **当前有效判定**：对每个 Scene 与语言，取最近一个成功、未隐藏、有产物的 `scene_final_video` Generation；
+  只有它的 `input_asset_ids` 与按当前事实重建的输入**完全相等**时才算当前有效，否则视为过期。
+
+### 最终成片
+
+```mermaid
+flowchart TB
+    scenes[按脚本顺序遍历 Scene] --> both{该 Scene 所选语言的<br/>Scene 成片都当前有效?}
+    both -- 否 --> missing[记入缺失列表：Scene 序号《标题》（缺中文/英文）]
+    both -- 是 --> edge{上一 Scene 末段尾帧 与 本 Scene 首段首帧<br/>是同一 Keyframe 且都启用?}
+    edge -- 是 --> sb[seam_blend]
+    edge -- 否 --> hc[硬切]
+    sb & hc --> clip["FinalAssemblyClip：scene · zh_asset · en_asset · transition"]
+    missing --> anyMissing{有缺失?}
+    clip --> anyMissing
+    anyMissing -- 是 --> reject[拒绝装配，一次列出全部缺失]
+    anyMissing -- 否 --> render[FFmpeg：zh 计划、en 计划各渲染一次<br/>只拼接 Scene 成片字节]
+```
+
+最终装配不读取原始 Segment，也不重新混入旁白；Scene 内转场与对轨已固化在 Scene 成片里。Core 本机装配工具只接收媒体字节
+和受控计划，不接收路径、滤镜字符串或项目语义。
+
+### Scene Animatic
+
+- 输入：已审核旁白与已选 Keyframe 图；只读已有审核产物，不影响生产基线。
+- 每个 Segment 展示其已选关键帧图；首尾帧都齐备时，Segment 时长内两张图**平分时长硬切**。
+- 段间转场复用最终装配的接缝规则；旁白按成片同一算法精确对轨。
+- 历史版本保留，再次点击生成新版。
+
+## 失效传播
+
+```mermaid
+flowchart TB
+    ref[引用库：造型图/音色变化] --> kfUse[使用该角色的 Keyframe 选择]
+    ref -->|删除造型| kfRef[剪除 Keyframe 中对该造型的选择<br/>回到默认规则]
+    loc[地点语义 / 图片 / 选图变化] --> locOnly[只更新地点库事实<br/>不级联生产选择]
+    script[脚本：Scene setting / Shot / Segment 视觉或结构变化] --> rebuild[重建 Keyframe/视频绑定<br/>受影响 Segment 的视频选择]
+    script --> base[Core 同次写入重新校准生产基线<br/>无法校准时保持失效并返回原因]
+    cueEdit[Cue 某语言正文/参数变化] --> cueSel[该语言音频选择] --> base
+    kfUse --> kfDep[实际依赖这些帧的后继 Keyframe]
+    kf[Keyframe 正文/引用/绑定/选择变化] --> kfDep
+    kfUse & kf & kfDep --> vid[启用这些帧的 Segment 视频选择与超分]
+    vplan[视频正文 / recipe / 输入槽位变化] --> vid
+    vid --> sf[对应 Scene 成片（变为过期）]
+    cueSel --> sf
+    sf --> fa[最终装配计划作废]
+    fa --> ap[Approval 撤销]
+```
+
+不变量：
+
+- 只撤销**已过期的当前选择、派生计划与 Approval**；Asset、Generation、候选、seed、retry 血缘一律保留。
+- `workspace_layers` 只累加，上游回改不重锁任何内容层。
+- 地点库没有 Keyframe/Shot 生产绑定，地点、状态、图片与 Scene 绑定变化不级联失效 Keyframe、视频或装配。
+- 未启用的槽位与无关 Segment 不受影响。
+- 相关任务进行中、或提交结果未知且尚未隐藏或重试时，冲突修改被拒绝。
+- `project.preview_impact` 调用同一 parser 与影响计算，预览的 `invalidated` / `preserved` 与同 revision 上真实执行一致。
+
+## 资产使用与删除
+
+资产是否“在用”只由 Core 判定（`models/asset.py`），并逐 Asset 投影为 `is_in_use`、`usage_reasons`（英文 `code` + 中文 `label`）
+与 `retains_derived_assets_on_delete`。Web 只展示这些字段，不从 Generation 数量、血缘或文件名推断。
+
+| `code` | 含义 |
+| --- | --- |
+| `character_reference_image` / `character_voice_reference` / `narrator_voice_reference` | 引用库参考 |
+| `narration_audio` | 旁白已选音频 |
+| `location_image` | 地点图片当前选图；全景取景子图按自己的选图记录 |
+| `keyframe_selected_asset` / `keyframe_reference_image` | Keyframe 已选图 / Segment 辅助图 |
+| `segment_video_selected` / `segment_video_upscaled` | Segment 已选视频 / 超分视频 |
+| `segment_video_input_image` / `_audio` / `_video` | Ref2VA 其他图片（`additional_images`）/ 参考音频 / 参考视频 |
+| `final_assembly` | 最终装配成片 |
+| `visible_candidate` | 仍是某目标的可见候选 |
+| `unfinished_generation_input` | 未结束任务、或结果未知且尚未隐藏或重试的任务的输入 |
+| `director_wait` | Director 任务正在等待 |
+
+- Generation 的 `input_asset_ids` / `output_asset_id` **只表示血缘，不是使用关系**。例如资产中心对任意 MP4 抽帧得到的 PNG，
+  在被 Keyframe 选择前保持未使用、可以单独删除（首帧卡抽帧产物例外：它是该 Keyframe 的可见候选）。
+- 角色或造型删除后，其设定图 Generation 与 Asset 保留为历史，但不再产生 `visible_candidate` 使用原因；
+  若图片仍被其它项目字段引用或作为未结束任务的输入，仍然阻止删除。
+- 永久删除只能由用户在资产中心显式触发，且 Asset 不能有任何使用原因。删除时：
+  - 已隐藏、只服务于该 Asset 的下游血缘按封闭闭包一并清理；
+  - 若某个终态 Generation 只把它当作源输入，Core 删除失去可复现性的那条 Generation 记录，**保留**已物化的派生 Asset
+    （删除前提示用户：派生结果可继续用，但不能再从该源重新处理）。
+
+## 资产中心处理链
+
+```mermaid
+flowchart LR
+    imp[导入 WAV/MP4/图片] -->|校验签名 · 读真实时长| asset[(未绑定 Asset)]
+    asset -->|WAV| trim[截取<br/>按采样帧对齐 · PCM16 副本] --> trimmed[(audio/trims)]
+    asset -->|WAV| fx[后处理 radio<br/>preset · strength · seed · 可选区间] --> fxout[(audio/effects<br/>+ 事件时间线)]
+    asset -->|MP4| sep[audio.separate 插件] --> voice[(人声 stem)] & bg[(背景 stem)]
+    voice & bg -->|可选再后处理| pick[选择原始或处理后副本]
+    pick --> remix[重新混音<br/>各自 gain + 时间区间] --> remixed[(videos/audio-remixes)]
+    asset -->|MP4| frame[按帧号抽帧] --> png[(images/video-frames)]
+    gen[通用音频生成<br/>voice.design / speech.synthesize] --> genout[(audio/generated)]
+```
+
+- 截取与后处理是 Core 内同步操作：`core/audio_effects` 是无项目状态的 DSP 后端；Store 在一次 CAS 写入中保留源 Asset、
+  登记处理后副本，并追加已完成且隐藏的 `audio_trim/process` 或 `audio_effect/process` Generation（含处理器版本、seed、
+  实际区间与事件时间线）。截取不归类为效果，不会被误当成“最近一次处理结果”。
+- 分离以共享 `batch_id` 原子创建 voice/background 两个 Generation，各回收一个 WAV；background 是去除主要人声后的剩余声音，
+  不承诺纯音乐。混音 Provider 复制视频流、输出新 MP4，源视频与全部中间产物不变。
+- 所有产物都是新的不可变 Asset，不自动绑定任何生产节点。

@@ -1,0 +1,6 @@
+{
+  "fence": "```json\n{}",
+  "extra": "{\"reply_markdown\":\"ok\",\"cue_updates\":[],\"extra\":true}",
+  "missing": "{\"cue_updates\":[]}",
+  "type": "{\"reply_markdown\":1,\"cue_updates\":[]}"
+}

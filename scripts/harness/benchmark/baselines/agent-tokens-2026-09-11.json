@@ -1,0 +1,263 @@
+{
+  "version": 1,
+  "date": "2026-09-11",
+  "runtime": "Pi 0.85.0",
+  "provider": "openai-codex",
+  "model": "gpt-5.6-sol",
+  "thinking": "medium",
+  "structural_baseline": "v0.1.0 (bc1437e8)",
+  "optimized_behavior_commit": "b644d9a",
+  "method": "Paired replay of locally recorded successful requests, retaining facts and user text; before uses recorded definitions, after uses current instructions and schema. Not a replay of production mutations.",
+  "supplemental_ref2va": {
+    "method": "Synthetic six-second cafe task with first/last frame, one voice reference and exact Chinese dialogue; not included in archived-task totals.",
+    "before": {
+      "input_tokens": 10220,
+      "cached_input_tokens": 0,
+      "uncached_input_tokens": 10220,
+      "output_tokens": 1058,
+      "model_calls": 1,
+      "duration_ms": 23058,
+      "succeeded": true,
+      "contract_checks_passed": true
+    },
+    "after": {
+      "input_tokens": 6655,
+      "cached_input_tokens": 0,
+      "uncached_input_tokens": 6655,
+      "output_tokens": 1074,
+      "model_calls": 1,
+      "duration_ms": 28134,
+      "succeeded": true,
+      "contract_checks_passed": true
+    }
+  },
+  "rows": [
+    {
+      "phase": "before",
+      "lane": "director",
+      "turn": 1,
+      "model_calls": 1,
+      "retry_count": 0,
+      "input_tokens": 5287,
+      "cached_input_tokens": 0,
+      "uncached_input_tokens": 5287,
+      "output_tokens": 1962,
+      "duration_ms": 67002,
+      "provider_payload_utf8_bytes": [
+        21172
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "before",
+      "lane": "director",
+      "turn": 2,
+      "model_calls": 1,
+      "retry_count": 0,
+      "input_tokens": 10411,
+      "cached_input_tokens": 5120,
+      "uncached_input_tokens": 5291,
+      "output_tokens": 1259,
+      "duration_ms": 42848,
+      "provider_payload_utf8_bytes": [
+        41399
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "before",
+      "lane": "director",
+      "turn": 3,
+      "model_calls": 1,
+      "retry_count": 0,
+      "input_tokens": 15598,
+      "cached_input_tokens": 10240,
+      "uncached_input_tokens": 5358,
+      "output_tokens": 964,
+      "duration_ms": 34121,
+      "provider_payload_utf8_bytes": [
+        62766
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "before",
+      "lane": "h3",
+      "turn": 1,
+      "model_calls": 1,
+      "retry_count": 0,
+      "input_tokens": 10871,
+      "cached_input_tokens": 0,
+      "uncached_input_tokens": 10871,
+      "output_tokens": 485,
+      "duration_ms": 20264,
+      "provider_payload_utf8_bytes": [
+        48849
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "before",
+      "lane": "keyframe",
+      "turn": 1,
+      "model_calls": 1,
+      "retry_count": 0,
+      "input_tokens": 9209,
+      "cached_input_tokens": 0,
+      "uncached_input_tokens": 9209,
+      "output_tokens": 2697,
+      "duration_ms": 90005,
+      "provider_payload_utf8_bytes": [
+        36249
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "before",
+      "lane": "scene_reference",
+      "turn": 1,
+      "model_calls": 2,
+      "retry_count": 0,
+      "input_tokens": 9197,
+      "cached_input_tokens": 3712,
+      "uncached_input_tokens": 5485,
+      "output_tokens": 3676,
+      "duration_ms": 123175,
+      "provider_payload_utf8_bytes": [
+        15037,
+        22448
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "before",
+      "lane": "reference_library",
+      "turn": 1,
+      "model_calls": 3,
+      "retry_count": 0,
+      "input_tokens": 6200,
+      "cached_input_tokens": 1536,
+      "uncached_input_tokens": 4664,
+      "output_tokens": 335,
+      "duration_ms": 18783,
+      "provider_payload_utf8_bytes": [
+        8521,
+        11453,
+        12798
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "after",
+      "lane": "director",
+      "turn": 1,
+      "model_calls": 1,
+      "retry_count": 0,
+      "input_tokens": 5059,
+      "cached_input_tokens": 0,
+      "uncached_input_tokens": 5059,
+      "output_tokens": 1657,
+      "duration_ms": 57256,
+      "provider_payload_utf8_bytes": [
+        19466
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "after",
+      "lane": "director",
+      "turn": 2,
+      "model_calls": 1,
+      "retry_count": 0,
+      "input_tokens": 8358,
+      "cached_input_tokens": 4864,
+      "uncached_input_tokens": 3494,
+      "output_tokens": 994,
+      "duration_ms": 34601,
+      "provider_payload_utf8_bytes": [
+        31917
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "after",
+      "lane": "director",
+      "turn": 3,
+      "model_calls": 1,
+      "retry_count": 0,
+      "input_tokens": 11759,
+      "cached_input_tokens": 8192,
+      "uncached_input_tokens": 3567,
+      "output_tokens": 361,
+      "duration_ms": 13786,
+      "provider_payload_utf8_bytes": [
+        45846
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "after",
+      "lane": "h3",
+      "turn": 1,
+      "model_calls": 1,
+      "retry_count": 0,
+      "input_tokens": 5620,
+      "cached_input_tokens": 0,
+      "uncached_input_tokens": 5620,
+      "output_tokens": 510,
+      "duration_ms": 19618,
+      "provider_payload_utf8_bytes": [
+        24874
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "after",
+      "lane": "keyframe",
+      "turn": 1,
+      "model_calls": 1,
+      "retry_count": 0,
+      "input_tokens": 8611,
+      "cached_input_tokens": 0,
+      "uncached_input_tokens": 8611,
+      "output_tokens": 3155,
+      "duration_ms": 104048,
+      "provider_payload_utf8_bytes": [
+        32696
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "after",
+      "lane": "scene_reference",
+      "turn": 1,
+      "model_calls": 1,
+      "retry_count": 0,
+      "input_tokens": 4533,
+      "cached_input_tokens": 0,
+      "uncached_input_tokens": 4533,
+      "output_tokens": 3422,
+      "duration_ms": 112495,
+      "provider_payload_utf8_bytes": [
+        16859
+      ],
+      "succeeded": true
+    },
+    {
+      "phase": "after",
+      "lane": "reference_library",
+      "turn": 1,
+      "model_calls": 1,
+      "retry_count": 0,
+      "input_tokens": 1596,
+      "cached_input_tokens": 0,
+      "uncached_input_tokens": 1596,
+      "output_tokens": 280,
+      "duration_ms": 12296,
+      "provider_payload_utf8_bytes": [
+        7002
+      ],
+      "succeeded": true
+    }
+  ]
+}

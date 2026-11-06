@@ -1,0 +1,6 @@
+**
+!dist-runtime-exit/*.whl
+!tests/**
+!scripts/harness/**
+!web/dist/**
+**/__pycache__/**

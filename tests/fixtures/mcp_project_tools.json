@@ -1,0 +1,4294 @@
+[
+  {
+    "description": "局部脚本类型化编辑，Core分配新ID；保留已有对白须回传其id，删除已有对白须经用户确认后把id列入dialogue_removals。",
+    "inputSchema": {
+      "$defs": {
+        "Boundary": {
+          "additionalProperties": false,
+          "properties": {
+            "continuity_instruction": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "reason": {
+              "enum": [
+                "model_constraint",
+                "continuity_anchor",
+                "control_boundary",
+                "failure_cost"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason",
+            "continuity_instruction"
+          ],
+          "type": "object"
+        },
+        "Dialogue": {
+          "additionalProperties": false,
+          "properties": {
+            "character_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "delivery": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "speaker_label": {
+              "anyOf": [
+                {
+                  "maxLength": 60,
+                  "minLength": 1,
+                  "pattern": "\\S",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "text": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "voice_description": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "minLength": 1,
+                  "pattern": "\\S",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "character_id",
+            "text",
+            "delivery"
+          ],
+          "type": "object"
+        },
+        "NarrationTrackInput": {
+          "additionalProperties": false,
+          "properties": {
+            "recipe_params": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "items": {
+                        "type": "number"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              "type": "object"
+            },
+            "seed": {
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "text": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "text",
+            "seed"
+          ],
+          "type": "object"
+        },
+        "NewSegment": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "boundary_from_previous": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Boundary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dialogue_lines": {
+              "items": {
+                "$ref": "#/$defs/Dialogue"
+              },
+              "type": "array"
+            },
+            "duration_estimate_seconds": {
+              "minimum": 0.2,
+              "type": "number"
+            },
+            "shot_indexes": {
+              "items": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "shot_indexes",
+            "duration_estimate_seconds",
+            "action",
+            "dialogue_lines",
+            "boundary_from_previous"
+          ],
+          "type": "object"
+        },
+        "SceneFields": {
+          "additionalProperties": false,
+          "properties": {
+            "setting": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "summary": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "SceneInsert": {
+          "additionalProperties": false,
+          "properties": {
+            "driver": {
+              "enum": [
+                "drama",
+                "narration"
+              ],
+              "type": "string"
+            },
+            "narration_cue": {
+              "$ref": "#/$defs/SceneNarrationCue"
+            },
+            "segments": {
+              "items": {
+                "$ref": "#/$defs/NewSegment"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            "setting": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "shots": {
+              "items": {
+                "$ref": "#/$defs/Shot"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            "summary": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "summary",
+            "setting"
+          ],
+          "type": "object"
+        },
+        "SceneNarrationCue": {
+          "additionalProperties": false,
+          "properties": {
+            "en": {
+              "$ref": "#/$defs/NarrationTrackInput"
+            },
+            "zh": {
+              "$ref": "#/$defs/NarrationTrackInput"
+            }
+          },
+          "required": [
+            "zh",
+            "en"
+          ],
+          "type": "object"
+        },
+        "Segment": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "boundary_from_previous": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Boundary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dialogue_lines": {
+              "items": {
+                "$ref": "#/$defs/Dialogue"
+              },
+              "type": "array"
+            },
+            "duration_estimate_seconds": {
+              "minimum": 0.2,
+              "type": "number"
+            },
+            "shot_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "shot_ids",
+            "duration_estimate_seconds",
+            "action",
+            "dialogue_lines",
+            "boundary_from_previous"
+          ],
+          "type": "object"
+        },
+        "SegmentFields": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "boundary_from_previous": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Boundary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dialogue_lines": {
+              "items": {
+                "$ref": "#/$defs/Dialogue"
+              },
+              "type": "array"
+            },
+            "duration_estimate_seconds": {
+              "minimum": 0.2,
+              "type": "number"
+            },
+            "shot_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
+        "Shot": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "audio_direction": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "camera_movement": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "composition": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "transition_in": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "visible_character_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array"
+            }
+          },
+          "required": [
+            "visible_character_ids",
+            "composition",
+            "camera_movement",
+            "action",
+            "audio_direction",
+            "transition_in"
+          ],
+          "type": "object"
+        },
+        "ShotFields": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "audio_direction": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "camera_movement": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "composition": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "transition_in": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "visible_character_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
+        "delete_scene": {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "delete_scene"
+            },
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "scene_id"
+          ],
+          "type": "object"
+        },
+        "delete_segment": {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "delete_segment"
+            },
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "scene_id",
+            "segment_id"
+          ],
+          "type": "object"
+        },
+        "delete_shot": {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "delete_shot"
+            },
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "shot_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "scene_id",
+            "shot_id"
+          ],
+          "type": "object"
+        },
+        "insert_scene": {
+          "additionalProperties": false,
+          "properties": {
+            "after_scene_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "op": {
+              "const": "insert_scene"
+            },
+            "scene": {
+              "$ref": "#/$defs/SceneInsert"
+            }
+          },
+          "required": [
+            "op",
+            "after_scene_id",
+            "scene"
+          ],
+          "type": "object"
+        },
+        "insert_segment": {
+          "additionalProperties": false,
+          "properties": {
+            "after_segment_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "op": {
+              "const": "insert_segment"
+            },
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "segment": {
+              "$ref": "#/$defs/Segment"
+            }
+          },
+          "required": [
+            "op",
+            "scene_id",
+            "after_segment_id",
+            "segment"
+          ],
+          "type": "object"
+        },
+        "insert_shot": {
+          "additionalProperties": false,
+          "oneOf": [
+            {
+              "properties": {
+                "attach_to_segment_id": {
+                  "type": "string"
+                },
+                "new_segment": {
+                  "type": "null"
+                }
+              },
+              "required": [
+                "attach_to_segment_id"
+              ]
+            },
+            {
+              "properties": {
+                "attach_to_segment_id": {
+                  "type": "null"
+                },
+                "new_segment": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "new_segment"
+              ]
+            }
+          ],
+          "properties": {
+            "after_shot_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "attach_to_segment_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "new_segment": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NewSegment"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "op": {
+              "const": "insert_shot"
+            },
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "shot": {
+              "$ref": "#/$defs/Shot"
+            }
+          },
+          "required": [
+            "op",
+            "scene_id",
+            "after_shot_id",
+            "shot"
+          ],
+          "type": "object"
+        },
+        "merge_adjacent_scenes": {
+          "additionalProperties": false,
+          "properties": {
+            "left_scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "op": {
+              "const": "merge_adjacent_scenes"
+            },
+            "right_scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "left_scene_id",
+            "right_scene_id"
+          ],
+          "type": "object"
+        },
+        "merge_adjacent_segments": {
+          "additionalProperties": false,
+          "properties": {
+            "left_segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "merged": {
+              "$ref": "#/$defs/Segment"
+            },
+            "op": {
+              "const": "merge_adjacent_segments"
+            },
+            "preserve_id": {
+              "enum": [
+                "left",
+                "right"
+              ],
+              "type": "string"
+            },
+            "right_segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "left_segment_id",
+            "right_segment_id",
+            "preserve_id",
+            "merged"
+          ],
+          "type": "object"
+        },
+        "move_scene": {
+          "additionalProperties": false,
+          "properties": {
+            "after_scene_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "op": {
+              "const": "move_scene"
+            },
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "scene_id",
+            "after_scene_id"
+          ],
+          "type": "object"
+        },
+        "move_segment": {
+          "additionalProperties": false,
+          "properties": {
+            "after_segment_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "op": {
+              "const": "move_segment"
+            },
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "scene_id",
+            "segment_id",
+            "after_segment_id"
+          ],
+          "type": "object"
+        },
+        "split_segment": {
+          "additionalProperties": false,
+          "properties": {
+            "first": {
+              "$ref": "#/$defs/Segment"
+            },
+            "op": {
+              "const": "split_segment"
+            },
+            "preserve_id": {
+              "enum": [
+                "first",
+                "second"
+              ],
+              "type": "string"
+            },
+            "second": {
+              "$ref": "#/$defs/Segment"
+            },
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "segment_id",
+            "preserve_id",
+            "first",
+            "second"
+          ],
+          "type": "object"
+        },
+        "update_scene_fields": {
+          "additionalProperties": false,
+          "properties": {
+            "fields": {
+              "$ref": "#/$defs/SceneFields"
+            },
+            "op": {
+              "const": "update_scene_fields"
+            },
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "scene_id",
+            "fields"
+          ],
+          "type": "object"
+        },
+        "update_segment_fields": {
+          "additionalProperties": false,
+          "properties": {
+            "fields": {
+              "$ref": "#/$defs/SegmentFields"
+            },
+            "op": {
+              "const": "update_segment_fields"
+            },
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "segment_id",
+            "fields"
+          ],
+          "type": "object"
+        },
+        "update_shot_fields": {
+          "additionalProperties": false,
+          "properties": {
+            "fields": {
+              "$ref": "#/$defs/ShotFields"
+            },
+            "op": {
+              "const": "update_shot_fields"
+            },
+            "shot_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "shot_id",
+            "fields"
+          ],
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "dialogue_removals": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "operations": {
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/insert_shot"
+              },
+              {
+                "$ref": "#/$defs/update_scene_fields"
+              },
+              {
+                "$ref": "#/$defs/insert_scene"
+              },
+              {
+                "$ref": "#/$defs/move_scene"
+              },
+              {
+                "$ref": "#/$defs/delete_scene"
+              },
+              {
+                "$ref": "#/$defs/merge_adjacent_scenes"
+              },
+              {
+                "$ref": "#/$defs/update_shot_fields"
+              },
+              {
+                "$ref": "#/$defs/delete_shot"
+              },
+              {
+                "$ref": "#/$defs/update_segment_fields"
+              },
+              {
+                "$ref": "#/$defs/insert_segment"
+              },
+              {
+                "$ref": "#/$defs/move_segment"
+              },
+              {
+                "$ref": "#/$defs/delete_segment"
+              },
+              {
+                "$ref": "#/$defs/split_segment"
+              },
+              {
+                "$ref": "#/$defs/merge_adjacent_segments"
+              }
+            ]
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "scene_ids",
+        "operations"
+      ],
+      "type": "object"
+    },
+    "name": "edit_script"
+  },
+  {
+    "description": "局部更新旁白正文/参数，或解除当前音频引用；不自动生成。",
+    "inputSchema": {
+      "$defs": {
+        "NarrationFields": {
+          "additionalProperties": false,
+          "properties": {
+            "clear_selected_audio": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "zh",
+                    "en"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "en": {
+              "$ref": "#/$defs/NarrationTrackFields"
+            },
+            "zh": {
+              "$ref": "#/$defs/NarrationTrackFields"
+            }
+          },
+          "type": "object"
+        },
+        "NarrationTrackFields": {
+          "additionalProperties": false,
+          "properties": {
+            "recipe_params": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "items": {
+                        "type": "number"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              "type": "object"
+            },
+            "seed": {
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "text": {
+              "maxLength": 20000,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "cue_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "fields": {
+          "$ref": "#/$defs/NarrationFields"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "scene_ids",
+        "cue_id",
+        "fields"
+      ],
+      "type": "object"
+    },
+    "name": "edit_narration"
+  },
+  {
+    "description": "更新 Keyframe 计划/辅助图/边界，不生成。",
+    "inputSchema": {
+      "$defs": {
+        "CharacterReference": {
+          "additionalProperties": false,
+          "properties": {
+            "character_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "look_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "character_id",
+            "look_id"
+          ],
+          "type": "object"
+        },
+        "FrameFields": {
+          "additionalProperties": false,
+          "properties": {
+            "character_references": {
+              "items": {
+                "$ref": "#/$defs/CharacterReference"
+              },
+              "type": "array"
+            },
+            "extraction_suggested": {
+              "type": "boolean"
+            },
+            "prompt_text": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "reference_keyframe_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 4,
+              "type": "array"
+            },
+            "reference_location_image_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 4,
+              "type": "array"
+            },
+            "reuse_keyframe_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "visible_character_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
+        "bind_slot": {
+          "additionalProperties": false,
+          "properties": {
+            "keyframe_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "op": {
+              "const": "bind_slot"
+            },
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "slot": {
+              "enum": [
+                "start",
+                "end"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "segment_id",
+            "slot",
+            "keyframe_id"
+          ],
+          "type": "object"
+        },
+        "set_activation": {
+          "additionalProperties": false,
+          "properties": {
+            "end_enabled": {
+              "type": "boolean"
+            },
+            "op": {
+              "const": "set_activation"
+            },
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "start_enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "op",
+            "segment_id",
+            "start_enabled",
+            "end_enabled"
+          ],
+          "type": "object"
+        },
+        "set_aux_references": {
+          "additionalProperties": false,
+          "properties": {
+            "asset_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            "op": {
+              "const": "set_aux_references"
+            },
+            "segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "segment_id",
+            "asset_ids"
+          ],
+          "type": "object"
+        },
+        "share_boundary": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_adjacency": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "cross_shot",
+                    "intra_shot"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "left_segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "op": {
+              "const": "share_boundary"
+            },
+            "right_segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "source_keyframe_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "left_segment_id",
+            "right_segment_id",
+            "source_keyframe_id",
+            "expected_adjacency"
+          ],
+          "type": "object"
+        },
+        "split_boundary": {
+          "additionalProperties": false,
+          "properties": {
+            "clone_side": {
+              "enum": [
+                "left_end",
+                "right_start"
+              ],
+              "type": "string"
+            },
+            "copy_selection": {
+              "type": "boolean"
+            },
+            "left_segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "op": {
+              "const": "split_boundary"
+            },
+            "right_segment_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "left_segment_id",
+            "right_segment_id",
+            "clone_side",
+            "copy_selection"
+          ],
+          "type": "object"
+        },
+        "update_frame_fields": {
+          "additionalProperties": false,
+          "properties": {
+            "fields": {
+              "$ref": "#/$defs/FrameFields"
+            },
+            "keyframe_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "op": {
+              "const": "update_frame_fields"
+            }
+          },
+          "required": [
+            "op",
+            "keyframe_id",
+            "fields"
+          ],
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "operations": {
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/update_frame_fields"
+              },
+              {
+                "$ref": "#/$defs/set_activation"
+              },
+              {
+                "$ref": "#/$defs/set_aux_references"
+              },
+              {
+                "$ref": "#/$defs/bind_slot"
+              },
+              {
+                "$ref": "#/$defs/share_boundary"
+              },
+              {
+                "$ref": "#/$defs/split_boundary"
+              }
+            ]
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "operations"
+      ],
+      "type": "object"
+    },
+    "name": "edit_keyframes"
+  },
+  {
+    "description": "编辑地点语义、独立图片条目与可选Scene关系；新建项以key互引，不能选候选。",
+    "inputSchema": {
+      "$defs": {
+        "CaptureSource": {
+          "additionalProperties": false,
+          "properties": {
+            "hfov_deg": {
+              "type": "number"
+            },
+            "panorama_image_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "pitch_deg": {
+              "type": "number"
+            },
+            "yaw_deg": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "panorama_image_id",
+            "yaw_deg",
+            "pitch_deg",
+            "hfov_deg"
+          ],
+          "type": "object"
+        },
+        "ImageFields": {
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "image",
+                "panorama"
+              ],
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "prompt_text": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "reference_asset_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 5,
+              "type": "array"
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CaptureSource"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "KeyLight": {
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "maxLength": 20000,
+              "type": "string"
+            }
+          },
+          "required": [
+            "description"
+          ],
+          "type": "object"
+        },
+        "LocationFields": {
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "key_light": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/KeyLight"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "bind_scene": {
+          "additionalProperties": false,
+          "properties": {
+            "location_id": {
+              "anyOf": [
+                {
+                  "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "op": {
+              "const": "bind_scene"
+            },
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "state_id": {
+              "anyOf": [
+                {
+                  "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "scene_id",
+            "location_id",
+            "state_id"
+          ],
+          "type": "object"
+        },
+        "clear_image_selection": {
+          "additionalProperties": false,
+          "properties": {
+            "image_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "op": {
+              "const": "clear_image_selection"
+            }
+          },
+          "required": [
+            "op",
+            "image_id"
+          ],
+          "type": "object"
+        },
+        "create_image": {
+          "additionalProperties": false,
+          "properties": {
+            "fields": {
+              "$ref": "#/$defs/ImageFields"
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            "location_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "op": {
+              "const": "create_image"
+            }
+          },
+          "required": [
+            "op",
+            "location_id",
+            "key",
+            "fields"
+          ],
+          "type": "object"
+        },
+        "create_location": {
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "op": {
+              "const": "create_location"
+            }
+          },
+          "required": [
+            "op",
+            "key",
+            "name",
+            "description"
+          ],
+          "type": "object"
+        },
+        "delete_fixture": {
+          "additionalProperties": false,
+          "properties": {
+            "fixture_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "location_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "op": {
+              "const": "delete_fixture"
+            }
+          },
+          "required": [
+            "op",
+            "location_id",
+            "fixture_id"
+          ],
+          "type": "object"
+        },
+        "delete_image": {
+          "additionalProperties": false,
+          "properties": {
+            "image_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "op": {
+              "const": "delete_image"
+            }
+          },
+          "required": [
+            "op",
+            "image_id"
+          ],
+          "type": "object"
+        },
+        "delete_location": {
+          "additionalProperties": false,
+          "properties": {
+            "location_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "op": {
+              "const": "delete_location"
+            }
+          },
+          "required": [
+            "op",
+            "location_id"
+          ],
+          "type": "object"
+        },
+        "delete_state": {
+          "additionalProperties": false,
+          "properties": {
+            "location_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "op": {
+              "const": "delete_state"
+            },
+            "state_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "location_id",
+            "state_id"
+          ],
+          "type": "object"
+        },
+        "update_image": {
+          "additionalProperties": false,
+          "properties": {
+            "fields": {
+              "$ref": "#/$defs/ImageFields"
+            },
+            "image_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "op": {
+              "const": "update_image"
+            }
+          },
+          "required": [
+            "op",
+            "image_id",
+            "fields"
+          ],
+          "type": "object"
+        },
+        "update_location": {
+          "additionalProperties": false,
+          "properties": {
+            "fields": {
+              "$ref": "#/$defs/LocationFields"
+            },
+            "location_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "op": {
+              "const": "update_location"
+            }
+          },
+          "required": [
+            "op",
+            "location_id",
+            "fields"
+          ],
+          "type": "object"
+        },
+        "upsert_fixture": {
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "fixture": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "location_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "op": {
+              "const": "upsert_fixture"
+            }
+          },
+          "required": [
+            "op",
+            "location_id",
+            "fixture",
+            "name",
+            "description"
+          ],
+          "type": "object"
+        },
+        "upsert_state": {
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "maxLength": 20000,
+              "type": "string"
+            },
+            "location_id": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "op": {
+              "const": "upsert_state"
+            },
+            "state": {
+              "pattern": "^(?:[0-9a-f]{32}|[a-z][a-z0-9_-]{0,63})$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "location_id",
+            "state",
+            "name",
+            "description"
+          ],
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "location_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "operations": {
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/create_location"
+              },
+              {
+                "$ref": "#/$defs/update_location"
+              },
+              {
+                "$ref": "#/$defs/delete_location"
+              },
+              {
+                "$ref": "#/$defs/upsert_fixture"
+              },
+              {
+                "$ref": "#/$defs/delete_fixture"
+              },
+              {
+                "$ref": "#/$defs/upsert_state"
+              },
+              {
+                "$ref": "#/$defs/delete_state"
+              },
+              {
+                "$ref": "#/$defs/create_image"
+              },
+              {
+                "$ref": "#/$defs/update_image"
+              },
+              {
+                "$ref": "#/$defs/delete_image"
+              },
+              {
+                "$ref": "#/$defs/bind_scene"
+              },
+              {
+                "$ref": "#/$defs/clear_image_selection"
+              }
+            ]
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "location_ids",
+        "scene_ids",
+        "operations"
+      ],
+      "type": "object"
+    },
+    "name": "edit_locations"
+  },
+  {
+    "description": "新增/修改角色造型（外观、使用场合），不生成、不删除。",
+    "inputSchema": {
+      "$defs": {
+        "LookFields": {
+          "additionalProperties": false,
+          "properties": {
+            "appearance": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            "usage": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "add_look": {
+          "additionalProperties": false,
+          "properties": {
+            "appearance": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "character_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            "op": {
+              "const": "add_look"
+            },
+            "usage": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "character_id",
+            "name",
+            "appearance",
+            "usage"
+          ],
+          "type": "object"
+        },
+        "update_look": {
+          "additionalProperties": false,
+          "properties": {
+            "fields": {
+              "$ref": "#/$defs/LookFields"
+            },
+            "look_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "op": {
+              "const": "update_look"
+            }
+          },
+          "required": [
+            "op",
+            "look_id",
+            "fields"
+          ],
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "operations": {
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/add_look"
+              },
+              {
+                "$ref": "#/$defs/update_look"
+              }
+            ]
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "operations"
+      ],
+      "type": "object"
+    },
+    "name": "edit_looks"
+  },
+  {
+    "description": "生成明确授权的图片、音频或视频候选，或执行一次全景取景；其他图片用 kind=reference_image，target_id 为 reference_image_plans 中的规划 ID；kind=frame_extraction 从上一 Segment 当前视频抽一帧作为该首帧候选（默认倒数第 5 帧）；不自动选择。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "frame_index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "identity_asset_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 4,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "narration",
+            "dialogue",
+            "keyframe",
+            "reference_image",
+            "video",
+            "upscale",
+            "look_sheet",
+            "location_image",
+            "panorama_capture",
+            "frame_extraction"
+          ],
+          "type": "string"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "enum": [
+                "zh",
+                "en"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "target_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "kind",
+        "target_id"
+      ],
+      "type": "object"
+    },
+    "name": "generate_media"
+  },
+  {
+    "description": "观察/取消/重试/隐藏明确Generation。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "action": {
+              "const": "wait"
+            },
+            "generation_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "action": {
+              "enum": [
+                "cancel",
+                "retry",
+                "dismiss"
+              ]
+            },
+            "generation_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 1,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "expected_revision",
+            "idempotency_key"
+          ]
+        }
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "wait",
+            "cancel",
+            "retry",
+            "dismiss"
+          ],
+          "type": "string"
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "generation_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "action",
+        "generation_ids"
+      ],
+      "type": "object"
+    },
+    "name": "manage_generation"
+  },
+  {
+    "description": "成套生成批次：keyframe 波次或 location 成套参考图；continue 带原批次 ID。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "action": {
+              "const": "start"
+            },
+            "run_id": {
+              "type": "null"
+            },
+            "target_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "target_ids"
+          ]
+        },
+        {
+          "properties": {
+            "action": {
+              "const": "continue"
+            },
+            "run_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "target_ids": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "run_id"
+          ]
+        }
+      ],
+      "properties": {
+        "action": {
+          "enum": [
+            "start",
+            "continue"
+          ],
+          "type": "string"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "keyframe",
+            "location"
+          ],
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "kind",
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "media_batch"
+  },
+  {
+    "description": "解锁视觉生产，建立 Keyframe 与视频计划；不生成。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "const": "unlock_visual_production",
+          "type": "string"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "unlock_production"
+  },
+  {
+    "description": "提交Scene Animatic、Scene成片或全片装配，不自动批准。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "enum": [
+                "animatic",
+                "scene"
+              ]
+            },
+            "scene_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "scene_id"
+          ]
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "final"
+            },
+            "scene_id": {
+              "type": "null"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "animatic",
+            "scene",
+            "final"
+          ],
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "scene_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "name": "assemble_media"
+  },
+  {
+    "description": "只读指定run状态。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "run_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "run_id"
+      ],
+      "type": "object"
+    },
+    "name": "read_run"
+  },
+  {
+    "description": "显式取消指定领域run。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "run_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "run_id"
+      ],
+      "type": "object"
+    },
+    "name": "cancel_run"
+  },
+  {
+    "description": "按原请求key恢复本caller的应用回执。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "request_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "request_key"
+      ],
+      "type": "object"
+    },
+    "name": "read_request"
+  },
+  {
+    "description": "分页读取明确目标候选，不选择。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "video_reference_image",
+            "character_look_sheet",
+            "character_voice",
+            "narrator_voice",
+            "narration_audio",
+            "dialogue_audio",
+            "location_image",
+            "panorama_capture",
+            "keyframe_image",
+            "segment_video",
+            "video_upscale",
+            "final_video",
+            "scene_final_video",
+            "scene_animatic"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "target_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "project_id",
+        "kind",
+        "target_ids"
+      ],
+      "type": "object"
+    },
+    "name": "list_candidates"
+  },
+  {
+    "description": "为一个 Keyframe 选定图片，成为后续生成与引用的选中图：本帧候选（keyframe_image 或抽帧）、另一 Keyframe 当前选中图（原样复用）或任一项目图片 Asset；选前用 read_media_input 看图；人类可随时改选。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "keyframe_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "generation",
+            "keyframe",
+            "asset"
+          ],
+          "type": "string"
+        },
+        "source_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "keyframe_id",
+        "source",
+        "source_id"
+      ],
+      "type": "object"
+    },
+    "name": "select_keyframe_candidate"
+  },
+  {
+    "description": "为一句对白采用该句 dialogue_audio 候选 WAV；会清空该 Segment 全部发声起点，之后须用 set_dialogue_timing 按真实时长重新校准；人类可随时改选。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "dialogue_line_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "generation_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "dialogue_line_id",
+        "generation_id"
+      ],
+      "type": "object"
+    },
+    "name": "select_dialogue_candidate"
+  },
+  {
+    "description": "把一张项目图片选入 Segment 其他图片的 slot_index 卡片（成为实际视频输入），或移除；来源可为生成候选、关键帧已选图或任一项目图片 Asset，选前用 read_media_input 看图；已启用的首尾帧不能重复选入；人类可随时改选。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "segment_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "slot_index": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "enum": [
+            "generation",
+            "keyframe",
+            "asset",
+            "remove"
+          ],
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "scene_ids",
+        "segment_id",
+        "slot_index",
+        "source"
+      ],
+      "type": "object"
+    },
+    "name": "select_reference_image"
+  },
+  {
+    "description": "设置单Segment视频模式，不生成。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "recipe_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "segment_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "scene_ids",
+        "segment_id",
+        "recipe_id"
+      ],
+      "type": "object"
+    },
+    "name": "set_video_recipe"
+  },
+  {
+    "description": "按已选 TTS WAV 的真实时长设置逐句发声起点与 Segment 视频时长。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_seconds": {
+          "minimum": 0.2,
+          "type": "number"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "segment_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "starts": {
+          "patternProperties": {
+            "^[0-9a-f]{32}$": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "scene_ids",
+        "segment_id",
+        "starts",
+        "duration_seconds"
+      ],
+      "type": "object"
+    },
+    "name": "set_dialogue_timing"
+  },
+  {
+    "description": "新建或编辑一个 Segment 的其他图片规划，slot_index 为 0–3；可规划任意画面内容，不限角色或地点，无时间位置；不生成、不选择。用 read_story 的 selection/keyframe 扩展读取 video_inputs 中的规划 ID 和实际绑定。",
+    "inputSchema": {
+      "$defs": {
+        "CharacterReference": {
+          "additionalProperties": false,
+          "properties": {
+            "character_id": {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            "look_id": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "character_id",
+            "look_id"
+          ],
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "character_references": {
+          "items": {
+            "$ref": "#/$defs/CharacterReference"
+          },
+          "type": "array"
+        },
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "prompt_text": {
+          "maxLength": 18000,
+          "minLength": 1,
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "reference_asset_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 5,
+          "type": "array"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "segment_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "slot_index": {
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "visible_character_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "scene_ids",
+        "segment_id",
+        "slot_index",
+        "prompt_text",
+        "description",
+        "visible_character_ids",
+        "character_references",
+        "reference_asset_ids"
+      ],
+      "type": "object"
+    },
+    "name": "save_reference_image_plan"
+  },
+  {
+    "description": "像闹钟一样叫用户回来：在 Core 主机上循环响提示音并弹出带 message 的对话框，用户点“知道了”或 2 分钟后停止；不改项目。长线任务完成、失败或需要用户决定时，在结束本轮回复前调用。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "message"
+      ],
+      "type": "object"
+    },
+    "name": "ring_alarm"
+  },
+  {
+    "description": "读取当前项目实际图片/音频Asset，校验SHA-256，最多8 MiB；不接受路径。返回的图片直接用原生视觉能力查看，不要再用 ffmpeg 等命令行工具处理；当前模型无视觉能力时直接拒绝看图任务。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "asset_id"
+      ],
+      "type": "object"
+    },
+    "name": "read_media_input"
+  },
+  {
+    "description": "按 level 的公开 oneOf 契约读取故事；outline 使用项目 scope，scene/shot/segment 必须给 scene_ids；Shot 与 Segment 都直接属于 Scene，shot 层给出覆盖它的 segment_ids，segment 层给出 shot_ids；video_prompt/keyframe 扩展只用于 segment；selection、keyframe 或 video_prompt 扩展同时返回 video_inputs：其他图片规划 ID、slot_index、正文、选图状态及显式媒体绑定。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "extensions": {
+              "items": {
+                "enum": [
+                  "text",
+                  "selection",
+                  "dependencies"
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            "ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 0,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "level": {
+              "const": "outline"
+            },
+            "parent_id": {
+              "type": "null"
+            },
+            "scene_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 0,
+              "type": "array",
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "extensions": {
+              "items": {
+                "enum": [
+                  "text",
+                  "selection",
+                  "dependencies"
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            "ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 0,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "level": {
+              "const": "scene"
+            },
+            "parent_id": {
+              "type": "null"
+            },
+            "scene_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "scene_ids"
+          ]
+        },
+        {
+          "properties": {
+            "extensions": {
+              "items": {
+                "enum": [
+                  "text",
+                  "selection",
+                  "dependencies"
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            "ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "level": {
+              "const": "shot"
+            },
+            "parent_id": {
+              "type": "null"
+            },
+            "scene_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "scene_ids"
+          ]
+        },
+        {
+          "properties": {
+            "extensions": {
+              "items": {
+                "enum": [
+                  "text",
+                  "selection",
+                  "dependencies",
+                  "video_prompt",
+                  "keyframe"
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            "ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "level": {
+              "const": "segment"
+            },
+            "scene_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "scene_ids"
+          ]
+        }
+      ],
+      "properties": {
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "extensions": {
+          "items": {
+            "enum": [
+              "text",
+              "selection",
+              "dependencies",
+              "video_prompt",
+              "keyframe"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "level": {
+          "enum": [
+            "outline",
+            "scene",
+            "shot",
+            "segment"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "parent_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{32}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        }
+      },
+      "required": [
+        "project_id",
+        "level"
+      ],
+      "type": "object"
+    },
+    "name": "read_story"
+  },
+  {
+    "description": "按“场景 N”“场景 N－镜头 N”或“场景 N－片段 N”（片段在场景内编号）解析当前脚本的稳定 ID；只读，不修改项目。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "location": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "location"
+      ],
+      "type": "object"
+    },
+    "name": "locate_story"
+  },
+  {
+    "description": "按 ID 读取专业工作集索引之外的完整详情：keyframe（画面正文、参考、选图）、location、location_image（说明与生成正文）、character（角色卡与造型）；director_plan 读取原始导演方案全文。只在当前任务确实需要时调用。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "ids": {
+              "type": "null"
+            },
+            "kind": {
+              "const": "director_plan"
+            }
+          }
+        },
+        {
+          "properties": {
+            "ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "kind": {
+              "enum": [
+                "keyframe",
+                "location",
+                "location_image",
+                "character"
+              ]
+            }
+          },
+          "required": [
+            "ids"
+          ]
+        }
+      ],
+      "properties": {
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "ids": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "keyframe",
+            "location",
+            "location_image",
+            "character",
+            "director_plan"
+          ],
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "name": "read_details"
+  },
+  {
+    "description": "按固定能力读取完整 Skill 与参考；支持 if_hash 内容协商，不接受文件路径。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "capability": {
+          "enum": [
+            "reference_library",
+            "script",
+            "location",
+            "narration",
+            "keyframe",
+            "video_prompt",
+            "song_prompt"
+          ],
+          "type": "string"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "if_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "include": {
+          "items": {
+            "const": "consistency-review",
+            "type": "string"
+          },
+          "maxItems": 1,
+          "type": "array"
+        },
+        "page_bytes": {
+          "maximum": 61440,
+          "minimum": 4096,
+          "type": "integer"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "capability"
+      ],
+      "type": "object"
+    },
+    "name": "read_professional_contract"
+  },
+  {
+    "description": "读取当前 revision 的专业事实与输出 schema；支持 if_hash 内容协商，不创建 run。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "capability": {
+              "enum": [
+                "location",
+                "reference_library",
+                "script"
+              ]
+            },
+            "scene_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 0,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "target_ids": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "capability": {
+              "enum": [
+                "narration",
+                "keyframe"
+              ]
+            },
+            "scene_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "target_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "scene_ids"
+          ]
+        },
+        {
+          "properties": {
+            "capability": {
+              "const": "video_prompt"
+            },
+            "scene_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "target_ids": {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 1,
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "scene_ids",
+            "target_ids"
+          ]
+        }
+      ],
+      "properties": {
+        "capability": {
+          "enum": [
+            "reference_library",
+            "script",
+            "location",
+            "narration",
+            "keyframe",
+            "video_prompt"
+          ],
+          "type": "string"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "if_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "page_bytes": {
+          "maximum": 61440,
+          "minimum": 4096,
+          "type": "integer"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "target_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[0-9a-f]{32}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "capability"
+      ],
+      "type": "object"
+    },
+    "name": "read_professional_workset"
+  },
+  {
+    "description": "读取 workflow、handoff 与 contract_hashes；不授予人类权限。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id"
+      ],
+      "type": "object"
+    },
+    "name": "read_workflow"
+  },
+  {
+    "description": "proposal 生命周期，payload 按 action 分支；submit 可内联 proposal，或引用固定工作区 proposals/<request_id>.json；keyframe 的 request 另需 scene_ids、target_ids。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "capability": {
+              "enum": [
+                "location",
+                "reference_library",
+                "script"
+              ]
+            },
+            "payload": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "request"
+                    },
+                    "raw_user_instruction": {
+                      "maxLength": 20000,
+                      "minLength": 1,
+                      "pattern": "\\S",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "raw_user_instruction"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "get"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{32}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "request_id"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "submit"
+                    },
+                    "proposal": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "proposal_source": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{32}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "proposal",
+                    "request_id"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "submit"
+                    },
+                    "proposal": {
+                      "type": "null"
+                    },
+                    "proposal_source": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "byte_count": {
+                          "maximum": 1048576,
+                          "minimum": 2,
+                          "type": "integer"
+                        },
+                        "kind": {
+                          "const": "workspace_json",
+                          "type": "string"
+                        },
+                        "sha256": {
+                          "pattern": "^[0-9a-f]{64}$",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "byte_count",
+                        "sha256"
+                      ],
+                      "type": "object"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{32}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "request_id",
+                    "proposal_source"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "reject"
+                    },
+                    "reason": {
+                      "maxLength": 20000,
+                      "minLength": 1,
+                      "pattern": "\\S",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{32}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "reason",
+                    "request_id"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "cancel"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{32}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "request_id"
+                  ]
+                }
+              ],
+              "type": "object"
+            }
+          }
+        },
+        {
+          "properties": {
+            "capability": {
+              "const": "keyframe"
+            },
+            "payload": {
+              "oneOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "request"
+                    },
+                    "raw_user_instruction": {
+                      "maxLength": 20000,
+                      "minLength": 1,
+                      "pattern": "\\S",
+                      "type": "string"
+                    },
+                    "scene_ids": {
+                      "items": {
+                        "pattern": "^[0-9a-f]{32}$",
+                        "type": "string"
+                      },
+                      "maxItems": 100,
+                      "minItems": 1,
+                      "type": "array",
+                      "uniqueItems": true
+                    },
+                    "target_ids": {
+                      "items": {
+                        "pattern": "^[0-9a-f]{32}$",
+                        "type": "string"
+                      },
+                      "maxItems": 100,
+                      "minItems": 1,
+                      "type": "array",
+                      "uniqueItems": true
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "raw_user_instruction",
+                    "scene_ids",
+                    "target_ids"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "get"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{32}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "request_id"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "submit"
+                    },
+                    "proposal": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "proposal_source": {
+                      "type": "null"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{32}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "proposal",
+                    "request_id"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "submit"
+                    },
+                    "proposal": {
+                      "type": "null"
+                    },
+                    "proposal_source": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "byte_count": {
+                          "maximum": 1048576,
+                          "minimum": 2,
+                          "type": "integer"
+                        },
+                        "kind": {
+                          "const": "workspace_json",
+                          "type": "string"
+                        },
+                        "sha256": {
+                          "pattern": "^[0-9a-f]{64}$",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "byte_count",
+                        "sha256"
+                      ],
+                      "type": "object"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{32}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "request_id",
+                    "proposal_source"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "reject"
+                    },
+                    "reason": {
+                      "maxLength": 20000,
+                      "minLength": 1,
+                      "pattern": "\\S",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{32}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "reason",
+                    "request_id"
+                  ]
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "const": "cancel"
+                    },
+                    "request_id": {
+                      "pattern": "^[0-9a-f]{32}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "request_id"
+                  ]
+                }
+              ],
+              "type": "object"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "capability": {
+          "enum": [
+            "script",
+            "reference_library",
+            "location",
+            "keyframe"
+          ],
+          "type": "string"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "capability",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "name": "submit_proposal"
+  },
+  {
+    "description": "保存单Segment正文与可选recipe_inputs（按槽位合并）；含对白时带attach_dialogue_audio；不生成或选择。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "attach_dialogue_audio": {
+          "type": "boolean"
+        },
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "prompt_text": {
+          "maxLength": 20000,
+          "type": "string"
+        },
+        "recipe_inputs": {
+          "type": "object"
+        },
+        "scene_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{32}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array"
+        },
+        "segment_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "scene_ids",
+        "segment_id",
+        "prompt_text"
+      ],
+      "type": "object"
+    },
+    "name": "save_video_prompt"
+  },
+  {
+    "description": "只更新单个Keyframe正文，Core失效相关选择；不生成。",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "keyframe_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{32}$",
+          "type": "string"
+        },
+        "prompt_text": {
+          "maxLength": 10000,
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "expected_revision",
+        "idempotency_key",
+        "keyframe_id",
+        "prompt_text"
+      ],
+      "type": "object"
+    },
+    "name": "save_keyframe_prompt"
+  }
+]

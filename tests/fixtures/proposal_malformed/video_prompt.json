@@ -1,0 +1,6 @@
+{
+  "fence": "```json\n{}",
+  "extra": "{\"prompt_text\":\"ok\",\"extra\":true}",
+  "missing": "{}",
+  "type": "{\"prompt_text\":1}"
+}
