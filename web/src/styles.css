@@ -90,6 +90,11 @@ button:disabled, textarea:disabled { cursor: not-allowed; }
 .provider-settings-panel ul { margin: 0; padding-left: 14px; }
 .provider-settings-note { margin: 0; color: var(--muted); }
 .provider-settings-error { color: var(--red-dark); }
+/* 各区块（能力绑定、每个插件、确定性工具）之间分隔；插件名做标题栏，其设置项缩进并以竖线归属该插件。 */
+.provider-settings-panel fieldset > section + section { padding-top: 12px; border-top: 1px solid var(--line-dark); }
+.provider-settings-panel .provider-plugin > h4 { padding: 5px 6px; background: var(--paper); }
+.provider-settings-panel .provider-plugin > small { padding: 0 6px; }
+.provider-settings-panel .provider-plugin > label { margin-left: 6px; padding-left: 8px; border-left: 2px solid var(--line-dark); }
 .candidate-provider { display: block; color: var(--muted); font: 9px ui-monospace, monospace; }
 .workspace-toolbar { display: flex; align-items: center; gap: 8px; }
 .reference-library-trigger { min-height: 28px; padding: 0 10px; border: 1px solid var(--line-dark); background: transparent; color: var(--muted); font: 9px ui-monospace, monospace; letter-spacing: 0.13em; }
